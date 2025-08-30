@@ -1,0 +1,619 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.87 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.87 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+
+/* Gmail-specific styling */
+.gmail-container {
+    font-family: "Roboto", Arial, sans-serif;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: #fff;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.bulk-actions button,
+.refresh button {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-right: 6px;
+    font-size: 13px;
+    color: #5f6368;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.bulk-actions button:hover,
+.refresh button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    background-color: #fff;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.tabs button {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    font-size: 13px;
+    text-align: center;
+    color: #5f6368;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s ease;
+    max-width: 180px;
+}
+
+.tabs button.active {
+    color: #1a73e8;
+    font-weight: 500;
+}
+
+.tabs button.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #1a73e8;
+}
+
+.tabs button:hover:not(.active) {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Email List */
+.email-list {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.email-row {
+    display: grid;
+    grid-template-columns: 28px 28px 180px 1fr auto auto;
+    align-items: center;
+    padding: 0 16px;
+    height: 40px;
+    border-bottom: 1px solid #f1f3f4;
+    position: relative;
+    cursor: pointer;
+}
+
+.email-row:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+    z-index: 1;
+}
+
+.email-row.unread-row {
+    background-color: #ffffff;
+    font-weight: 700;
+}
+
+.email-row.selected-row {
+    background-color: #c2dbff;
+    box-shadow: none;
+}
+
+/* Cell styling */
+.checkbox-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.star-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.star {
+    cursor: pointer;
+    font-size: 18px;
+    color: #e8eaed;
+}
+
+.star:hover {
+    color: #5f6368;
+}
+
+.star.starred {
+    color: #f7cb4d;
+}
+
+.sender-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 16px;
+    font-size: 14px;
+}
+
+.content-cell {
+    display: flex;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    font-size: 14px;
+}
+
+.subject {
+    font-weight: 500;
+    margin-right: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.preview {
+    color: #5f6368;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.labels-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+}
+
+.attachment-icon {
+    color: #5f6368;
+}
+
+.label {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.label-important {
+    background-color: #fce8e6;
+    color: #d93025;
+}
+
+.date-cell {
+    color: #5f6368;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-left: 16px;
+    font-size: 12px;
+    min-width: 60px;
+}
+
+/* Row hover actions */
+.row-actions {
+    display: flex;
+    position: absolute;
+    right: 16px;
+    background: inherit;
+    padding: 0 8px;
+    z-index: 10;
+}
+
+.row-actions button {
+    background: none;
+    border: none;
+    padding: 4px;
+    color: #5f6368;
+    cursor: pointer;
+}
+
+.row-actions button:hover {
+    color: #1a73e8;
+}
+
+/* Status bar */
+.status-bar {
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #5f6368;
+    border-top: 1px solid #e5e5e5;
+    background-color: #f9f9f9;
+}
+
+/* Gmail App Layout */
+.gmail-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    font-family: "Roboto", Arial, sans-serif;
+}
+
+/* Header */
+.gmail-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    height: 64px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.gmail-logo {
+    margin-left: 16px;
+}
+
+.search-bar {
+    flex: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    background-color: #f1f3f4;
+    border-radius: 8px;
+    padding: 0 16px;
+    height: 48px;
+}
+
+.search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0 16px;
+    font-size: 14px;
+    outline: none;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.icon-button {
+    background: none;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5f6368;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.icon-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.avatar-button {
+    background: none;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* Body Layout */
+.gmail-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.gmail-sidebar {
+    width: 256px;
+    background-color: #fff;
+    border-right: 1px solid #e5e5e5;
+    padding: 8px;
+    overflow-y: auto;
+}
+
+.compose-button {
+    display: flex;
+    align-items: center;
+    background-color: #c2e7ff;
+    border: none;
+    border-radius: 16px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #001d35;
+    cursor: pointer;
+    margin-bottom: 16px;
+    width: 100%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.compose-button:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    background-color: #b4deff;
+}
+
+.compose-icon {
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 0 16px 16px 0;
+    cursor: pointer;
+    color: #202124;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.sidebar-item:hover {
+    background-color: #f1f3f4;
+}
+
+.sidebar-item.active {
+    background-color: #d3e3fd;
+    font-weight: 500;
+    color: #1a73e8;
+}
+
+.sidebar-item svg {
+    margin-right: 16px;
+    color: #5f6368;
+}
+
+.sidebar-item.active svg {
+    color: #1a73e8;
+}
+
+.sidebar-item .count {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Main Content */
+.gmail-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f6f8fc;
+    padding: 16px;
+}
+
+/* Action buttons that appear when emails are selected */
+.selected-actions {
+    display: flex;
+    align-items: center;
+}
+
+.action-button {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 8px;
+    color: #5f6368;
+    cursor: pointer;
+    margin-right: 4px;
+}
+
+.action-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Update existing styles */
+.gmail-container {
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    margin: 0;
+}
+
+.email-list {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.pagination-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #5f6368;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.pagination-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.border-custom-gray {
+    border-color: oklch(0.68 0.02 250);
+}
