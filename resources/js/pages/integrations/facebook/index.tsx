@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import SetupWizard from "@/components/setup-wizard"
 import { IntegrationHealthWidget } from "@/components/integration-health-widget"
 import { ErrorRecoveryCard } from "@/components/error-recovery-card"
@@ -7,21 +7,128 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import AppLayout from '@/layouts/app-layout'
+import axios from "axios"
+import { toast } from "sonner"
+
+interface HealthStatus {
+  api: boolean
+  webhooks: boolean
+  permissions: boolean
+  lastChecked: Date
+}
+
+interface IntegrationData {
+  health_status: HealthStatus
+  connection_status: "disconnected" | "connecting" | "connected" | "error"
+  last_sync_at: string | null
+  integration_info?: {
+    id: number
+    name: string
+    active: boolean
+    page_name?: string
+    features: Record<string, boolean>
+  }
+}
 
 export default function FacebookIntegrationPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
-  const [integrationStatus, setIntegrationStatus] = useState<"disconnected" | "connecting" | "connected" | "error">(
-    "disconnected",
-  )
+  const [integrationData, setIntegrationData] = useState<IntegrationData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for demonstration
-  const healthStatus = {
-    api: true,
-    webhooks: false,
-    permissions: true,
-    lastChecked: new Date(),
+  // Fetch integration health data
+  const fetchHealthData = async () => {
+    try {
+      setIsLoading(true)
+      const response = await axios.get('/integrations/facebook/health')
+
+      if (response.data.success) {
+        const data = response.data
+        setIntegrationData({
+          health_status: {
+            api: data.health_status.api,
+            webhooks: data.health_status.webhooks,
+            permissions: data.health_status.permissions,
+            lastChecked: new Date(data.health_status.lastChecked)
+          },
+          connection_status: data.connection_status,
+          last_sync_at: data.last_sync_at,
+          integration_info: data.integration_info
+        })
+        setError(null)
+      } else {
+        setIntegrationData({
+          health_status: {
+            api: false,
+            webhooks: false,
+            permissions: false,
+            lastChecked: new Date()
+          },
+          connection_status: "disconnected",
+          last_sync_at: null
+        })
+        setError(response.data.message)
+      }
+    } catch (error: any) {
+      console.error('Error fetching health data:', error)
+      setError(error.response?.data?.message || 'Failed to load integration status')
+      setIntegrationData({
+        health_status: {
+          api: false,
+          webhooks: false,
+          permissions: false,
+          lastChecked: new Date()
+        },
+        connection_status: "error",
+        last_sync_at: null
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  // Test connection
+  const handleTestConnection = async () => {
+    try {
+      const response = await axios.post('/integrations/facebook/test-connection')
+      if (response.data.success) {
+        toast.success('Connection test successful')
+        fetchHealthData() // Refresh health data
+      } else {
+        toast.error(response.data.message || 'Connection test failed')
+      }
+    } catch (error: any) {
+      console.error('Error testing connection:', error)
+      toast.error(error.response?.data?.message || 'Failed to test connection')
+    }
+  }
+
+  // Force sync data
+  const handleForceSyncData = async () => {
+    try {
+      const response = await axios.post('/integrations/facebook/sync')
+      if (response.data.success) {
+        toast.success('Data sync initiated successfully')
+        await fetchHealthData() // Refresh health data
+      } else {
+        toast.error(response.data.message || 'Failed to sync data')
+      }
+    } catch (error: any) {
+      console.error('Error syncing data:', error)
+      toast.error(error.response?.data?.message || 'Failed to sync data')
+    }
+  }
+
+  // View logs (placeholder)
+  const handleViewLogs = () => {
+    toast.info('Logs viewer coming soon')
+  }
+
+  // Load health data on component mount
+  useEffect(() => {
+    fetchHealthData()
+  }, [])
 
   const mockError = {
     type: "TOKEN_EXPIRED" as const,
@@ -37,7 +144,8 @@ export default function FacebookIntegrationPage() {
   const handleWizardComplete = (config: any) => {
     console.log("Setup completed with config:", config)
     setShowWizard(false)
-    setIntegrationStatus("connected")
+    fetchHealthData() // Refresh health data after setup
+    toast.success("Facebook integration completed successfully!")
   }
 
   const handleTemplateSelect = (template: any) => {
@@ -130,23 +238,51 @@ export default function FacebookIntegrationPage() {
           </div>
 
           {/* Health Widget */}
-          <IntegrationHealthWidget
-            connectionStatus={integrationStatus}
-            lastSyncAt={new Date()}
-            healthStatus={healthStatus}
-            onTestConnection={() => console.log("Testing connection")}
-            onForceSyncData={() => console.log("Force sync")}
-            onViewLogs={() => console.log("View logs")}
-          />
+          {!isLoading && integrationData && (
+            <IntegrationHealthWidget
+              connectionStatus={integrationData.connection_status}
+              lastSyncAt={integrationData.last_sync_at ? new Date(integrationData.last_sync_at) : null}
+              healthStatus={integrationData.health_status}
+              onTestConnection={handleTestConnection}
+              onForceSyncData={handleForceSyncData}
+              onViewLogs={handleViewLogs}
+            />
+          )}
 
           {/* Error Recovery (shown conditionally) */}
-          {integrationStatus === "error" && (
+          {!isLoading && integrationData && integrationData.connection_status === "error" && (
             <ErrorRecoveryCard
               error={mockError}
-              onAutoRecover={() => console.log("Auto recover")}
-              onManualFix={() => console.log("Manual fix")}
-              onGetHelp={() => console.log("Get help")}
+              onAutoRecover={() => handleTestConnection()}
+              onManualFix={() => setShowWizard(true)}
+              onGetHelp={() => toast.info("Contact support for assistance")}
             />
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <Card className="border-border bg-card">
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading integration status...</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="py-6">
+                <div className="text-center">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={fetchHealthData} variant="outline">
+                    Retry
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

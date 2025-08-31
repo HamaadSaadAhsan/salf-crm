@@ -35,15 +35,15 @@ class FacebookIntegrationController extends Controller
     {
         try {
             $templates = config('facebook_templates');
-            
+
             return response()->json([
                 'success' => true,
                 'templates' => $templates
             ]);
-            
+
         } catch (Exception $e) {
             Log::error('Failed to get Facebook templates: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load integration templates'
@@ -60,32 +60,32 @@ class FacebookIntegrationController extends Controller
             $request->validate([
                 'template_key' => 'required|string'
             ]);
-            
+
             $templates = config('facebook_templates');
             $templateKey = $request->template_key;
-            
+
             if (!isset($templates[$templateKey])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid template selected'
                 ], 400);
             }
-            
+
             $template = $templates[$templateKey];
-            
+
             // Store template configuration in cache for the current user
             $userId = $request->user()->id;
             cache()->put("facebook_template_config_{$userId}", $template, 3600); // 1 hour
-            
+
             return response()->json([
                 'success' => true,
                 'message' => "Applied {$template['name']} template successfully",
                 'template' => $template
             ]);
-            
+
         } catch (Exception $e) {
             Log::error('Failed to apply Facebook template: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to apply template configuration'
@@ -153,7 +153,7 @@ class FacebookIntegrationController extends Controller
 
             // Get template configuration if applied
             $templateConfig = cache()->get("facebook_template_config_{$userId}");
-            
+
             // Use SDK for credential verification
             $verificationResult = $this->facebookSdkService->verifyCredentials([
                 'app_id' => $validatedData['appId'],
@@ -238,6 +238,111 @@ class FacebookIntegrationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to configure Facebook integration'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Facebook integration health status
+     */
+    public function getHealthStatus(): JsonResponse
+    {
+        try {
+            $integration = Integration::where('provider', 'facebook')
+                ->where('active', true)
+                ->first();
+
+            if (!$integration) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facebook integration not found or inactive',
+                    'health_status' => [
+                        'api' => false,
+                        'webhooks' => false,
+                        'permissions' => false,
+                        'lastChecked' => now()->toISOString(),
+                    ],
+                    'connection_status' => 'disconnected',
+                    'last_sync_at' => null,
+                ]);
+            }
+
+            $config = $integration->config;
+            $accessToken = decrypt($config['access_token']);
+
+            // Test API connection
+            $apiHealthy = false;
+            $webhooksHealthy = false;
+            $permissionsHealthy = false;
+
+            try {
+                $this->facebookSdkService->initializeApi(
+                    $config['app_id'],
+                    decrypt($config['app_secret']),
+                    $accessToken
+                );
+
+                $connectionTest = $this->facebookSdkService->testConnection();
+                $apiHealthy = $connectionTest['success'];
+
+                if ($apiHealthy) {
+                    // Test permissions by trying to get page info
+                    try {
+                        $pageInfo = $this->facebookSdkService->getPageInfo($config['page_id']);
+                        $permissionsHealthy = !empty($pageInfo);
+                    } catch (Exception $e) {
+                        $permissionsHealthy = false;
+                    }
+                }
+            } catch (Exception $e) {
+                Log::error('Facebook API health check failed: ' . $e->getMessage());
+                $apiHealthy = false;
+            }
+
+            // Check webhook configuration
+            $webhookConfig = FacebookWebhookConfig::where('app_id', $config['app_id'])
+                ->where('page_id', $config['page_id'])
+                ->where('active', true)
+                ->first();
+
+            $webhooksHealthy = $webhookConfig !== null;
+
+            // Get last sync timestamp
+            $lastSync = $integration->updated_at;
+
+            return response()->json([
+                'success' => true,
+                'health_status' => [
+                    'api' => $apiHealthy,
+                    'webhooks' => $webhooksHealthy,
+                    'permissions' => $permissionsHealthy,
+                    'lastChecked' => now()->toISOString(),
+                ],
+                'connection_status' => $apiHealthy ? 'connected' : 'error',
+                'last_sync_at' => $lastSync ? $lastSync->toISOString() : null,
+                'integration_info' => [
+                    'id' => $integration->id,
+                    'name' => $integration->name,
+                    'active' => $integration->active,
+                    'page_name' => $config['page_info']['name'] ?? null,
+                    'features' => $config['features'] ?? [],
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to get Facebook health status: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get integration health status',
+                'health_status' => [
+                    'api' => false,
+                    'webhooks' => false,
+                    'permissions' => false,
+                    'lastChecked' => now()->toISOString(),
+                ],
+                'connection_status' => 'error',
+                'last_sync_at' => null,
             ], 500);
         }
     }
@@ -1050,16 +1155,16 @@ class FacebookIntegrationController extends Controller
     {
         try {
             $integration = Integration::where('provider', 'facebook')->first();
-            
+
             if (!$integration || empty($integration->config['webhook_url'])) {
                 // Fallback to route-based URL if not configured in database
                 return route('facebook.webhook');
             }
-            
+
             return $integration->config['webhook_url'];
         } catch (Exception $e) {
             Log::error('Failed to get webhook URL from database: ' . $e->getMessage());
-            
+
             // Fallback to route-based URL
             return route('facebook.webhook');
         }

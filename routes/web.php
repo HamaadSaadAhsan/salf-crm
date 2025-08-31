@@ -68,6 +68,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/', [FacebookIntegrationController::class, 'index'])->name('facebook.integration.index');
             Route::post('/', [FacebookIntegrationController::class, 'store'])->name('facebook.integration.store');
+            Route::get('/health', [FacebookIntegrationController::class, 'getHealthStatus'])->name('facebook.integration.health');
             Route::post('/test-connection', [FacebookIntegrationController::class, 'testConnection'])->name('facebook.integration.test');
             Route::get('/insights', [FacebookIntegrationController::class, 'getPageInsights'])->name('facebook.integration.insights');
             Route::get('/posts', [FacebookIntegrationController::class, 'getPagePosts'])->name('facebook.integration.posts');
