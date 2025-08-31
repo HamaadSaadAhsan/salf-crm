@@ -157,7 +157,6 @@ class FacebookSdkService
                 PageFields::CATEGORY,
                 PageFields::FAN_COUNT,
                 PageFields::FOLLOWERS_COUNT,
-                PageFields::PICTURE,
                 PageFields::COVER,
                 PageFields::WEBSITE,
                 PageFields::ABOUT

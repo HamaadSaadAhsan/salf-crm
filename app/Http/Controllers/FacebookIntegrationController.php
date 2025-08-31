@@ -283,7 +283,6 @@ class FacebookIntegrationController extends Controller
                 );
 
                 $connectionTest = $this->facebookSdkService->testConnection();
-                Log::info(json_encode($connectionTest));
                 $apiHealthy = $connectionTest['success'];
 
                 if ($apiHealthy) {
