@@ -14,6 +14,7 @@ use FacebookAds\Object\Fields\UserFields;
 use FacebookAds\Object\Values\LeadgenFormStatusValues;
 use FacebookAds\Logger\LoggerInterface;
 use FacebookAds\Exception\Exception as FacebookException;
+use FacebookAds\Http\RequestInterface;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -79,13 +80,11 @@ class FacebookSdkService
                 $credentials['access_token']
             );
 
-            // Test user access
-            $user = new User('me');
-            $userData = $user->getSelf([
-                UserFields::ID,
-                UserFields::NAME,
-                UserFields::EMAIL
+            // Test user access - use Graph API request instead of User object for "me" endpoint
+            $response = $this->api->call('/me', RequestInterface::METHOD_GET, [
+                'fields' => 'id,name,email'
             ]);
+            $userData = $response->getContent();
 
             // Test page access if page_id provided
             $pageInfo = null;
@@ -95,7 +94,7 @@ class FacebookSdkService
 
             return [
                 'verified' => true,
-                'user_info' => $userData->getData(),
+                'user_info' => $userData,
                 'page_info' => $pageInfo
             ];
 
@@ -128,22 +127,13 @@ class FacebookSdkService
     public function getUserPages(string $accessToken): array
     {
         try {
-            $user = new User('me');
-            $pages = $user->getAccounts([
-                PageFields::ID,
-                PageFields::NAME,
-                PageFields::CATEGORY,
-                PageFields::ACCESS_TOKEN,
-                'tasks',
-                'picture'
+            // Use Graph API request to get pages
+            $response = $this->api->call('/me/accounts', RequestInterface::METHOD_GET, [
+                'fields' => 'id,name,category,access_token,tasks,picture'
             ]);
+            $responseData = $response->getContent();
 
-            $pagesData = [];
-            foreach ($pages as $page) {
-                $pagesData[] = $page->getData();
-            }
-
-            return $pagesData;
+            return $responseData['data'] ?? [];
 
         } catch (FacebookException $e) {
             Log::error('Failed to get user pages', [
@@ -400,16 +390,28 @@ class FacebookSdkService
     public function testConnection(): array
     {
         try {
-            $user = new User('me');
-            $userData = $user->getSelf([UserFields::ID, UserFields::NAME]);
+            // Use Graph API request to test connection
+            $response = $this->api->call('/me', RequestInterface::METHOD_GET, [
+                'fields' => 'id,name'
+            ]);
+            $userData = $response->getContent();
+
+            Log::info('Facebook API connection test successful', [
+                'user_id' => $userData['id'],
+                'user_name' => $userData['name']
+            ]);
 
             return [
                 'success' => true,
                 'message' => 'Connection successful',
-                'data' => $userData->getData()
+                'data' => $userData
             ];
 
         } catch (FacebookException $e) {
+            Log::error('Facebook API connection test failed', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode()
+            ]);
             return [
                 'success' => false,
                 'message' => 'Connection failed: ' . $this->parseFacebookError($e)
@@ -448,14 +450,12 @@ class FacebookSdkService
             $this->api->setAccessToken($extendedToken);
 
             // Get page access token using long-lived user token
-            $user = new User('me');
-            $pages = $user->getAccounts([
-                PageFields::ID,
-                PageFields::ACCESS_TOKEN
+            $response = $this->api->call('/me/accounts', RequestInterface::METHOD_GET, [
+                'fields' => 'id,access_token'
             ]);
+            $responseData = $response->getContent();
 
-            foreach ($pages as $page) {
-                $pageData = $page->getData();
+            foreach ($responseData['data'] ?? [] as $pageData) {
                 if ($pageData['id'] === $pageId) {
                     return $pageData['access_token'];
                 }

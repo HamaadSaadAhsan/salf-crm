@@ -310,7 +310,11 @@ class FacebookIntegrationController extends Controller
             // Get last sync timestamp
             $lastSync = $integration->updated_at;
 
-            return response()->json([
+            // Check if current user is super admin to include token information
+            $user = auth()->user();
+            $isSuperAdmin = $user && $user->hasRole('super-admin');
+            
+            $responseData = [
                 'success' => true,
                 'health_status' => [
                     'api' => $apiHealthy,
@@ -327,7 +331,69 @@ class FacebookIntegrationController extends Controller
                     'page_name' => $config['page_info']['name'] ?? null,
                     'features' => $config['features'] ?? [],
                 ]
-            ]);
+            ];
+
+            // Add token expiry information for super admins only
+            if ($isSuperAdmin) {
+                // Get users with Facebook tokens
+                $usersWithTokens = \App\Models\User::withFacebookToken()
+                    ->select(['id', 'name', 'email', 'facebook_token_expires_at', 'facebook_connected_at'])
+                    ->get();
+                
+                $tokenStats = [
+                    'total_users' => $usersWithTokens->count(),
+                    'expired_tokens' => 0,
+                    'expiring_soon' => 0,
+                    'healthy_tokens' => 0,
+                ];
+                
+                $expiredUsers = [];
+                $expiringSoonUsers = [];
+                
+                foreach ($usersWithTokens as $tokenUser) {
+                    $tokenStatus = $tokenUser->getFacebookTokenStatus();
+                    
+                    if ($tokenStatus['is_expired']) {
+                        $tokenStats['expired_tokens']++;
+                        $expiredUsers[] = [
+                            'id' => $tokenUser->id,
+                            'name' => $tokenUser->name,
+                            'email' => $tokenUser->email,
+                            'expired_at' => $tokenStatus['expires_at']?->toISOString(),
+                            'days_expired' => $tokenStatus['expires_at'] ? 
+                                $tokenStatus['expires_at']->diffInDays(now()) : null,
+                        ];
+                    } elseif ($tokenStatus['expires_in_hours'] !== null && 
+                             $tokenStatus['expires_in_hours'] > 0 && 
+                             $tokenStatus['expires_in_hours'] <= 72) {
+                        $tokenStats['expiring_soon']++;
+                        $expiringSoonUsers[] = [
+                            'id' => $tokenUser->id,
+                            'name' => $tokenUser->name,
+                            'email' => $tokenUser->email,
+                            'expires_at' => $tokenStatus['expires_at']?->toISOString(),
+                            'expires_in_hours' => $tokenStatus['expires_in_hours'],
+                            'expires_in_days' => round($tokenStatus['expires_in_hours'] / 24, 1),
+                            'urgency' => $this->getTokenUrgency($tokenStatus),
+                        ];
+                    } else {
+                        $tokenStats['healthy_tokens']++;
+                    }
+                }
+                
+                $responseData['token_status'] = [
+                    'statistics' => $tokenStats,
+                    'expired_users' => $expiredUsers,
+                    'expiring_soon_users' => $expiringSoonUsers,
+                    'overall_health' => $tokenStats['expired_tokens'] === 0 && $tokenStats['expiring_soon'] === 0 ? 'healthy' : 
+                                       ($tokenStats['expired_tokens'] > 0 ? 'critical' : 'warning'),
+                ];
+                
+                // Update main health status to include token health
+                $responseData['health_status']['tokens'] = $tokenStats['expired_tokens'] === 0;
+            }
+
+            return response()->json($responseData);
 
         } catch (Exception $e) {
             Log::error('Failed to get Facebook health status: ' . $e->getMessage());
@@ -1168,5 +1234,39 @@ class FacebookIntegrationController extends Controller
             // Fallback to route-based URL
             return route('facebook.webhook');
         }
+    }
+
+    /**
+     * Get token urgency level for super admin display
+     */
+    private function getTokenUrgency(array $tokenStatus): string
+    {
+        if (!$tokenStatus['has_token']) {
+            return 'none';
+        }
+        
+        if ($tokenStatus['is_expired']) {
+            return 'critical';
+        }
+        
+        $hoursToExpiry = $tokenStatus['expires_in_hours'];
+        
+        if ($hoursToExpiry === null) {
+            return 'unknown';
+        }
+        
+        if ($hoursToExpiry <= 6) {
+            return 'critical';
+        }
+        
+        if ($hoursToExpiry <= 24) {
+            return 'high';
+        }
+        
+        if ($hoursToExpiry <= 72) {
+            return 'medium';
+        }
+        
+        return 'low';
     }
 }

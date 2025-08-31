@@ -17,10 +17,37 @@ interface HealthStatus {
   lastChecked: Date
 }
 
+interface TokenStatus {
+  statistics: {
+    total_users: number
+    expired_tokens: number
+    expiring_soon: number
+    healthy_tokens: number
+  }
+  expired_users: Array<{
+    id: number
+    name: string
+    email: string
+    expired_at: string
+    days_expired: number
+  }>
+  expiring_soon_users: Array<{
+    id: number
+    name: string
+    email: string
+    expires_at: string
+    expires_in_hours: number
+    expires_in_days: number
+    urgency: string
+  }>
+  overall_health: 'healthy' | 'warning' | 'critical'
+}
+
 interface IntegrationData {
   health_status: HealthStatus
   connection_status: "disconnected" | "connecting" | "connected" | "error"
   last_sync_at: string | null
+  token_status?: TokenStatus
   integration_info?: {
     id: number
     name: string
@@ -28,6 +55,7 @@ interface IntegrationData {
     page_name?: string
     features: Record<string, boolean>
   }
+  is_super_admin?: boolean
 }
 
 export default function FacebookIntegrationPage() {
@@ -54,7 +82,9 @@ export default function FacebookIntegrationPage() {
           },
           connection_status: data.connection_status,
           last_sync_at: data.last_sync_at,
-          integration_info: data.integration_info
+          token_status: data.token_status,
+          integration_info: data.integration_info,
+          is_super_admin: data.is_super_admin
         })
         setError(null)
       } else {
@@ -123,6 +153,11 @@ export default function FacebookIntegrationPage() {
   // View logs (placeholder)
   const handleViewLogs = () => {
     toast.info('Logs viewer coming soon')
+  }
+
+  // View token details (super admin only)
+  const handleViewTokenDetails = () => {
+    toast.info('Token management interface coming soon')
   }
 
   // Load health data on component mount
@@ -243,9 +278,12 @@ export default function FacebookIntegrationPage() {
               connectionStatus={integrationData.connection_status}
               lastSyncAt={integrationData.last_sync_at ? new Date(integrationData.last_sync_at) : null}
               healthStatus={integrationData.health_status}
+              tokenStatus={integrationData.token_status}
+              isSuperAdmin={integrationData.is_super_admin || false}
               onTestConnection={handleTestConnection}
               onForceSyncData={handleForceSyncData}
               onViewLogs={handleViewLogs}
+              onViewTokenDetails={integrationData.is_super_admin ? handleViewTokenDetails : undefined}
             />
           )}
 
