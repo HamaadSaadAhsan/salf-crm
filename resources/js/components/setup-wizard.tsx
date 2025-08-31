@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, ArrowRight, ArrowLeft, Zap, Shield, MessageSquare, BarChart3, Users } from "lucide-react"
+import { CheckCircle, ArrowRight, ArrowLeft, Zap, Shield, MessageSquare, BarChart3, Users, Loader2 } from "lucide-react"
 import { useState } from "react"
+import axios from "axios"
+import { toast } from "sonner"
 
 interface SetupStep {
   id: string
@@ -29,6 +31,8 @@ interface SetupWizardProps {
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
 
   const steps: SetupStep[] = [
     {
@@ -92,6 +96,24 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const progress = ((currentStep + 1) / steps.length) * 100
 
+  const initiateOAuth = async () => {
+    setIsConnecting(true)
+    try {
+      const response = await axios.post('/integrations/facebook/oauth/authorize')
+      
+      if (response.data.success && response.data.auth_url) {
+        // Redirect to Facebook OAuth
+        window.location.href = response.data.auth_url
+      } else {
+        throw new Error(response.data.message || 'Failed to initiate Facebook OAuth')
+      }
+    } catch (error: any) {
+      console.error('Error initiating Facebook OAuth:', error)
+      toast.error(error.response?.data?.message || 'Failed to connect to Facebook')
+      setIsConnecting(false)
+    }
+  }
+
   const handleFeatureToggle = (featureId: string) => {
     setSelectedFeatures((prev) =>
       prev.includes(featureId) ? prev.filter((id) => id !== featureId) : [...prev, featureId],
@@ -137,7 +159,20 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <li>• Return here to continue setup</li>
           </ul>
         </div>
-        <Button className="w-full bg-blue-600 hover:bg-blue-700">Connect to Facebook</Button>
+        <Button 
+          className="w-full bg-blue-600 hover:bg-blue-700" 
+          onClick={initiateOAuth}
+          disabled={isConnecting}
+        >
+          {isConnecting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            'Connect to Facebook'
+          )}
+        </Button>
       </CardContent>
     </Card>
   )
