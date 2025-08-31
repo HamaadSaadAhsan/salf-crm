@@ -283,6 +283,7 @@ class FacebookIntegrationController extends Controller
                 );
 
                 $connectionTest = $this->facebookSdkService->testConnection();
+                Log::info(json_encode($connectionTest));
                 $apiHealthy = $connectionTest['success'];
 
                 if ($apiHealthy) {
@@ -313,7 +314,7 @@ class FacebookIntegrationController extends Controller
             // Check if current user is super admin to include token information
             $user = auth()->user();
             $isSuperAdmin = $user && $user->hasRole('super-admin');
-            
+
             $responseData = [
                 'success' => true,
                 'health_status' => [
@@ -339,20 +340,20 @@ class FacebookIntegrationController extends Controller
                 $usersWithTokens = \App\Models\User::withFacebookToken()
                     ->select(['id', 'name', 'email', 'facebook_token_expires_at', 'facebook_connected_at'])
                     ->get();
-                
+
                 $tokenStats = [
                     'total_users' => $usersWithTokens->count(),
                     'expired_tokens' => 0,
                     'expiring_soon' => 0,
                     'healthy_tokens' => 0,
                 ];
-                
+
                 $expiredUsers = [];
                 $expiringSoonUsers = [];
-                
+
                 foreach ($usersWithTokens as $tokenUser) {
                     $tokenStatus = $tokenUser->getFacebookTokenStatus();
-                    
+
                     if ($tokenStatus['is_expired']) {
                         $tokenStats['expired_tokens']++;
                         $expiredUsers[] = [
@@ -360,11 +361,11 @@ class FacebookIntegrationController extends Controller
                             'name' => $tokenUser->name,
                             'email' => $tokenUser->email,
                             'expired_at' => $tokenStatus['expires_at']?->toISOString(),
-                            'days_expired' => $tokenStatus['expires_at'] ? 
+                            'days_expired' => $tokenStatus['expires_at'] ?
                                 $tokenStatus['expires_at']->diffInDays(now()) : null,
                         ];
-                    } elseif ($tokenStatus['expires_in_hours'] !== null && 
-                             $tokenStatus['expires_in_hours'] > 0 && 
+                    } elseif ($tokenStatus['expires_in_hours'] !== null &&
+                             $tokenStatus['expires_in_hours'] > 0 &&
                              $tokenStatus['expires_in_hours'] <= 72) {
                         $tokenStats['expiring_soon']++;
                         $expiringSoonUsers[] = [
@@ -380,15 +381,15 @@ class FacebookIntegrationController extends Controller
                         $tokenStats['healthy_tokens']++;
                     }
                 }
-                
+
                 $responseData['token_status'] = [
                     'statistics' => $tokenStats,
                     'expired_users' => $expiredUsers,
                     'expiring_soon_users' => $expiringSoonUsers,
-                    'overall_health' => $tokenStats['expired_tokens'] === 0 && $tokenStats['expiring_soon'] === 0 ? 'healthy' : 
+                    'overall_health' => $tokenStats['expired_tokens'] === 0 && $tokenStats['expiring_soon'] === 0 ? 'healthy' :
                                        ($tokenStats['expired_tokens'] > 0 ? 'critical' : 'warning'),
                 ];
-                
+
                 // Update main health status to include token health
                 $responseData['health_status']['tokens'] = $tokenStats['expired_tokens'] === 0;
             }
@@ -1244,29 +1245,29 @@ class FacebookIntegrationController extends Controller
         if (!$tokenStatus['has_token']) {
             return 'none';
         }
-        
+
         if ($tokenStatus['is_expired']) {
             return 'critical';
         }
-        
+
         $hoursToExpiry = $tokenStatus['expires_in_hours'];
-        
+
         if ($hoursToExpiry === null) {
             return 'unknown';
         }
-        
+
         if ($hoursToExpiry <= 6) {
             return 'critical';
         }
-        
+
         if ($hoursToExpiry <= 24) {
             return 'high';
         }
-        
+
         if ($hoursToExpiry <= 72) {
             return 'medium';
         }
-        
+
         return 'low';
     }
 }
