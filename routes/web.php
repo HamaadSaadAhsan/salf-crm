@@ -57,16 +57,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bulk-update', [PermissionController::class, 'bulkUpdate']);
     });
 
-    Route::get('integrations', [\App\Http\Controllers\IntegrationController::class, 'index'])->name('integrations');
     Route::get('/facebook/callback', [FacebookOAuthController::class, 'callback']);
 
     Route::prefix('integrations')->group(function () {
-        Route::get('/', [\App\Http\Controllers\IntegrationController::class, 'index']);
+        Route::get('/', [\App\Http\Controllers\IntegrationController::class, 'index'])->name('integrations');
         Route::prefix('/facebook')->group(function () {
             // Template management
             Route::get('/templates', [FacebookIntegrationController::class, 'getTemplates'])->name('facebook.integration.templates');
             Route::post('/apply-template', [FacebookIntegrationController::class, 'applyTemplate'])->name('facebook.integration.apply-template');
-            
+
             Route::get('/', [FacebookIntegrationController::class, 'index'])->name('facebook.integration.index');
             Route::post('/', [FacebookIntegrationController::class, 'store'])->name('facebook.integration.store');
             Route::post('/test-connection', [FacebookIntegrationController::class, 'testConnection'])->name('facebook.integration.test');
