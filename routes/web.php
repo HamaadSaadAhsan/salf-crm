@@ -57,6 +57,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bulk-update', [PermissionController::class, 'bulkUpdate']);
     });
 
+    // Admin Facebook Token Management (Super Admin Only)
+    Route::prefix('admin/facebook-tokens')->middleware('role:super-admin')->group(function () {
+        Route::get('/overview', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'tokenOverview'])->name('admin.facebook.tokens.overview');
+        Route::get('/expired', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'expiredTokens'])->name('admin.facebook.tokens.expired');
+        Route::get('/expiring-soon', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'tokensExpiringSoon'])->name('admin.facebook.tokens.expiring');
+        Route::get('/user/{userId}/details', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'userTokenDetails'])->name('admin.facebook.tokens.user.details');
+        Route::post('/user/{userId}/revoke', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'revokeUserToken'])->name('admin.facebook.tokens.user.revoke');
+        Route::post('/user/{userId}/notify', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'notifyUserTokenExpiry'])->name('admin.facebook.tokens.user.notify');
+    });
+
     Route::get('/facebook/callback', [FacebookOAuthController::class, 'callback']);
 
     Route::prefix('integrations')->group(function () {
