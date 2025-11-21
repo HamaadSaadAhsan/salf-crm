@@ -33,7 +33,7 @@ return new class extends Migration
                 'facebook_user_access_token',
                 'facebook_token_expires_at',
                 'facebook_refresh_token',
-                'facebook_connected_at'
+                'facebook_connected_at',
             ]);
         });
     }

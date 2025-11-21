@@ -1,11 +1,10 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, AlertTriangle, Info, AlertCircle, RefreshCw, ExternalLink, HelpCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
 import { formatDistanceToNow } from 'date-fns';
+import { AlertCircle, AlertTriangle, ExternalLink, HelpCircle, Info, RefreshCw, X } from 'lucide-react';
 
 interface ErrorRecoveryGuides {
     [key: string]: {
@@ -18,50 +17,50 @@ interface ErrorRecoveryGuides {
 }
 
 const errorRecoveryGuides: ErrorRecoveryGuides = {
-    'TOKEN_EXPIRED': {
+    TOKEN_EXPIRED: {
         title: 'Access Token Expired',
         description: 'Your Facebook access token has expired and needs to be refreshed.',
         steps: [
             'Go to the Permissions tab',
             'Click "Request Permissions" to reauthorize',
             'Complete the Facebook OAuth flow',
-            'Your token will be automatically refreshed'
+            'Your token will be automatically refreshed',
         ],
-        helpUrl: 'https://developers.facebook.com/docs/facebook-login/access-tokens/refreshing'
+        helpUrl: 'https://developers.facebook.com/docs/facebook-login/access-tokens/refreshing',
     },
-    'PERMISSION_DENIED': {
+    PERMISSION_DENIED: {
         title: 'Insufficient Permissions',
-        description: 'Your app doesn\'t have the required permissions to perform this action.',
+        description: "Your app doesn't have the required permissions to perform this action.",
         steps: [
             'Go to the Permissions tab',
             'Review the required permissions list',
             'Click "Request Permissions" to get additional permissions',
-            'Make sure to grant all required permissions in Facebook'
+            'Make sure to grant all required permissions in Facebook',
         ],
-        helpUrl: 'https://developers.facebook.com/docs/permissions/reference'
+        helpUrl: 'https://developers.facebook.com/docs/permissions/reference',
     },
-    'RATE_LIMIT': {
+    RATE_LIMIT: {
         title: 'Rate Limit Exceeded',
-        description: 'You\'ve made too many requests to Facebook\'s API. Please wait before retrying.',
+        description: "You've made too many requests to Facebook's API. Please wait before retrying.",
         steps: [
             'Wait for the rate limit to reset (usually 1 hour)',
             'Reduce the frequency of sync operations',
             'Consider upgrading your Facebook app limits',
-            'Use webhooks for real-time data instead of frequent polling'
+            'Use webhooks for real-time data instead of frequent polling',
         ],
-        helpUrl: 'https://developers.facebook.com/docs/graph-api/overview/rate-limiting'
+        helpUrl: 'https://developers.facebook.com/docs/graph-api/overview/rate-limiting',
     },
-    'WEBHOOK_VERIFICATION_FAILED': {
+    WEBHOOK_VERIFICATION_FAILED: {
         title: 'Webhook Setup Failed',
-        description: 'Facebook couldn\'t verify your webhook endpoint.',
+        description: "Facebook couldn't verify your webhook endpoint.",
         steps: [
             'Check that your webhook URL is accessible from the internet',
-            'Verify your webhook verify token matches what\'s configured',
+            "Verify your webhook verify token matches what's configured",
             'Ensure your server returns a 200 status code',
-            'Try reconfiguring webhooks in the Webhooks tab'
-        ]
+            'Try reconfiguring webhooks in the Webhooks tab',
+        ],
     },
-    'default': {
+    default: {
         title: 'General Integration Error',
         description: 'An unexpected error occurred with your Facebook integration.',
         steps: [
@@ -69,9 +68,9 @@ const errorRecoveryGuides: ErrorRecoveryGuides = {
             'Verify your Facebook app credentials',
             'Test your connection using the Health Status panel',
             'Review the Facebook Developer Console for any app-level issues',
-            'Contact support if the problem persists'
-        ]
-    }
+            'Contact support if the problem persists',
+        ],
+    },
 };
 
 export default function ErrorRecovery() {
@@ -90,9 +89,7 @@ export default function ErrorRecovery() {
     };
 
     const getRecoveryGuide = (errorMessage: string) => {
-        const errorType = Object.keys(errorRecoveryGuides).find(key => 
-            errorMessage.toLowerCase().includes(key.toLowerCase().replace('_', ' '))
-        );
+        const errorType = Object.keys(errorRecoveryGuides).find((key) => errorMessage.toLowerCase().includes(key.toLowerCase().replace('_', ' ')));
         return errorRecoveryGuides[errorType || 'default'];
     };
 
@@ -108,15 +105,13 @@ export default function ErrorRecovery() {
         return (
             <Card className="border-gray-800 bg-gray-900">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center space-x-2 text-green-400">
+                    <CardTitle className="flex items-center space-x-2 text-lg text-green-400">
                         <AlertCircle className="h-5 w-5" />
                         <span>All Systems Operational</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-gray-400">
-                        Your Facebook integration is running smoothly with no active issues.
-                    </p>
+                    <p className="text-sm text-gray-400">Your Facebook integration is running smoothly with no active issues.</p>
                 </CardContent>
             </Card>
         );
@@ -125,30 +120,28 @@ export default function ErrorRecovery() {
     return (
         <Card className="border-gray-800 bg-gray-900">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-lg">
                     <AlertTriangle className="h-5 w-5 text-yellow-500" />
                     <span>Issues & Recovery</span>
                     <Badge variant="destructive" className="ml-auto">
                         {errors.length + warnings.length}
                     </Badge>
                 </CardTitle>
-                <p className="text-sm text-gray-400">
-                    Active issues with suggested fixes
-                </p>
+                <p className="text-sm text-gray-400">Active issues with suggested fixes</p>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
                     {[...errors, ...warnings].map((issue) => {
                         const guide = getRecoveryGuide(issue.message);
-                        
+
                         return (
                             <Alert key={issue.id} className="border-gray-700 bg-gray-800">
                                 <div className="flex items-start justify-between">
-                                    <div className="flex items-start space-x-3 flex-1">
+                                    <div className="flex flex-1 items-start space-x-3">
                                         {getErrorIcon(issue.type)}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center space-x-2 mb-2">
-                                                <h4 className="font-medium text-sm">{guide.title}</h4>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="mb-2 flex items-center space-x-2">
+                                                <h4 className="text-sm font-medium">{guide.title}</h4>
                                                 <Badge variant={issue.type === 'error' ? 'destructive' : 'secondary'} className="text-xs">
                                                     {issue.type}
                                                 </Badge>
@@ -156,20 +149,18 @@ export default function ErrorRecovery() {
                                                     {formatDistanceToNow(issue.timestamp, { addSuffix: true })}
                                                 </span>
                                             </div>
-                                            
-                                            <AlertDescription className="text-sm text-gray-400 mb-3">
-                                                {guide.description}
-                                            </AlertDescription>
-                                            
+
+                                            <AlertDescription className="mb-3 text-sm text-gray-400">{guide.description}</AlertDescription>
+
                                             <div className="mb-3">
-                                                <p className="text-xs font-medium text-gray-300 mb-2">Recovery Steps:</p>
-                                                <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
+                                                <p className="mb-2 text-xs font-medium text-gray-300">Recovery Steps:</p>
+                                                <ol className="list-inside list-decimal space-y-1 text-xs text-gray-400">
                                                     {guide.steps.map((step, index) => (
                                                         <li key={index}>{step}</li>
                                                     ))}
                                                 </ol>
                                             </div>
-                                            
+
                                             <div className="flex items-center space-x-2">
                                                 {guide.autoFix && (
                                                     <Button
@@ -179,11 +170,11 @@ export default function ErrorRecovery() {
                                                         disabled={isLoading}
                                                         className="border-gray-600 bg-transparent text-white hover:bg-gray-700"
                                                     >
-                                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                                        <RefreshCw className="mr-1 h-3 w-3" />
                                                         Auto Fix
                                                     </Button>
                                                 )}
-                                                
+
                                                 {guide.helpUrl && (
                                                     <Button
                                                         variant="outline"
@@ -191,12 +182,12 @@ export default function ErrorRecovery() {
                                                         onClick={() => window.open(guide.helpUrl, '_blank')}
                                                         className="border-gray-600 bg-transparent text-white hover:bg-gray-700"
                                                     >
-                                                        <HelpCircle className="h-3 w-3 mr-1" />
+                                                        <HelpCircle className="mr-1 h-3 w-3" />
                                                         Learn More
-                                                        <ExternalLink className="h-3 w-3 ml-1" />
+                                                        <ExternalLink className="ml-1 h-3 w-3" />
                                                     </Button>
                                                 )}
-                                                
+
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -208,7 +199,7 @@ export default function ErrorRecovery() {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <Button
                                         variant="ghost"
                                         size="sm"

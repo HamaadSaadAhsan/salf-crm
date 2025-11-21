@@ -13,23 +13,21 @@ interface AuthLayoutProps {
 export default function AuthSimpleLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-            <Card className="w-full max-w-md mx-auto">
-                <CardHeader className="text-center">
+            <Card className="mx-auto w-full max-w-md">
+                <CardHeader className="flex flex-col text-center border-0 pt-8">
                     <div className="flex justify-center">
                         <Link href={home()}>
-                            <Logo height={100} width={100}/>
+                            <Logo height={100} width={100} />
                         </Link>
                     </div>
                     {title && (
-                        <div className="text-center mt-6">
+                        <div className="mt-6 text-center">
                             <h1 className="text-2xl font-semibold">{title}</h1>
-                            {description && <p className="text-sm text-muted-foreground mt-2">{description}</p>}
+                            {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
                         </div>
                     )}
                 </CardHeader>
-                <CardContent>
-                    {children}
-                </CardContent>
+                <CardContent>{children}</CardContent>
             </Card>
         </div>
     );

@@ -16,13 +16,16 @@ class SyncFacebookAdsPerformanceJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600; // 10 minutes
+
     public $tries = 2;
 
     protected $adIds;
+
     protected $accessToken;
+
     protected $fields;
 
-    public function __construct(array $adIds, string $accessToken, array $fields = null)
+    public function __construct(array $adIds, string $accessToken, ?array $fields = null)
     {
         $this->adIds = $adIds;
         $this->accessToken = $accessToken;
@@ -32,7 +35,7 @@ class SyncFacebookAdsPerformanceJob implements ShouldQueue
     public function handle(FacebookAdsSyncService $adsSyncService)
     {
         try {
-            Log::info("Starting performance sync for " . count($this->adIds) . " ads");
+            Log::info('Starting performance sync for '.count($this->adIds).' ads');
 
             $performanceData = $adsSyncService->getAdsPerformance(
                 $this->adIds,
@@ -43,12 +46,12 @@ class SyncFacebookAdsPerformanceJob implements ShouldQueue
             // Store performance data (you can extend this based on your needs)
             $this->storePerformanceData($performanceData);
 
-            Log::info("Completed performance sync for " . count($this->adIds) . " ads");
+            Log::info('Completed performance sync for '.count($this->adIds).' ads');
 
         } catch (\Exception $e) {
-            Log::error("Failed to sync ads performance", [
+            Log::error('Failed to sync ads performance', [
                 'error' => $e->getMessage(),
-                'ad_count' => count($this->adIds)
+                'ad_count' => count($this->adIds),
             ]);
 
             throw $e;
@@ -70,9 +73,9 @@ class SyncFacebookAdsPerformanceJob implements ShouldQueue
 
     public function failed(\Throwable $exception)
     {
-        Log::error("SyncFacebookAdsPerformanceJob failed", [
+        Log::error('SyncFacebookAdsPerformanceJob failed', [
             'error' => $exception->getMessage(),
-            'ad_count' => count($this->adIds)
+            'ad_count' => count($this->adIds),
         ]);
     }
 }

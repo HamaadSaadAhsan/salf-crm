@@ -23,7 +23,12 @@ class LeadObserver
     {
         $changes = $lead->getDirty();
         $original = $lead->getOriginal();
-        $userId = Auth::id() ?? 1; // Fallback to system user if not authenticated
+        $userId = Auth::id() ?? $lead->assigned_to ?? $lead->created_by;
+
+        // Skip if we don't have a valid user
+        if (! $userId) {
+            return;
+        }
 
         foreach ($changes as $field => $newValue) {
             $oldValue = $original[$field] ?? null;
@@ -47,20 +52,22 @@ class LeadObserver
         // Handle special field types
         if ($field === 'inquiry_status') {
             $this->createStatusChangeActivity($lead, $oldValue, $newValue, $userId);
+
             return;
         }
 
         if ($field === 'assigned_to') {
             $this->createAssignmentChangeActivity($lead, $oldValue, $newValue, $userId);
+
             return;
         }
 
         // Handle tags separately
         if ($field === 'tags') {
             $this->createTagsChangeActivity($lead, $oldValue, $newValue, $userId);
+
             return;
         }
-
 
         // Create general field change activity
         $subject = "Updated {$fieldName}";
@@ -79,8 +86,8 @@ class LeadObserver
                 'field' => $field,
                 'old_value' => $oldValue,
                 'new_value' => $newValue,
-                'change_type' => 'field_update'
-            ]
+                'change_type' => 'field_update',
+            ],
         ]);
     }
 
@@ -105,7 +112,7 @@ class LeadObserver
         $removedTags = array_diff($oldTagValues, $newTagValues);
 
         // Create activity for added tags
-        if (!empty($addedTags)) {
+        if (! empty($addedTags)) {
             $addedTagsDetails = collect($newTagsArray)
                 ->whereIn('value', $addedTags)
                 ->pluck('label')
@@ -117,7 +124,7 @@ class LeadObserver
                 'type' => 'note',
                 'status' => 'completed',
                 'subject' => 'Added tags',
-                'description' => 'Added tags: ' . implode(', ', $addedTagsDetails),
+                'description' => 'Added tags: '.implode(', ', $addedTagsDetails),
                 'completed_at' => now(),
                 'category' => 'tag_change',
                 'metadata' => [
@@ -125,13 +132,13 @@ class LeadObserver
                     'action' => 'added',
                     'tags' => $addedTags,
                     'tag_details' => collect($newTagsArray)->whereIn('value', $addedTags)->values()->toArray(),
-                    'change_type' => 'tags_added'
-                ]
+                    'change_type' => 'tags_added',
+                ],
             ]);
         }
 
         // Create activity for removed tags
-        if (!empty($removedTags)) {
+        if (! empty($removedTags)) {
             $removedTagsDetails = collect($oldTagsArray)
                 ->whereIn('value', $removedTags)
                 ->pluck('label')
@@ -143,7 +150,7 @@ class LeadObserver
                 'type' => 'note',
                 'status' => 'completed',
                 'subject' => 'Removed tags',
-                'description' => 'Removed tags: ' . implode(', ', $removedTagsDetails),
+                'description' => 'Removed tags: '.implode(', ', $removedTagsDetails),
                 'completed_at' => now(),
                 'category' => 'tag_change',
                 'metadata' => [
@@ -151,13 +158,13 @@ class LeadObserver
                     'action' => 'removed',
                     'tags' => $removedTags,
                     'tag_details' => collect($oldTagsArray)->whereIn('value', $removedTags)->values()->toArray(),
-                    'change_type' => 'tags_removed'
-                ]
+                    'change_type' => 'tags_removed',
+                ],
             ]);
         }
 
         // Create summary activity if multiple changes
-        if (!empty($addedTags) && !empty($removedTags)) {
+        if (! empty($addedTags) && ! empty($removedTags)) {
             LeadActivity::create([
                 'lead_id' => $lead->id,
                 'user_id' => $userId,
@@ -178,8 +185,8 @@ class LeadObserver
                     'removed_tags' => $removedTags,
                     'old_tags' => $oldTagsArray,
                     'new_tags' => $newTagsArray,
-                    'change_type' => 'tags_updated'
-                ]
+                    'change_type' => 'tags_updated',
+                ],
             ]);
         }
     }
@@ -208,8 +215,8 @@ class LeadObserver
                 'new_status' => $newStatus,
                 'old_status_label' => $oldStatusLabel,
                 'new_status_label' => $newStatusLabel,
-                'change_type' => 'status_change'
-            ]
+                'change_type' => 'status_change',
+            ],
         ]);
 
         // Create a follow-up activity for certain status changes
@@ -242,8 +249,8 @@ class LeadObserver
                 'new_user_id' => $newUserId,
                 'old_user_name' => $oldUserName,
                 'new_user_name' => $newUserName,
-                'change_type' => 'assignment_change'
-            ]
+                'change_type' => 'assignment_change',
+            ],
         ]);
 
         // Create task for new assignee
@@ -261,8 +268,8 @@ class LeadObserver
                 'category' => 'follow_up',
                 'metadata' => [
                     'change_type' => 'assignment_task',
-                    'assigned_by' => $userId
-                ]
+                    'assigned_by' => $userId,
+                ],
             ]);
         }
     }
@@ -286,7 +293,7 @@ class LeadObserver
                     'scheduled_at' => now()->addDays(2),
                     'due_at' => now()->addDays(3),
                     'priority' => 'medium',
-                    'category' => 'follow_up'
+                    'category' => 'follow_up',
                 ]);
                 break;
 
@@ -301,7 +308,7 @@ class LeadObserver
                     'scheduled_at' => now()->addDay(),
                     'due_at' => now()->addDays(2),
                     'priority' => 'high',
-                    'category' => 'sales'
+                    'category' => 'sales',
                 ]);
                 break;
 
@@ -316,7 +323,7 @@ class LeadObserver
                     'scheduled_at' => now()->addDays(3),
                     'due_at' => now()->addDays(5),
                     'priority' => 'high',
-                    'category' => 'sales'
+                    'category' => 'sales',
                 ]);
                 break;
 
@@ -331,7 +338,7 @@ class LeadObserver
                     'scheduled_at' => now()->addMonth(),
                     'due_at' => now()->addMonth()->addDays(2),
                     'priority' => 'low',
-                    'category' => 'nurturing'
+                    'category' => 'nurturing',
                 ]);
                 break;
         }
@@ -385,15 +392,17 @@ class LeadObserver
         // Handle special field formatting
         if ($field === 'priority') {
             $priorities = Lead::getPriorityOptions();
+
             return $priorities[$value] ?? $value;
         }
 
         if ($field === 'inquiry_type') {
             $types = Lead::getInquiryTypeOptions();
+
             return $types[$value] ?? $value;
         }
 
-        return (string)$value;
+        return (string) $value;
     }
 
     /**

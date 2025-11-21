@@ -1,12 +1,13 @@
 <?php
 
 // database/seeders/TicketsLeadsPermissionsSeeder.php
+
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class TicketsLeadsPermissionsSeeder extends Seeder
 {
@@ -444,7 +445,7 @@ class TicketsLeadsPermissionsSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdmin->syncPermissions(Permission::all());
 
-        $this->command->info('✅ Created ' . count($allPermissions) . ' permissions');
+        $this->command->info('✅ Created '.count($allPermissions).' permissions');
         $this->command->info('✅ Created 9 roles with appropriate permissions');
     }
 }

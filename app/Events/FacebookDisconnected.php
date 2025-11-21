@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
@@ -12,7 +11,7 @@ class FacebookDisconnected extends FacebookIntegrationEvent implements ShouldBro
     {
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
-            new PrivateChannel("integration.{$this->integrationId}")
+            new PrivateChannel("integration.{$this->integrationId}"),
         ];
     }
 
@@ -27,7 +26,7 @@ class FacebookDisconnected extends FacebookIntegrationEvent implements ShouldBro
             'integration_id' => $this->integrationId,
             'status' => 'disconnected',
             'timestamp' => now()->toISOString(),
-            'reason' => $this->data['reason'] ?? 'Unknown'
+            'reason' => $this->data['reason'] ?? 'Unknown',
         ];
     }
 }

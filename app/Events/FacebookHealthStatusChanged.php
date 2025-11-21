@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
@@ -12,7 +11,7 @@ class FacebookHealthStatusChanged extends FacebookIntegrationEvent implements Sh
     {
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
-            new PrivateChannel("integration.{$this->integrationId}")
+            new PrivateChannel("integration.{$this->integrationId}"),
         ];
     }
 
@@ -27,7 +26,7 @@ class FacebookHealthStatusChanged extends FacebookIntegrationEvent implements Sh
             'integration_id' => $this->integrationId,
             'health_status' => $this->data['health_status'] ?? [],
             'timestamp' => now()->toISOString(),
-            'previous_status' => $this->data['previous_status'] ?? []
+            'previous_status' => $this->data['previous_status'] ?? [],
         ];
     }
 }

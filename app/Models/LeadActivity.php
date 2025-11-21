@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 
 class LeadActivity extends Model
 {
@@ -93,6 +93,11 @@ class LeadActivity extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     // Scopes
@@ -186,7 +191,7 @@ class LeadActivity extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'yellow',
             'completed' => 'green',
             'overdue' => 'red',
@@ -196,7 +201,7 @@ class LeadActivity extends Model
 
     public function getPriorityColorAttribute(): string
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             'medium' => 'blue',
             'high' => 'orange',
             'urgent' => 'red',
@@ -206,7 +211,7 @@ class LeadActivity extends Model
 
     public function getFormattedDurationAttribute(): ?string
     {
-        if (!$this->duration_minutes) {
+        if (! $this->duration_minutes) {
             return null;
         }
 
@@ -214,15 +219,15 @@ class LeadActivity extends Model
         $minutes = $this->duration_minutes % 60;
 
         if ($hours > 0) {
-            return $hours . 'h ' . ($minutes > 0 ? $minutes . 'm' : '');
+            return $hours.'h '.($minutes > 0 ? $minutes.'m' : '');
         }
 
-        return $minutes . 'm';
+        return $minutes.'m';
     }
 
     public function getTimeUntilDueAttribute(): ?string
     {
-        if (!$this->due_at) {
+        if (! $this->due_at) {
             return null;
         }
 
@@ -231,7 +236,7 @@ class LeadActivity extends Model
 
     public function getTimeUntilScheduledAttribute(): ?string
     {
-        if (!$this->scheduled_at) {
+        if (! $this->scheduled_at) {
             return null;
         }
 
@@ -258,7 +263,7 @@ class LeadActivity extends Model
     {
         $this->update([
             'status' => 'cancelled',
-            'notes' => $reason ? $this->notes . "\n\nCancellation reason: " . $reason : $this->notes,
+            'notes' => $reason ? $this->notes."\n\nCancellation reason: ".$reason : $this->notes,
         ]);
 
         return $this;
@@ -277,7 +282,7 @@ class LeadActivity extends Model
     public function addNote($note): static
     {
         $this->update([
-            'notes' => $this->notes ? $this->notes . "\n\n" . $note : $note,
+            'notes' => $this->notes ? $this->notes."\n\n".$note : $note,
         ]);
 
         return $this;

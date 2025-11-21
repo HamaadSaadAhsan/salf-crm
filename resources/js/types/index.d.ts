@@ -36,7 +36,28 @@ export interface User {
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    extension?: string;
     created_at: string;
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export interface NavItem {
+  id: string;
+  title?: string;
+  icon?: LucideIcon;
+  path?: string;
+  badge?: string;
+  pinnable?: boolean;
+  pinned?: boolean;
+  soon?: boolean;
+  new?: {
+    tooltip: string;
+    path: string;
+  };
+  more?: true;
+  dropdown?: true;
+}
+
+export type NavConfig = NavItem[];
+

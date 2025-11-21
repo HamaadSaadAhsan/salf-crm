@@ -3,12 +3,12 @@
 namespace App\Providers;
 
 use App\Events\FacebookConnected;
-use App\Events\FacebookDisconnected;
-use App\Events\FacebookWebhookReceived;
 use App\Events\FacebookDataSynced;
+use App\Events\FacebookDisconnected;
 use App\Events\FacebookErrorOccurred;
 use App\Events\FacebookHealthStatusChanged;
 use App\Events\FacebookLeadProcessed;
+use App\Events\FacebookWebhookReceived;
 use App\Listeners\FacebookIntegrationEventListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 

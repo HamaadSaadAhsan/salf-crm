@@ -17,14 +17,14 @@ class WorkflowExecution extends Model
         'output_data',
         'error_message',
         'started_at',
-        'completed_at'
+        'completed_at',
     ];
 
     protected $casts = [
         'input_data' => 'array',
         'output_data' => 'array',
         'started_at' => 'datetime',
-        'completed_at' => 'datetime'
+        'completed_at' => 'datetime',
     ];
 
     public function workflow(): BelongsTo

@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 class SocialMessage extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -15,7 +16,7 @@ class SocialMessage extends Model
         'provider_id',
         'message',
         'metadata',
-        'timestamp'
+        'timestamp',
     ];
 
     protected $casts = [

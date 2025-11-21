@@ -30,7 +30,9 @@ class LeadActivityObserver
     private function updateLeadComputedFields(string $leadId): void
     {
         $lead = Lead::find($leadId);
-        if (!$lead) return;
+        if (! $lead) {
+            return;
+        }
 
         // Get next pending follow-up
         $nextFollowUp = LeadActivity::where('lead_id', $leadId)

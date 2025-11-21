@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 
@@ -47,6 +46,7 @@ class PermissionResource extends JsonResource
     private function getCategory(): string
     {
         $parts = explode('.', $this->name);
+
         return ucfirst($parts[0] ?? 'General');
     }
 
@@ -57,6 +57,7 @@ class PermissionResource extends JsonResource
     private function getAction(): string
     {
         $parts = explode('.', $this->name);
+
         return ucfirst($parts[1] ?? $this->name);
     }
 
@@ -67,6 +68,7 @@ class PermissionResource extends JsonResource
     private function getSubject(): string
     {
         $parts = explode('.', $this->name);
+
         return $parts[0] ?? $this->name;
     }
 }

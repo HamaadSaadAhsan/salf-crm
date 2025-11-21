@@ -22,19 +22,18 @@ class Status extends Model
                 $status->order = (static::max('order') ?? 0) + 1;
             }
             if (empty($status->color)) {
-                $status->color = '#' . Str::random(6);
+                $status->color = '#'.Str::random(6);
             }
         });
     }
 
-
     public function getCacheKey(string $suffix = ''): string
     {
-        return "status:{$this->id}" . ($suffix ? ":{$suffix}" : '');
+        return "status:{$this->id}".($suffix ? ":{$suffix}" : '');
     }
 
     public static function getListCacheKey(array $params = []): string
     {
-        return 'status:list:' . md5(serialize($params));
+        return 'status:list:'.md5(serialize($params));
     }
 }

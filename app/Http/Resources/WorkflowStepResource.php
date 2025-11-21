@@ -24,12 +24,12 @@ class WorkflowStepResource extends JsonResource
                     return [
                         'id' => $connection->id,
                         'to_step_id' => $connection->to_step_id,
-                        'conditions' => $connection->conditions
+                        'conditions' => $connection->conditions,
                     ];
                 })
             ),
             'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at
+            'updated_at' => $this->updated_at,
         ];
     }
 }

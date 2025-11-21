@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
@@ -12,7 +11,7 @@ class FacebookDataSynced extends FacebookIntegrationEvent implements ShouldBroad
     {
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
-            new PrivateChannel("integration.{$this->integrationId}")
+            new PrivateChannel("integration.{$this->integrationId}"),
         ];
     }
 
@@ -28,7 +27,7 @@ class FacebookDataSynced extends FacebookIntegrationEvent implements ShouldBroad
             'sync_type' => $this->data['sync_type'] ?? 'unknown',
             'synced_count' => $this->data['synced_count'] ?? 0,
             'timestamp' => now()->toISOString(),
-            'duration' => $this->data['duration'] ?? null
+            'duration' => $this->data['duration'] ?? null,
         ];
     }
 }

@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use App\Models\Workflow;
+use App\Models\WorkflowFieldMapping;
 use App\Models\WorkflowStep;
 use App\Models\WorkflowStepConnection;
-use App\Models\WorkflowFieldMapping;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class WorkflowService
 {
@@ -21,7 +20,7 @@ class WorkflowService
                 'description' => $data['description'] ?? null,
                 'status' => $data['status'] ?? 'draft',
                 'user_id' => $user->id,
-                'metadata' => $data['metadata'] ?? []
+                'metadata' => $data['metadata'] ?? [],
             ]);
 
             // Create workflow steps
@@ -55,7 +54,7 @@ class WorkflowService
             'operation' => $stepData['operation'],
             'order' => $stepData['order'],
             'configuration' => $stepData['configuration'] ?? [],
-            'enabled' => $stepData['enabled'] ?? true
+            'enabled' => $stepData['enabled'] ?? true,
         ]);
 
         // Create field mappings if present
@@ -67,7 +66,7 @@ class WorkflowService
                     'target_field' => $mappingData['target_field'],
                     'field_type' => $mappingData['field_type'] ?? 'text',
                     'transformation_rules' => $mappingData['transformation_rules'] ?? [],
-                    'required' => $mappingData['required'] ?? false
+                    'required' => $mappingData['required'] ?? false,
                 ]);
             }
         }
@@ -80,7 +79,7 @@ class WorkflowService
         return WorkflowStepConnection::create([
             'from_step_id' => $fromStepId,
             'to_step_id' => $toStepId,
-            'conditions' => $connectionData['conditions'] ?? []
+            'conditions' => $connectionData['conditions'] ?? [],
         ]);
     }
 
@@ -92,7 +91,7 @@ class WorkflowService
                 'name' => $data['name'] ?? $workflow->name,
                 'description' => $data['description'] ?? $workflow->description,
                 'status' => $data['status'] ?? $workflow->status,
-                'metadata' => $data['metadata'] ?? $workflow->metadata
+                'metadata' => $data['metadata'] ?? $workflow->metadata,
             ]);
 
             // If steps are provided, replace all steps
@@ -128,6 +127,66 @@ class WorkflowService
         return $workflow->delete();
     }
 
+    public function duplicateWorkflow(Workflow $originalWorkflow, User $user): Workflow
+    {
+        return DB::transaction(function () use ($originalWorkflow, $user) {
+            // Load the original workflow with all relationships
+            $originalWorkflow->load(['steps.fieldMappings', 'steps.outgoingConnections']);
+
+            // Create the duplicated workflow
+            $duplicatedWorkflow = Workflow::create([
+                'name' => $originalWorkflow->name.' (Copy)',
+                'description' => $originalWorkflow->description,
+                'status' => 'draft',
+                'user_id' => $user->id,
+                'metadata' => $originalWorkflow->metadata,
+            ]);
+
+            // Create a mapping of old step IDs to new step IDs
+            $stepIdMapping = [];
+
+            // Duplicate all steps
+            foreach ($originalWorkflow->steps as $originalStep) {
+                $newStep = WorkflowStep::create([
+                    'workflow_id' => $duplicatedWorkflow->id,
+                    'step_type' => $originalStep->step_type,
+                    'service' => $originalStep->service,
+                    'operation' => $originalStep->operation,
+                    'order' => $originalStep->order,
+                    'configuration' => $originalStep->configuration,
+                    'enabled' => $originalStep->enabled,
+                ]);
+
+                $stepIdMapping[$originalStep->id] = $newStep->id;
+
+                // Duplicate field mappings
+                foreach ($originalStep->fieldMappings as $originalMapping) {
+                    WorkflowFieldMapping::create([
+                        'workflow_step_id' => $newStep->id,
+                        'source_field' => $originalMapping->source_field,
+                        'target_field' => $originalMapping->target_field,
+                        'field_type' => $originalMapping->field_type,
+                        'transformation_rules' => $originalMapping->transformation_rules,
+                        'required' => $originalMapping->required,
+                    ]);
+                }
+            }
+
+            // Duplicate step connections
+            foreach ($originalWorkflow->steps as $originalStep) {
+                foreach ($originalStep->outgoingConnections as $originalConnection) {
+                    WorkflowStepConnection::create([
+                        'from_step_id' => $stepIdMapping[$originalConnection->from_step_id],
+                        'to_step_id' => $stepIdMapping[$originalConnection->to_step_id],
+                        'conditions' => $originalConnection->conditions,
+                    ]);
+                }
+            }
+
+            return $duplicatedWorkflow->load(['steps.fieldMappings', 'steps.outgoingConnections']);
+        });
+    }
+
     public function activateWorkflow(Workflow $workflow): Workflow
     {
         // Validate workflow before activation
@@ -142,7 +201,7 @@ class WorkflowService
     {
         // Check if workflow has at least one trigger
         $triggerStep = $workflow->getTriggerStep();
-        if (!$triggerStep) {
+        if (! $triggerStep) {
             throw new \Exception('Workflow must have at least one trigger step');
         }
 
@@ -159,12 +218,14 @@ class WorkflowService
         switch ($step->service) {
             case 'facebook_lead_ads':
                 if (empty($config['page_id']) || empty($config['form_id'])) {
-                    throw new \Exception("Facebook Lead Ads step requires page_id and form_id");
+                    throw new \Exception('Facebook Lead Ads step requires page_id and form_id');
                 }
                 break;
             case 'webhook':
-                if (empty($config['url'])) {
-                    throw new \Exception("Webhook step requires URL");
+                // Webhook no longer requires URL - data is automatically mapped to leads
+                // Field mappings are required instead
+                if (empty($step->fieldMappings) || $step->fieldMappings->count() === 0) {
+                    throw new \Exception('Webhook step requires at least one field mapping');
                 }
                 break;
         }

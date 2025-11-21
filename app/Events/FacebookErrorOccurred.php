@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
@@ -12,7 +11,7 @@ class FacebookErrorOccurred extends FacebookIntegrationEvent implements ShouldBr
     {
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
-            new PrivateChannel("integration.{$this->integrationId}")
+            new PrivateChannel("integration.{$this->integrationId}"),
         ];
     }
 
@@ -28,7 +27,7 @@ class FacebookErrorOccurred extends FacebookIntegrationEvent implements ShouldBr
             'error_type' => $this->data['error_type'] ?? 'unknown',
             'error_message' => $this->data['error_message'] ?? 'Unknown error',
             'timestamp' => now()->toISOString(),
-            'severity' => $this->data['severity'] ?? 'error'
+            'severity' => $this->data['severity'] ?? 'error',
         ];
     }
 }

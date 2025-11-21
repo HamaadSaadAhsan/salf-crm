@@ -2,26 +2,27 @@
 
 namespace App\Services;
 
+use Exception;
 use FacebookAds\Api;
-use FacebookAds\Object\Page;
-use FacebookAds\Object\LeadgenForm;
-use FacebookAds\Object\Lead;
-use FacebookAds\Object\User;
+use FacebookAds\Exception\Exception as FacebookException;
+use FacebookAds\Http\RequestInterface;
+use FacebookAds\Logger\LoggerInterface;
 use FacebookAds\Object\Fields\LeadFields;
 use FacebookAds\Object\Fields\LeadgenFormFields;
 use FacebookAds\Object\Fields\PageFields;
-use FacebookAds\Object\Fields\UserFields;
+use FacebookAds\Object\Lead;
+use FacebookAds\Object\LeadgenForm;
+use FacebookAds\Object\Page;
+use FacebookAds\Object\User;
 use FacebookAds\Object\Values\LeadgenFormStatusValues;
-use FacebookAds\Logger\LoggerInterface;
-use FacebookAds\Exception\Exception as FacebookException;
-use FacebookAds\Http\RequestInterface;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class FacebookSdkService
 {
     protected Api $api;
+
     protected string $apiVersion;
+
     protected ?LoggerInterface $logger = null;
 
     public function __construct()
@@ -31,6 +32,7 @@ class FacebookSdkService
 
     /**
      * Initialize the Facebook API with credentials
+     *
      * @throws Exception
      */
     public function initializeApi(string $appId, string $appSecret, string $accessToken): void
@@ -45,14 +47,14 @@ class FacebookSdkService
 
             Log::info('Facebook SDK initialized successfully', [
                 'app_id' => $appId,
-                'api_version' => $this->apiVersion
+                'api_version' => $this->apiVersion,
             ]);
         } catch (FacebookException $e) {
             Log::error('Failed to initialize Facebook SDK', [
                 'error' => $e->getMessage(),
-                'app_id' => $appId
+                'app_id' => $appId,
             ]);
-            throw new Exception('Failed to initialize Facebook SDK: ' . $e->getMessage());
+            throw new Exception('Failed to initialize Facebook SDK: '.$e->getMessage());
         }
     }
 
@@ -65,6 +67,7 @@ class FacebookSdkService
         if (isset($this->api)) {
             $this->api->setLogger($logger);
         }
+
         return $this;
     }
 
@@ -82,46 +85,47 @@ class FacebookSdkService
 
             // Test user access - use Graph API request instead of User object for "me" endpoint
             $response = $this->api->call('/me', RequestInterface::METHOD_GET, [
-                'fields' => 'id,name,email'
+                'fields' => 'id,name,email',
             ]);
             $userData = $response->getContent();
 
             // Test page access if page_id provided
             $pageInfo = null;
-            if (!empty($credentials['page_id'])) {
+            if (! empty($credentials['page_id'])) {
                 $pageInfo = $this->getPageInfo($credentials['page_id']);
             }
 
             return [
                 'verified' => true,
                 'user_info' => $userData,
-                'page_info' => $pageInfo
+                'page_info' => $pageInfo,
             ];
 
         } catch (FacebookException $e) {
             Log::error('Facebook credential verification failed', [
                 'error' => $e->getMessage(),
-                'code' => $e->getCode()
+                'code' => $e->getCode(),
             ]);
 
             return [
                 'verified' => false,
-                'error' => $this->parseFacebookError($e)
+                'error' => $this->parseFacebookError($e),
             ];
         } catch (Exception $e) {
             Log::error('Credential verification failed', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return [
                 'verified' => false,
-                'error' => 'Failed to verify credentials with Facebook'
+                'error' => 'Failed to verify credentials with Facebook',
             ];
         }
     }
 
     /**
      * Get user's pages
+     *
      * @throws Exception
      */
     public function getUserPages(string $accessToken): array
@@ -129,7 +133,7 @@ class FacebookSdkService
         try {
             // Use Graph API request to get pages
             $response = $this->api->call('/me/accounts', RequestInterface::METHOD_GET, [
-                'fields' => 'id,name,category,access_token,tasks,picture'
+                'fields' => 'id,name,category,access_token,tasks,picture',
             ]);
             $responseData = $response->getContent();
 
@@ -138,9 +142,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get user pages', [
                 'error' => $e->getMessage(),
-                'code' => $e->getCode()
+                'code' => $e->getCode(),
             ]);
-            throw new Exception('Failed to get user pages: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get user pages: '.$this->parseFacebookError($e));
         }
     }
 
@@ -159,7 +163,7 @@ class FacebookSdkService
                 PageFields::FOLLOWERS_COUNT,
                 PageFields::COVER,
                 PageFields::WEBSITE,
-                PageFields::ABOUT
+                PageFields::ABOUT,
             ]);
 
             return $pageData->getData();
@@ -167,9 +171,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get page info', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get page info: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get page info: '.$this->parseFacebookError($e));
         }
     }
 
@@ -188,7 +192,7 @@ class FacebookSdkService
                 LeadgenFormFields::QUESTIONS,
                 'thank_you_page',
                 'privacy_policy_url',
-                'context_card'
+                'context_card',
             ]);
 
             $formsData = [];
@@ -205,9 +209,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get page lead forms', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get lead forms: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get lead forms: '.$this->parseFacebookError($e));
         }
     }
 
@@ -224,7 +228,7 @@ class FacebookSdkService
                 LeadFields::AD_ID,
                 LeadFields::FORM_ID,
                 LeadFields::FIELD_DATA,
-                LeadFields::IS_ORGANIC
+                LeadFields::IS_ORGANIC,
             ], $params);
 
             $leadsData = [];
@@ -237,9 +241,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get form leads', [
                 'form_id' => $formId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get leads: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get leads: '.$this->parseFacebookError($e));
         }
     }
 
@@ -255,10 +259,10 @@ class FacebookSdkService
                 'page_impressions',
                 'page_engaged_users',
                 'page_views_total',
-                'page_likes'
+                'page_likes',
             ];
 
-            $metricsToFetch = !empty($metrics) ? $metrics : $defaultMetrics;
+            $metricsToFetch = ! empty($metrics) ? $metrics : $defaultMetrics;
 
             $insights = $page->getInsights($metricsToFetch, $params);
 
@@ -272,9 +276,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get page insights', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get page insights: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get page insights: '.$this->parseFacebookError($e));
         }
     }
 
@@ -295,7 +299,7 @@ class FacebookSdkService
                 'picture',
                 'likes.summary(true)',
                 'comments.summary(true)',
-                'shares'
+                'shares',
             ];
 
             $posts = $page->getPosts($defaultFields, $params);
@@ -310,9 +314,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to get page posts', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get page posts: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get page posts: '.$this->parseFacebookError($e));
         }
     }
 
@@ -325,7 +329,7 @@ class FacebookSdkService
             $page = new Page($pageId);
 
             $params = [
-                'message' => $postData['message']
+                'message' => $postData['message'],
             ];
 
             if (isset($postData['link'])) {
@@ -346,9 +350,9 @@ class FacebookSdkService
         } catch (FacebookException $e) {
             Log::error('Failed to create page post', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to create post: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to create post: '.$this->parseFacebookError($e));
         }
     }
 
@@ -361,24 +365,24 @@ class FacebookSdkService
             $page = new Page($pageId);
 
             $result = $page->createSubscribedApps([
-                'subscribed_fields' => implode(',', $subscribedFields)
+                'subscribed_fields' => implode(',', $subscribedFields),
             ]);
 
             return [
                 'success' => true,
-                'data' => $result->getData()
+                'data' => $result->getData(),
             ];
 
         } catch (FacebookException $e) {
             Log::error('Failed to subscribe to webhook', [
                 'page_id' => $pageId,
                 'fields' => $subscribedFields,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'error' => $this->parseFacebookError($e)
+                'error' => $this->parseFacebookError($e),
             ];
         }
     }
@@ -391,29 +395,30 @@ class FacebookSdkService
         try {
             // Use Graph API request to test connection
             $response = $this->api->call('/me', RequestInterface::METHOD_GET, [
-                'fields' => 'id,name'
+                'fields' => 'id,name',
             ]);
             $userData = $response->getContent();
 
             Log::info('Facebook API connection test successful', [
                 'user_id' => $userData['id'],
-                'user_name' => $userData['name']
+                'user_name' => $userData['name'],
             ]);
 
             return [
                 'success' => true,
                 'message' => 'Connection successful',
-                'data' => $userData
+                'data' => $userData,
             ];
 
         } catch (FacebookException $e) {
             Log::error('Facebook API connection test failed', [
                 'error' => $e->getMessage(),
-                'code' => $e->getCode()
+                'code' => $e->getCode(),
             ]);
+
             return [
                 'success' => false,
-                'message' => 'Connection failed: ' . $this->parseFacebookError($e)
+                'message' => 'Connection failed: '.$this->parseFacebookError($e),
             ];
         }
     }
@@ -450,7 +455,7 @@ class FacebookSdkService
 
             // Get page access token using long-lived user token
             $response = $this->api->call('/me/accounts', RequestInterface::METHOD_GET, [
-                'fields' => 'id,access_token'
+                'fields' => 'id,access_token',
             ]);
             $responseData = $response->getContent();
 
@@ -460,14 +465,13 @@ class FacebookSdkService
                 }
             }
 
-            throw new Exception('Page access token not found for page ID: ' . $pageId);
-
+            throw new Exception('Page access token not found for page ID: '.$pageId);
         } catch (FacebookException $e) {
             Log::error('Failed to get long-lived page token', [
                 'page_id' => $pageId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to get long-lived page token: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to get long-lived page token: '.$this->parseFacebookError($e));
         }
     }
 
@@ -480,21 +484,21 @@ class FacebookSdkService
             $helper = $this->api->getRedirectLoginHelper();
             $accessToken = $helper->getAccessToken($redirectUri);
 
-            if (!$accessToken) {
+            if (! $accessToken) {
                 throw new Exception('Failed to obtain access token');
             }
 
             return [
                 'access_token' => (string) $accessToken,
                 'expires_in' => $accessToken->getExpiresAt() ?
-                    $accessToken->getExpiresAt()->getTimestamp() - time() : null
+                    $accessToken->getExpiresAt()->getTimestamp() - time() : null,
             ];
 
         } catch (FacebookException $e) {
             Log::error('Failed to exchange code for token', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new Exception('Failed to exchange code for token: ' . $this->parseFacebookError($e));
+            throw new Exception('Failed to exchange code for token: '.$this->parseFacebookError($e));
         }
     }
 }

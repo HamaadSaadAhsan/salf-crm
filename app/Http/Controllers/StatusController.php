@@ -7,15 +7,12 @@ use App\Http\Resources\StatusResource;
 use App\Models\Status;
 use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class StatusController extends Controller
 {
     public function __construct(
         private CacheService $cacheService
-    )
-    {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -42,10 +39,9 @@ class StatusController extends Controller
                 'cached' => $this->cacheService->hasWithTags($cacheKey, ['statuses', 'statuses_list']),
                 'cache_key' => $cacheKey,
                 'expires_at' => $this->cacheService->getTTL(),
-            ]
+            ],
         ]);
     }
-
 
     /**
      * Build an optimized query with filters
@@ -57,7 +53,7 @@ class StatusController extends Controller
         $query = Status::query()
             ->select([
                 'id', 'name',
-                'order', 'color'
+                'order', 'color',
             ]);
 
         // Apply filters
@@ -82,7 +78,7 @@ class StatusController extends Controller
                 'has_more' => $statuses->hasMorePages(),
                 'filters_applied' => array_filter($filters),
                 'query_time' => round((microtime(true) - $startTime) * 1000, 2), // milliseconds
-            ]
+            ],
         ];
     }
 
@@ -92,20 +88,20 @@ class StatusController extends Controller
     private function applyFilters($query, array $filters): void
     {
         // Date range filter
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->where('created_at', '>=', $filters['date_from']);
         }
-        if (!empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
+        if (! empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
         }
 
         // Search filter
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $searchTerm = trim($filters['search']);
             // Use LIKE search for shorter terms
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'ilike', '%' . $searchTerm . '%')
-                    ->orWhere('color', 'ilike', '%' . $searchTerm . '%');
+                $q->where('name', 'ilike', '%'.$searchTerm.'%')
+                    ->orWhere('color', 'ilike', '%'.$searchTerm.'%');
             });
         }
     }
@@ -120,14 +116,14 @@ class StatusController extends Controller
 
         // Validate sort fields
         $allowedSortFields = [
-            'created_at', 'updated_at', 'name', 'order', 'color'
+            'created_at', 'updated_at', 'name', 'order', 'color',
         ];
 
-        if (!in_array($sortBy, $allowedSortFields)) {
+        if (! in_array($sortBy, $allowedSortFields)) {
             $sortBy = 'order';
         }
 
-        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+        if (! in_array(strtolower($sortOrder), ['asc', 'desc'])) {
             $sortOrder = 'asc';
         }
 
@@ -139,14 +135,13 @@ class StatusController extends Controller
         }
     }
 
-
     /**
      * Determine if the cache should be bypassed
      */
     private function shouldBypassCache(array $filters): bool
     {
         // Bypass cache for real-time requirements
-        return !empty($filters['real_time']) ||
-            (!empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
+        return ! empty($filters['real_time']) ||
+            (! empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
     }
 }

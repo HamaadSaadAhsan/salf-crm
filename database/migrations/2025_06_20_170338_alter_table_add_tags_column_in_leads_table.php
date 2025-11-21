@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -45,12 +46,12 @@ return new class extends Migration {
         foreach ($leads as $lead) {
             $customFields = json_decode($lead->custom_fields, true);
 
-            if (!empty($customFields['tags'])) {
+            if (! empty($customFields['tags'])) {
                 // Get tags from custom_fields
                 $tags = $customFields['tags'];
 
                 // Ensure tags are in the correct format (array of objects)
-                if (!is_array(reset($tags))) {
+                if (! is_array(reset($tags))) {
                     // If tags are just values, convert to objects
                     $tags = array_map(function ($tagValue) {
                         return $this->findTagObject($tagValue);
@@ -61,7 +62,7 @@ return new class extends Migration {
                 DB::table('leads')
                     ->where('id', $lead->id)
                     ->update([
-                        'tags' => json_encode(array_values($tags))
+                        'tags' => json_encode(array_values($tags)),
                     ]);
 
                 // Remove tags from custom_fields
@@ -70,7 +71,7 @@ return new class extends Migration {
                 DB::table('leads')
                     ->where('id', $lead->id)
                     ->update([
-                        'custom_fields' => empty($customFields) ? null : json_encode($customFields)
+                        'custom_fields' => empty($customFields) ? null : json_encode($customFields),
                     ]);
             }
         }
@@ -89,13 +90,13 @@ return new class extends Migration {
             $tags = json_decode($lead->tags, true);
             $customFields = json_decode($lead->custom_fields, true) ?? [];
 
-            if (!empty($tags)) {
+            if (! empty($tags)) {
                 $customFields['tags'] = $tags;
 
                 DB::table('leads')
                     ->where('id', $lead->id)
                     ->update([
-                        'custom_fields' => json_encode($customFields)
+                        'custom_fields' => json_encode($customFields),
                     ]);
             }
         }
@@ -110,39 +111,39 @@ return new class extends Migration {
             'potential' => [
                 'label' => 'Potential',
                 'value' => 'potential',
-                'color' => 'yellow'
+                'color' => 'yellow',
             ],
             'non-potential' => [
                 'label' => 'Non Potential',
                 'value' => 'non-potential',
-                'color' => 'red'
+                'color' => 'red',
             ],
             'meeting-done' => [
                 'label' => 'Meeting Done',
                 'value' => 'meeting-done',
-                'color' => 'green'
+                'color' => 'green',
             ],
             'not-interested' => [
                 'label' => 'Not Interested',
                 'value' => 'not-interested',
-                'color' => 'gray'
+                'color' => 'gray',
             ],
             'not-responsive' => [
                 'label' => 'Not responsive',
                 'value' => 'not-responsive',
-                'color' => 'gray'
+                'color' => 'gray',
             ],
             'following-up' => [
                 'label' => 'Following Up',
                 'value' => 'following-up',
-                'color' => 'blue'
+                'color' => 'blue',
             ],
         ];
 
         return $tagDefinitions[$tagValue] ?? [
             'label' => ucwords(str_replace('-', ' ', $tagValue)),
             'value' => $tagValue,
-            'color' => 'gray'
+            'color' => 'gray',
         ];
     }
 };

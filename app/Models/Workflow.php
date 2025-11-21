@@ -1,14 +1,15 @@
 <?php
 
 // app/Models/Workflow.php
+
 namespace App\Models;
 
 use App\Policies\WorkflowPolicy;
 use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[UsePolicy(WorkflowPolicy::class)]
 class Workflow extends Model
@@ -20,11 +21,11 @@ class Workflow extends Model
         'description',
         'status',
         'user_id',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
-        'metadata' => 'array'
+        'metadata' => 'array',
     ];
 
     public function user(): BelongsTo

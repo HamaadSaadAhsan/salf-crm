@@ -44,7 +44,9 @@ class Otp extends Model
         'password_reset' => 'password_reset',
         'login_verification' => 'login_verification',
     ];
+
     const MAX_ATTEMPTS = 3;
+
     const EXPIRY_MINUTES = 10;
 
     public function isExpired(): bool
@@ -59,7 +61,7 @@ class Otp extends Model
 
     public function isVerified(): bool
     {
-        return !is_null($this->verified_at);
+        return ! is_null($this->verified_at);
     }
 
     public function canAttempt(): bool

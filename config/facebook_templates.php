@@ -37,7 +37,7 @@ return [
     'social_media_management' => [
         'name' => 'Social Media Management',
         'description' => 'Perfect for managing posts, comments, and engagement',
-        'icon' => 'MessageSquare', 
+        'icon' => 'MessageSquare',
         'color' => 'bg-green-500',
         'features' => [
             'posts' => true,
@@ -71,7 +71,7 @@ return [
         'name' => 'Customer Service Hub',
         'description' => 'Streamlined for customer support and communication',
         'icon' => 'Users',
-        'color' => 'bg-purple-500', 
+        'color' => 'bg-purple-500',
         'features' => [
             'messaging' => true,
             'comments' => true,
@@ -136,7 +136,7 @@ return [
         'benefits' => [
             'Complete Facebook business integration',
             'All lead generation and social features',
-            'Full customer communication suite', 
+            'Full customer communication suite',
             'Comprehensive analytics and insights',
             'Maximum Facebook marketing capabilities',
         ],

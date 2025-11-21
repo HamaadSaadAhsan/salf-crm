@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import axios from 'axios';
+import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 import { toast } from 'sonner';
 
 // Types
@@ -59,30 +59,30 @@ interface FacebookIntegrationState {
     // Connection Status
     connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
     lastSyncAt: Date | null;
-    
+
     // Integration Config
     config: FacebookIntegrationConfig;
     isConfigured: boolean;
-    
+
     // Health Monitoring
     healthStatus: HealthStatus;
-    
+
     // Pages & Forms
     pages: FacebookPage[];
     selectedPage: FacebookPage | null;
     forms: FacebookForm[];
-    
+
     // Sync Status
     syncStatus: {
         pages: SyncStatus;
         leadForms: SyncStatus;
         leads: SyncStatus;
     };
-    
+
     // Errors & Notifications
     errors: IntegrationError[];
     warnings: IntegrationError[];
-    
+
     // UI State
     isLoading: boolean;
     activeTab: string;
@@ -139,41 +139,38 @@ const initialState: FacebookIntegrationState = {
 };
 
 // Reducer
-function facebookIntegrationReducer(
-    state: FacebookIntegrationState,
-    action: FacebookIntegrationAction
-): FacebookIntegrationState {
+function facebookIntegrationReducer(state: FacebookIntegrationState, action: FacebookIntegrationAction): FacebookIntegrationState {
     switch (action.type) {
         case 'SET_LOADING':
             return { ...state, isLoading: action.payload };
-            
+
         case 'SET_CONNECTION_STATUS':
             return { ...state, connectionStatus: action.payload };
-            
+
         case 'SET_CONFIG':
             return {
                 ...state,
                 config: { ...state.config, ...action.payload },
-                isConfigured: Object.values({ ...state.config, ...action.payload }).some(v => v !== '' && v !== false),
+                isConfigured: Object.values({ ...state.config, ...action.payload }).some((v) => v !== '' && v !== false),
             };
-            
+
         case 'SET_PAGES':
             return { ...state, pages: action.payload };
-            
+
         case 'SELECT_PAGE':
-            return { 
-                ...state, 
+            return {
+                ...state,
                 selectedPage: action.payload,
                 config: {
                     ...state.config,
                     pageId: action.payload.page_id,
                     accessToken: action.payload.access_token,
-                }
+                },
             };
-            
+
         case 'SET_FORMS':
             return { ...state, forms: action.payload };
-            
+
         case 'UPDATE_SYNC_STATUS':
             return {
                 ...state,
@@ -182,24 +179,24 @@ function facebookIntegrationReducer(
                     [action.payload.type]: action.payload.status,
                 },
             };
-            
+
         case 'ADD_ERROR':
             const errorList = action.payload.type === 'error' ? 'errors' : 'warnings';
             return {
                 ...state,
                 [errorList]: [...state[errorList], action.payload],
             };
-            
+
         case 'REMOVE_ERROR':
             return {
                 ...state,
-                errors: state.errors.filter(e => e.id !== action.payload),
-                warnings: state.warnings.filter(e => e.id !== action.payload),
+                errors: state.errors.filter((e) => e.id !== action.payload),
+                warnings: state.warnings.filter((e) => e.id !== action.payload),
             };
-            
+
         case 'SET_ACTIVE_TAB':
             return { ...state, activeTab: action.payload };
-            
+
         case 'UPDATE_HEALTH_STATUS':
             return {
                 ...state,
@@ -209,10 +206,10 @@ function facebookIntegrationReducer(
                     lastChecked: new Date(),
                 },
             };
-            
+
         case 'SET_LAST_SYNC':
             return { ...state, lastSyncAt: action.payload };
-            
+
         default:
             return state;
     }
@@ -246,7 +243,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const response = await axios.get('/integrations/facebook');
-            
+
             if (response.data.success && response.data.exists) {
                 const config = response.data.integration.config;
                 dispatch({ type: 'SET_CONFIG', payload: config });
@@ -277,7 +274,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const response = await axios.post('/integrations/facebook', config);
-            
+
             if (response.data.success) {
                 dispatch({ type: 'SET_CONFIG', payload: config });
                 dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
@@ -309,7 +306,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const response = await axios.post('/integrations/facebook/test-connection');
-            
+
             if (response.data.success) {
                 dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
                 dispatch({
@@ -349,10 +346,13 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'pages', status: { isRunning: true, status: 'running' } } });
         try {
             const response = await axios.get('/integrations/facebook/pages');
-            
+
             if (response.data.success) {
                 dispatch({ type: 'SET_PAGES', payload: response.data.pages });
-                dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'pages', status: { isRunning: false, status: 'success', lastRun: new Date() } } });
+                dispatch({
+                    type: 'UPDATE_SYNC_STATUS',
+                    payload: { type: 'pages', status: { isRunning: false, status: 'success', lastRun: new Date() } },
+                });
                 toast.success(`Loaded ${response.data.pages.length} Facebook pages`);
             } else {
                 throw new Error(response.data.message || 'Failed to fetch pages');
@@ -383,17 +383,23 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: true, status: 'running' } } });
         try {
             const response = await axios.post('/integrations/facebook/forms', { page_id: pageId });
-            
+
             if (response.data.success) {
                 dispatch({ type: 'SET_FORMS', payload: response.data.forms });
-                dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: false, status: 'success', lastRun: new Date() } } });
+                dispatch({
+                    type: 'UPDATE_SYNC_STATUS',
+                    payload: { type: 'leadForms', status: { isRunning: false, status: 'success', lastRun: new Date() } },
+                });
                 toast.success(`Loaded ${response.data.forms.length} lead forms`);
             } else {
                 throw new Error(response.data.message || 'Failed to fetch forms');
             }
         } catch (error: any) {
             console.error('Failed to fetch Facebook forms', error);
-            dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: false, status: 'error', error: error.message } } });
+            dispatch({
+                type: 'UPDATE_SYNC_STATUS',
+                payload: { type: 'leadForms', status: { isRunning: false, status: 'error', error: error.message } },
+            });
             dispatch({
                 type: 'ADD_ERROR',
                 payload: {
@@ -412,9 +418,12 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: true, status: 'running' } } });
         try {
             const response = await axios.post('/integrations/facebook/sync-lead-forms');
-            
+
             if (response.data.success) {
-                dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: false, status: 'success', lastRun: new Date() } } });
+                dispatch({
+                    type: 'UPDATE_SYNC_STATUS',
+                    payload: { type: 'leadForms', status: { isRunning: false, status: 'success', lastRun: new Date() } },
+                });
                 dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
                 toast.success(`Successfully synced ${response.data.count} lead forms`);
             } else {
@@ -422,7 +431,10 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
             }
         } catch (error: any) {
             console.error('Failed to sync lead forms', error);
-            dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leadForms', status: { isRunning: false, status: 'error', error: error.message } } });
+            dispatch({
+                type: 'UPDATE_SYNC_STATUS',
+                payload: { type: 'leadForms', status: { isRunning: false, status: 'error', error: error.message } },
+            });
             dispatch({
                 type: 'ADD_ERROR',
                 payload: {
@@ -441,9 +453,12 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leads', status: { isRunning: true, status: 'running' } } });
         try {
             const response = await axios.post('/integrations/facebook/sync-leads', formId ? { form_id: formId } : {});
-            
+
             if (response.data.success) {
-                dispatch({ type: 'UPDATE_SYNC_STATUS', payload: { type: 'leads', status: { isRunning: false, status: 'success', lastRun: new Date() } } });
+                dispatch({
+                    type: 'UPDATE_SYNC_STATUS',
+                    payload: { type: 'leads', status: { isRunning: false, status: 'success', lastRun: new Date() } },
+                });
                 dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
                 toast.success(`Successfully synced ${response.data.count} leads`);
             } else {
@@ -469,7 +484,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
     const checkHealth = useCallback(async () => {
         try {
             const response = await axios.post('/integrations/facebook/test-connection');
-            
+
             if (response.data.success) {
                 dispatch({
                     type: 'UPDATE_HEALTH_STATUS',
@@ -529,11 +544,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
         },
     };
 
-    return (
-        <FacebookIntegrationContext.Provider value={contextValue}>
-            {children}
-        </FacebookIntegrationContext.Provider>
-    );
+    return <FacebookIntegrationContext.Provider value={contextValue}>{children}</FacebookIntegrationContext.Provider>;
 }
 
 // Custom Hook

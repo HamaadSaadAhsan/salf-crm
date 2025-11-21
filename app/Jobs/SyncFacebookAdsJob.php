@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Services\FacebookAdsSyncService;
 use App\Models\AdSet;
 use App\Models\Campaign;
+use App\Services\FacebookAdsSyncService;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,19 +17,25 @@ use Meilisearch\Endpoints\Delegates\HandlesBatches;
 
 class SyncFacebookAdsJob implements ShouldQueue
 {
-    use Queueable, SerializesModels, InteractsWithQueue, Dispatchable, Batchable, HandlesBatches;
+    use Batchable, Dispatchable, HandlesBatches, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300; // 5 minutes
+
     public $tries = 5; // Increased tries for foreign key issues
+
     public $maxExceptions = 3;
+
     public $backoff = [30, 60, 120, 300, 600]; // Progressive backoff
 
     protected $campaignId;
+
     protected $accessToken;
+
     protected $userId;
+
     protected $adsetId; // Optional: sync ads for a specific adset
 
-    public function __construct(string $campaignId, string $accessToken, string $userId = null, string $adsetId = null)
+    public function __construct(string $campaignId, string $accessToken, ?string $userId = null, ?string $adsetId = null)
     {
         $this->campaignId = $campaignId;
         $this->accessToken = $accessToken;
@@ -45,7 +51,8 @@ class SyncFacebookAdsJob implements ShouldQueue
 
         // Prevent duplicate processing
         if (Cache::has($lockKey)) {
-            Log::info("Skipping duplicate ads sync for " . ($this->adsetId ? "adset: {$this->adsetId}" : "campaign: {$this->campaignId}"));
+            Log::info('Skipping duplicate ads sync for '.($this->adsetId ? "adset: {$this->adsetId}" : "campaign: {$this->campaignId}"));
+
             return;
         }
 
@@ -54,7 +61,7 @@ class SyncFacebookAdsJob implements ShouldQueue
 
             $logContext = $this->adsetId ? "adset: {$this->adsetId}" : "campaign: {$this->campaignId}";
             Log::info("Starting ads sync for {$logContext}", [
-                'attempt' => $this->attempts()
+                'attempt' => $this->attempts(),
             ]);
 
             // Validate dependencies before processing
@@ -69,6 +76,7 @@ class SyncFacebookAdsJob implements ShouldQueue
 
             if (empty($adsData)) {
                 Log::info("No ads found for {$logContext}");
+
                 return;
             }
 
@@ -79,19 +87,19 @@ class SyncFacebookAdsJob implements ShouldQueue
                 'created' => $results['created'],
                 'updated' => $results['updated'],
                 'skipped' => $results['skipped'] ?? 0,
-                'errors' => count($results['errors'])
+                'errors' => count($results['errors']),
             ]);
 
             // If there are errors, log them
-            if (!empty($results['errors'])) {
+            if (! empty($results['errors'])) {
                 Log::warning("Ads sync had errors for {$logContext}", [
                     'errors' => $results['errors'],
-                    'attempt' => $this->attempts()
+                    'attempt' => $this->attempts(),
                 ]);
 
                 // If we have foreign key violations and haven't reached max attempts, fail to retry
                 if ($this->hasForeignKeyErrors($results['errors']) && $this->attempts() < $this->tries) {
-                    throw new \Exception("Foreign key violations detected, retrying...");
+                    throw new \Exception('Foreign key violations detected, retrying...');
                 }
             }
 
@@ -101,7 +109,7 @@ class SyncFacebookAdsJob implements ShouldQueue
             Log::error("Failed to sync ads for {$logContext}", [
                 'error' => $e->getMessage(),
                 'attempt' => $this->attempts(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Don't retry if we've exceeded our attempts
@@ -123,7 +131,7 @@ class SyncFacebookAdsJob implements ShouldQueue
         // If syncing by adset, ensure adset exists
         if ($this->adsetId) {
             $adsetExists = AdSet::where('external_id', $this->adsetId)->exists();
-            if (!$adsetExists) {
+            if (! $adsetExists) {
                 Log::warning("AdSet {$this->adsetId} not found, may need dependency sync");
 
                 // Don't throw immediately on first attempt, let the service handle it
@@ -135,7 +143,7 @@ class SyncFacebookAdsJob implements ShouldQueue
 
         // Always ensure campaign exists
         $campaignExists = Campaign::where('external_id', $this->campaignId)->exists();
-        if (!$campaignExists) {
+        if (! $campaignExists) {
             Log::warning("Campaign {$this->campaignId} not found, may need dependency sync");
 
             if ($this->attempts() > 2) {
@@ -151,13 +159,14 @@ class SyncFacebookAdsJob implements ShouldQueue
     {
         foreach ($errors as $error) {
             if (isset($error['error']) && (
-                    strpos($error['error'], 'Foreign key violation') !== false ||
-                    strpos($error['error'], 'violates foreign key constraint') !== false ||
-                    strpos($error['error'], 'SQLSTATE[23503]') !== false
-                )) {
+                strpos($error['error'], 'Foreign key violation') !== false ||
+                strpos($error['error'], 'violates foreign key constraint') !== false ||
+                strpos($error['error'], 'SQLSTATE[23503]') !== false
+            )) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -181,7 +190,7 @@ class SyncFacebookAdsJob implements ShouldQueue
             'attempts' => $this->attempts(),
             'campaign_id' => $this->campaignId,
             'adset_id' => $this->adsetId,
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
 
         // Could send notification or trigger manual review here

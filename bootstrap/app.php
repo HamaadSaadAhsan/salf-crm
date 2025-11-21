@@ -27,6 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'calendar.errors' => \App\Http\Middleware\HandleCalendarIntegrationErrors::class,
         ]);
     })
+    ->withSchedule(function ($schedule) {
+        // Check for task reminders every 15 minutes
+        $schedule->command('tasks:check-reminders')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

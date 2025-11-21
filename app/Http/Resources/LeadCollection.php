@@ -16,7 +16,7 @@ class LeadCollection extends ResourceCollection
                 'high_priority_count' => $this->collection->where('priority', 'high')->count(),
                 'hot_leads_count' => $this->collection->where('is_hot_lead', true)->count(),
                 'avg_score' => round($this->collection->avg('lead_score'), 1),
-            ]
+            ],
         ];
     }
 }

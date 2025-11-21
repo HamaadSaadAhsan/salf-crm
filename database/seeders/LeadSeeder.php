@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\Lead;
-use App\Models\Service;
 use App\Models\LeadSource;
+use App\Models\Service;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class LeadSeeder extends Seeder
 {
@@ -22,7 +22,7 @@ class LeadSeeder extends Seeder
         'Hassan', 'Maryam', 'Ibrahim', 'Amina', 'Yusuf', 'Layla', 'Abdul', 'Nour',
         'Raj', 'Priya', 'Amit', 'Anita', 'Vikram', 'Sonia', 'Ravi', 'Kavita',
         'Chen', 'Li', 'Wang', 'Zhang', 'Liu', 'Yang', 'Huang', 'Zhao',
-        'Vladimir', 'Olga', 'Dmitri', 'Natasha', 'Sergei', 'Elena', 'Igor', 'Irina'
+        'Vladimir', 'Olga', 'Dmitri', 'Natasha', 'Sergei', 'Elena', 'Igor', 'Irina',
     ];
 
     private array $lastNames = [
@@ -32,7 +32,7 @@ class LeadSeeder extends Seeder
         'Al-Rahman', 'Al-Mahmoud', 'Al-Zahra', 'Al-Hassan', 'Al-Hussein', 'Al-Rashid',
         'Sharma', 'Patel', 'Singh', 'Kumar', 'Gupta', 'Agarwal', 'Joshi', 'Mehta',
         'Chen', 'Wang', 'Li', 'Zhang', 'Liu', 'Yang', 'Huang', 'Zhao',
-        'Petrov', 'Ivanov', 'Smirnov', 'Kuznetsov', 'Popov', 'Volkov', 'Novikov', 'Fedorov'
+        'Petrov', 'Ivanov', 'Smirnov', 'Kuznetsov', 'Popov', 'Volkov', 'Novikov', 'Fedorov',
     ];
 
     private array $occupations = [
@@ -42,7 +42,7 @@ class LeadSeeder extends Seeder
         'Surgeon', 'Dentist', 'Pharmacist', 'Professor', 'Researcher',
         'Investment Banker', 'Private Equity', 'Hedge Fund Manager', 'Venture Capitalist',
         'IT Director', 'Software Executive', 'Product Manager', 'Chief Technology Officer',
-        'Marketing Director', 'Sales Director', 'Operations Manager', 'Project Manager'
+        'Marketing Director', 'Sales Director', 'Operations Manager', 'Project Manager',
     ];
 
     private array $countries = [
@@ -63,7 +63,7 @@ class LeadSeeder extends Seeder
     private array $emailDomains = [
         'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
         'company.com', 'business.co.uk', 'enterprise.de', 'corporation.fr', 'group.ae',
-        'holdings.com', 'investments.com', 'capital.com', 'ventures.com', 'properties.com'
+        'holdings.com', 'investments.com', 'capital.com', 'ventures.com', 'properties.com',
     ];
 
     public function run(): void
@@ -75,6 +75,7 @@ class LeadSeeder extends Seeder
 
         if (empty($services) || empty($leadSources)) {
             $this->command->warn('Please run ServiceSeeder and LeadSourceSeeder first');
+
             return;
         }
 
@@ -86,7 +87,7 @@ class LeadSeeder extends Seeder
         $usedExternalIds = Lead::whereNotNull('external_id')->pluck('external_id')->toArray();
 
         $existingLeadsCount = count($usedEmails);
-        $this->command->info('There are already ' . $existingLeadsCount . ' leads in the database.');
+        $this->command->info('There are already '.$existingLeadsCount.' leads in the database.');
 
         $leadCounter = 1;
 
@@ -111,7 +112,7 @@ class LeadSeeder extends Seeder
                 $city = $country['cities'][array_rand($country['cities'])];
                 $firstName = $this->firstNames[array_rand($this->firstNames)];
                 $lastName = $this->lastNames[array_rand($this->lastNames)];
-                $fullName = $firstName . ' ' . $lastName;
+                $fullName = $firstName.' '.$lastName;
 
                 // Generate unique email
                 $emailDomain = $this->emailDomains[array_rand($this->emailDomains)];
@@ -140,7 +141,7 @@ class LeadSeeder extends Seeder
                 $inquiryType = $this->getRandomInquiryType();
 
                 // Random assignment (70% assigned)
-                $assignedTo = (rand(1, 10) <= 7 && !empty($users)) ? $users[array_rand($users)] : null;
+                $assignedTo = (rand(1, 10) <= 7 && ! empty($users)) ? $users[array_rand($users)] : null;
                 $assignedDate = $assignedTo ? $this->getRandomDate(30) : null;
 
                 // Activity dates
@@ -177,7 +178,7 @@ class LeadSeeder extends Seeder
                     'last_activity_at' => $lastActivityAt,
                     'next_follow_up_at' => $nextFollowUpAt,
                     'pending_activities_count' => rand(0, 5),
-                    'created_by' => !empty($users) ? $users[array_rand($users)] : null,
+                    'created_by' => ! empty($users) ? $users[array_rand($users)] : null,
                     'created_at' => $createdAt,
                     'updated_at' => $lastActivityAt,
                 ];
@@ -188,7 +189,7 @@ class LeadSeeder extends Seeder
             // Insert batch
             DB::table('leads')->insert($leads);
 
-            $this->command->info('Created batch ' . ($batch + 1) . ' of ' . $fullBatches);
+            $this->command->info('Created batch '.($batch + 1).' of '.$fullBatches);
         }
 
         // Process remainder batch if any
@@ -200,7 +201,7 @@ class LeadSeeder extends Seeder
                 $city = $country['cities'][array_rand($country['cities'])];
                 $firstName = $this->firstNames[array_rand($this->firstNames)];
                 $lastName = $this->lastNames[array_rand($this->lastNames)];
-                $fullName = $firstName . ' ' . $lastName;
+                $fullName = $firstName.' '.$lastName;
 
                 // Generate unique email
                 $emailDomain = $this->emailDomains[array_rand($this->emailDomains)];
@@ -229,7 +230,7 @@ class LeadSeeder extends Seeder
                 $inquiryType = $this->getRandomInquiryType();
 
                 // Random assignment (70% assigned)
-                $assignedTo = (rand(1, 10) <= 7 && !empty($users)) ? $users[array_rand($users)] : null;
+                $assignedTo = (rand(1, 10) <= 7 && ! empty($users)) ? $users[array_rand($users)] : null;
                 $assignedDate = $assignedTo ? $this->getRandomDate(30) : null;
 
                 // Activity dates
@@ -266,7 +267,7 @@ class LeadSeeder extends Seeder
                     'last_activity_at' => $lastActivityAt,
                     'next_follow_up_at' => $nextFollowUpAt,
                     'pending_activities_count' => rand(0, 5),
-                    'created_by' => !empty($users) ? $users[array_rand($users)] : null,
+                    'created_by' => ! empty($users) ? $users[array_rand($users)] : null,
                     'created_at' => $createdAt,
                     'updated_at' => $lastActivityAt,
                 ];
@@ -276,21 +277,21 @@ class LeadSeeder extends Seeder
 
             // Insert remainder batch
             DB::table('leads')->insert($leads);
-            $this->command->info('Created remainder batch with ' . $remainder . ' leads');
+            $this->command->info('Created remainder batch with '.$remainder.' leads');
         }
 
-        $this->command->info('Successfully created ' . $totalLeads . ' new leads! You can now create more leads by running this seeder again.');
+        $this->command->info('Successfully created '.$totalLeads.' new leads! You can now create more leads by running this seeder again.');
     }
 
     private function generatePhone(string $countryCode): string
     {
         $formats = [
-            'US' => '+1-' . rand(200, 999) . '-' . rand(100, 999) . '-' . rand(1000, 9999),
-            'GB' => '+44-' . rand(20, 79) . rand(10000000, 99999999),
-            'DE' => '+49-' . rand(30, 89) . '-' . rand(10000000, 99999999),
-            'FR' => '+33-' . rand(1, 9) . '-' . rand(10, 99) . '-' . rand(10, 99) . '-' . rand(10, 99) . '-' . rand(10, 99),
-            'AE' => '+971-' . rand(50, 59) . '-' . rand(100, 999) . '-' . rand(1000, 9999),
-            'default' => '+' . rand(1, 999) . '-' . rand(100000000, 999999999)
+            'US' => '+1-'.rand(200, 999).'-'.rand(100, 999).'-'.rand(1000, 9999),
+            'GB' => '+44-'.rand(20, 79).rand(10000000, 99999999),
+            'DE' => '+49-'.rand(30, 89).'-'.rand(10000000, 99999999),
+            'FR' => '+33-'.rand(1, 9).'-'.rand(10, 99).'-'.rand(10, 99).'-'.rand(10, 99).'-'.rand(10, 99),
+            'AE' => '+971-'.rand(50, 59).'-'.rand(100, 999).'-'.rand(1000, 9999),
+            'default' => '+'.rand(1, 999).'-'.rand(100000000, 999999999),
         ];
 
         return $formats[$countryCode] ?? $formats['default'];
@@ -378,14 +379,14 @@ class LeadSeeder extends Seeder
             // Add small random variation (±0.1 degrees) to exact coordinates
             return [
                 'lat' => round($coordinates[$city]['lat'] + (rand(-1000, 1000) / 10000), 8),
-                'lng' => round($coordinates[$city]['lng'] + (rand(-1000, 1000) / 10000), 8)
+                'lng' => round($coordinates[$city]['lng'] + (rand(-1000, 1000) / 10000), 8),
             ];
         }
 
         // Generate random coordinates within valid bounds
         return [
             'lat' => round(rand(-8900, 8900) / 100, 8), // -89 to 89 degrees
-            'lng' => round(rand(-17900, 17900) / 100, 8) // -179 to 179 degrees
+            'lng' => round(rand(-17900, 17900) / 100, 8), // -179 to 179 degrees
         ];
     }
 
@@ -396,7 +397,7 @@ class LeadSeeder extends Seeder
             'Business Owner' => [300000, 1500000],
             'Investment Manager' => [400000, 1200000],
             'Medical Doctor' => [250000, 800000],
-            'default' => [100000, 500000]
+            'default' => [100000, 500000],
         ];
 
         $range = $budgetRanges[$occupation] ?? $budgetRanges['default'];
@@ -406,7 +407,7 @@ class LeadSeeder extends Seeder
             'currency' => 'USD',
             'amount' => $amount,
             'type' => rand(1, 10) <= 7 ? 'exact' : 'range',
-            'timeframe' => ['immediate', '3_months', '6_months', '1_year'][rand(0, 3)]
+            'timeframe' => ['immediate', '3_months', '6_months', '1_year'][rand(0, 3)],
         ];
     }
 
@@ -414,13 +415,13 @@ class LeadSeeder extends Seeder
     {
         $templates = [
             "I am interested in obtaining a second citizenship for myself and my family. I am currently residing in {$country} and looking for investment opportunities.",
-            "Looking for citizenship by investment options. I have a successful business and am interested in expanding internationally.",
-            "I would like to explore residency programs that lead to citizenship. My budget is flexible for the right opportunity.",
+            'Looking for citizenship by investment options. I have a successful business and am interested in expanding internationally.',
+            'I would like to explore residency programs that lead to citizenship. My budget is flexible for the right opportunity.',
             "Seeking information about {$country} golden visa programs. I am interested in real estate investment options.",
-            "I am a business owner looking for citizenship options that provide visa-free travel benefits.",
-            "Interested in fast-track citizenship programs. I have liquid capital available for investment.",
-            "Looking for family-friendly citizenship programs that include spouse and children.",
-            "I would like to diversify my citizenship portfolio and am interested in Caribbean programs."
+            'I am a business owner looking for citizenship options that provide visa-free travel benefits.',
+            'Interested in fast-track citizenship programs. I have liquid capital available for investment.',
+            'Looking for family-friendly citizenship programs that include spouse and children.',
+            'I would like to diversify my citizenship portfolio and am interested in Caribbean programs.',
         ];
 
         return $templates[array_rand($templates)];
@@ -430,13 +431,13 @@ class LeadSeeder extends Seeder
     {
         return [
             'family_size' => rand(1, 6),
-            'children_ages' => array_map(fn() => rand(0, 25), range(1, rand(0, 3))),
+            'children_ages' => array_map(fn () => rand(0, 25), range(1, rand(0, 3))),
             'current_citizenships' => [['US', 'GB', 'DE', 'CA', 'AU'][rand(0, 4)]],
             'investment_experience' => ['none', 'basic', 'experienced', 'expert'][rand(0, 3)],
             'urgency' => ['low', 'medium', 'high'][rand(0, 2)],
             'preferred_regions' => [['Caribbean', 'Europe', 'North America'][rand(0, 2)]],
             'language_spoken' => ['English', 'Spanish', 'French', 'German', 'Arabic', 'Chinese'][rand(0, 5)],
-            'travel_frequency' => ['rarely', 'occasionally', 'frequently', 'constantly'][rand(0, 3)]
+            'travel_frequency' => ['rarely', 'occasionally', 'frequently', 'constantly'][rand(0, 3)],
         ];
     }
 
@@ -445,9 +446,9 @@ class LeadSeeder extends Seeder
         $streetNumbers = [rand(1, 9999), rand(1, 999), rand(10, 999)];
         $streetNames = ['Main St', 'High St', 'Park Ave', 'First Ave', 'Broadway', 'Oak St', 'Elm St'];
 
-        return $streetNumbers[array_rand($streetNumbers)] . ' ' .
-            $streetNames[array_rand($streetNames)] . ', ' .
-            $city . ', ' . $country;
+        return $streetNumbers[array_rand($streetNumbers)].' '.
+            $streetNames[array_rand($streetNames)].', '.
+            $city.', '.$country;
     }
 
     private function getRandomStatus(): string
@@ -459,7 +460,7 @@ class LeadSeeder extends Seeder
             'proposal' => 10,
             'won' => 8,
             'lost' => 5,
-            'nurturing' => 2
+            'nurturing' => 2,
         ];
 
         return $this->getWeightedRandom($statuses);
@@ -471,7 +472,7 @@ class LeadSeeder extends Seeder
             'low' => 20,
             'medium' => 50,
             'high' => 25,
-            'urgent' => 5
+            'urgent' => 5,
         ];
 
         return $this->getWeightedRandom($priorities);
@@ -485,7 +486,7 @@ class LeadSeeder extends Seeder
             'phone' => 15,
             'referral' => 10,
             'social' => 10,
-            'advertisement' => 5
+            'advertisement' => 5,
         ];
 
         return $this->getWeightedRandom($types);
@@ -514,6 +515,7 @@ class LeadSeeder extends Seeder
     private function getRandomDateAfter(string $afterDate, int $maxDaysLater): string
     {
         $date = Carbon::parse($afterDate);
+
         return $date->addDays(rand(0, $maxDaysLater))->format('Y-m-d H:i:s');
     }
 
@@ -524,7 +526,7 @@ class LeadSeeder extends Seeder
         }
 
         $lastActivityDate = Carbon::parse($lastActivity);
-        $daysToAdd = match($status) {
+        $daysToAdd = match ($status) {
             'new' => rand(1, 3),
             'contacted' => rand(3, 7),
             'qualified' => rand(5, 14),
@@ -547,7 +549,7 @@ class LeadSeeder extends Seeder
         }
 
         // Email domain scoring
-        if (!in_array($emailDomain, ['gmail.com', 'yahoo.com', 'hotmail.com'])) {
+        if (! in_array($emailDomain, ['gmail.com', 'yahoo.com', 'hotmail.com'])) {
             $score += 10; // Business email
         }
 
@@ -572,26 +574,28 @@ class LeadSeeder extends Seeder
         $attempt = 0;
 
         do {
-            $baseEmail = strtolower($firstName . '.' . $lastName);
+            $baseEmail = strtolower($firstName.'.'.$lastName);
 
             // Add suffix if needed for uniqueness
             if ($attempt > 0) {
-                $baseEmail .= ($attempt === 1) ? $counter : ($counter . $attempt);
+                $baseEmail .= ($attempt === 1) ? $counter : ($counter.$attempt);
             }
 
-            $email = $baseEmail . '@' . $emailDomain;
+            $email = $baseEmail.'@'.$emailDomain;
             $attempt++;
 
-            if (!in_array($email, $usedEmails)) {
+            if (! in_array($email, $usedEmails)) {
                 $usedEmails[] = $email;
+
                 return $email;
             }
 
         } while ($attempt < $maxAttempts);
 
         // Fallback with timestamp to ensure uniqueness
-        $fallbackEmail = strtolower($firstName . '.' . $lastName . '.' . time() . $counter . '@' . $emailDomain);
+        $fallbackEmail = strtolower($firstName.'.'.$lastName.'.'.time().$counter.'@'.$emailDomain);
         $usedEmails[] = $fallbackEmail;
+
         return $fallbackEmail;
     }
 
@@ -601,19 +605,21 @@ class LeadSeeder extends Seeder
         $attempt = 0;
 
         do {
-            $baseId = 'EXT-' . strtoupper(substr(md5($email . $counter . $attempt), 0, 8));
+            $baseId = 'EXT-'.strtoupper(substr(md5($email.$counter.$attempt), 0, 8));
             $attempt++;
 
-            if (!in_array($baseId, $usedExternalIds)) {
+            if (! in_array($baseId, $usedExternalIds)) {
                 $usedExternalIds[] = $baseId;
+
                 return $baseId;
             }
 
         } while ($attempt < $maxAttempts);
 
         // Fallback with timestamp to ensure uniqueness
-        $fallbackId = 'EXT-' . strtoupper(substr(md5($email . time() . $counter), 0, 8));
+        $fallbackId = 'EXT-'.strtoupper(substr(md5($email.time().$counter), 0, 8));
         $usedExternalIds[] = $fallbackId;
+
         return $fallbackId;
     }
 }

@@ -17,13 +17,13 @@ class LeadActivityController extends Controller
     private function buildActivityResponse(Request $request, LeadActivity $activity)
     {
         $activity->load(['user', 'lead']);
-        
+
         // Refresh lead and return lead data
         $lead = $activity->lead->load(['assignedTo', 'createdBy', 'service', 'source']);
-        
+
         // Invalidate leads cache
         Cache::tags(['leads', 'leads_list'])->flush();
-        
+
         // Return appropriate response based on request type
         if ($request->expectsJson()) {
             return response()->json([
@@ -31,10 +31,11 @@ class LeadActivityController extends Controller
                 'lead' => LeadResource::make($lead),
             ]);
         }
-        
+
         // For Inertia requests, return the activity resource directly
         return LeadActivityResource::make($activity);
     }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -53,17 +54,17 @@ class LeadActivityController extends Controller
 
         // Default to 'note' type if no type is provided (treated as comment)
         $activityType = $request->type ?: 'note';
-        
+
         // Auto-complete note/comment type activities
         $isNoteType = in_array($activityType, ['note', 'message']);
-        
+
         // Handle file attachments
         $attachmentData = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $fileName = time() . '_' . $file->getClientOriginalName();
+                $fileName = time().'_'.$file->getClientOriginalName();
                 $filePath = $file->storeAs('lead_activities', $fileName, 'public');
-                
+
                 $attachmentData[] = [
                     'original_name' => $file->getClientOriginalName(),
                     'file_name' => $fileName,
@@ -74,19 +75,19 @@ class LeadActivityController extends Controller
                 ];
             }
         }
-        
+
         $activity = LeadActivity::create([
             'lead_id' => $request->lead_id,
             'user_id' => Auth::id(),
             'type' => $activityType,
-            'subject' => $request->subject ?: ucfirst($activityType) . ' activity',
-            'description' => $request->description ?: (!empty($attachmentData) ? 'File attachment' : ''),
+            'subject' => $request->subject ?: ucfirst($activityType).' activity',
+            'description' => $request->description ?: (! empty($attachmentData) ? 'File attachment' : ''),
             'priority' => $request->priority ?? 'medium',
             'scheduled_at' => $request->scheduled_at,
             'due_at' => $request->due_at,
             'status' => $isNoteType ? 'completed' : 'pending',
             'completed_at' => $isNoteType ? now() : null,
-            'attachments' => !empty($attachmentData) ? $attachmentData : null,
+            'attachments' => ! empty($attachmentData) ? $attachmentData : null,
         ]);
 
         // Update lead's last activity timestamp
@@ -107,12 +108,12 @@ class LeadActivityController extends Controller
         // Filter by type if provided
         if ($request->has('type') && $request->type) {
             $types = explode(',', $request->type);
-            
+
             // If 'note' is in the filter, also include NULL types (considered as comments)
             if (in_array('note', $types)) {
-                $query->where(function($q) use ($types) {
+                $query->where(function ($q) use ($types) {
                     $q->whereIn('type', $types)
-                      ->orWhereNull('type');
+                        ->orWhereNull('type');
                 });
             } else {
                 $query->whereIn('type', $types);
@@ -135,7 +136,7 @@ class LeadActivityController extends Controller
 
         $activity->update($request->only(['status', 'outcome', 'notes']));
 
-        if ($request->status === 'completed' && !$activity->completed_at) {
+        if ($request->status === 'completed' && ! $activity->completed_at) {
             $activity->update(['completed_at' => now()]);
         }
 

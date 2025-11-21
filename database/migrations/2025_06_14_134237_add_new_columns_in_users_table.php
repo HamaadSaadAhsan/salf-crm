@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->boolean('available')->default(true)->after('email_verified_at');
-            $table->boolean('active')->default(true)->after('available');;
+            $table->boolean('active')->default(true)->after('available');
         });
     }
 

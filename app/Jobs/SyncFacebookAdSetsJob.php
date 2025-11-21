@@ -1,6 +1,7 @@
 <?php
 
 // Job: SyncFacebookAdSetsJob.php
+
 namespace App\Jobs;
 
 use App\Services\FacebookAdsSyncService;
@@ -10,23 +11,27 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Meilisearch\Endpoints\Delegates\HandlesBatches;
 
 class SyncFacebookAdSetsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable, HandlesBatches;
+    use Batchable, Dispatchable, HandlesBatches, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300; // 5 minutes
+
     public $tries = 3;
+
     public $backoff = [30, 60, 120];
 
     protected $campaignId;
+
     protected $accessToken;
+
     protected $userId;
 
-    public function __construct(string $campaignId, string $accessToken, string $userId = null)
+    public function __construct(string $campaignId, string $accessToken, ?string $userId = null)
     {
         $this->campaignId = $campaignId;
         $this->accessToken = $accessToken;
@@ -40,6 +45,7 @@ class SyncFacebookAdSetsJob implements ShouldQueue
         // Prevent duplicate processing
         if (Cache::has($lockKey)) {
             Log::info("Skipping duplicate adsets sync for campaign: {$this->campaignId}");
+
             return;
         }
 
@@ -53,6 +59,7 @@ class SyncFacebookAdSetsJob implements ShouldQueue
 
             if (empty($adsetsData)) {
                 Log::info("No adsets found for campaign: {$this->campaignId}");
+
                 return;
             }
 
@@ -62,20 +69,20 @@ class SyncFacebookAdSetsJob implements ShouldQueue
             Log::info("Completed adsets sync for campaign: {$this->campaignId}", [
                 'created' => $results['created'],
                 'updated' => $results['updated'],
-                'errors' => count($results['errors'])
+                'errors' => count($results['errors']),
             ]);
 
             // If there are errors, log them
-            if (!empty($results['errors'])) {
+            if (! empty($results['errors'])) {
                 Log::warning("AdSets sync had errors for campaign: {$this->campaignId}", [
-                    'errors' => $results['errors']
+                    'errors' => $results['errors'],
                 ]);
             }
 
         } catch (\Exception $e) {
             Log::error("Failed to sync adsets for campaign: {$this->campaignId}", [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;
@@ -88,10 +95,9 @@ class SyncFacebookAdSetsJob implements ShouldQueue
     {
         Log::error("SyncFacebookAdSetsJob failed for campaign: {$this->campaignId}", [
             'error' => $exception->getMessage(),
-            'attempts' => $this->attempts()
+            'attempts' => $this->attempts(),
         ]);
     }
 }
 
 // Job: CleanupInactiveFacebookAdsJob.php
-

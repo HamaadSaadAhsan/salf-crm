@@ -9,6 +9,7 @@ import {
     Info,
     Mail,
     MoreVertical,
+    Plus,
     RefreshCw,
     Search,
     Settings,
@@ -17,7 +18,6 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { LeadDetailDialog } from '@/components/lead-detail-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,8 @@ import type { BreadcrumbItem } from '@/types';
 import type { Lead } from '@/types/lead';
 import { Head, router, usePage } from '@inertiajs/react';
 import OptimizedLeadRow from './components/LeadRow';
+import { NewLeadSheet } from './components/NewLeadSheet';
+import '../../../css/leads.css'
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -175,22 +177,22 @@ const SearchInput = React.memo(
         const inputClassName = useMemo(
             () =>
                 cn(
-                    'mx-auto flex max-w-4xl flex-1 items-center rounded-full border px-4 py-2 shadow-sm',
-                    inputRef.current && inputRef.current === document.activeElement && 'border-primary shadow-md',
+                    'mx-auto flex max-w-4xl flex-1 items-center rounded-full border bg-muted/50 px-4 py-2 shadow-sm transition-all duration-200',
+                    inputRef.current && inputRef.current === document.activeElement && 'border-primary bg-background shadow-md',
                 ),
             [inputRef],
         );
 
         return (
             <div className={inputClassName}>
-                <Search className="text-primary-background h-5 w-5" />
+                <Search className="h-5 w-5 text-muted-foreground" />
                 <Input
                     ref={inputRef}
                     type="text"
                     placeholder="Search Leads"
                     value={searchInput}
                     onChange={handleChange}
-                    className="flex-1 border-none bg-transparent px-2 text-sm shadow-none outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
+                    className="flex-1 border-none bg-transparent px-2 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
                 />
 
                 <div className="ml-2 flex items-center-safe justify-center-safe gap-1">
@@ -209,30 +211,35 @@ SearchInput.displayName = 'SearchInput';
 
 // Main leads interface using Inertia
 export default function LeadsInterface() {
+
     const pageProps = usePage<LeadsPageProps & { [key: string]: any }>().props;
 
     // Handle both direct array and nested data structure
-    const leads = useMemo(() => 
-        Array.isArray(pageProps.leads)
-            ? pageProps.leads
-            : (pageProps.leads?.data || pageProps.data || [])
-    , [pageProps.leads, pageProps.data]);
+    const leads = useMemo(
+        () => (Array.isArray(pageProps.leads) ? pageProps.leads : pageProps.leads?.data || pageProps.data || []),
+        [pageProps.leads, pageProps.data],
+    );
 
-    const meta = useMemo(() => pageProps.meta || {
-        current_page: 1,
-        per_page: 25,
-        total: 0,
-        last_page: 1,
-        from: null,
-        to: null,
-        has_more: false
-    }, [pageProps.meta]);
+    const meta = useMemo(
+        () =>
+            pageProps.meta || {
+                current_page: 1,
+                per_page: 25,
+                total: 0,
+                last_page: 1,
+                from: null,
+                to: null,
+                has_more: false,
+            },
+        [pageProps.meta],
+    );
 
     const filters = useMemo(() => pageProps.filters || {}, [pageProps.filters]);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchInput, setSearchInput] = useState(filters.search || '');
     const [isMac, setIsMac] = useState(false);
     const [selectAllChecked, setSelectAllChecked] = useState(false);
+    const [isNewLeadSheetOpen, setIsNewLeadSheetOpen] = useState(false);
 
     // Selection management
     const { selectedItems, toggleItem, toggleAll, clearSelection, selectedCount } = useSelection();
@@ -240,21 +247,9 @@ export default function LeadsInterface() {
     // Hover state
     const [hoveredLead, setHoveredLead] = useState<string | null>(null);
 
-    // Lead detail dialog state
-    const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-    const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
     // Detect Mac
     useEffect(() => {
         setIsMac(/Mac|iPhone|iPod|iPad/.test(navigator.userAgent));
-    }, []);
-
-    // Memoized handlers to prevent unnecessary re-renders
-    const handleDialogChange = useCallback((value: boolean) => {
-        setIsDetailDialogOpen(value);
-        if (!value) {
-            setTimeout(() => setSelectedLeadId(null), 300);
-        }
     }, []);
 
     const handleSelectAll = useCallback(() => {
@@ -332,25 +327,8 @@ export default function LeadsInterface() {
     );
 
     const handleLeadClick = useCallback((leadId: string) => {
-        setSelectedLeadId(leadId);
-        setIsDetailDialogOpen(true);
+        router.visit(`/leads/${leadId}`);
     }, []);
-
-    const handlePreviousLead = useCallback(() => {
-        if (!selectedLeadId || !Array.isArray(leads)) return;
-        const currentIndex = leads.findIndex((l: Lead) => l.id === selectedLeadId);
-        if (currentIndex > 0) {
-            setSelectedLeadId(leads[currentIndex - 1].id);
-        }
-    }, [leads, selectedLeadId]);
-
-    const handleNextLead = useCallback(() => {
-        if (!selectedLeadId || !Array.isArray(leads)) return;
-        const currentIndex = leads.findIndex((l: Lead) => l.id === selectedLeadId);
-        if (currentIndex < leads.length - 1) {
-            setSelectedLeadId(leads[currentIndex + 1].id);
-        }
-    }, [leads, selectedLeadId]);
 
     useEffect(() => {
         const leadsLength = Array.isArray(leads) ? leads.length : 0;
@@ -373,10 +351,19 @@ export default function LeadsInterface() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Leads" />
             <div className="flex h-screen flex-col overflow-hidden font-sans">
-                {/* Header */}
-                <header className="flex h-16 items-center border-b bg-primary-foreground px-4">
+                {/* Lead Grid Header */}
+                <header className="flex h-16 items-center border-b bg-background px-4">
                     <SearchInput searchInput={searchInput} onSearchChange={handleSearchChange} isMac={isMac} inputRef={searchInputRef} />
                     <div className="ml-4 flex items-center gap-2">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setIsNewLeadSheetOpen(true)}
+                            className="mr-2"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Lead
+                        </Button>
                         <Button className="cursor-pointer" variant="ghost" size="icon">
                             <Settings className="h-5 w-5" />
                         </Button>
@@ -453,18 +440,12 @@ export default function LeadsInterface() {
                         </div>
                     </div>
                 </div>
-
-                {/* Lead Detail Dialog */}
-                <LeadDetailDialog
-                    isOpen={isDetailDialogOpen}
-                    onOpenChangeAction={handleDialogChange}
-                    leadId={selectedLeadId}
-                    onPrevious={handlePreviousLead}
-                    onNext={handleNextLead}
-                    hasPrevious={selectedLeadId && Array.isArray(leads) ? leads.findIndex((l: Lead) => l.id === selectedLeadId) > 0 : false}
-                    hasNext={selectedLeadId && Array.isArray(leads) ? leads.findIndex((l: Lead) => l.id === selectedLeadId) < leads.length - 1 : false}
-                />
             </div>
+
+            <NewLeadSheet
+                open={isNewLeadSheetOpen}
+                onOpenChange={setIsNewLeadSheetOpen}
+            />
         </AppLayout>
     );
 }

@@ -1,16 +1,17 @@
 <?php
 
 // app/Http/Controllers/Api/WorkflowController.php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\WorkflowService;
 use App\Http\Requests\StoreWorkflowRequest;
 use App\Http\Requests\UpdateWorkflowRequest;
 use App\Http\Resources\WorkflowResource;
 use App\Models\Workflow;
-use Illuminate\Http\Request;
+use App\Services\WorkflowService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WorkflowController extends Controller
 {
@@ -41,7 +42,7 @@ class WorkflowController extends Controller
                 'to' => $workflows->lastItem(),
                 'has_more' => $workflows->hasMorePages(),
                 'query_time' => round((microtime(true) - $startTime) * 1000, 2),
-            ]
+            ],
         ]);
     }
 
@@ -56,13 +57,13 @@ class WorkflowController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Workflow created successfully',
-                'data' => new WorkflowResource($workflow)
+                'data' => new WorkflowResource($workflow),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create workflow',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -75,7 +76,7 @@ class WorkflowController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new WorkflowResource($workflow)
+            'data' => new WorkflowResource($workflow),
         ]);
     }
 
@@ -92,13 +93,13 @@ class WorkflowController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Workflow updated successfully',
-                'data' => new WorkflowResource($workflow)
+                'data' => new WorkflowResource($workflow),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update workflow',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -112,13 +113,13 @@ class WorkflowController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Workflow deleted successfully'
+                'message' => 'Workflow deleted successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete workflow',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -133,15 +134,14 @@ class WorkflowController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Workflow activated successfully',
-                'data' => new WorkflowResource($workflow)
+                'data' => new WorkflowResource($workflow),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to activate workflow',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
 }

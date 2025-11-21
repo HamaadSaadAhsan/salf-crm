@@ -7,7 +7,6 @@ use App\Http\Resources\PermissionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -15,30 +14,31 @@ use Spatie\Permission\Models\Role;
 class PermissionController extends Controller
 {
     private const CACHE_TTL = 3600;
+
     private const CACHE_KEYS = [
         'permissions.all',
         'permissions.matrix',
-        'roles.all'
+        'roles.all',
     ];
 
     public function index(): AnonymousResourceCollection
     {
-        $permissions = Cache::remember('permissions.all', self::CACHE_TTL, function () {
-            return Permission::query()
-                ->orderBy('name')
-                ->get();
-        });
+        // Use memo for request-scoped caching
+        $permissions = cache()->memo('permissions.all', fn () => Permission::query()
+            ->orderBy('name')
+            ->get()
+        );
 
         return PermissionResource::collection($permissions);
     }
 
     public function matrix(): JsonResponse
     {
-        $matrix = Cache::remember('permissions.matrix', self::CACHE_TTL, function () {
-            return Permission::query()
-                ->orderBy('name')
-                ->get();
-        });
+        // Use memo for request-scoped caching
+        $matrix = cache()->memo('permissions.matrix', fn () => Permission::query()
+            ->orderBy('name')
+            ->get()
+        );
 
         return response()->json(['data' => $matrix]);
     }
@@ -49,7 +49,7 @@ class PermissionController extends Controller
             'role_permissions' => 'required|array',
             'role_permissions.*.role_id' => 'required|exists:roles,id',
             'role_permissions.*.permission_ids' => 'required|array',
-            'role_permissions.*.permission_ids.*' => 'exists:permissions,id'
+            'role_permissions.*.permission_ids.*' => 'exists:permissions,id',
         ]);
 
         try {
@@ -72,7 +72,7 @@ class PermissionController extends Controller
     private function clearPermissionCache(): void
     {
         foreach (self::CACHE_KEYS as $key) {
-            Cache::forget($key);
+            cache()->forget($key);
         }
     }
 }

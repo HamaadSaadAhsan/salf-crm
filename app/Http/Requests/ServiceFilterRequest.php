@@ -32,7 +32,7 @@ class ServiceFilterRequest extends FormRequest
             'country_code' => 'string|size:3',
             'with_users' => 'boolean',
             'only_parents' => 'boolean',
-            'only_children' => 'boolean'
+            'only_children' => 'boolean',
         ];
     }
 }

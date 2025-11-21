@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class Ad extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -20,7 +22,7 @@ class Ad extends Model
         'ad_set_external_id',
         'status',
         'created_at',
-        'last_synced'
+        'last_synced',
     ];
 
     protected $casts = [

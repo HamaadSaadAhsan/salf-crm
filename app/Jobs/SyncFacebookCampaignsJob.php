@@ -10,23 +10,27 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Meilisearch\Endpoints\Delegates\HandlesBatches;
 
 class SyncFacebookCampaignsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable, HandlesBatches;
+    use Batchable, Dispatchable, HandlesBatches, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300; // 5 minutes
+
     public $tries = 3;
+
     public $backoff = [30, 60, 120];
 
     protected $pageId;
+
     protected $accessToken;
+
     protected $userId;
 
-    public function __construct(string $pageId, string $accessToken, string $userId = null)
+    public function __construct(string $pageId, string $accessToken, ?string $userId = null)
     {
         $this->pageId = $pageId;
         $this->accessToken = $accessToken;
@@ -40,6 +44,7 @@ class SyncFacebookCampaignsJob implements ShouldQueue
         // Prevent duplicate processing
         if (Cache::has($lockKey)) {
             Log::info("Skipping duplicate campaigns sync for page: {$this->pageId}");
+
             return;
         }
 
@@ -50,7 +55,7 @@ class SyncFacebookCampaignsJob implements ShouldQueue
 
             // Get Facebook page
             $page = MetaPage::where('page_id', $this->pageId)->first();
-            if (!$page) {
+            if (! $page) {
                 throw new \Exception("Page not found: {$this->pageId}");
             }
 
@@ -59,6 +64,7 @@ class SyncFacebookCampaignsJob implements ShouldQueue
 
             if (empty($campaignsData)) {
                 Log::info("No campaigns found for page: {$this->pageId}");
+
                 return;
             }
 
@@ -68,20 +74,20 @@ class SyncFacebookCampaignsJob implements ShouldQueue
             Log::info("Completed campaigns sync for page: {$this->pageId}", [
                 'created' => $results['created'],
                 'updated' => $results['updated'],
-                'errors' => count($results['errors'])
+                'errors' => count($results['errors']),
             ]);
 
             // If there are errors, log them
-            if (!empty($results['errors'])) {
+            if (! empty($results['errors'])) {
                 Log::warning("Campaigns sync had errors for page: {$this->pageId}", [
-                    'errors' => $results['errors']
+                    'errors' => $results['errors'],
                 ]);
             }
 
         } catch (\Exception $e) {
             Log::error("Failed to sync campaigns for page: {$this->pageId}", [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;
@@ -94,7 +100,7 @@ class SyncFacebookCampaignsJob implements ShouldQueue
     {
         Log::error("SyncFacebookCampaignsJob failed for page: {$this->pageId}", [
             'error' => $exception->getMessage(),
-            'attempts' => $this->attempts()
+            'attempts' => $this->attempts(),
         ]);
     }
 }

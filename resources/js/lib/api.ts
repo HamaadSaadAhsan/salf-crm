@@ -1,32 +1,32 @@
-import axios from "@/lib/axios"
+import axios from '@/lib/axios';
 
 class ApiClient {
     async get(endpoint: string, params?: Record<string, string | number | boolean>) {
-        const url = `${endpoint}`
-        const response = await axios.get(url, { params })
-        return response.data
+        const url = `${endpoint}`;
+        const response = await axios.get(url, { params });
+        return response.data;
     }
 
     async post(endpoint: string, data: any) {
-        const url = `${endpoint}`
-        const response = await axios.post(url, data)
-        return response.data
+        const url = `${endpoint}`;
+        const response = await axios.post(url, data);
+        return response.data;
     }
 
     async put(endpoint: string, data: any) {
-        const url = `${endpoint}`
-        const response = await axios.put(url, data)
-        return response.data
+        const url = `${endpoint}`;
+        const response = await axios.put(url, data);
+        return response.data;
     }
 
     async delete(endpoint: string) {
-        const url = `${endpoint}`
-        const response = await axios.delete(url)
-        return response.data
+        const url = `${endpoint}`;
+        const response = await axios.delete(url);
+        return response.data;
     }
 }
 
-export const api = new ApiClient()
+export const api = new ApiClient();
 
 // Helper functions for specific endpoints
 export const authApi = {
@@ -46,4 +46,4 @@ export const authApi = {
     createStatus: (data: any) => api.post('/statuses', data),
     updateStatus: (id: number, data: any) => api.put(`/statuses/${id}`, data),
     deleteStatus: (id: number) => api.delete(`/statuses/${id}`),
-}
+};

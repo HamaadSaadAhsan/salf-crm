@@ -1,20 +1,12 @@
-
-import {
-    keepPreviousData,
-    QueryKey,
-    useInfiniteQuery,
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { LeadsAPI } from '@/lib/api/leads'
-import { Lead, LeadFilters, Meta, LeadActivity } from '@/types/lead'
-import axios from '@/lib/axios'
-import { ApiResponse } from '@/types/user'
-import { InfiniteQueryObserverBaseResult } from '@tanstack/query-core'
-import { router } from '@inertiajs/react'
-import { toast } from 'sonner'
+import { LeadsAPI } from '@/lib/api/leads';
+import axios from '@/lib/axios';
+import { Lead, LeadFilters, Meta } from '@/types/lead';
+import { ApiResponse } from '@/types/user';
+import { router } from '@inertiajs/react';
+import { InfiniteQueryObserverBaseResult } from '@tanstack/query-core';
+import { keepPreviousData, QueryKey, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // CONSTANTS
 const DEFAULT_STALE_TIME = 2 * 60 * 1000; // 2 minutes
@@ -26,9 +18,9 @@ const INFINITE_GC_TIME = 15 * 60 * 1000; // 15 minutes for infinite queries
 const createStableQueryKey = (filters: LeadFilters) => {
     // Create a stable, deterministic query key
     const cleanFilters = Object.fromEntries(
-      Object.entries(filters)
-        .filter(([_, value]) => value !== undefined && value !== '' && value !== null)
-        .sort(([a], [b]) => a.localeCompare(b)) // Sort keys for consistency
+        Object.entries(filters)
+            .filter(([_, value]) => value !== undefined && value !== '' && value !== null)
+            .sort(([a], [b]) => a.localeCompare(b)), // Sort keys for consistency
     );
     return ['leads', cleanFilters];
 };
@@ -36,9 +28,9 @@ const createStableQueryKey = (filters: LeadFilters) => {
 const createStableInfiniteQueryKey = (filters: LeadFilters) => {
     const { page, ...infiniteFilters } = filters;
     const cleanFilters = Object.fromEntries(
-      Object.entries(infiniteFilters)
-        .filter(([_, value]) => value !== undefined && value !== '' && value !== null)
-        .sort(([a], [b]) => a.localeCompare(b))
+        Object.entries(infiniteFilters)
+            .filter(([_, value]) => value !== undefined && value !== '' && value !== null)
+            .sort(([a], [b]) => a.localeCompare(b)),
     );
     return ['leads', 'infinite', cleanFilters];
 };
@@ -69,27 +61,30 @@ export function useLeads(filters: LeadFilters = {}) {
         retry: (failureCount, error: Error) => {
             // Type assertion for custom error properties
             const customError = error as Error & { status?: number };
-            if(!customError) return false;
-            if(!customError.status) return false;
+            if (!customError) return false;
+            if (!customError.status) return false;
 
-            if ( customError?.status >= 400 && customError?.status < 500) return false;
+            if (customError?.status >= 400 && customError?.status < 500) return false;
             return failureCount < 2;
         },
         enabled: !!apiClient,
-        select: useCallback((data: ApiResponse<Lead[]>) => ({
-            data: data?.data || [],
-            meta: data?.meta || {} as Meta
-        }), []),
+        select: useCallback(
+            (data: ApiResponse<Lead[]>) => ({
+                data: data?.data || [],
+                meta: data?.meta || ({} as Meta),
+            }),
+            [],
+        ),
         networkMode: 'online',
     });
 }
 
 // OPTIMIZED FILTER MANAGEMENT WITH REDUCER PATTERN
 type FilterAction =
-  | { type: 'UPDATE_PAGE'; payload: number }
-  | { type: 'UPDATE_FILTERS'; payload: Partial<LeadFilters> }
-  | { type: 'UPDATE_SEARCH'; payload: string }
-  | { type: 'RESET_FILTERS' };
+    | { type: 'UPDATE_PAGE'; payload: number }
+    | { type: 'UPDATE_FILTERS'; payload: Partial<LeadFilters> }
+    | { type: 'UPDATE_SEARCH'; payload: string }
+    | { type: 'RESET_FILTERS' };
 
 const filterReducer = (state: LeadFilters, action: FilterAction): LeadFilters => {
     switch (action.type) {
@@ -110,7 +105,7 @@ export const useOptimizedLeadFilters = (initialFilters: Partial<LeadFilters> = {
     const [filters, dispatch] = useReducer(filterReducer, {
         page: 1,
         per_page: 50,
-        ...initialFilters
+        ...initialFilters,
     });
 
     const updatePage = useCallback((page: number) => {
@@ -129,13 +124,16 @@ export const useOptimizedLeadFilters = (initialFilters: Partial<LeadFilters> = {
         dispatch({ type: 'RESET_FILTERS' });
     }, []);
 
-    return useMemo(() => ({
-        filters,
-        updateFilters,
-        updatePage,
-        updateSearch,
-        resetFilters
-    }), [filters, updateFilters, updatePage, updateSearch, resetFilters]);
+    return useMemo(
+        () => ({
+            filters,
+            updateFilters,
+            updatePage,
+            updateSearch,
+            resetFilters,
+        }),
+        [filters, updateFilters, updatePage, updateSearch, resetFilters],
+    );
 };
 
 // OPTIMIZED DEBOUNCED SEARCH WITH CLEANUP
@@ -177,31 +175,34 @@ export const useOptimizedSelection = () => {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [lastSelected, setLastSelected] = useState<string | null>(null);
 
-    const toggleItem = useCallback((id: string, shiftKey = false) => {
-        setSelectedItems(prev => {
-            const newSet = new Set(prev);
+    const toggleItem = useCallback(
+        (id: string, shiftKey = false) => {
+            setSelectedItems((prev) => {
+                const newSet = new Set(prev);
 
-            if (shiftKey && lastSelected) {
-                // Range selection logic would go here
-                // For now, just toggle the item
-                if (newSet.has(id)) newSet.delete(id);
-                else newSet.add(id);
-            } else {
-                if (newSet.has(id)) newSet.delete(id);
-                else newSet.add(id);
-            }
+                if (shiftKey && lastSelected) {
+                    // Range selection logic would go here
+                    // For now, just toggle the item
+                    if (newSet.has(id)) newSet.delete(id);
+                    else newSet.add(id);
+                } else {
+                    if (newSet.has(id)) newSet.delete(id);
+                    else newSet.add(id);
+                }
 
-            return newSet;
-        });
-        setLastSelected(id);
-    }, [lastSelected]);
+                return newSet;
+            });
+            setLastSelected(id);
+        },
+        [lastSelected],
+    );
 
     const selectItems = useCallback((ids: string[]) => {
-        setSelectedItems(prev => new Set([...prev, ...ids]));
+        setSelectedItems((prev) => new Set([...prev, ...ids]));
     }, []);
 
     const deselectItems = useCallback((ids: string[]) => {
-        setSelectedItems(prev => {
+        setSelectedItems((prev) => {
             const newSet = new Set(prev);
             ids.forEach((id: string) => newSet.delete(id));
             return newSet;
@@ -209,7 +210,7 @@ export const useOptimizedSelection = () => {
     }, []);
 
     const toggleAll = useCallback((items: Lead[]) => {
-        setSelectedItems(prev => {
+        setSelectedItems((prev) => {
             const itemIds = items.map((item: Lead) => item.id);
             const allSelected = itemIds.every((id: string) => prev.has(id));
             return allSelected ? new Set() : new Set(itemIds);
@@ -223,17 +224,20 @@ export const useOptimizedSelection = () => {
 
     const isSelected = useCallback((id: string) => selectedItems.has(id), [selectedItems]);
 
-    return useMemo(() => ({
-        selectedItems,
-        toggleItem,
-        selectItems,
-        deselectItems,
-        toggleAll,
-        clearSelection,
-        isSelected,
-        selectedCount: selectedItems.size,
-        hasSelection: selectedItems.size > 0
-    }), [selectedItems, toggleItem, selectItems, deselectItems, toggleAll, clearSelection, isSelected]);
+    return useMemo(
+        () => ({
+            selectedItems,
+            toggleItem,
+            selectItems,
+            deselectItems,
+            toggleAll,
+            clearSelection,
+            isSelected,
+            selectedCount: selectedItems.size,
+            hasSelection: selectedItems.size > 0,
+        }),
+        [selectedItems, toggleItem, selectItems, deselectItems, toggleAll, clearSelection, isSelected],
+    );
 };
 
 // ENHANCED PERFORMANCE MONITORING
@@ -286,7 +290,7 @@ export function usePrefetchStrategies(filters: LeadFilters) {
         queryClient.prefetchQuery({
             queryKey,
             queryFn: () => apiClient.getLeads(nextPageFilters),
-            staleTime: DEFAULT_STALE_TIME
+            staleTime: DEFAULT_STALE_TIME,
         });
     }, [queryClient, apiClient, filters]);
 
@@ -299,23 +303,26 @@ export function usePrefetchStrategies(filters: LeadFilters) {
         queryClient.prefetchQuery({
             queryKey,
             queryFn: () => apiClient.getLeads(prevPageFilters),
-            staleTime: DEFAULT_STALE_TIME
+            staleTime: DEFAULT_STALE_TIME,
         });
     }, [queryClient, apiClient, filters]);
 
-    const intelligentPrefetch = useCallback((direction: 'next' | 'prev' | 'both' = 'next') => {
-        if (direction === 'next' || direction === 'both') {
-            prefetchNext();
-        }
-        if (direction === 'prev' || direction === 'both') {
-            prefetchPrevious();
-        }
-    }, [prefetchNext, prefetchPrevious]);
+    const intelligentPrefetch = useCallback(
+        (direction: 'next' | 'prev' | 'both' = 'next') => {
+            if (direction === 'next' || direction === 'both') {
+                prefetchNext();
+            }
+            if (direction === 'prev' || direction === 'both') {
+                prefetchPrevious();
+            }
+        },
+        [prefetchNext, prefetchPrevious],
+    );
 
     return {
         prefetchNext,
         prefetchPrevious,
-        intelligentPrefetch
+        intelligentPrefetch,
     };
 }
 
@@ -336,8 +343,8 @@ export function useLead(id: string | null) {
         refetchOnWindowFocus: false,
         select: useCallback((data: { data?: Lead }) => data?.data || null, []),
         retry: (failureCount, error: { status?: number }) => {
-            if(!error) return false;
-            if(!error.status) return false;
+            if (!error) return false;
+            if (!error.status) return false;
             if (error?.status >= 400 && error?.status < 500) return false;
             return failureCount < 2;
         },
@@ -349,7 +356,7 @@ export function useLead(id: string | null) {
         loading: query.isLoading,
         error: query.error,
         refetch: query.refetch,
-        isStale: query.isStale
+        isStale: query.isStale,
     };
 }
 
@@ -369,10 +376,10 @@ export function useOptimisticLeadUpdate() {
     const apiClient = useApiClient();
 
     return useMutation<
-      unknown, // Return type of mutationFn
-      Error,   // Error type
-      MutationVariables, // Variables type
-      OptimisticContext  // Context type
+        unknown, // Return type of mutationFn
+        Error, // Error type
+        MutationVariables, // Variables type
+        OptimisticContext // Context type
     >({
         mutationFn: async ({ id, updates }: MutationVariables) => {
             if (!apiClient) throw new Error('API client not available');
@@ -387,7 +394,6 @@ export function useOptimisticLeadUpdate() {
             // Snapshot previous values
             const previousLead = queryClient.getQueryData(['lead', id]);
             const previousLeadsQueries = queryClient.getQueriesData({ queryKey: ['leads'] });
-
 
             // Optimistic update for individual lead
             queryClient.setQueryData(['lead', id], (old: unknown) => {
@@ -406,9 +412,7 @@ export function useOptimisticLeadUpdate() {
                 if (!leadsData.data) return old;
                 return {
                     ...leadsData,
-                    data: leadsData.data.map((lead: Lead) =>
-                      lead.id === id ? { ...lead, ...updates } : lead
-                    )
+                    data: leadsData.data.map((lead: Lead) => (lead.id === id ? { ...lead, ...updates } : lead)),
                 };
             });
 
@@ -422,10 +426,8 @@ export function useOptimisticLeadUpdate() {
                     ...infiniteData,
                     pages: infiniteData.pages.map((page: { data?: Lead[]; meta?: Meta }) => ({
                         ...page,
-                        data: page.data?.map((lead: Lead) =>
-                          lead.id === id ? { ...lead, ...updates } : lead
-                        ) || []
-                    }))
+                        data: page.data?.map((lead: Lead) => (lead.id === id ? { ...lead, ...updates } : lead)) || [],
+                    })),
                 };
             });
 
@@ -445,14 +447,24 @@ export function useOptimisticLeadUpdate() {
 
             // Show error notification
             toast.error('Failed to update lead', {
-                description: err.message || 'Something went wrong while updating the lead.'
+                description: err.message || 'Something went wrong while updating the lead.',
             });
         },
-        onSuccess: () => {
-            // Show success notification
-            toast.success('Lead updated successfully', {
-                description: 'The lead has been updated with your changes.'
-            });
+        onSuccess: (_data: unknown, variables: MutationVariables) => {
+            // Check if status was changed to qualified
+            const wasQualified = variables.updates.inquiry_status === 'qualified';
+
+            if (wasQualified) {
+                toast.success('Lead Qualified Successfully!', {
+                    description: 'The lead has been marked as qualified and will be automatically assigned to an advisor.',
+                    duration: 6000,
+                });
+            } else {
+                // Show generic success notification
+                toast.success('Lead updated successfully', {
+                    description: 'The lead has been updated with your changes.',
+                });
+            }
         },
         onSettled: (_data: unknown, _error: Error | null, variables: MutationVariables) => {
             // Invalidate queries for consistency
@@ -461,12 +473,11 @@ export function useOptimisticLeadUpdate() {
 
             // Refresh Inertia page data to update the table
             router.reload({
-                only: ['leads', 'meta']
+                only: ['leads', 'meta'],
             });
         },
     });
 }
-
 
 // MAIN ADAPTIVE HOOK WITH SMART STRATEGY SELECTION
 type AdaptiveLeadsResult = {
@@ -536,21 +547,25 @@ export function useInfiniteLeads(filters: LeadFilters = {}) {
             const httpError = error as Error & { status?: number };
             if (httpError?.status && httpError.status >= 400 && httpError.status < 500) return false;
             return failureCount < 2;
-        }
+        },
     });
 
     // Log the query state for debugging
-    useEffect(() => {
-    }, [query.isLoading, query.isFetching, query.isFetchingNextPage, query.hasNextPage, query.data?.pages?.length, query.error, query.data?.pages]);
+    useEffect(() => {}, [
+        query.isLoading,
+        query.isFetching,
+        query.isFetchingNextPage,
+        query.hasNextPage,
+        query.data?.pages?.length,
+        query.error,
+        query.data?.pages,
+    ]);
 
     return query;
 }
 
 // Updated useAdaptiveLeads - handle data transformation correctly
-export function useAdaptiveLeads(
-  filters: LeadFilters = {},
-  strategy: 'standard' | 'infinite' | 'virtual' = 'standard'
-): AdaptiveLeadsResult {
+export function useAdaptiveLeads(filters: LeadFilters = {}, strategy: 'standard' | 'infinite' | 'virtual' = 'standard'): AdaptiveLeadsResult {
     const standardQuery = useLeads(filters);
     const infiniteQuery = useInfiniteLeads(filters);
 
@@ -560,7 +575,7 @@ export function useAdaptiveLeads(
             case 'virtual': {
                 // Virtual uses infinite under the hood
                 // Transform infinite query data here
-                const allLeads = infiniteQuery.data?.pages?.flatMap(page => page?.data || []) || [];
+                const allLeads = infiniteQuery.data?.pages?.flatMap((page) => page?.data || []) || [];
                 const lastPage = infiniteQuery.data?.pages?.[infiniteQuery.data.pages.length - 1];
 
                 return {
@@ -589,21 +604,23 @@ export function useAdaptiveLeads(
     }, [strategy, standardQuery, infiniteQuery]);
 }
 
-
 // STRATEGY 3: Virtualized Data (optimized)
 export function useVirtualizedLeads(filters: LeadFilters = {}) {
     const infiniteQuery = useInfiniteLeads(filters);
 
-    return useMemo(() => ({
-        ...infiniteQuery,
-        items: infiniteQuery.data?.pages?.flatMap(page => page?.data || []),
-        totalCount: infiniteQuery.data?.pages.flatMap(page => page?.data || []).length,
-        hasMore: infiniteQuery.data?.pages.flatMap(page => page?.meta?.has_more || false),
-        isLoading: infiniteQuery.isFetchingNextPage,
-        // Add virtualization helpers
-        getItem: (index: number) => (infiniteQuery.data?.pages.flatMap((page) => page?.data) || [])[index],
-        getItemCount: () => infiniteQuery.data?.pages.flatMap(page => page?.data || []).length || 0,
-    }), [infiniteQuery]);
+    return useMemo(
+        () => ({
+            ...infiniteQuery,
+            items: infiniteQuery.data?.pages?.flatMap((page) => page?.data || []),
+            totalCount: infiniteQuery.data?.pages.flatMap((page) => page?.data || []).length,
+            hasMore: infiniteQuery.data?.pages.flatMap((page) => page?.meta?.has_more || false),
+            isLoading: infiniteQuery.isFetchingNextPage,
+            // Add virtualization helpers
+            getItem: (index: number) => (infiniteQuery.data?.pages.flatMap((page) => page?.data) || [])[index],
+            getItemCount: () => infiniteQuery.data?.pages.flatMap((page) => page?.data || []).length || 0,
+        }),
+        [infiniteQuery],
+    );
 }
 
 // BULK OPERATIONS HOOK
@@ -621,7 +638,7 @@ export function useBulkLeadOperations(): BulkOperationsResult {
             if (!apiClient) throw new Error('API client not available');
             const response = await axios.patch(`${apiClient.baseURL}/leads/bulk`, {
                 ids,
-                updates
+                updates,
             });
             return response.data;
         },
@@ -631,22 +648,22 @@ export function useBulkLeadOperations(): BulkOperationsResult {
 
             // Show success notification
             toast.success('Bulk update completed', {
-                description: `Successfully updated ${ids.length} lead${ids.length > 1 ? 's' : ''}.`
+                description: `Successfully updated ${ids.length} lead${ids.length > 1 ? 's' : ''}.`,
             });
         },
         onError: (err: Error, { ids }) => {
             // Show error notification
             toast.error('Bulk update failed', {
-                description: err.message || `Failed to update ${ids.length} lead${ids.length > 1 ? 's' : ''}.`
+                description: err.message || `Failed to update ${ids.length} lead${ids.length > 1 ? 's' : ''}.`,
             });
-        }
+        },
     });
 
     const bulkDelete = useMutation<unknown, Error, string[]>({
         mutationFn: async (ids) => {
             if (!apiClient) throw new Error('API client not available');
             const response = await axios.delete(`${apiClient.baseURL}/leads/bulk`, {
-                data: { ids }
+                data: { ids },
             });
             return response.data;
         },
@@ -655,20 +672,20 @@ export function useBulkLeadOperations(): BulkOperationsResult {
 
             // Show success notification
             toast.success('Bulk delete completed', {
-                description: `Successfully deleted ${ids.length} lead${ids.length > 1 ? 's' : ''}.`
+                description: `Successfully deleted ${ids.length} lead${ids.length > 1 ? 's' : ''}.`,
             });
         },
         onError: (err: Error, ids) => {
             // Show error notification
             toast.error('Bulk delete failed', {
-                description: err.message || `Failed to delete ${ids.length} lead${ids.length > 1 ? 's' : ''}.`
+                description: err.message || `Failed to delete ${ids.length} lead${ids.length > 1 ? 's' : ''}.`,
             });
-        }
+        },
     });
 
     return {
         bulkUpdate,
-        bulkDelete
+        bulkDelete,
     };
 }
 
@@ -682,14 +699,14 @@ export function useInfiniteLeadComments(leadId: string | null) {
         queryKey,
         queryFn: async ({ pageParam = 1 }) => {
             if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
-            
+
             const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
                 params: {
                     lead_id: leadId,
                     page: pageParam,
                     per_page: 10,
-                    type: 'note'
-                }
+                    type: 'note',
+                },
             });
             return response.data;
         },
@@ -711,7 +728,7 @@ export function useInfiniteLeadComments(leadId: string | null) {
             const httpError = error as Error & { status?: number };
             if (httpError?.status && httpError.status >= 400 && httpError.status < 500) return false;
             return failureCount < 2;
-        }
+        },
     });
 }
 
@@ -724,13 +741,13 @@ export function useInfiniteLeadAllActivities(leadId: string | null) {
         queryKey,
         queryFn: async ({ pageParam = 1 }) => {
             if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
-            
+
             const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
                 params: {
                     lead_id: leadId,
                     page: pageParam,
-                    per_page: 10
-                }
+                    per_page: 10,
+                },
             });
             return response.data;
         },
@@ -752,7 +769,7 @@ export function useInfiniteLeadAllActivities(leadId: string | null) {
             const httpError = error as Error & { status?: number };
             if (httpError?.status && httpError.status >= 400 && httpError.status < 500) return false;
             return failureCount < 2;
-        }
+        },
     });
 }
 
@@ -768,16 +785,16 @@ export function useInfiniteLeadActivities(leadId: string | null, filters: { type
             if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
 
             const cleanFilters = Object.fromEntries(
-                Object.entries(filters).filter(([_, value]) => value !== undefined && value !== '' && value !== null)
+                Object.entries(filters).filter(([_, value]) => value !== undefined && value !== '' && value !== null),
             );
-            
+
             const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
                 params: {
                     lead_id: leadId,
                     page: pageParam,
                     per_page: 10,
-                    ...cleanFilters
-                }
+                    ...cleanFilters,
+                },
             });
             return response.data;
         },
@@ -799,6 +816,6 @@ export function useInfiniteLeadActivities(leadId: string | null, filters: { type
             const httpError = error as Error & { status?: number };
             if (httpError?.status && httpError.status >= 400 && httpError.status < 500) return false;
             return failureCount < 2;
-        }
+        },
     });
 }

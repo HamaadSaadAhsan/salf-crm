@@ -2,24 +2,45 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserFilterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class UserController extends Controller
 {
     public function __construct(
         private CacheService $cacheService
-    )
+    ) {}
+
+    /**
+     * Display the users management page
+     */
+    public function page(UserFilterRequest $request): Response
     {
+        $filters = $request->validated();
+        $result = $this->buildUsersQuery($filters);
+
+        return Inertia::render('users/index', [
+            'users' => [
+                'data' => $result['data']->resolve(),
+                'meta' => $result['meta'],
+            ],
+        ]);
     }
 
+    /**
+     * Get users list (API endpoint)
+     */
     public function index(UserFilterRequest $request): JsonResponse
     {
         $filters = $request->validated();
@@ -42,7 +63,7 @@ class UserController extends Controller
                 'cached' => $this->cacheService->hasWithTags($cacheKey, ['users', 'users_list']),
                 'cache_key' => $cacheKey,
                 'expires_at' => $this->cacheService->getTTL(),
-            ]
+            ],
         ]);
     }
 
@@ -66,7 +87,7 @@ class UserController extends Controller
                 'leads',
                 'leads as active_leads_count' => function ($q) {
                     $q->whereNotIn('inquiry_status', ['won', 'lost', 'closed']);
-                }
+                },
             ])
             ->select([
                 'id',
@@ -74,7 +95,7 @@ class UserController extends Controller
                 'email',
                 'email_verified_at',
                 'created_at',
-                'updated_at'
+                'updated_at',
             ]);
 
         // Apply filters
@@ -99,7 +120,7 @@ class UserController extends Controller
                 'has_more' => $users->hasMorePages(),
                 'filters_applied' => array_filter($filters),
                 'query_time' => round((microtime(true) - $startTime) * 1000, 2), // milliseconds
-            ]
+            ],
         ];
     }
 
@@ -109,7 +130,7 @@ class UserController extends Controller
     private function applyFilters($query, array $filters): void
     {
         // Email verification status filter
-        if (!empty($filters['email_verified'])) {
+        if (! empty($filters['email_verified'])) {
             if ($filters['email_verified'] === 'verified') {
                 $query->whereNotNull('email_verified_at');
             } else {
@@ -118,7 +139,7 @@ class UserController extends Controller
         }
 
         // Role filter
-        if (!empty($filters['role'])) {
+        if (! empty($filters['role'])) {
             if (is_array($filters['role'])) {
                 $query->whereHas('roles', function ($q) use ($filters) {
                     $q->whereIn('name', $filters['role']);
@@ -131,14 +152,14 @@ class UserController extends Controller
         }
 
         // Permission filter
-        if (!empty($filters['permission'])) {
+        if (! empty($filters['permission'])) {
             $query->whereHas('roles.permissions', function ($q) use ($filters) {
                 $q->where('name', $filters['permission']);
             });
         }
 
         // Service assignment filter
-        if (!empty($filters['service_id'])) {
+        if (! empty($filters['service_id'])) {
             if (is_array($filters['service_id'])) {
                 $query->whereHas('activeServices', function ($q) use ($filters) {
                     $q->whereIn('service_id', $filters['service_id']);
@@ -147,7 +168,7 @@ class UserController extends Controller
                 $serviceId = $filters['service_id'];
 
                 // Include child services if filtering by parent
-                if (!empty($filters['include_child_services'])) {
+                if (! empty($filters['include_child_services'])) {
                     $service = Service::find($serviceId);
                     if ($service) {
                         $childServiceIds = $service->getAllDescendants()->pluck('id')->toArray();
@@ -169,54 +190,54 @@ class UserController extends Controller
         }
 
         // Service country filter
-        if (!empty($filters['service_country'])) {
+        if (! empty($filters['service_country'])) {
             $query->whereHas('activeServices', function ($q) use ($filters) {
                 $q->where('country_code', $filters['service_country']);
             });
         }
 
         // Users without any services
-        if (!empty($filters['no_services'])) {
+        if (! empty($filters['no_services'])) {
             $query->doesntHave('activeServices');
         }
 
         // Users with minimum number of services
-        if (!empty($filters['min_services'])) {
+        if (! empty($filters['min_services'])) {
             $query->has('activeServices', '>=', (int) $filters['min_services']);
         }
 
         // Service assignment status filter
-        if (!empty($filters['service_status'])) {
+        if (! empty($filters['service_status'])) {
             $query->whereHas('services', function ($q) use ($filters) {
                 $q->wherePivot('status', $filters['service_status']);
             });
         }
 
         // Service assignment metadata filter
-        if (!empty($filters['service_role'])) {
+        if (! empty($filters['service_role'])) {
             $query->whereHas('services', function ($q) use ($filters) {
                 $q->whereRaw("service_user.metadata ->> 'role' = ?", [$filters['service_role']]);
             });
         }
 
         // Date range filter (user creation)
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->where('created_at', '>=', $filters['date_from']);
         }
-        if (!empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
+        if (! empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
         }
 
         // Email verification date range
-        if (!empty($filters['verified_from'])) {
+        if (! empty($filters['verified_from'])) {
             $query->where('email_verified_at', '>=', $filters['verified_from']);
         }
-        if (!empty($filters['verified_to'])) {
-            $query->where('email_verified_at', '<=', $filters['verified_to'] . ' 23:59:59');
+        if (! empty($filters['verified_to'])) {
+            $query->where('email_verified_at', '<=', $filters['verified_to'].' 23:59:59');
         }
 
         // Users with leads filter
-        if (!empty($filters['has_leads'])) {
+        if (! empty($filters['has_leads'])) {
             if ($filters['has_leads'] === 'yes') {
                 $query->has('leads');
             } else {
@@ -225,42 +246,42 @@ class UserController extends Controller
         }
 
         // Users with active leads
-        if (!empty($filters['has_active_leads'])) {
+        if (! empty($filters['has_active_leads'])) {
             $query->whereHas('leads', function ($q) {
                 $q->whereNotIn('inquiry_status', ['won', 'lost', 'closed']);
             });
         }
 
         // Lead count filter
-        if (!empty($filters['min_leads'])) {
+        if (! empty($filters['min_leads'])) {
             $query->has('leads', '>=', (int) $filters['min_leads']);
         }
-        if (!empty($filters['max_leads'])) {
+        if (! empty($filters['max_leads'])) {
             $query->has('leads', '<=', (int) $filters['max_leads']);
         }
 
         // Search filter - Enhanced with PostgreSQL full-text search
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $searchTerm = trim($filters['search']);
 
             if (strlen($searchTerm) >= 3) {
                 // Use PostgreSQL full-text search for longer terms
                 $query->where(function ($q) use ($searchTerm) {
                     $q->whereRaw("to_tsvector('english', coalesce(name, '') || ' ' || coalesce(email, '')) @@ plainto_tsquery('english', ?)", [$searchTerm])
-                        ->orWhere('email', 'ilike', '%' . $searchTerm . '%')
-                        ->orWhere('name', 'ilike', '%' . $searchTerm . '%');
+                        ->orWhere('email', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('name', 'ilike', '%'.$searchTerm.'%');
                 });
             } else {
                 // Use LIKE search for shorter terms
                 $query->where(function ($q) use ($searchTerm) {
-                    $q->where('name', 'ilike', '%' . $searchTerm . '%')
-                        ->orWhere('email', 'ilike', '%' . $searchTerm . '%');
+                    $q->where('name', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('email', 'ilike', '%'.$searchTerm.'%');
                 });
             }
         }
 
         // Active users only (if you have a status field)
-        if (!empty($filters['active_only'])) {
+        if (! empty($filters['active_only'])) {
             // Assuming you might add a status field later
             // $query->where('status', 'active');
 
@@ -269,19 +290,19 @@ class UserController extends Controller
         }
 
         // Recently created users
-        if (!empty($filters['recent_days'])) {
+        if (! empty($filters['recent_days'])) {
             $recentDays = (int) $filters['recent_days'];
             $recentDate = now()->subDays($recentDays);
             $query->where('created_at', '>=', $recentDate);
         }
 
         // Users by domain
-        if (!empty($filters['email_domain'])) {
-            $query->where('email', 'ilike', '%@' . $filters['email_domain']);
+        if (! empty($filters['email_domain'])) {
+            $query->where('email', 'ilike', '%@'.$filters['email_domain']);
         }
 
         // Exclude specific users
-        if (!empty($filters['exclude_ids'])) {
+        if (! empty($filters['exclude_ids'])) {
             if (is_array($filters['exclude_ids'])) {
                 $query->whereNotIn('id', $filters['exclude_ids']);
             } else {
@@ -299,14 +320,14 @@ class UserController extends Controller
         $allowedSortFields = [
             'id', 'name', 'email', 'created_at', 'updated_at',
             'email_verified_at', 'active_services_count',
-            'leads_count', 'active_leads_count'
+            'leads_count', 'active_leads_count',
         ];
 
-        if (!in_array($sortBy, $allowedSortFields)) {
+        if (! in_array($sortBy, $allowedSortFields)) {
             $sortBy = 'created_at';
         }
 
-        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+        if (! in_array(strtolower($sortOrder), ['asc', 'desc'])) {
             $sortOrder = 'desc';
         }
 
@@ -322,8 +343,185 @@ class UserController extends Controller
     private function shouldBypassCache(array $filters): bool
     {
         // Bypass cache for real-time requirements
-        return !empty($filters['real_time']) ||
-            (!empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
+        return ! empty($filters['real_time']) ||
+            (! empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
     }
 
+    /**
+     * Store a newly created user
+     */
+    public function store(StoreUserRequest $request): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $validated = $request->validated();
+
+            // Create the user
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            // Assign roles if provided
+            if (! empty($validated['roles'])) {
+                $user->syncRoles($validated['roles']);
+            }
+
+            // Assign services if provided
+            if (! empty($validated['services'])) {
+                foreach ($validated['services'] as $serviceId) {
+                    $service = Service::find($serviceId);
+                    if ($service) {
+                        $metadata = $validated['service_metadata'][$serviceId] ?? [];
+                        $service->assignToUser($user, ['metadata' => json_encode($metadata)]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            // Clear cache
+            $this->cacheService->forgetWithTags(['users', 'users_list']);
+
+            // Load relationships for response
+            $user->load(['roles', 'activeServices']);
+
+            return response()->json([
+                'message' => 'User created successfully.',
+                'data' => new UserResource($user),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Failed to create user.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Display the specified user
+     */
+    public function show(User $user): JsonResponse
+    {
+        $user->load([
+            'roles',
+            'activeServices',
+            'activeServices.parent',
+            'services' => function ($q) {
+                $q->withPivot(['assigned_at', 'status', 'notes', 'metadata']);
+            },
+            'leads',
+            'leads.service',
+        ]);
+
+        return response()->json([
+            'data' => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * Update the specified user
+     */
+    public function update(UpdateUserRequest $request, User $user): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $validated = $request->validated();
+
+            // Update basic user information
+            $updateData = [];
+            if (isset($validated['name'])) {
+                $updateData['name'] = $validated['name'];
+            }
+            if (isset($validated['email'])) {
+                $updateData['email'] = $validated['email'];
+            }
+            if (isset($validated['password'])) {
+                $updateData['password'] = Hash::make($validated['password']);
+            }
+
+            if (! empty($updateData)) {
+                $user->update($updateData);
+            }
+
+            // Update roles if provided
+            if (isset($validated['roles'])) {
+                $user->syncRoles($validated['roles']);
+            }
+
+            // Update services if provided
+            if (isset($validated['services'])) {
+                // Detach all existing services
+                $user->services()->detach();
+
+                // Attach new services
+                foreach ($validated['services'] as $serviceId) {
+                    $service = Service::find($serviceId);
+                    if ($service) {
+                        $metadata = $validated['service_metadata'][$serviceId] ?? [];
+                        $service->assignToUser($user, ['metadata' => json_encode($metadata)]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            // Clear cache
+            $this->cacheService->forgetWithTags(['users', 'users_list']);
+
+            // Load relationships for response
+            $user->fresh(['roles', 'activeServices', 'activeServices.parent']);
+
+            return response()->json([
+                'message' => 'User updated successfully.',
+                'data' => new UserResource($user),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Failed to update user.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified user
+     */
+    public function destroy(User $user): JsonResponse
+    {
+        try {
+            // Check if user has leads assigned
+            if ($user->leads()->exists()) {
+                return response()->json([
+                    'message' => 'Cannot delete user with assigned leads. Please reassign the leads first.',
+                ], 422);
+            }
+
+            // Detach all relationships
+            $user->services()->detach();
+            $user->roles()->detach();
+
+            // Delete the user
+            $user->delete();
+
+            // Clear cache
+            $this->cacheService->forgetWithTags(['users', 'users_list']);
+
+            return response()->json([
+                'message' => 'User deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete user.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

@@ -3,19 +3,19 @@
 namespace App\Listeners;
 
 use App\Events\FacebookConnected;
-use App\Events\FacebookDisconnected;
-use App\Events\FacebookWebhookReceived;
 use App\Events\FacebookDataSynced;
+use App\Events\FacebookDisconnected;
 use App\Events\FacebookErrorOccurred;
 use App\Events\FacebookHealthStatusChanged;
 use App\Events\FacebookLeadProcessed;
+use App\Events\FacebookWebhookReceived;
 use App\Jobs\SyncFacebookPageData;
 use App\Models\Integration;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Notification;
 use App\Notifications\FacebookIntegrationAlert;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class FacebookIntegrationEventListener
 {
@@ -38,7 +38,7 @@ class FacebookIntegrationEventListener
                     'sync_posts' => true,
                     'sync_comments' => true,
                     'sync_messages' => true,
-                    'limit' => 100
+                    'limit' => 100,
                 ]);
 
                 // Cache connection status
@@ -48,14 +48,14 @@ class FacebookIntegrationEventListener
             Log::info('Facebook integration connected', [
                 'integration_id' => $event->integrationId,
                 'user_id' => $event->userId,
-                'data' => $event->data
+                'data' => $event->data,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle Facebook connected event', [
                 'integration_id' => $event->integrationId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
@@ -82,20 +82,20 @@ class FacebookIntegrationEventListener
             // Notify administrators
             $this->notifyAdministrators(
                 'Facebook Integration Disconnected',
-                "Facebook integration {$event->integrationId} has been disconnected. Reason: " . ($event->data['reason'] ?? 'Unknown'),
+                "Facebook integration {$event->integrationId} has been disconnected. Reason: ".($event->data['reason'] ?? 'Unknown'),
                 'warning'
             );
 
             Log::warning('Facebook integration disconnected', [
                 'integration_id' => $event->integrationId,
                 'reason' => $event->data['reason'] ?? 'Unknown',
-                'user_id' => $event->userId
+                'user_id' => $event->userId,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle Facebook disconnected event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -116,13 +116,13 @@ class FacebookIntegrationEventListener
             Log::info('Facebook webhook received', [
                 'integration_id' => $event->integrationId,
                 'webhook_type' => $event->data['object'] ?? 'unknown',
-                'entries_count' => count($event->data['entry'] ?? [])
+                'entries_count' => count($event->data['entry'] ?? []),
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle webhook received event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -138,12 +138,12 @@ class FacebookIntegrationEventListener
             if ($integration) {
                 $syncStats = $integration->config['sync_stats'] ?? [];
                 $syncType = $event->data['sync_type'];
-                
+
                 $syncStats[$syncType] = [
                     'last_sync' => now()->toISOString(),
                     'synced_count' => $event->data['synced_count'] ?? 0,
                     'duration' => $event->data['duration'] ?? null,
-                    'status' => 'success'
+                    'status' => 'success',
                 ];
 
                 $config = $integration->config;
@@ -156,7 +156,7 @@ class FacebookIntegrationEventListener
                 Cache::put("facebook_sync_{$integration->id}_{$syncType}", [
                     'status' => 'success',
                     'count' => $event->data['synced_count'] ?? 0,
-                    'timestamp' => now()
+                    'timestamp' => now(),
                 ], 3600);
             }
 
@@ -164,13 +164,13 @@ class FacebookIntegrationEventListener
                 'integration_id' => $event->integrationId,
                 'sync_type' => $event->data['sync_type'],
                 'synced_count' => $event->data['synced_count'] ?? 0,
-                'duration' => $event->data['duration'] ?? null
+                'duration' => $event->data['duration'] ?? null,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle data synced event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -197,7 +197,7 @@ class FacebookIntegrationEventListener
                     'message' => $event->data['error_message'] ?? 'Unknown error',
                     'severity' => $event->data['severity'] ?? 'error',
                     'timestamp' => now()->toISOString(),
-                    'resolved' => false
+                    'resolved' => false,
                 ];
 
                 $config['recent_errors'] = $errors;
@@ -213,7 +213,7 @@ class FacebookIntegrationEventListener
             if (($event->data['severity'] ?? 'error') === 'error') {
                 $this->notifyAdministrators(
                     'Facebook Integration Error',
-                    "Error in Facebook integration {$event->integrationId}: " . $event->data['error_message'],
+                    "Error in Facebook integration {$event->integrationId}: ".$event->data['error_message'],
                     'error'
                 );
             }
@@ -222,13 +222,13 @@ class FacebookIntegrationEventListener
                 'integration_id' => $event->integrationId,
                 'error_type' => $event->data['error_type'] ?? 'unknown',
                 'error_message' => $event->data['error_message'] ?? 'Unknown error',
-                'severity' => $event->data['severity'] ?? 'error'
+                'severity' => $event->data['severity'] ?? 'error',
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle error occurred event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -263,13 +263,13 @@ class FacebookIntegrationEventListener
             Log::info('Facebook integration health status changed', [
                 'integration_id' => $event->integrationId,
                 'health_status' => $currentStatus,
-                'previous_status' => $previousStatus
+                'previous_status' => $previousStatus,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle health status changed event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -289,7 +289,7 @@ class FacebookIntegrationEventListener
                     'created' => 0,
                     'updated' => 0,
                     'duplicates_skipped' => 0,
-                    'last_processed_at' => null
+                    'last_processed_at' => null,
                 ];
 
                 $leadStats['total_processed']++;
@@ -305,13 +305,13 @@ class FacebookIntegrationEventListener
                 'lead_id' => $event->data['lead_id'],
                 'facebook_lead_id' => $event->data['facebook_lead_id'],
                 'action' => $event->data['action'] ?? 'created',
-                'form_name' => $event->data['form_name']
+                'form_name' => $event->data['form_name'],
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to handle lead processed event', [
                 'integration_id' => $event->integrationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -333,17 +333,17 @@ class FacebookIntegrationEventListener
     private function hasHealthDegraded(array $current, array $previous): bool
     {
         $healthFields = ['api', 'webhooks', 'permissions'];
-        
+
         foreach ($healthFields as $field) {
             $currentValue = $current[$field] ?? false;
             $previousValue = $previous[$field] ?? false;
-            
+
             // If any field went from true to false, health degraded
-            if ($previousValue && !$currentValue) {
+            if ($previousValue && ! $currentValue) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -354,7 +354,7 @@ class FacebookIntegrationEventListener
     {
         try {
             $administrators = User::role('admin')->get();
-            
+
             foreach ($administrators as $admin) {
                 Notification::send($admin, new FacebookIntegrationAlert($title, $message, $level));
             }
@@ -362,7 +362,7 @@ class FacebookIntegrationEventListener
             Log::error('Failed to notify administrators', [
                 'title' => $title,
                 'message' => $message,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

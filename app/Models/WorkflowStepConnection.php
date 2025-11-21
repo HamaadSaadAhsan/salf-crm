@@ -1,6 +1,7 @@
 <?php
 
 // app/Models/WorkflowStepConnection.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,11 +15,11 @@ class WorkflowStepConnection extends Model
     protected $fillable = [
         'from_step_id',
         'to_step_id',
-        'conditions'
+        'conditions',
     ];
 
     protected $casts = [
-        'conditions' => 'array'
+        'conditions' => 'array',
     ];
 
     public function fromStep(): BelongsTo

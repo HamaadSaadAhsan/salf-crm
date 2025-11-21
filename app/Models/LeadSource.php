@@ -48,7 +48,6 @@ class LeadSource extends Model
         });
     }
 
-
     // Relationships
     public function leads(): HasMany
     {
@@ -116,5 +115,15 @@ class LeadSource extends Model
     public function isInactive()
     {
         return $this->status === 'inactive';
+    }
+
+    public function getCacheKey(string $suffix = ''): string
+    {
+        return "lead_source:{$this->id}".($suffix ? ":{$suffix}" : '');
+    }
+
+    public static function getListCacheKey(array $params = []): string
+    {
+        return 'lead_source:list:'.md5(serialize($params));
     }
 }

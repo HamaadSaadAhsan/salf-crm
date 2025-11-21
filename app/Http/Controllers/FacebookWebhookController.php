@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FacebookWebhookReceived;
 use App\Models\Integration;
+use App\Models\SocialComment;
 use App\Models\SocialMessage;
 use App\Models\SocialPost;
-use App\Models\SocialComment;
 use App\Services\FacebookService;
-use App\Events\FacebookWebhookReceived;
-use App\Events\FacebookErrorOccurred;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class FacebookWebhookController extends Controller
 {
@@ -36,18 +35,19 @@ class FacebookWebhookController extends Controller
             'mode' => $mode,
             'token' => $token,
             'challenge' => $challenge,
-            'expected_token' => config('services.facebook.webhook_verify_token')
+            'expected_token' => config('services.facebook.webhook_verify_token'),
         ]);
 
         // Check verification token
         if ($mode === 'subscribe' && $token === config('services.facebook.webhook_verify_token')) {
-            \Log::info('Verification successful, returning challenge: ' . $challenge);
+            \Log::info('Verification successful, returning challenge: '.$challenge);
 
             // Return the CHALLENGE value, not 'OK'
             return response($challenge, 200, ['Content-Type' => 'text/plain']);
         }
 
         \Log::warning('Verification failed');
+
         return response('Invalid verification token', 403);
     }
 
@@ -55,6 +55,7 @@ class FacebookWebhookController extends Controller
     public function test(Request $request)
     {
         \Log::info('Test endpoint called');
+
         return response('TEST_OK', 200, ['Content-Type' => 'text/plain']);
     }
 
@@ -72,8 +73,9 @@ class FacebookWebhookController extends Controller
             Log::info('Facebook webhook received', ['payload' => $payload]);
 
             // Verify the request is from Facebook
-            if (!$this->verifySignature($request)) {
+            if (! $this->verifySignature($request)) {
                 Log::warning('Facebook webhook signature verification failed');
+
                 return response('Unauthorized', 401);
             }
 
@@ -99,9 +101,9 @@ class FacebookWebhookController extends Controller
             return response('OK', 200);
 
         } catch (Exception $e) {
-            Log::error('Facebook webhook processing error: ' . $e->getMessage(), [
+            Log::error('Facebook webhook processing error: '.$e->getMessage(), [
                 'payload' => $request->all(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response('Internal Server Error', 500);
@@ -115,7 +117,7 @@ class FacebookWebhookController extends Controller
     {
         $signature = $request->header('X-Hub-Signature-256');
 
-        if (!$signature) {
+        if (! $signature) {
             return false;
         }
 
@@ -123,13 +125,13 @@ class FacebookWebhookController extends Controller
             ->where('active', true)
             ->first();
 
-        if (!$integration || !isset($integration->config['app_secret'])) {
+        if (! $integration || ! isset($integration->config['app_secret'])) {
             return false;
         }
 
         $appSecret = decrypt($integration->config['app_secret']);
         $payload = $request->getContent();
-        $expectedSignature = 'sha256=' . hash_hmac('sha256', $payload, $appSecret);
+        $expectedSignature = 'sha256='.hash_hmac('sha256', $payload, $appSecret);
 
         return hash_equals($expectedSignature, $signature);
     }
@@ -174,7 +176,7 @@ class FacebookWebhookController extends Controller
                 SocialMessage::updateOrCreate(
                     [
                         'provider' => 'facebook',
-                        'provider_id' => $message['mid']
+                        'provider_id' => $message['mid'],
                     ],
                     [
                         'message' => $message['text'] ?? '',
@@ -185,15 +187,15 @@ class FacebookWebhookController extends Controller
                             'page_id' => $pageId,
                             'direction' => 'inbound',
                             'has_attachments' => isset($message['attachments']),
-                            'attachments' => $message['attachments'] ?? null
-                        ]
+                            'attachments' => $message['attachments'] ?? null,
+                        ],
                     ]
                 );
 
                 Log::info('Processed Facebook message', [
                     'message_id' => $message['mid'],
                     'sender_id' => $senderId,
-                    'page_id' => $pageId
+                    'page_id' => $pageId,
                 ]);
             }
 
@@ -211,21 +213,21 @@ class FacebookWebhookController extends Controller
                         'recipient_id' => $recipientId,
                         'page_id' => $pageId,
                         'type' => 'postback',
-                        'payload' => $postback['payload'] ?? null
-                    ]
+                        'payload' => $postback['payload'] ?? null,
+                    ],
                 ]);
 
                 Log::info('Processed Facebook postback', [
                     'sender_id' => $senderId,
                     'payload' => $postback['payload'] ?? null,
-                    'page_id' => $pageId
+                    'page_id' => $pageId,
                 ]);
             }
 
         } catch (Exception $e) {
-            Log::error('Error processing messaging event: ' . $e->getMessage(), [
+            Log::error('Error processing messaging event: '.$e->getMessage(), [
                 'event' => $event,
-                'page_id' => $pageId
+                'page_id' => $pageId,
             ]);
         }
     }
@@ -257,14 +259,14 @@ class FacebookWebhookController extends Controller
                     Log::info('Unhandled Facebook webhook field', [
                         'field' => $field,
                         'value' => $value,
-                        'page_id' => $pageId
+                        'page_id' => $pageId,
                     ]);
             }
 
         } catch (Exception $e) {
-            Log::error('Error processing change event: ' . $e->getMessage(), [
+            Log::error('Error processing change event: '.$e->getMessage(), [
                 'change' => $change,
-                'page_id' => $pageId
+                'page_id' => $pageId,
             ]);
         }
     }
@@ -290,7 +292,7 @@ class FacebookWebhookController extends Controller
                     $response = \Illuminate\Support\Facades\Http::get(
                         "https://graph.facebook.com/v18.0/{$value['post_id']}", [
                             'access_token' => $accessToken,
-                            'fields' => 'id,message,created_time,type,link,picture'
+                            'fields' => 'id,message,created_time,type,link,picture',
                         ]
                     );
 
@@ -300,7 +302,7 @@ class FacebookWebhookController extends Controller
                         SocialPost::updateOrCreate(
                             [
                                 'provider' => 'facebook',
-                                'provider_id' => $postData['id']
+                                'provider_id' => $postData['id'],
                             ],
                             [
                                 'content' => $postData['message'] ?? '',
@@ -310,18 +312,18 @@ class FacebookWebhookController extends Controller
                                     'type' => $postData['type'] ?? null,
                                     'link' => $postData['link'] ?? null,
                                     'picture' => $postData['picture'] ?? null,
-                                    'webhook_triggered' => true
-                                ]
+                                    'webhook_triggered' => true,
+                                ],
                             ]
                         );
 
                         Log::info('Processed Facebook post via webhook', [
                             'post_id' => $postData['id'],
-                            'page_id' => $pageId
+                            'page_id' => $pageId,
                         ]);
                     }
                 } catch (Exception $e) {
-                    Log::error('Error fetching post data: ' . $e->getMessage());
+                    Log::error('Error fetching post data: '.$e->getMessage());
                 }
             }
         }
@@ -337,7 +339,7 @@ class FacebookWebhookController extends Controller
             SocialComment::updateOrCreate(
                 [
                     'provider' => 'facebook',
-                    'provider_id' => $value['comment_id']
+                    'provider_id' => $value['comment_id'],
                 ],
                 [
                     'post_id' => $value['post_id'] ?? '',
@@ -348,15 +350,15 @@ class FacebookWebhookController extends Controller
                     'metadata' => [
                         'page_id' => $pageId,
                         'parent_id' => $value['parent_id'] ?? null,
-                        'webhook_triggered' => true
-                    ]
+                        'webhook_triggered' => true,
+                    ],
                 ]
             );
 
             Log::info('Processed Facebook comment via webhook', [
                 'comment_id' => $value['comment_id'],
                 'post_id' => $value['post_id'] ?? '',
-                'page_id' => $pageId
+                'page_id' => $pageId,
             ]);
         }
     }
@@ -372,7 +374,7 @@ class FacebookWebhookController extends Controller
             'reaction_type' => $value['reaction_type'] ?? 'like',
             'post_id' => $value['post_id'] ?? '',
             'parent_id' => $value['parent_id'] ?? null,
-            'page_id' => $pageId
+            'page_id' => $pageId,
         ]);
     }
 }

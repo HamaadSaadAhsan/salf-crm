@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarIntegration;
 use App\Models\Integration;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class IntegrationController extends Controller
@@ -20,7 +19,7 @@ class IntegrationController extends Controller
             'integrations' => $integrations,
             'calendarStatus' => [
                 'isLinked' => $calendar->isNotEmpty(),
-                'message' => $calendar->isNotEmpty() ? 'Calendar integration connected successfully' : 'Connect your calendar'
+                'message' => $calendar->isNotEmpty() ? 'Calendar integration connected successfully' : 'Connect your calendar',
             ],
         ]);
     }

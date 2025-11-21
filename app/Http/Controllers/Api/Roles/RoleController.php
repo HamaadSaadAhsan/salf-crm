@@ -10,7 +10,6 @@ use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
@@ -32,9 +31,8 @@ class RoleController extends Controller
 
     public function show(Role $role): RoleResource
     {
-        $role = Cache::remember("roles.{$role->id}", self::CACHE_TTL, function () use ($role) {
-            return $role->load(['permissions', 'users:id,name,email']);
-        });
+        // Use memo for request-scoped caching
+        $role = cache()->memo("roles.{$role->id}", fn () => $role->load(['permissions', 'users:id,name,email']));
 
         return new RoleResource($role);
     }
@@ -57,10 +55,11 @@ class RoleController extends Controller
 
             return response()->json([
                 'message' => 'Role created successfully',
-                'data' => new RoleResource($role->load('permissions'))
+                'data' => new RoleResource($role->load('permissions')),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['message' => 'Failed to create role'], 500);
         }
     }
@@ -83,10 +82,11 @@ class RoleController extends Controller
 
             return response()->json([
                 'message' => 'Role updated successfully',
-                'data' => new RoleResource($role->load('permissions'))
+                'data' => new RoleResource($role->load('permissions')),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['message' => 'Failed to update role'], 500);
         }
     }
@@ -95,7 +95,7 @@ class RoleController extends Controller
     {
         if ($role->users()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete role with assigned users'
+                'message' => 'Cannot delete role with assigned users',
             ], 422);
         }
 
@@ -115,11 +115,9 @@ class RoleController extends Controller
 
     private function clearRoleCache(): void
     {
-        Cache::forget('roles.all');
-        Cache::forget('permissions.matrix');
+        cache()->forget('roles.all');
+        cache()->forget('permissions.matrix');
         // Clear individual role caches
-        Role::all()->each(function ($role) {
-            Cache::forget("roles.{$role->id}");
-        });
+        Role::all()->each(fn ($role) => cache()->forget("roles.{$role->id}"));
     }
 }

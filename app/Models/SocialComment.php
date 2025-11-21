@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SocialComment extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -17,7 +18,7 @@ class SocialComment extends Model
         'author_id',
         'author_name',
         'metadata',
-        'timestamp'
+        'timestamp',
     ];
 
     protected $casts = [

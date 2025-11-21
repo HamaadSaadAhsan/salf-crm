@@ -8,13 +8,14 @@ use Illuminate\Support\Str;
 class Integration extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
         'provider',
         'name',
         'config',
-        'active'
+        'active',
     ];
 
     protected $casts = [

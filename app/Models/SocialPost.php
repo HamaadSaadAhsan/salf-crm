@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 class SocialPost extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -17,7 +18,7 @@ class SocialPost extends Model
         'author_id',
         'author_name',
         'metadata',
-        'timestamp'
+        'timestamp',
     ];
 
     protected $casts = [

@@ -7,12 +7,11 @@ use App\Models\User;
 use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Random\RandomException;
 use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -53,27 +52,27 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'The provided credentials are incorrect.',
                 'errors' => [
-                    'email' => ['The provided credentials are incorrect.']
-                ]
+                    'email' => ['The provided credentials are incorrect.'],
+                ],
             ], 422);
         }
 
-        $token = $user->createToken('authToken', ['*'] , now()->addMinutes(30))->plainTextToken;
+        $token = $user->createToken('authToken', ['*'], now()->addMinutes(30))->plainTextToken;
         $user->load(['roles.permissions', 'permissions']);
 
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $otpService->generate($user->email, 'email_verification');
         }
 
         Log::info('User logged in successfully', [
             'user_id' => $user->id,
             'email' => $user->email,
-            'ip_address' => $request->ip()
+            'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
@@ -94,7 +93,7 @@ class AuthController extends Controller
                                 'resource' => $this->extractResource($permission->name),
                                 'action' => $this->extractAction($permission->name),
                             ];
-                        })
+                        }),
                     ];
                 }),
                 // Include direct permissions (if any)
@@ -105,7 +104,7 @@ class AuthController extends Controller
                         'resource' => $this->extractResource($permission->name),
                         'action' => $this->extractAction($permission->name),
                     ];
-                })
+                }),
             ],
             'access_token' => $token,
             'message' => 'Login successful',
@@ -116,12 +115,14 @@ class AuthController extends Controller
     {
         // Assuming permission format: "action resource" (e.g., "view posts", "create users")
         $parts = explode(' ', $permissionName);
+
         return count($parts) > 1 ? $parts[1] : 'general';
     }
 
     private function extractAction($permissionName)
     {
         $parts = explode(' ', $permissionName);
+
         return $parts[0];
     }
 
@@ -137,13 +138,12 @@ class AuthController extends Controller
                 'db_user_id' => $dbUser?->id,
             ]);
 
-
-            if (!$user || !$dbUser) {
+            if (! $user || ! $dbUser) {
                 PersonalAccessToken::where('tokenable_id', $user->id)->delete();
 
                 return response()->json([
                     'message' => 'User not authenticated',
-                    'success' => false
+                    'success' => false,
                 ], 401);
             }
 
@@ -151,12 +151,12 @@ class AuthController extends Controller
 
             Log::info('User logged out successfully', [
                 'user_id' => $user->id,
-                'ip_address' => $request->ip()
+                'ip_address' => $request->ip(),
             ]);
 
             return response()->json([
                 'message' => 'Successfully logged out',
-                'success' => true
+                'success' => true,
             ], 200);
 
         } catch (\Exception $e) {
@@ -169,7 +169,7 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Logout failed',
                 'error' => 'An error occurred during logout',
-                'success' => false
+                'success' => false,
             ], 500);
         }
     }

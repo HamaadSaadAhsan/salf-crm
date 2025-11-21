@@ -15,18 +15,18 @@ class HandleCalendarIntegrationErrors
             return $next($request);
         } catch (Exception $e) {
             // Log the error
-            \Log::error('Calendar Integration Error: ' . $e->getMessage(), [
+            \Log::error('Calendar Integration Error: '.$e->getMessage(), [
                 'user_id' => $request->user()?->id,
                 'url' => $request->fullUrl(),
                 'method' => $request->method(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Return standardized error response
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while processing your calendar request',
-                'error_code' => 'CALENDAR_INTEGRATION_ERROR'
+                'error_code' => 'CALENDAR_INTEGRATION_ERROR',
             ], 500);
         }
     }

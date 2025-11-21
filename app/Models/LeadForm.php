@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class LeadForm extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -20,7 +22,7 @@ class LeadForm extends Model
         'status',
         'questions',
         'created_at',
-        'last_synced'
+        'last_synced',
     ];
 
     protected $casts = [

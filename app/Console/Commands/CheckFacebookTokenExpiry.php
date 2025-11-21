@@ -5,8 +5,6 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Carbon\Carbon;
 
 class CheckFacebookTokenExpiry extends Command
 {
@@ -52,7 +50,7 @@ class CheckFacebookTokenExpiry extends Command
 
         $this->displayResults($expiredUsers, $expiringSoonUsers, $notifyHours);
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             $this->sendNotifications($expiredUsers, $expiringSoonUsers);
         }
 
@@ -136,7 +134,7 @@ class CheckFacebookTokenExpiry extends Command
             'user_email' => $user->email,
             'notification_type' => $type,
             'token_expires_at' => $user->facebook_token_expires_at,
-            'command' => 'facebook:check-token-expiry'
+            'command' => 'facebook:check-token-expiry',
         ]);
 
         $this->line("📧 Notification sent to {$user->email} (type: {$type})");
@@ -156,7 +154,7 @@ class CheckFacebookTokenExpiry extends Command
                 'admin_email' => $admin->email,
                 'expired_count' => $expiredUsers->count(),
                 'expiring_soon_count' => $expiringSoonUsers->count(),
-                'command' => 'facebook:check-token-expiry'
+                'command' => 'facebook:check-token-expiry',
             ]);
         }
 

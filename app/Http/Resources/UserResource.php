@@ -17,7 +17,7 @@ class UserResource extends JsonResource
         if (is_null($this->resource)) {
             return [];
         }
-        
+
         return [
             'id' => $this->id,
             'name' => $this->name,

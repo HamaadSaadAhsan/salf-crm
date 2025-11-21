@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -74,12 +74,12 @@ return new class extends Migration
     public function down(): void
     {
         // Drop custom indexes first
-        DB::unprepared("
+        DB::unprepared('
             DROP INDEX IF EXISTS service_user_service_id_active_idx;
             DROP INDEX IF EXISTS service_user_user_id_active_idx;
             DROP INDEX IF EXISTS service_user_metadata_gin_idx;
             DROP INDEX IF EXISTS service_user_active_assignments_idx;
-        ");
+        ');
 
         Schema::dropIfExists('service_user');
     }

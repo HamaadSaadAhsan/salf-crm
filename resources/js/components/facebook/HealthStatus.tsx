@@ -1,10 +1,9 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
 import { formatDistanceToNow } from 'date-fns';
+import { AlertCircle, CheckCircle, Clock, RefreshCw, XCircle } from 'lucide-react';
 
 interface HealthStatusProps {
     showActions?: boolean;
@@ -25,13 +24,33 @@ export default function HealthStatus({ showActions = true }: HealthStatusProps) 
     const getConnectionStatusBadge = () => {
         switch (connectionStatus) {
             case 'connected':
-                return <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Connected</Badge>;
+                return (
+                    <Badge variant="default" className="bg-green-600">
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        Connected
+                    </Badge>
+                );
             case 'connecting':
-                return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Connecting</Badge>;
+                return (
+                    <Badge variant="secondary">
+                        <Clock className="mr-1 h-3 w-3" />
+                        Connecting
+                    </Badge>
+                );
             case 'error':
-                return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Error</Badge>;
+                return (
+                    <Badge variant="destructive">
+                        <XCircle className="mr-1 h-3 w-3" />
+                        Error
+                    </Badge>
+                );
             default:
-                return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Disconnected</Badge>;
+                return (
+                    <Badge variant="outline">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        Disconnected
+                    </Badge>
+                );
         }
     };
 
@@ -50,22 +69,22 @@ export default function HealthStatus({ showActions = true }: HealthStatusProps) 
             <CardContent>
                 <div className="space-y-4">
                     {/* Health Checks */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center justify-between p-3 rounded-md bg-gray-800">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="flex items-center justify-between rounded-md bg-gray-800 p-3">
                             <div className="flex items-center space-x-2">
                                 {getStatusIcon(healthStatus.api)}
                                 <span className="text-sm font-medium">API Connection</span>
                             </div>
                         </div>
-                        
-                        <div className="flex items-center justify-between p-3 rounded-md bg-gray-800">
+
+                        <div className="flex items-center justify-between rounded-md bg-gray-800 p-3">
                             <div className="flex items-center space-x-2">
                                 {getStatusIcon(healthStatus.permissions)}
                                 <span className="text-sm font-medium">Permissions</span>
                             </div>
                         </div>
-                        
-                        <div className="flex items-center justify-between p-3 rounded-md bg-gray-800">
+
+                        <div className="flex items-center justify-between rounded-md bg-gray-800 p-3">
                             <div className="flex items-center space-x-2">
                                 {getStatusIcon(healthStatus.webhooks)}
                                 <span className="text-sm font-medium">Webhooks</span>
@@ -74,25 +93,21 @@ export default function HealthStatus({ showActions = true }: HealthStatusProps) 
                     </div>
 
                     {/* Last Sync Information */}
-                    <div className="flex items-center justify-between p-3 rounded-md bg-gray-800">
+                    <div className="flex items-center justify-between rounded-md bg-gray-800 p-3">
                         <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-blue-400" />
                             <span className="text-sm font-medium">Last Sync</span>
                         </div>
-                        <span className="text-sm text-gray-400">
-                            {lastSyncAt ? formatDistanceToNow(lastSyncAt, { addSuffix: true }) : 'Never'}
-                        </span>
+                        <span className="text-sm text-gray-400">{lastSyncAt ? formatDistanceToNow(lastSyncAt, { addSuffix: true }) : 'Never'}</span>
                     </div>
 
                     {/* Health Check Time */}
-                    <div className="flex items-center justify-between p-3 rounded-md bg-gray-800">
+                    <div className="flex items-center justify-between rounded-md bg-gray-800 p-3">
                         <div className="flex items-center space-x-2">
                             <RefreshCw className="h-4 w-4 text-gray-400" />
                             <span className="text-sm font-medium">Last Health Check</span>
                         </div>
-                        <span className="text-sm text-gray-400">
-                            {formatDistanceToNow(healthStatus.lastChecked, { addSuffix: true })}
-                        </span>
+                        <span className="text-sm text-gray-400">{formatDistanceToNow(healthStatus.lastChecked, { addSuffix: true })}</span>
                     </div>
 
                     {/* Actions */}
@@ -105,14 +120,10 @@ export default function HealthStatus({ showActions = true }: HealthStatusProps) 
                                 disabled={isLoading}
                                 className="border-gray-700 bg-transparent text-white hover:bg-gray-800"
                             >
-                                {isLoading ? (
-                                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                )}
+                                {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                                 Refresh Status
                             </Button>
-                            
+
                             <Button
                                 variant="outline"
                                 size="sm"

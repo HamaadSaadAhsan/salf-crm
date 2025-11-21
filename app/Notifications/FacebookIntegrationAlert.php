@@ -4,9 +4,9 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class FacebookIntegrationAlert extends Notification implements ShouldQueue
 {
@@ -65,7 +65,7 @@ class FacebookIntegrationAlert extends Notification implements ShouldQueue
             'level' => $this->level,
             'timestamp' => now()->toISOString(),
             'type' => 'facebook_integration',
-            'action_url' => url('/integrations/facebook')
+            'action_url' => url('/integrations/facebook'),
         ];
     }
 
@@ -82,7 +82,7 @@ class FacebookIntegrationAlert extends Notification implements ShouldQueue
             'timestamp' => now()->toISOString(),
             'type' => 'facebook_integration',
             'action_url' => url('/integrations/facebook'),
-            'read_at' => null
+            'read_at' => null,
         ]);
     }
 
@@ -91,6 +91,6 @@ class FacebookIntegrationAlert extends Notification implements ShouldQueue
      */
     public function broadcastOn(): array
     {
-        return ['user.' . $this->notifiable->id];
+        return ['user.'.$this->notifiable->id];
     }
 }

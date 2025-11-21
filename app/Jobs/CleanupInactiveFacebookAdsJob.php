@@ -18,7 +18,7 @@ class CleanupInactiveFacebookAdsJob implements ShouldQueue
 
     protected $userId;
 
-    public function __construct(string $userId = null)
+    public function __construct(?string $userId = null)
     {
         $this->userId = $userId;
     }
@@ -35,16 +35,16 @@ class CleanupInactiveFacebookAdsJob implements ShouldQueue
             $deletedAds = $adsSyncService->cleanupInactiveAds($activeAdIds, $this->userId);
             $deletedAdSets = $adsSyncService->cleanupInactiveAdSets($activeAdSetIds, $this->userId);
 
-            Log::info("Cleaned up inactive Facebook ads and adsets", [
+            Log::info('Cleaned up inactive Facebook ads and adsets', [
                 'deleted_ads' => $deletedAds,
                 'deleted_adsets' => $deletedAdSets,
-                'user_id' => $this->userId
+                'user_id' => $this->userId,
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Failed to cleanup inactive Facebook ads", [
+            Log::error('Failed to cleanup inactive Facebook ads', [
                 'error' => $e->getMessage(),
-                'user_id' => $this->userId
+                'user_id' => $this->userId,
             ]);
         }
     }

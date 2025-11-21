@@ -157,7 +157,7 @@ return [
                     'assigned_user_name',
                     'assigned_user_email',
                     'created_by_name',
-                    'tags' // for text search
+                    'tags', // for text search
                 ],
                 'filterableAttributes' => [
                     'inquiry_status',
@@ -183,7 +183,7 @@ return [
                     'assigned_date_timestamp',
                     'days_since_created',
                     'days_in_current_status',
-                    'tag_values' // NEW: for tag filtering
+                    'tag_values', // NEW: for tag filtering
                 ],
                 'sortableAttributes' => [
                     'name',
@@ -198,7 +198,7 @@ return [
                     'next_follow_up_at_timestamp',
                     'assigned_date_timestamp',
                     'days_since_created',
-                    'days_in_current_status'
+                    'days_in_current_status',
                     // Removed 'tags' from sortable
                 ],
                 'rankingRules' => [
@@ -209,20 +209,19 @@ return [
                     'sort',
                     'exactness',
                     'lead_score:desc',
-                    'is_hot_lead:desc'
+                    'is_hot_lead:desc',
                 ],
                 'distinctAttribute' => 'id',
                 'typoTolerance' => [
                     'enabled' => true,
                     'minWordSizeForTypos' => [
                         'oneTypo' => 4,
-                        'twoTypos' => 8
-                    ]
-                ]
+                        'twoTypos' => 8,
+                    ],
+                ],
             ],
         ],
     ],
-
 
     /*
     |--------------------------------------------------------------------------

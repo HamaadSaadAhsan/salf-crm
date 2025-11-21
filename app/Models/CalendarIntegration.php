@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class CalendarIntegration extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -18,7 +19,7 @@ class CalendarIntegration extends Model
         'refresh_token',
         'token_expires_at',
         'is_active',
-        'sync_preferences'
+        'sync_preferences',
     ];
 
     protected $casts = [
@@ -58,7 +59,7 @@ class CalendarIntegration extends Model
         return [
             'syncTickets' => true,
             'syncFollowUps' => true,
-            'defaultCalendarId' => 'primary'
+            'defaultCalendarId' => 'primary',
         ];
     }
 

@@ -34,12 +34,12 @@ class OtpController extends Controller
                 'message' => 'OTP sent successfully',
                 'expires_at' => $otp->expires_at,
                 'expires_in_minutes' => Otp::EXPIRY_MINUTES,
-                'expiresIn' => Otp::EXPIRY_MINUTES
+                'expiresIn' => Otp::EXPIRY_MINUTES,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to send OTP',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

@@ -101,6 +101,7 @@ class RoleResource extends JsonResource
         // Generate color based on name hash
         $colors = array_values($colorMap);
         $index = abs(crc32($this->name)) % count($colors);
+
         return $colors[$index];
     }
 

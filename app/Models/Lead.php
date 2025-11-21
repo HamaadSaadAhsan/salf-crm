@@ -4,18 +4,19 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Lead extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, Searchable;
+    use HasFactory, HasUuids, Searchable, SoftDeletes;
 
     protected $fillable = [
         'name', 'email', 'phone', 'occupation', 'address', 'country', 'city',
@@ -24,7 +25,8 @@ class Lead extends Model
         'inquiry_country', 'assigned_to', 'assigned_date', 'ticket_id',
         'ticket_date', 'import_id', 'external_id', 'lead_score',
         'last_activity_at', 'next_follow_up_at', 'tags',
-        'form_external_id', 'lead_form_id', 'ad_external_id'
+        'form_external_id', 'lead_form_id', 'ad_external_id',
+        'loss_reason', 'requalify_reason', 'qualified_by', 'qualified_at', 'converted_at',
     ];
 
     protected $attributes = [
@@ -44,6 +46,8 @@ class Lead extends Model
         'ticket_date' => 'datetime',
         'last_activity_at' => 'datetime',
         'next_follow_up_at' => 'datetime',
+        'qualified_at' => 'datetime',
+        'converted_at' => 'datetime',
         'lead_score' => 'integer',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
@@ -77,6 +81,7 @@ class Lead extends Model
             }
         });
     }
+
     /**
      * Get the indexable data array for the model.
      */
@@ -129,13 +134,13 @@ class Lead extends Model
             // Computed fields
             'days_since_created' => $this->days_since_created,
             'is_hot_lead' => $this->is_hot_lead,
-            'is_assigned' => !is_null($this->assigned_to),
+            'is_assigned' => ! is_null($this->assigned_to),
             'is_overdue' => $this->next_follow_up_at && $this->next_follow_up_at->isPast(),
             'days_in_current_status' => $this->updated_at->diffInDays(now()),
         ];
 
         return array_filter($array, function ($value) {
-            return !is_null($value);
+            return ! is_null($value);
         });
     }
 
@@ -160,7 +165,7 @@ class Lead extends Model
                 'source_name',
                 'assigned_user_name',
                 'assigned_user_email',
-                'created_by_name'
+                'created_by_name',
             ],
             'filterableAttributes' => [
                 'inquiry_status',
@@ -185,7 +190,7 @@ class Lead extends Model
                 'next_follow_up_at_timestamp',
                 'assigned_date_timestamp',
                 'days_since_created',
-                'days_in_current_status'
+                'days_in_current_status',
             ],
             'sortableAttributes' => [
                 'name',
@@ -200,7 +205,7 @@ class Lead extends Model
                 'next_follow_up_at_timestamp',
                 'assigned_date_timestamp',
                 'days_since_created',
-                'days_in_current_status'
+                'days_in_current_status',
             ],
             'rankingRules' => [
                 'words',
@@ -210,16 +215,16 @@ class Lead extends Model
                 'sort',
                 'exactness',
                 'lead_score:desc', // Prioritize higher scoring leads
-                'is_hot_lead:desc' // Then hot leads
+                'is_hot_lead:desc', // Then hot leads
             ],
             'distinctAttribute' => 'id',
             'typoTolerance' => [
                 'enabled' => true,
                 'minWordSizeForTypos' => [
                     'oneTypo' => 4,
-                    'twoTypos' => 8
-                ]
-            ]
+                    'twoTypos' => 8,
+                ],
+            ],
         ];
     }
 
@@ -236,8 +241,10 @@ class Lead extends Model
     {
         if (is_string($value)) {
             $decoded = json_decode($value, true);
+
             return is_array($decoded) ? $decoded : [];
         }
+
         return is_array($value) ? $value : [];
     }
 
@@ -264,7 +271,7 @@ class Lead extends Model
         $tags = $this->tags;
 
         // Check if tag already exists
-        if (!collect($tags)->pluck('value')->contains($tag['value'])) {
+        if (! collect($tags)->pluck('value')->contains($tag['value'])) {
             $tags[] = $tag;
             $this->tags = $tags;
         }
@@ -301,7 +308,7 @@ class Lead extends Model
     public function shouldBeSearchable(): bool
     {
         // Only index non-deleted leads and exclude spam
-        return !$this->trashed() && $this->inquiry_status !== 'spam';
+        return ! $this->trashed() && $this->inquiry_status !== 'spam';
     }
 
     // Relationships (keeping your existing relationships)
@@ -325,14 +332,29 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function qualifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'qualified_by');
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(LeadActivity::class);
     }
 
+    public function callSessions(): HasMany
+    {
+        return $this->hasMany(CallSession::class);
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(LeadNote::class);
+    }
+
+    public function tasks(): MorphMany
+    {
+        return $this->morphMany(Task::class, 'taskable');
     }
 
     public function calls()
@@ -359,8 +381,8 @@ class Lead extends Model
     protected function formattedBudget(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->budget ?
-                ($this->budget['currency'] ?? 'USD') . ' ' . number_format($this->budget['amount'] ?? 0) :
+            get: fn () => $this->budget ?
+                ($this->budget['currency'] ?? 'USD').' '.number_format($this->budget['amount'] ?? 0) :
                 null
         );
     }
@@ -368,14 +390,14 @@ class Lead extends Model
     protected function daysSinceCreated(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->created_at->diffInDays(now())
+            get: fn () => $this->created_at?->diffInDays(now()) ?? 0
         );
     }
 
     protected function isHotLead(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->lead_score >= 80 ||
+            get: fn () => $this->lead_score >= 80 ||
                 ($this->priority === 'high' && in_array($this->inquiry_status, ['new', 'contacted']))
         );
     }
@@ -418,7 +440,7 @@ class Lead extends Model
     public function scopeNearLocation(Builder $query, $lat, $lng, $radius = 50): void
     {
         $query->whereRaw(
-            "ST_DWithin(ST_MakePoint(longitude, latitude)::geography, ST_MakePoint(?, ?)::geography, ? * 1000)",
+            'ST_DWithin(ST_MakePoint(longitude, latitude)::geography, ST_MakePoint(?, ?)::geography, ? * 1000)',
             [$lng, $lat, $radius]
         );
     }
@@ -431,7 +453,7 @@ class Lead extends Model
         if ($isPhoneSearch) {
             // For phone searches, use LIKE with cleaned numbers
             $cleanTerm = preg_replace('/[^\d]/', '', $term);
-            $query->whereRaw("regexp_replace(phone, '[^\d]', '', 'g') LIKE ?", ['%' . $cleanTerm . '%']);
+            $query->whereRaw("regexp_replace(phone, '[^\d]', '', 'g') LIKE ?", ['%'.$cleanTerm.'%']);
         } else {
             // For text searches, use full-text search
             $query->whereRaw(
@@ -447,7 +469,7 @@ class Lead extends Model
         $score = 50; // Base score
 
         // Email domain scoring
-        if ($lead->email && !str_contains($lead->email, 'gmail.com')) {
+        if ($lead->email && ! str_contains($lead->email, 'gmail.com')) {
             $score += 10; // Business email
         }
 
@@ -496,7 +518,7 @@ class Lead extends Model
 
     public function getIsAssignedAttribute()
     {
-        return !is_null($this->assigned_to);
+        return ! is_null($this->assigned_to);
     }
 
     public function getIsHotAttribute()
@@ -507,6 +529,16 @@ class Lead extends Model
     public function getIsOverdueAttribute()
     {
         return $this->next_follow_up_at && $this->next_follow_up_at->isPast();
+    }
+
+    public function getNextTaskDueDateAttribute(): ?Carbon
+    {
+        return $this->tasks()
+            ->pending()
+            ->whereNotNull('due_at')
+            ->orderBy('due_at')
+            ->first()
+            ?->due_at;
     }
 
     public function getStatusColorAttribute()
@@ -575,12 +607,14 @@ class Lead extends Model
     {
         $this->update(['inquiry_status' => $status]);
         $this->touch('last_activity_at');
+
         return $this;
     }
 
     public function scheduleFollowUp(Carbon $dateTime)
     {
         $this->update(['next_follow_up_at' => $dateTime]);
+
         return $this;
     }
 
@@ -604,16 +638,108 @@ class Lead extends Model
         return $this->changeStatus('lost');
     }
 
+    /**
+     * Mark lead as qualified by CRO
+     */
+    public function qualifyLead(User $qualifiedBy): self
+    {
+        $this->update([
+            'inquiry_status' => 'qualified',
+            'qualified_by' => $qualifiedBy->id,
+            'qualified_at' => now(),
+        ]);
+
+        event(new \App\Events\LeadQualified($this, $qualifiedBy));
+
+        return $this;
+    }
+
+    /**
+     * Mark lead as converted
+     */
+    public function convertLead(): self
+    {
+        $this->update([
+            'inquiry_status' => 'converted',
+            'converted_at' => now(),
+        ]);
+
+        if ($this->assignedTo) {
+            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnConversion($this->assignedTo);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Send lead back to CRO for requalification
+     */
+    public function requalifyLead(string $reason): self
+    {
+        $previousAssignee = $this->assignedTo;
+
+        $this->update([
+            'inquiry_status' => 'requalify',
+            'requalify_reason' => $reason,
+            'assigned_to' => $this->qualified_by,
+        ]);
+
+        if ($previousAssignee) {
+            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($previousAssignee);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Mark lead as lost with reason
+     */
+    public function markAsLostWithReason(string $reason): self
+    {
+        $this->update([
+            'inquiry_status' => 'lost',
+            'loss_reason' => $reason,
+        ]);
+
+        if ($this->assignedTo) {
+            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Mark lead as unqualified
+     */
+    public function markAsUnqualified(string $reason): self
+    {
+        $this->update([
+            'inquiry_status' => 'unqualified',
+            'loss_reason' => $reason,
+        ]);
+
+        if ($this->assignedTo) {
+            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+        }
+
+        return $this;
+    }
+
     // Static methods (keeping your existing static methods)
     public static function getStatusOptions()
     {
         return [
             'new' => 'New',
+            'assigned_to_cro' => 'Assigned to CRO',
             'contacted' => 'Contacted',
             'qualified' => 'Qualified',
+            'assigned_to_advisor' => 'Assigned to Advisor',
             'proposal' => 'Proposal Sent',
+            'converted' => 'Converted',
             'won' => 'Won',
             'lost' => 'Lost',
+            'unqualified' => 'Unqualified',
+            'requalify' => 'Re-qualification',
             'nurturing' => 'Nurturing',
         ];
     }
@@ -663,12 +789,12 @@ class Lead extends Model
     // Cache keys
     public function getCacheKey(string $suffix = ''): string
     {
-        return "lead:{$this->id}" . ($suffix ? ":{$suffix}" : '');
+        return "lead:{$this->id}".($suffix ? ":{$suffix}" : '');
     }
 
     public static function getListCacheKey(array $params = []): string
     {
-        return 'leads:list:' . md5(serialize($params));
+        return 'leads:list:'.md5(serialize($params));
     }
 
     public function ad(): BelongsTo

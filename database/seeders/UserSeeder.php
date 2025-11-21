@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 
 class UserSeeder extends Seeder
 {
@@ -115,23 +114,23 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Ahmed Hassan',
                 'email' => 'ahmed.hassan@saadahsancrm.com',
-                'region' => 'Middle East'
+                'region' => 'Middle East',
             ],
             [
                 'name' => 'Sophie Martin',
                 'email' => 'sophie.martin@saadahsancrm.com',
-                'region' => 'Europe'
+                'region' => 'Europe',
             ],
             [
                 'name' => 'Raj Patel',
                 'email' => 'raj.patel@saadahsancrm.com',
-                'region' => 'Asia'
+                'region' => 'Asia',
             ],
             [
                 'name' => 'Carlos Silva',
                 'email' => 'carlos.silva@saadahsancrm.com',
-                'region' => 'Americas'
-            ]
+                'region' => 'Americas',
+            ],
         ];
 
         foreach ($demoUsers as $userData) {
@@ -159,7 +158,7 @@ class UserSeeder extends Seeder
             $testUser->email => 'sales', // Give test user basic sales access
         ]);
 
-        $this->command->info('Created ' . User::count() . ' users successfully');
+        $this->command->info('Created '.User::count().' users successfully');
     }
 
     /**
@@ -178,7 +177,7 @@ class UserSeeder extends Seeder
                         $this->command->info("Assigned role '{$roleName}' to {$user->name}");
                     }
                 } catch (\Exception $e) {
-                    $this->command->warn("Could not assign role '{$roleName}' to {$user->name}: " . $e->getMessage());
+                    $this->command->warn("Could not assign role '{$roleName}' to {$user->name}: ".$e->getMessage());
                 }
             }
         }

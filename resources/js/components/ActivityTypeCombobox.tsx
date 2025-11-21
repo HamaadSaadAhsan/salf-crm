@@ -63,7 +63,7 @@ export default function ActivityTypeCombobox({
         const newValue = currentValue === value ? '' : currentValue;
         setValue(newValue);
         onTypeChange?.(newValue);
-        
+
         if (commentBoxRef && commentBoxRef.current) {
             commentBoxRef?.current?.focus();
         }
@@ -125,12 +125,7 @@ export default function ActivityTypeCombobox({
                             <CommandEmpty>No activity found.</CommandEmpty>
                             <CommandGroup>
                                 {frameworks.map((framework) => (
-                                    <CommandItem
-                                        className="cursor-pointer"
-                                        key={framework.value}
-                                        value={framework.value}
-                                        onSelect={handleTypeSelect}
-                                    >
+                                    <CommandItem className="cursor-pointer" key={framework.value} value={framework.value} onSelect={handleTypeSelect}>
                                         {framework.icon}
                                         {framework.label}
                                         <Check className={cn('ml-auto', value === framework.value ? 'opacity-100' : 'opacity-0')} />

@@ -1,16 +1,10 @@
 'use client';
 
-import {
-    useQuery,
-    useQueryClient,
-    useMutation,
-    useInfiniteQuery,
-    keepPreviousData
-} from '@tanstack/react-query';
-import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { UsersAPI } from '@/lib/api/users';
-import { UserFilters, User, UserWithRelations, PaginationMeta, UserSortField } from '@/types/user.d';
 import axios from '@/lib/axios';
+import { PaginationMeta, User, UserFilters, UserSortField, UserWithRelations } from '@/types/user.d';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // STRATEGY 1: Standard Pagination (for lists < 1000 items)
 export function useUsers(filters: UserFilters = {}) {
@@ -19,9 +13,7 @@ export function useUsers(filters: UserFilters = {}) {
     // Create stable query key to prevent unnecessary re-fetches
     const queryKey = useMemo(() => {
         // Only include defined values to prevent cache misses
-        const cleanFilters = Object.fromEntries(
-            Object.entries(filters).filter(([_, value]) => value !== undefined && value !== '')
-        );
+        const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== undefined && value !== ''));
         return ['users', cleanFilters];
     }, [filters]);
 
@@ -38,10 +30,13 @@ export function useUsers(filters: UserFilters = {}) {
         },
         enabled: !!apiClient,
         // Add select to transform data immediately
-        select: useCallback((data: any) => ({
-            ...data,
-            data: data.data || []
-        }), [])
+        select: useCallback(
+            (data: any) => ({
+                ...data,
+                data: data.data || [],
+            }),
+            [],
+        ),
     });
 }
 
@@ -53,9 +48,7 @@ export function useInfiniteUsers(filters: UserFilters = {}) {
     const { page, ...infiniteFilters } = filters;
 
     const queryKey = useMemo(() => {
-        const cleanFilters = Object.fromEntries(
-            Object.entries(infiniteFilters).filter(([_, value]) => value !== undefined && value !== '')
-        );
+        const cleanFilters = Object.fromEntries(Object.entries(infiniteFilters).filter(([_, value]) => value !== undefined && value !== ''));
         return ['users', 'infinite', cleanFilters];
     }, [infiniteFilters]);
 
@@ -87,9 +80,9 @@ export function useInfiniteUsers(filters: UserFilters = {}) {
                 data: allUsers,
                 meta: lastPage?.meta,
                 hasNextPage: data.hasNextPage,
-                isFetchingNextPage: data.isFetchingNextPage
+                isFetchingNextPage: data.isFetchingNextPage,
             };
-        }, [])
+        }, []),
     });
 }
 
@@ -103,13 +96,13 @@ export function useVirtualizedUsers(filters: UserFilters = {}) {
             items: data?.data || [],
             totalCount: data?.meta?.total || 0,
             hasMore: data?.hasNextPage || false,
-            isLoading: rest.isFetchingNextPage
+            isLoading: rest.isFetchingNextPage,
         };
     }, [data?.data, data?.meta?.total, data?.hasNextPage, rest.isFetchingNextPage]);
 
     return {
         ...rest,
-        ...virtualizedData
+        ...virtualizedData,
     };
 }
 
@@ -120,23 +113,23 @@ export const useOptimizedUserFilters = (initialFilters: UserFilters = {}) => {
         per_page: 50,
         sort_by: 'created_at',
         sort_order: 'desc',
-        ...initialFilters
+        ...initialFilters,
     }));
 
     const updatePage = useCallback((page: number) => {
-        setFilters(prev => ({ ...prev, page }));
+        setFilters((prev) => ({ ...prev, page }));
     }, []);
 
     const updateFilters = useCallback((newFilters: Partial<UserFilters>) => {
-        setFilters(prev => ({ ...prev, ...newFilters, page: newFilters.page ?? 1 }));
+        setFilters((prev) => ({ ...prev, ...newFilters, page: newFilters.page ?? 1 }));
     }, []);
 
     const updateSearch = useCallback((search: string) => {
-        setFilters(prev => ({ ...prev, search, page: 1 }));
+        setFilters((prev) => ({ ...prev, search, page: 1 }));
     }, []);
 
     const updateSort = useCallback((sort_by: UserSortField, sort_order: 'asc' | 'desc' = 'desc') => {
-        setFilters(prev => ({ ...prev, sort_by, sort_order, page: 1 }));
+        setFilters((prev) => ({ ...prev, sort_by, sort_order, page: 1 }));
     }, []);
 
     const resetFilters = useCallback(() => {
@@ -144,7 +137,7 @@ export const useOptimizedUserFilters = (initialFilters: UserFilters = {}) => {
             page: 1,
             per_page: 50,
             sort_by: 'created_at',
-            sort_order: 'desc'
+            sort_order: 'desc',
         });
     }, []);
 
@@ -154,7 +147,7 @@ export const useOptimizedUserFilters = (initialFilters: UserFilters = {}) => {
         updatePage,
         updateSearch,
         updateSort,
-        resetFilters
+        resetFilters,
     };
 };
 
@@ -188,7 +181,7 @@ export const useOptimizedUserSelection = () => {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
     const toggleItem = useCallback((id: string) => {
-        setSelectedItems(prev => {
+        setSelectedItems((prev) => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id);
             else newSet.add(id);
@@ -197,23 +190,21 @@ export const useOptimizedUserSelection = () => {
     }, []);
 
     const toggleAll = useCallback((users: UserWithRelations[]) => {
-        setSelectedItems(prev =>
-            prev.size === users.length ? new Set() : new Set(users.map(user => user.id))
-        );
+        setSelectedItems((prev) => (prev.size === users.length ? new Set() : new Set(users.map((user) => user.id))));
     }, []);
 
     const selectMultiple = useCallback((ids: string[]) => {
-        setSelectedItems(prev => {
+        setSelectedItems((prev) => {
             const newSet = new Set(prev);
-            ids.forEach(id => newSet.add(id));
+            ids.forEach((id) => newSet.add(id));
             return newSet;
         });
     }, []);
 
     const deselectMultiple = useCallback((ids: string[]) => {
-        setSelectedItems(prev => {
+        setSelectedItems((prev) => {
             const newSet = new Set(prev);
-            ids.forEach(id => newSet.delete(id));
+            ids.forEach((id) => newSet.delete(id));
             return newSet;
         });
     }, []);
@@ -224,9 +215,12 @@ export const useOptimizedUserSelection = () => {
 
     const isSelected = useCallback((id: string) => selectedItems.has(id), [selectedItems]);
 
-    const getSelectedUsers = useCallback((users: UserWithRelations[]) => {
-        return users.filter(user => selectedItems.has(user.id));
-    }, [selectedItems]);
+    const getSelectedUsers = useCallback(
+        (users: UserWithRelations[]) => {
+            return users.filter((user) => selectedItems.has(user.id));
+        },
+        [selectedItems],
+    );
 
     return {
         selectedItems,
@@ -238,7 +232,7 @@ export const useOptimizedUserSelection = () => {
         isSelected,
         getSelectedUsers,
         selectedCount: selectedItems.size,
-        hasSelection: selectedItems.size > 0
+        hasSelection: selectedItems.size > 0,
     };
 };
 
@@ -274,7 +268,7 @@ export function useUserPrefetchStrategies(filters: UserFilters) {
             queryClient.prefetchQuery({
                 queryKey: ['users', nextPageFilters],
                 queryFn: () => apiClient.getUsers(nextPageFilters),
-                staleTime: 5 * 60 * 1000
+                staleTime: 5 * 60 * 1000,
             });
         }
     }, [queryClient, apiClient, filters]);
@@ -286,49 +280,58 @@ export function useUserPrefetchStrategies(filters: UserFilters) {
             queryClient.prefetchQuery({
                 queryKey: ['users', prevPageFilters],
                 queryFn: () => apiClient.getUsers(prevPageFilters),
-                staleTime: 5 * 60 * 1000
+                staleTime: 5 * 60 * 1000,
             });
         }
     }, [queryClient, apiClient, filters]);
 
     // Prefetch user details
-    const prefetchUserDetails = useCallback((userId: number) => {
-        if (apiClient) {
-            queryClient.prefetchQuery({
-                queryKey: ['users', userId],
-                queryFn: () => apiClient.getUser(userId),
-                staleTime: 10 * 60 * 1000
-            });
-        }
-    }, [queryClient, apiClient]);
+    const prefetchUserDetails = useCallback(
+        (userId: number) => {
+            if (apiClient) {
+                queryClient.prefetchQuery({
+                    queryKey: ['users', userId],
+                    queryFn: () => apiClient.getUser(userId),
+                    staleTime: 10 * 60 * 1000,
+                });
+            }
+        },
+        [queryClient, apiClient],
+    );
 
     // Prefetch user services
-    const prefetchUserServices = useCallback((userId: number) => {
-        if (apiClient) {
-            queryClient.prefetchQuery({
-                queryKey: ['users', userId, 'services'],
-                queryFn: () => apiClient.getUserServices(userId),
-                staleTime: 5 * 60 * 1000
-            });
-        }
-    }, [queryClient, apiClient]);
+    const prefetchUserServices = useCallback(
+        (userId: number) => {
+            if (apiClient) {
+                queryClient.prefetchQuery({
+                    queryKey: ['users', userId, 'services'],
+                    queryFn: () => apiClient.getUserServices(userId),
+                    staleTime: 5 * 60 * 1000,
+                });
+            }
+        },
+        [queryClient, apiClient],
+    );
 
     // Intelligent prefetching based on user behavior
-    const intelligentPrefetch = useCallback((direction: 'next' | 'prev' | 'both' = 'next') => {
-        if (direction === 'next' || direction === 'both') {
-            prefetchNext();
-        }
-        if (direction === 'prev' || direction === 'both') {
-            prefetchPrevious();
-        }
-    }, [prefetchNext, prefetchPrevious]);
+    const intelligentPrefetch = useCallback(
+        (direction: 'next' | 'prev' | 'both' = 'next') => {
+            if (direction === 'next' || direction === 'both') {
+                prefetchNext();
+            }
+            if (direction === 'prev' || direction === 'both') {
+                prefetchPrevious();
+            }
+        },
+        [prefetchNext, prefetchPrevious],
+    );
 
     return {
         prefetchNext,
         prefetchPrevious,
         prefetchUserDetails,
         prefetchUserServices,
-        intelligentPrefetch
+        intelligentPrefetch,
     };
 }
 
@@ -337,9 +340,7 @@ export function useUserStats(filters: UserFilters = {}) {
     const apiClient = useApiClient();
 
     const queryKey = useMemo(() => {
-        const cleanFilters = Object.fromEntries(
-            Object.entries(filters).filter(([_, value]) => value !== undefined && value !== '')
-        );
+        const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== undefined && value !== ''));
         return ['users', 'stats', cleanFilters];
     }, [filters]);
 
@@ -379,10 +380,7 @@ export function useUserServices(userId: number) {
 }
 
 // MAIN HOOK SELECTOR BASED ON LIST SIZE
-export function useAdaptiveUsers(
-    filters: UserFilters = {},
-    strategy: 'standard' | 'infinite' | 'virtual' = 'standard'
-) {
+export function useAdaptiveUsers(filters: UserFilters = {}, strategy: 'standard' | 'infinite' | 'virtual' = 'standard') {
     const standardQuery = useUsers(filters);
     const infiniteQuery = useInfiniteUsers(filters);
     const virtualQuery = useVirtualizedUsers(filters);
@@ -391,27 +389,26 @@ export function useAdaptiveUsers(
         case 'infinite':
             return {
                 ...infiniteQuery,
-                users: infiniteQuery.data?.data || [] as UserWithRelations[],
-                meta: infiniteQuery.data?.meta as PaginationMeta
+                users: infiniteQuery.data?.data || ([] as UserWithRelations[]),
+                meta: infiniteQuery.data?.meta as PaginationMeta,
             };
         case 'virtual':
             return {
                 ...virtualQuery,
                 users: virtualQuery.items as UserWithRelations[],
-                meta: { total: virtualQuery.totalCount } as PaginationMeta
+                meta: { total: virtualQuery.totalCount } as PaginationMeta,
             };
         default:
             return {
                 ...standardQuery,
-                users: standardQuery.data?.data || [] as UserWithRelations[],
-                meta: standardQuery.data?.meta as PaginationMeta
+                users: standardQuery.data?.data || ([] as UserWithRelations[]),
+                meta: standardQuery.data?.meta as PaginationMeta,
             };
     }
 }
 
 // API CLIENT HOOK
 export function useApiClient() {
-
     return useMemo(() => {
         const baseURL = window.location.origin;
         return new UsersAPI(baseURL);
@@ -425,10 +422,7 @@ export function useOptimisticUserUpdate() {
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: Partial<User> }) => {
-            const response = await axios.patch(
-                `${apiClient?.baseURL}/users/${id}`,
-                updates
-            );
+            const response = await axios.patch(`${apiClient?.baseURL}/users/${id}`, updates);
             return response.data;
         },
         onMutate: async ({ id, updates }) => {
@@ -439,36 +433,29 @@ export function useOptimisticUserUpdate() {
             const previousData = queryClient.getQueriesData({ queryKey: ['users'] });
 
             // Optimistically update all queries that contain this user
-            queryClient.setQueriesData(
-                { queryKey: ['users'] },
-                (oldData: any) => {
-                    if (!oldData) return oldData;
+            queryClient.setQueriesData({ queryKey: ['users'] }, (oldData: any) => {
+                if (!oldData) return oldData;
 
-                    // Handle different data structures (standard vs infinite)
-                    if (oldData.pages) {
-                        // Infinite query structure
-                        return {
-                            ...oldData,
-                            pages: oldData.pages.map((page: any) => ({
-                                ...page,
-                                data: page.data?.map((user: UserWithRelations) =>
-                                    user.id === id ? { ...user, ...updates } : user
-                                )
-                            }))
-                        };
-                    } else if (oldData.data) {
-                        // Standard query structure
-                        return {
-                            ...oldData,
-                            data: oldData.data.map((user: UserWithRelations) =>
-                                user.id === id ? { ...user, ...updates } : user
-                            )
-                        };
-                    }
-
-                    return oldData;
+                // Handle different data structures (standard vs infinite)
+                if (oldData.pages) {
+                    // Infinite query structure
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any) => ({
+                            ...page,
+                            data: page.data?.map((user: UserWithRelations) => (user.id === id ? { ...user, ...updates } : user)),
+                        })),
+                    };
+                } else if (oldData.data) {
+                    // Standard query structure
+                    return {
+                        ...oldData,
+                        data: oldData.data.map((user: UserWithRelations) => (user.id === id ? { ...user, ...updates } : user)),
+                    };
                 }
-            );
+
+                return oldData;
+            });
 
             // Also update single user cache
             queryClient.setQueryData(['users', id], (oldData: any) => {
@@ -498,11 +485,7 @@ export function useUserServiceMutations() {
     const apiClient = useApiClient();
 
     const assignService = useMutation({
-        mutationFn: async ({ userId, serviceId, data }: {
-            userId: number;
-            serviceId: number;
-            data: any
-        }) => {
+        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: any }) => {
             return apiClient?.assignUserToService(userId, serviceId, data);
         },
         onSuccess: (_, { userId }) => {
@@ -522,11 +505,7 @@ export function useUserServiceMutations() {
     });
 
     const updateServiceAssignment = useMutation({
-        mutationFn: async ({ userId, serviceId, data }: {
-            userId: number;
-            serviceId: number;
-            data: any
-        }) => {
+        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: any }) => {
             return apiClient?.updateUserServiceAssignment(userId, serviceId, data);
         },
         onSuccess: (_, { userId }) => {
@@ -538,7 +517,7 @@ export function useUserServiceMutations() {
     return {
         assignService,
         unassignService,
-        updateServiceAssignment
+        updateServiceAssignment,
     };
 }
 
@@ -548,11 +527,7 @@ export function useBulkUserOperations() {
     const apiClient = useApiClient();
 
     const bulkAssignServices = useMutation({
-        mutationFn: async ({ userIds, serviceIds, data }: {
-            userIds: number[];
-            serviceIds: number[];
-            data?: any
-        }) => {
+        mutationFn: async ({ userIds, serviceIds, data }: { userIds: number[]; serviceIds: number[]; data?: any }) => {
             return apiClient?.bulkAssignServices(userIds, serviceIds, data);
         },
         onSuccess: () => {
@@ -561,10 +536,7 @@ export function useBulkUserOperations() {
     });
 
     const bulkUpdateUsers = useMutation({
-        mutationFn: async ({ userIds, updates }: {
-            userIds: number[];
-            updates: Partial<User>
-        }) => {
+        mutationFn: async ({ userIds, updates }: { userIds: number[]; updates: Partial<User> }) => {
             return apiClient?.bulkUpdateUsers(userIds, updates);
         },
         onSuccess: () => {
@@ -584,6 +556,6 @@ export function useBulkUserOperations() {
     return {
         bulkAssignServices,
         bulkUpdateUsers,
-        bulkDeleteUsers
+        bulkDeleteUsers,
     };
 }

@@ -1,6 +1,7 @@
 <?php
 
 // app/Http/Requests/UpdateWorkflowRequest.php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,7 +43,7 @@ class UpdateWorkflowRequest extends FormRequest
             'connections' => 'nullable|array',
             'connections.*.from_step_temp_id' => 'required|string',
             'connections.*.to_step_temp_id' => 'required|string',
-            'connections.*.conditions' => 'nullable|array'
+            'connections.*.conditions' => 'nullable|array',
         ];
     }
 }

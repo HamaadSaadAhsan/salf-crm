@@ -15,7 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +26,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'extension',
+        'company',
+        'birth_date',
+        'avatar',
+        'availability',
+        'visibility',
+        'availability_date',
+        'availability_time',
+        'dismissal_time',
         'facebook_user_access_token',
         'facebook_token_expires_at',
         'facebook_refresh_token',
@@ -54,6 +64,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birth_date' => 'date',
+            'availability' => 'boolean',
+            'availability_date' => 'date',
             'facebook_token_expires_at' => 'datetime',
             'facebook_connected_at' => 'datetime',
         ];
@@ -91,10 +104,10 @@ class User extends Authenticatable
 
         if ($value === null) {
             // Check if key exists
-            $query->whereRaw("service_user.metadata ? ?", [$key]);
+            $query->whereRaw('service_user.metadata ? ?', [$key]);
         } else {
             // Check key-value pair
-            $query->whereRaw("service_user.metadata ->> ? = ?", [$key, $value]);
+            $query->whereRaw('service_user.metadata ->> ? = ?', [$key, $value]);
         }
 
         return $query;
@@ -112,7 +125,7 @@ class User extends Authenticatable
     {
         $pivotData = array_merge([
             'assigned_at' => now(),
-            'status' => 'active'
+            'status' => 'active',
         ], $attributes);
 
         // Handle metadata separately for JSONB
@@ -127,7 +140,7 @@ class User extends Authenticatable
     public function updateServiceMetadata(Service $service, array $metadata)
     {
         return $this->services()->updateExistingPivot($service->id, [
-            'metadata' => json_encode($metadata)
+            'metadata' => json_encode($metadata),
         ]);
     }
 
@@ -166,9 +179,9 @@ class User extends Authenticatable
     {
         return $query->whereHas('services', function ($q) use ($key, $value) {
             if ($value === null) {
-                $q->whereRaw("service_user.metadata ? ?", [$key]);
+                $q->whereRaw('service_user.metadata ? ?', [$key]);
             } else {
-                $q->whereRaw("service_user.metadata ->> ? = ?", [$key, $value]);
+                $q->whereRaw('service_user.metadata ->> ? = ?', [$key, $value]);
             }
         });
     }
@@ -186,7 +199,7 @@ class User extends Authenticatable
         return self::select([
             'users.id',
             'users.name',
-            'users.email'
+            'users.email',
         ])
             ->selectRaw("
                 array_agg(DISTINCT services.name) as service_names,
@@ -215,12 +228,12 @@ class User extends Authenticatable
 
     public function getCacheKey(string $suffix = ''): string
     {
-        return "user:{$this->id}" . ($suffix ? ":{$suffix}" : '');
+        return "user:{$this->id}".($suffix ? ":{$suffix}" : '');
     }
 
     public static function getListCacheKey(array $params = []): string
     {
-        return 'users:list:' . md5(serialize($params));
+        return 'users:list:'.md5(serialize($params));
     }
 
     public function metaPages(): HasMany
@@ -248,7 +261,7 @@ class User extends Authenticatable
      */
     public function hasFacebookToken(): bool
     {
-        return !empty($this->facebook_user_access_token);
+        return ! empty($this->facebook_user_access_token);
     }
 
     /**
@@ -256,7 +269,7 @@ class User extends Authenticatable
      */
     public function isFacebookTokenExpired(): bool
     {
-        if (!$this->facebook_token_expires_at) {
+        if (! $this->facebook_token_expires_at) {
             return true;
         }
 
@@ -268,7 +281,7 @@ class User extends Authenticatable
      */
     public function getFacebookAccessToken(): ?string
     {
-        if (!$this->facebook_user_access_token) {
+        if (! $this->facebook_user_access_token) {
             return null;
         }
 
@@ -285,7 +298,7 @@ class User extends Authenticatable
      */
     public function getFacebookRefreshToken(): ?string
     {
-        if (!$this->facebook_refresh_token) {
+        if (! $this->facebook_refresh_token) {
             return null;
         }
 
@@ -333,7 +346,7 @@ class User extends Authenticatable
             'is_expired' => $this->isFacebookTokenExpired(),
             'expires_at' => $this->facebook_token_expires_at,
             'connected_at' => $this->facebook_connected_at,
-            'has_refresh_token' => !empty($this->facebook_refresh_token),
+            'has_refresh_token' => ! empty($this->facebook_refresh_token),
             'expires_in_hours' => $this->facebook_token_expires_at ?
                 now()->diffInHours($this->facebook_token_expires_at, false) : null,
         ];
@@ -371,5 +384,29 @@ class User extends Authenticatable
         return $query->whereNotNull('facebook_user_access_token')
             ->where('facebook_token_expires_at', '>', now())
             ->where('facebook_token_expires_at', '<', now()->addHours($hours));
+    }
+
+    // SIP/Call related relationships
+    public function sipAccounts(): HasMany
+    {
+        return $this->hasMany(SipAccount::class);
+    }
+
+    public function callerSessions(): HasMany
+    {
+        return $this->hasMany(CallSession::class, 'caller_id');
+    }
+
+    public function callParticipations(): HasMany
+    {
+        return $this->hasMany(CallParticipant::class);
+    }
+
+    public function activeSipAccount(): HasOne
+    {
+        return $this->hasOne(SipAccount::class)
+            ->where('is_enabled', true)
+            ->where('status', 'registered')
+            ->latest();
     }
 }

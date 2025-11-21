@@ -38,7 +38,7 @@ return [
     'google' => [
         'client_id' => env('GOOGLE1aq``~~~_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL') . '/calendar/callback'),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/calendar/callback'),
     ],
 
     'facebook' => [
@@ -48,5 +48,9 @@ return [
         'redirect_uri' => env('FACEBOOK_REDIRECT_URI'),
         'webhook_url' => env('FACEBOOK_WEBHOOK_URL'),
         'webhook_verify_token' => env('FACEBOOK_WEBHOOK_VERIFY_TOKEN'),
+    ],
+
+    'asterisk' => [
+        'recording_url' => env('ASTERISK_RECORDING_URL', 'http://192.168.100.232/recordz/'),
     ],
 ];

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -17,7 +17,7 @@ return new class extends Migration
             // Activity details
             $table->enum('type', [
                 'call', 'email', 'meeting', 'note', 'message', 'task',
-                'follow_up', 'status_change', 'assignment_change'
+                'follow_up', 'status_change', 'assignment_change',
             ])->index();
 
             $table->enum('status', ['pending', 'completed', 'cancelled', 'overdue'])
@@ -47,7 +47,7 @@ return new class extends Migration
             // Results and outcomes
             $table->enum('outcome', [
                 'successful', 'no_answer', 'busy', 'not_interested',
-                'callback_requested', 'information_sent', 'meeting_scheduled'
+                'callback_requested', 'information_sent', 'meeting_scheduled',
             ])->nullable()->index();
 
             $table->text('notes')->nullable();

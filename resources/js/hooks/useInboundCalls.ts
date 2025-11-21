@@ -1,0 +1,188 @@
+import { router } from '@inertiajs/react';
+import { useEcho } from '@laravel/echo-react';
+import axios from 'axios';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { callLead, callNotes } from '@/routes/api/asterisk';
+
+export interface InboundCallData {
+    event: 'ring' | 'connect' | 'disconnect' | 'hangup';
+    caller: string;
+    exten: string;
+    uniqueid: string;
+    linkedid?: string;
+    lead?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone: string;
+        city?: string;
+        country?: string;
+        service?: { id: number; name: string };
+        assigned_to?: { id: number; name: string };
+        inquiry_status: string;
+        priority: string;
+        detail?: string;
+        budget?: any;
+        tags?: any;
+        lead_score?: number;
+        last_activity_at?: string;
+    };
+    timestamp: string;
+}
+
+export interface ActiveCall extends InboundCallData {
+    startTime: Date;
+    duration: number;
+}
+
+export function useInboundCalls() {
+    const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+    const [callHistory, setCallHistory] = useState<InboundCallData[]>([]);
+
+    // Subscribe to inbound call events using useEcho hook
+    useEcho('inbound-calls', '.inbound.call', (data: InboundCallData) => {
+        console.log('Inbound call event received:', data);
+
+        // Update call history
+        setCallHistory((prev) => [data, ...prev.slice(0, 49)]);
+
+        // Handle different call events
+        switch (data.event) {
+            case 'ring':
+                handleRingEvent(data);
+                break;
+            case 'connect':
+                handleConnectEvent(data);
+                break;
+            case 'disconnect':
+            case 'hangup':
+                handleDisconnectEvent(data);
+                break;
+        }
+    });
+
+    const handleRingEvent = (data: InboundCallData) => {
+        const newCall: ActiveCall = {
+            ...data,
+            startTime: new Date(),
+            duration: 0,
+        };
+
+        setActiveCall(newCall);
+
+        // Play notification sound
+        playNotificationSound('normal');
+
+        // Show toast notification
+        toast.info(`Incoming call from ${data.caller}`, {
+            description: data.lead ? `Lead: ${data.lead.name}` : 'New caller',
+            duration: 10000,
+        });
+    };
+
+    const handleConnectEvent = (data: InboundCallData) => {
+        setActiveCall((prev) => {
+            if (prev && prev.uniqueid === data.uniqueid) {
+                return { ...prev, event: 'connect' };
+            }
+            return {
+                ...data,
+                startTime: new Date(),
+                duration: 0,
+            };
+        });
+
+        toast.success('Call connected', {
+            description: `Connected with ${data.caller}`,
+        });
+    };
+
+    const handleDisconnectEvent = (data: InboundCallData) => {
+        setActiveCall((prev) => {
+            if (prev && prev.uniqueid === data.uniqueid) {
+                return null;
+            }
+            return prev;
+        });
+
+        toast.info('Call ended', {
+            description: `Call with ${data.caller} has ended`,
+        });
+    };
+
+    const playNotificationSound = (priority: 'normal' | 'high' | 'urgent' | 'overdue' = 'normal') => {
+        try {
+            const audio = new Audio(`/sounds/${priority}.mp3`);
+            audio.volume = 0.5;
+            audio.play().catch((err) => console.error('Error playing sound:', err));
+        } catch (err) {
+            console.error('Error creating audio:', err);
+        }
+    };
+
+    const createLeadFromCall = async (leadData: {
+        name: string;
+        phone: string;
+        email?: string;
+        city?: string;
+        service_id?: number;
+        detail?: string;
+        budget?: any;
+    }) => {
+        if (!activeCall) {
+            throw new Error('No active call');
+        }
+
+        try {
+            const response = await axios.post(callLead().url, {
+                ...leadData,
+                uniqueid: activeCall.uniqueid,
+                caller: activeCall.caller,
+            });
+
+            toast.success('Lead created successfully');
+
+            // Refresh lead data if needed
+            router.reload({ only: ['leads'] });
+
+            return response.data.data.lead;
+        } catch (error: any) {
+            toast.error('Failed to create lead', {
+                description: error.response?.data?.message || 'An error occurred',
+            });
+            throw error;
+        }
+    };
+
+    const saveCallNotes = async (leadId: string, notes: string, duration?: number) => {
+        if (!activeCall) {
+            throw new Error('No active call');
+        }
+
+        try {
+            const response = await axios.post(callNotes().url, {
+                lead_id: leadId,
+                notes,
+                uniqueid: activeCall.uniqueid,
+                duration,
+            });
+
+            toast.success('Notes saved successfully');
+
+            return response.data.data.activity;
+        } catch (error: any) {
+            toast.error('Failed to save notes', {
+                description: error.response?.data?.message || 'An error occurred',
+            });
+            throw error;
+        }
+    };
+
+    return {
+        activeCall,
+        callHistory,
+        createLeadFromCall,
+        saveCallNotes,
+    };
+}

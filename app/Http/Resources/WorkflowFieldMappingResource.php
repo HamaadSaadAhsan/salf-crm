@@ -15,7 +15,7 @@ class WorkflowFieldMappingResource extends JsonResource
             'target_field' => $this->target_field,
             'field_type' => $this->field_type,
             'transformation_rules' => $this->transformation_rules,
-            'required' => $this->required
+            'required' => $this->required,
         ];
     }
 }

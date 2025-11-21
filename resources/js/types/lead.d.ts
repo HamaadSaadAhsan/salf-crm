@@ -1,5 +1,6 @@
-import { ISODateString } from "next-auth";
-import {LeadTag} from "@/components/tag-selector";
+import { LeadTag } from '@/components/tag-selector';
+import { Task } from './task';
+import { ISODateString } from 'next-auth';
 
 export interface Lead {
     id: string;
@@ -24,12 +25,14 @@ export interface Lead {
     detail?: string;
     service?: { data: Service };
     source: { data?: LeadSource } | LeadSource;
-    status: { data: Status}
+    status: { data: Status };
     assigned_to?: User;
     created_by?: User;
     days_since_created: number;
     is_hot_lead: boolean;
     next_follow_up_at?: string;
+    next_task?: Task | null;
+    tasks?: { data: Task[] };
     last_activity_at?: string;
     created_at: string;
     raw_created_at: ISODateString;
@@ -46,28 +49,15 @@ export interface Lead {
 }
 
 export type Status = {
-    id: number
-    name: LeadStatus
-}
+    id: number;
+    name: LeadStatus;
+};
 
-export type LeadStatus =
-    | 'new'
-    | 'contacted'
-    | 'qualified'
-    | 'proposal'
-    | 'won'
-    | 'lost'
-    | 'nurturing';
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost' | 'nurturing';
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export type LeadInquiryType =
-    | 'phone'
-    | 'email'
-    | 'web'
-    | 'referral'
-    | 'social'
-    | 'advertisement';
+export type LeadInquiryType = 'phone' | 'email' | 'web' | 'referral' | 'social' | 'advertisement';
 
 export interface LeadBudget {
     amount: number;
@@ -100,10 +90,15 @@ export interface LeadSource {
 }
 
 export interface User {
-    id: string;
+    id: number;
     name: string;
     email: string;
     avatar?: string;
+    roles?: Array<{
+        id: number;
+        name: string;
+        guard_name: string;
+    }>;
 }
 
 export interface LeadActivity {

@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Service extends Model
 {
@@ -158,7 +158,7 @@ class Service extends Model
     {
         $pivotData = array_merge([
             'assigned_at' => now(),
-            'status' => 'active'
+            'status' => 'active',
         ], $attributes);
 
         return $this->users()->syncWithoutDetaching([$user->id => $pivotData]);
@@ -212,11 +212,11 @@ class Service extends Model
 
     public function getCacheKey(string $suffix = ''): string
     {
-        return "service:{$this->id}" . ($suffix ? ":{$suffix}" : '');
+        return "service:{$this->id}".($suffix ? ":{$suffix}" : '');
     }
 
     public static function getListCacheKey(array $params = []): string
     {
-        return 'services:list:' . md5(serialize($params));
+        return 'services:list:'.md5(serialize($params));
     }
 }

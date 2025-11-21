@@ -2,38 +2,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import React from 'react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { Link } from '@inertiajs/react';
-import { ArrowLeft, Save, Settings, Activity, Shield, AlertTriangle } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowLeft, Save, Settings, Shield } from 'lucide-react';
 
 // Import our new centralized components
-import { FacebookIntegrationProvider, useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
+import ErrorRecovery from '@/components/facebook/ErrorRecovery';
 import HealthStatus from '@/components/facebook/HealthStatus';
 import SyncStatus from '@/components/facebook/SyncStatus';
-import ErrorRecovery from '@/components/facebook/ErrorRecovery';
+import { FacebookIntegrationProvider, useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
 import { useFacebookWebSocket } from '@/hooks/useFacebookWebSocket';
 
 function FacebookIntegrationContent() {
     const { state, actions } = useFacebookIntegration();
-    
-    const {
-        config,
-        connectionStatus,
-        isConfigured,
-        isLoading,
-        activeTab,
-        errors,
-        warnings
-    } = state;
+
+    const { config, connectionStatus, isConfigured, isLoading, activeTab, errors, warnings } = state;
 
     // Initialize WebSocket connection for real-time updates
     const webSocket = useFacebookWebSocket(
         state.config?.integrationId, // You'll need to add this to your config
-        window.Laravel?.user?.id
+        window.Laravel?.user?.id,
     );
 
     const handleConfigChange = (field: string, value: string | boolean) => {
@@ -70,11 +61,9 @@ function FacebookIntegrationContent() {
                 </Link>
                 <div className="flex-1">
                     <h1 className="text-4xl font-bold">Facebook Integration</h1>
-                    <p className="text-gray-400 mt-2">
-                        Manage your Facebook Lead Generation integration with advanced monitoring and error recovery
-                    </p>
+                    <p className="mt-2 text-gray-400">Manage your Facebook Lead Generation integration with advanced monitoring and error recovery</p>
                 </div>
-                
+
                 {/* Status indicators */}
                 <div className="flex items-center space-x-4">
                     {(errors.length > 0 || warnings.length > 0) && (
@@ -83,12 +72,17 @@ function FacebookIntegrationContent() {
                             <span className="text-sm">{errors.length + warnings.length} issues</span>
                         </div>
                     )}
-                    <div className={`w-3 h-3 rounded-full ${
-                        connectionStatus === 'connected' ? 'bg-green-500' :
-                        connectionStatus === 'error' ? 'bg-red-500' :
-                        connectionStatus === 'connecting' ? 'bg-yellow-500' :
-                        'bg-gray-500'
-                    }`} />
+                    <div
+                        className={`h-3 w-3 rounded-full ${
+                            connectionStatus === 'connected'
+                                ? 'bg-green-500'
+                                : connectionStatus === 'error'
+                                  ? 'bg-red-500'
+                                  : connectionStatus === 'connecting'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-gray-500'
+                        }`}
+                    />
                 </div>
             </div>
 
@@ -96,23 +90,23 @@ function FacebookIntegrationContent() {
                 <div className="mb-6 flex items-center justify-between">
                     <TabsList className="bg-gray-900">
                         <TabsTrigger value="overview" className="data-[state=active]:bg-gray-800">
-                            <Activity className="h-4 w-4 mr-2" />
+                            <Activity className="mr-2 h-4 w-4" />
                             Overview
                         </TabsTrigger>
                         <TabsTrigger value="setup" className="data-[state=active]:bg-gray-800">
-                            <Settings className="h-4 w-4 mr-2" />
+                            <Settings className="mr-2 h-4 w-4" />
                             Setup
                         </TabsTrigger>
                         <TabsTrigger value="permissions" className="data-[state=active]:bg-gray-800">
-                            <Shield className="h-4 w-4 mr-2" />
+                            <Shield className="mr-2 h-4 w-4" />
                             Permissions
                         </TabsTrigger>
                         <TabsTrigger value="monitoring" className="data-[state=active]:bg-gray-800">
-                            <Activity className="h-4 w-4 mr-2" />
+                            <Activity className="mr-2 h-4 w-4" />
                             Monitoring
                         </TabsTrigger>
                         <TabsTrigger value="issues" className="data-[state=active]:bg-gray-800">
-                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            <AlertTriangle className="mr-2 h-4 w-4" />
                             Issues
                         </TabsTrigger>
                     </TabsList>
@@ -120,10 +114,10 @@ function FacebookIntegrationContent() {
 
                 {/* Overview Tab */}
                 <TabsContent value="overview">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                         <HealthStatus showActions={true} />
                         <SyncStatus />
-                        
+
                         <div className="lg:col-span-2">
                             <ErrorRecovery />
                         </div>
@@ -201,10 +195,7 @@ function FacebookIntegrationContent() {
                                         <h4 className="font-medium">Posts</h4>
                                         <p className="text-sm text-gray-400">Create and schedule posts</p>
                                     </div>
-                                    <Switch 
-                                        checked={config.enablePosts} 
-                                        onCheckedChange={(value) => handleConfigChange('enablePosts', value)} 
-                                    />
+                                    <Switch checked={config.enablePosts} onCheckedChange={(value) => handleConfigChange('enablePosts', value)} />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -221,22 +212,15 @@ function FacebookIntegrationContent() {
                                         <h4 className="font-medium">Lead Generation</h4>
                                         <p className="text-sm text-gray-400">Sync lead forms and leads automatically</p>
                                     </div>
-                                    <Switch 
-                                        checked={config.enableLeadGen} 
-                                        onCheckedChange={(value) => handleConfigChange('enableLeadGen', value)} 
-                                    />
+                                    <Switch checked={config.enableLeadGen} onCheckedChange={(value) => handleConfigChange('enableLeadGen', value)} />
                                 </div>
                             </CardContent>
                             <CardFooter className="flex space-x-2">
-                                <Button 
-                                    className="flex-1 bg-white text-black hover:bg-gray-200" 
-                                    onClick={handleSaveConfig} 
-                                    disabled={isLoading}
-                                >
+                                <Button className="flex-1 bg-white text-black hover:bg-gray-200" onClick={handleSaveConfig} disabled={isLoading}>
                                     {isLoading ? 'Saving...' : 'Save Configuration'}
                                     {!isLoading && <Save className="ml-2 h-4 w-4" />}
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="outline"
                                     onClick={handleTestConnection}
                                     disabled={isLoading}
@@ -290,11 +274,7 @@ function FacebookIntegrationContent() {
                             </div>
                         </CardContent>
                         <CardFooter>
-                            <Button 
-                                className="w-full bg-blue-600 text-white hover:bg-blue-700" 
-                                onClick={requestPermission}
-                                disabled={isLoading}
-                            >
+                            <Button className="w-full bg-blue-600 text-white hover:bg-blue-700" onClick={requestPermission} disabled={isLoading}>
                                 Request Permissions from Facebook
                             </Button>
                         </CardFooter>

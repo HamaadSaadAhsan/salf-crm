@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
@@ -12,7 +11,7 @@ class FacebookWebhookReceived extends FacebookIntegrationEvent implements Should
     {
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
-            new PrivateChannel("integration.{$this->integrationId}")
+            new PrivateChannel("integration.{$this->integrationId}"),
         ];
     }
 
@@ -27,7 +26,7 @@ class FacebookWebhookReceived extends FacebookIntegrationEvent implements Should
             'integration_id' => $this->integrationId,
             'webhook_type' => $this->data['object'] ?? 'unknown',
             'timestamp' => now()->toISOString(),
-            'entries_count' => count($this->data['entry'] ?? [])
+            'entries_count' => count($this->data['entry'] ?? []),
         ];
     }
 }

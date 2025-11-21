@@ -1,6 +1,7 @@
 <?php
 
 // database/seeders/LeadSourceSeeder.php
+
 namespace Database\Seeders;
 
 use App\Models\LeadSource;

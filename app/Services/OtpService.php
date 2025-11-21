@@ -50,12 +50,11 @@ class OtpService
             ->where('token', $token)
             ->first();
 
-
-        if (!$otp) {
+        if (! $otp) {
             return [
                 'success' => false,
                 'message' => 'Invalid or expired OTP',
-                'code' => 'INVALID_OTP'
+                'code' => 'INVALID_OTP',
             ];
         }
 
@@ -63,15 +62,15 @@ class OtpService
             return [
                 'success' => false,
                 'message' => 'OTP has expired',
-                'code' => 'EXPIRED_OTP'
+                'code' => 'EXPIRED_OTP',
             ];
         }
 
-        if (!$otp->canAttempt()) {
+        if (! $otp->canAttempt()) {
             return [
                 'success' => false,
                 'message' => 'Maximum verification attempts exceeded',
-                'code' => 'MAX_ATTEMPTS_EXCEEDED'
+                'code' => 'MAX_ATTEMPTS_EXCEEDED',
             ];
         }
 
@@ -101,7 +100,7 @@ class OtpService
             return [
                 'success' => false,
                 'message' => 'Please wait before requesting another OTP',
-                'code' => 'RATE_LIMITED'
+                'code' => 'RATE_LIMITED',
             ];
         }
 
@@ -111,7 +110,7 @@ class OtpService
         return [
             'success' => true,
             'message' => 'OTP sent successfully',
-            'expires_at' => $otp->expires_at
+            'expires_at' => $otp->expires_at,
         ];
     }
 

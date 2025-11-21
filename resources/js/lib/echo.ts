@@ -1,5 +1,4 @@
 import { configureEcho } from '@laravel/echo-react';
-import Pusher from 'pusher-js';
 
 // Configure Echo for Reverb (which uses the Pusher protocol)
 configureEcho({
@@ -26,9 +25,9 @@ configureEcho({
                         channel_name: channel.name,
                     }),
                 })
-                .then(response => response.json())
-                .then(data => callback(null, data))
-                .catch(error => callback(error));
+                    .then((response) => response.json())
+                    .then((data) => callback(null, data))
+                    .catch((error) => callback(error));
             },
         };
     },

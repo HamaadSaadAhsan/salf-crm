@@ -1,6 +1,6 @@
-import { useEcho, useEchoNotification } from '@laravel/echo-react';
 import { useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
 import '@/lib/echo'; // Initialize Echo configuration
+import { useEcho, useEchoNotification } from '@laravel/echo-react';
 
 interface FacebookWebSocketEvent {
     integration_id: string;
@@ -67,7 +67,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
             dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
             actions.checkHealth();
         },
-        [integrationId, actions, dispatch]
+        [integrationId, actions, dispatch],
     );
 
     // Listen for Facebook disconnected events
@@ -88,7 +88,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
                 },
             });
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for webhook received events
@@ -99,7 +99,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
             console.log('Facebook webhook received:', event);
             dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for data synced events
@@ -108,10 +108,9 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
         'facebook.data.synced',
         (event) => {
             console.log('Facebook data synced:', event);
-            
-            const syncType = event.sync_type === 'lead_forms' ? 'leadForms' : 
-                           event.sync_type === 'leads' ? 'leads' : 'pages';
-            
+
+            const syncType = event.sync_type === 'lead_forms' ? 'leadForms' : event.sync_type === 'leads' ? 'leads' : 'pages';
+
             dispatch({
                 type: 'UPDATE_SYNC_STATUS',
                 payload: {
@@ -123,10 +122,10 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
                     },
                 },
             });
-            
+
             dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for error events
@@ -135,7 +134,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
         'facebook.error.occurred',
         (event) => {
             console.error('Facebook error occurred:', event);
-            
+
             dispatch({
                 type: 'ADD_ERROR',
                 payload: {
@@ -151,7 +150,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
                 dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
             }
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for health status changes
@@ -160,19 +159,19 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
         'facebook.health.changed',
         (event) => {
             console.log('Facebook health status changed:', event);
-            
+
             dispatch({
                 type: 'UPDATE_HEALTH_STATUS',
                 payload: event.health_status,
             });
-            
+
             // Check if health has degraded
-            const hasHealthDegraded = Object.keys(event.health_status).some(key => {
+            const hasHealthDegraded = Object.keys(event.health_status).some((key) => {
                 const currentValue = event.health_status[key as keyof typeof event.health_status];
                 const previousValue = event.previous_status[key as keyof typeof event.previous_status];
                 return previousValue && !currentValue;
             });
-            
+
             if (hasHealthDegraded) {
                 dispatch({
                     type: 'ADD_ERROR',
@@ -186,7 +185,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
                 });
             }
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for lead processed events
@@ -195,15 +194,17 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
         'facebook.lead.processed',
         (event) => {
             console.log('Facebook lead processed:', event);
-            
+
             dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
-            
+
             // Emit custom event for other parts of the app
-            window.dispatchEvent(new CustomEvent('facebook-lead-processed', {
-                detail: event
-            }));
+            window.dispatchEvent(
+                new CustomEvent('facebook-lead-processed', {
+                    detail: event,
+                }),
+            );
         },
-        [integrationId, dispatch]
+        [integrationId, dispatch],
     );
 
     // Listen for notifications on user-specific channel
@@ -211,7 +212,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
         `user.${userId}.facebook-integration`,
         (notification) => {
             console.log('Facebook integration notification:', notification);
-            
+
             if (notification.type === 'facebook_integration') {
                 dispatch({
                     type: 'ADD_ERROR',
@@ -226,7 +227,7 @@ export function useFacebookWebSocket(integrationId?: string, userId?: string) {
             }
         },
         undefined,
-        [userId, dispatch]
+        [userId, dispatch],
     );
 
     return {

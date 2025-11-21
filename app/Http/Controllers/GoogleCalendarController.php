@@ -4,25 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarIntegration;
 use App\Models\OAuthSession;
-use Illuminate\Foundation\Application;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Routing\Redirector;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
-use Exception;
 use Inertia\Inertia;
 
 class GoogleCalendarController extends Controller
 {
     private string $clientId;
+
     private string $clientSecret;
+
     private string $redirectUri;
+
     private array $scopes;
 
     public function __construct()
@@ -32,7 +32,7 @@ class GoogleCalendarController extends Controller
         $this->redirectUri = config('services.google.redirect_uri');
         $this->scopes = [
             'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/userinfo.email'
+            'https://www.googleapis.com/auth/userinfo.email',
         ];
     }
 
@@ -46,7 +46,7 @@ class GoogleCalendarController extends Controller
             ->get();
 
         return Inertia::render('integrations/calendar/index', [
-            'integrations' => $integrations
+            'integrations' => $integrations,
         ]);
     }
 
@@ -60,23 +60,23 @@ class GoogleCalendarController extends Controller
                 ->where('id', $id)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Calendar integration not found'
+                    'message' => 'Calendar integration not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'integration' => $integration
+                'integration' => $integration,
             ]);
         } catch (Exception $e) {
-            Log::error('Failed to fetch calendar integration: ' . $e->getMessage());
+            Log::error('Failed to fetch calendar integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch calendar integration'
+                'message' => 'Failed to fetch calendar integration',
             ], 500);
         }
     }
@@ -84,7 +84,7 @@ class GoogleCalendarController extends Controller
     /**
      * Initiate Google OAuth flow
      */
-    public function authorize(Request $request): JsonResponse
+    public function initiateOAuth(Request $request): JsonResponse
     {
         try {
             $userId = $request->user()->id;
@@ -94,30 +94,30 @@ class GoogleCalendarController extends Controller
             OAuthSession::create([
                 'user_id' => $userId,
                 'state' => $state,
-                'expires_at' => now()->addHour()
+                'expires_at' => now()->addHour(),
             ]);
 
-            $authUrl = 'https://accounts.google.com/o/oauth2/auth?' . http_build_query([
-                    'client_id' => $this->clientId,
-                    'redirect_uri' => $this->redirectUri,
-                    'scope' => implode(' ', $this->scopes),
-                    'response_type' => 'code',
-                    'access_type' => 'offline',
-                    'prompt' => 'consent',
-                    'state' => $state
-                ]);
+            $authUrl = 'https://accounts.google.com/o/oauth2/auth?'.http_build_query([
+                'client_id' => $this->clientId,
+                'redirect_uri' => $this->redirectUri,
+                'scope' => implode(' ', $this->scopes),
+                'response_type' => 'code',
+                'access_type' => 'offline',
+                'prompt' => 'consent',
+                'state' => $state,
+            ]);
 
             return response()->json([
                 'success' => true,
                 'auth_url' => $authUrl,
-                'state' => $state
+                'state' => $state,
             ]);
         } catch (Exception $e) {
-            Log::error('Failed to initiate OAuth flow: ' . $e->getMessage());
+            Log::error('Failed to initiate OAuth flow: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to initiate authorization'
+                'message' => 'Failed to initiate authorization',
             ], 500);
         }
     }
@@ -137,16 +137,16 @@ class GoogleCalendarController extends Controller
                     ->with([
                         'success' => 'false',
                         'error' => $error,
-                        'message' => 'Authorization was denied or failed'
+                        'message' => 'Authorization was denied or failed',
                     ]);
             }
 
-            if (!$code || !$state) {
+            if (! $code || ! $state) {
                 return redirect()->route('integrations')
                     ->with([
                         'success' => 'false',
                         'error' => 'missing_params',
-                        'message' => 'Missing authorization code or state'
+                        'message' => 'Missing authorization code or state',
                     ]);
             }
 
@@ -155,12 +155,12 @@ class GoogleCalendarController extends Controller
                 ->where('expires_at', '>', now())
                 ->first();
 
-            if (!$oauthSession) {
+            if (! $oauthSession) {
                 return redirect()->route('integrations')
                     ->with([
                         'success' => 'false',
                         'error' => 'invalid_session',
-                        'message' => 'Invalid or expired OAuth session'
+                        'message' => 'Invalid or expired OAuth session',
                     ]);
             }
 
@@ -182,10 +182,10 @@ class GoogleCalendarController extends Controller
                         : now()->addHour(),
                     'is_active' => true,
                     'sync_preferences' => $calendarIntegration->sync_preferences ?? [
-                            'syncTickets' => true,
-                            'syncFollowUps' => true,
-                            'defaultCalendarId' => 'primary'
-                        ]
+                        'syncTickets' => true,
+                        'syncFollowUps' => true,
+                        'defaultCalendarId' => 'primary',
+                    ],
                 ]
             );
 
@@ -196,16 +196,16 @@ class GoogleCalendarController extends Controller
                 ->with([
                     'success' => 'true',
                     'integration_id' => $calendarIntegration->id,
-                    'message' => 'Calendar integration connected successfully'
+                    'message' => 'Calendar integration connected successfully',
                 ]);
         } catch (Exception $e) {
-            Log::error('OAuth callback failed: ' . $e->getMessage());
+            Log::error('OAuth callback failed: '.$e->getMessage());
 
             return redirect()->route('integrations')
                 ->with([
                     'success' => 'false',
                     'error' => 'server_error',
-                    'message' => 'Failed to complete authorization'
+                    'message' => 'Failed to complete authorization',
                 ]);
         }
     }
@@ -221,17 +221,17 @@ class GoogleCalendarController extends Controller
                 'sync_preferences' => 'sometimes|array',
                 'sync_preferences.syncTickets' => 'sometimes|boolean',
                 'sync_preferences.syncFollowUps' => 'sometimes|boolean',
-                'sync_preferences.defaultCalendarId' => 'sometimes|string'
+                'sync_preferences.defaultCalendarId' => 'sometimes|string',
             ]);
 
             $integration = CalendarIntegration::where('user_id', $request->user()->id)
                 ->where('id', $id)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Calendar integration not found'
+                    'message' => 'Calendar integration not found',
                 ], 404);
             }
 
@@ -240,15 +240,15 @@ class GoogleCalendarController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Calendar integration updated successfully',
-                'integration' => $integration->fresh()
+                'integration' => $integration->fresh(),
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to update calendar integration: ' . $e->getMessage());
+            Log::error('Failed to update calendar integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update calendar integration'
+                'message' => 'Failed to update calendar integration',
             ], 500);
         }
     }
@@ -263,10 +263,10 @@ class GoogleCalendarController extends Controller
                 ->where('id', $id)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Calendar integration not found'
+                    'message' => 'Calendar integration not found',
                 ], 404);
             }
 
@@ -278,15 +278,15 @@ class GoogleCalendarController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Calendar integration disconnected successfully'
+                'message' => 'Calendar integration disconnected successfully',
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to disconnect calendar integration: ' . $e->getMessage());
+            Log::error('Failed to disconnect calendar integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to disconnect calendar integration'
+                'message' => 'Failed to disconnect calendar integration',
             ], 500);
         }
     }
@@ -301,17 +301,17 @@ class GoogleCalendarController extends Controller
                 ->where('id', $id)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Calendar integration not found'
+                    'message' => 'Calendar integration not found',
                 ], 404);
             }
 
-            if (!$integration->refresh_token) {
+            if (! $integration->refresh_token) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No refresh token available. Please reconnect your account.'
+                    'message' => 'No refresh token available. Please reconnect your account.',
                 ], 400);
             }
 
@@ -330,15 +330,15 @@ class GoogleCalendarController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Token refreshed successfully',
-                'integration' => $integration->fresh()
+                'integration' => $integration->fresh(),
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to refresh token: ' . $e->getMessage());
+            Log::error('Failed to refresh token: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to refresh token'
+                'message' => 'Failed to refresh token',
             ], 500);
         }
     }
@@ -354,10 +354,10 @@ class GoogleCalendarController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Active calendar integration not found'
+                    'message' => 'Active calendar integration not found',
                 ], 404);
             }
 
@@ -370,15 +370,15 @@ class GoogleCalendarController extends Controller
 
             return response()->json([
                 'success' => true,
-                'calendars' => $calendars
+                'calendars' => $calendars,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to fetch calendars: ' . $e->getMessage());
+            Log::error('Failed to fetch calendars: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch calendars'
+                'message' => 'Failed to fetch calendars',
             ], 500);
         }
     }
@@ -394,7 +394,7 @@ class GoogleCalendarController extends Controller
                 'description' => 'sometimes|string',
                 'start' => 'required|date',
                 'end' => 'required|date|after:start',
-                'calendar_id' => 'sometimes|string'
+                'calendar_id' => 'sometimes|string',
             ]);
 
             $integration = CalendarIntegration::where('user_id', $request->user()->id)
@@ -402,10 +402,10 @@ class GoogleCalendarController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Active calendar integration not found'
+                    'message' => 'Active calendar integration not found',
                 ], 404);
             }
 
@@ -424,15 +424,15 @@ class GoogleCalendarController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Event created successfully',
-                'event' => $event
+                'event' => $event,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to create calendar event: ' . $e->getMessage());
+            Log::error('Failed to create calendar event: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create calendar event'
+                'message' => 'Failed to create calendar event',
             ], 500);
         }
     }
@@ -447,24 +447,24 @@ class GoogleCalendarController extends Controller
                 ->where('id', $id)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Calendar integration not found'
+                    'message' => 'Calendar integration not found',
                 ], 404);
             }
 
             $status = [
                 'is_active' => $integration->is_active,
                 'is_token_expired' => $integration->isTokenExpired(),
-                'has_refresh_token' => !empty($integration->refresh_token),
+                'has_refresh_token' => ! empty($integration->refresh_token),
                 'token_expires_at' => $integration->token_expires_at,
                 'google_account_email' => $integration->google_account_email,
-                'sync_preferences' => $integration->sync_preferences
+                'sync_preferences' => $integration->sync_preferences,
             ];
 
             // Test API connection if active and token is valid
-            if ($integration->is_active && !$integration->isTokenExpired()) {
+            if ($integration->is_active && ! $integration->isTokenExpired()) {
                 try {
                     $this->testGoogleApiConnection($integration->access_token);
                     $status['api_connection'] = 'healthy';
@@ -478,26 +478,27 @@ class GoogleCalendarController extends Controller
 
             return response()->json([
                 'success' => true,
-                'status' => $status
+                'status' => $status,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to check integration status: ' . $e->getMessage());
+            Log::error('Failed to check integration status: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to check integration status'
+                'message' => 'Failed to check integration status',
             ], 500);
         }
     }
 
     public function isAnyCalendarConnected(): JsonResponse
     {
-        $isCalendarConnected = (bool)Auth::user()->calendarIntegration;
+        $isCalendarConnected = (bool) Auth::user()->calendarIntegration;
+
         return response()->json([
             'success' => true,
             'isLinked' => $isCalendarConnected,
-            $isCalendarConnected ? Auth::user()->calendarIntegration : []
+            $isCalendarConnected ? Auth::user()->calendarIntegration : [],
         ]);
     }
 
@@ -517,7 +518,7 @@ class GoogleCalendarController extends Controller
             'redirect_uri' => $this->redirectUri,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to exchange code for tokens');
         }
 
@@ -533,7 +534,7 @@ class GoogleCalendarController extends Controller
         $response = Http::withToken($accessToken)
             ->get('https://www.googleapis.com/oauth2/v2/userinfo');
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to get user info from Google');
         }
 
@@ -553,7 +554,7 @@ class GoogleCalendarController extends Controller
             'grant_type' => 'refresh_token',
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to refresh access token');
         }
 
@@ -593,7 +594,7 @@ class GoogleCalendarController extends Controller
         $response = Http::withToken($accessToken)
             ->get('https://www.googleapis.com/calendar/v3/users/me/calendarList');
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to fetch calendars from Google');
         }
 
@@ -611,18 +612,18 @@ class GoogleCalendarController extends Controller
             'description' => $eventData['description'] ?? '',
             'start' => [
                 'dateTime' => Carbon::parse($eventData['start'])->toISOString(),
-                'timeZone' => config('app.timezone')
+                'timeZone' => config('app.timezone'),
             ],
             'end' => [
                 'dateTime' => Carbon::parse($eventData['end'])->toISOString(),
-                'timeZone' => config('app.timezone')
-            ]
+                'timeZone' => config('app.timezone'),
+            ],
         ];
 
         $response = Http::withToken($accessToken)
             ->post("https://www.googleapis.com/calendar/v3/calendars/{$calendarId}/events", $event);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to create calendar event');
         }
 
@@ -638,7 +639,7 @@ class GoogleCalendarController extends Controller
         $response = Http::withToken($accessToken)
             ->get('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1');
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Google API connection test failed');
         }
     }

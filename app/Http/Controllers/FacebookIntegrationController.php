@@ -3,23 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\FacebookIntegrationRequest;
-use App\Models\Integration;
 use App\Models\FacebookWebhookConfig;
+use App\Models\Integration;
 use App\Models\LeadForm;
 use App\Models\MetaPage;
-use App\Services\FacebookService;
 use App\Services\FacebookSdkService;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
+use App\Services\FacebookService;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class FacebookIntegrationController extends Controller
 {
     protected FacebookService $facebookService;
+
     protected FacebookSdkService $facebookSdkService;
 
     public function __construct(FacebookService $facebookService, FacebookSdkService $facebookSdkService)
@@ -38,15 +38,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'templates' => $templates
+                'templates' => $templates,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get Facebook templates: ' . $e->getMessage());
+            Log::error('Failed to get Facebook templates: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load integration templates'
+                'message' => 'Failed to load integration templates',
             ], 500);
         }
     }
@@ -58,16 +58,16 @@ class FacebookIntegrationController extends Controller
     {
         try {
             $request->validate([
-                'template_key' => 'required|string'
+                'template_key' => 'required|string',
             ]);
 
             $templates = config('facebook_templates');
             $templateKey = $request->template_key;
 
-            if (!isset($templates[$templateKey])) {
+            if (! isset($templates[$templateKey])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid template selected'
+                    'message' => 'Invalid template selected',
                 ], 400);
             }
 
@@ -80,15 +80,15 @@ class FacebookIntegrationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Applied {$template['name']} template successfully",
-                'template' => $template
+                'template' => $template,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to apply Facebook template: ' . $e->getMessage());
+            Log::error('Failed to apply Facebook template: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to apply template configuration'
+                'message' => 'Failed to apply template configuration',
             ], 500);
         }
     }
@@ -100,12 +100,12 @@ class FacebookIntegrationController extends Controller
     {
         $integration = Integration::where('provider', 'facebook')->first();
 
-        if (!$integration) {
+        if (! $integration) {
             return response()->json([
                 'success' => true,
                 'exists' => false,
                 'message' => 'Facebook integration not configured yet',
-                'webhook_url' => $this->getWebhookUrlFromDatabase()
+                'webhook_url' => $this->getWebhookUrlFromDatabase(),
             ]);
         }
 
@@ -120,7 +120,7 @@ class FacebookIntegrationController extends Controller
             'enableInsights' => $config['features']['insights'] ?? false,
             'enableComments' => $config['features']['comments'] ?? false,
             'enableLeadGen' => $config['features']['leadgen'] ?? false,
-            'webhookConfigured' => !empty($config['webhook_verify_token']),
+            'webhookConfigured' => ! empty($config['webhook_verify_token']),
             'webhook_verify_token' => $config['webhook_verify_token'] ?? '',
             'appSecret' => str_repeat('•', 16),
             'accessToken' => str_repeat('•', 16),
@@ -138,7 +138,7 @@ class FacebookIntegrationController extends Controller
                 'created_at' => $integration->created_at,
                 'updated_at' => $integration->updated_at,
             ],
-            'webhook_url' => $this->getWebhookUrlFromDatabase()
+            'webhook_url' => $this->getWebhookUrlFromDatabase(),
         ]);
     }
 
@@ -159,14 +159,14 @@ class FacebookIntegrationController extends Controller
                 'app_id' => $validatedData['appId'],
                 'app_secret' => $validatedData['appSecret'],
                 'access_token' => auth()->user()->getFacebookAccessToken(),
-                'page_id' => $validatedData['pageId'] ?? null
+                'page_id' => $validatedData['pageId'] ?? null,
             ]);
 
-            if (!$verificationResult['verified']) {
+            if (! $verificationResult['verified']) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to verify Facebook credentials',
-                    'error' => $verificationResult['error']
+                    'error' => $verificationResult['error'],
                 ], 400);
             }
 
@@ -195,7 +195,7 @@ class FacebookIntegrationController extends Controller
                 'template' => $templateConfig ? [
                     'name' => $templateConfig['name'],
                     'description' => $templateConfig['description'],
-                    'applied_at' => now()
+                    'applied_at' => now(),
                 ] : null,
                 'page_info' => $verificationResult['page_info'] ?? null,
             ];
@@ -210,7 +210,7 @@ class FacebookIntegrationController extends Controller
             );
 
             // Setup webhook if verify token provided and template config exists
-            if (!empty($validatedData['webhook_verify_token'])) {
+            if (! empty($validatedData['webhook_verify_token'])) {
                 $webhookSubscriptions = $templateConfig['webhook_subscriptions'] ?? ['leadgen'];
                 $this->setupWebhook($integration, $validatedData, $webhookSubscriptions);
             }
@@ -229,15 +229,15 @@ class FacebookIntegrationController extends Controller
                     'provider' => $integration->provider,
                     'name' => $integration->name,
                     'active' => $integration->active,
-                ]
+                ],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Facebook integration configuration error: ' . $e->getMessage());
+            Log::error('Facebook integration configuration error: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to configure Facebook integration'
+                'message' => 'Failed to configure Facebook integration',
             ], 500);
         }
     }
@@ -252,7 +252,7 @@ class FacebookIntegrationController extends Controller
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Facebook integration not found or inactive',
@@ -289,13 +289,13 @@ class FacebookIntegrationController extends Controller
                     // Test permissions by trying to get page info
                     try {
                         $pageInfo = $this->facebookSdkService->getPageInfo($config['page_id']);
-                        $permissionsHealthy = !empty($pageInfo);
+                        $permissionsHealthy = ! empty($pageInfo);
                     } catch (Exception $e) {
                         $permissionsHealthy = false;
                     }
                 }
             } catch (Exception $e) {
-                Log::error('Facebook API health check failed: ' . $e->getMessage());
+                Log::error('Facebook API health check failed: '.$e->getMessage());
                 $apiHealthy = false;
             }
 
@@ -330,7 +330,7 @@ class FacebookIntegrationController extends Controller
                     'active' => $integration->active,
                     'page_name' => $config['page_info']['name'] ?? null,
                     'features' => $config['features'] ?? [],
-                ]
+                ],
             ];
 
             // Add token expiry information for super admins only
@@ -396,7 +396,7 @@ class FacebookIntegrationController extends Controller
             return response()->json($responseData);
 
         } catch (Exception $e) {
-            Log::error('Failed to get Facebook health status: ' . $e->getMessage());
+            Log::error('Failed to get Facebook health status: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -423,10 +423,10 @@ class FacebookIntegrationController extends Controller
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found or inactive'
+                    'message' => 'Facebook integration not found or inactive',
                 ], 404);
             }
 
@@ -437,15 +437,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'tests' => $testResults
+                'tests' => $testResults,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Facebook connection test failed: ' . $e->getMessage());
+            Log::error('Facebook connection test failed: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to test Facebook connection'
+                'message' => 'Failed to test Facebook connection',
             ], 500);
         }
     }
@@ -460,26 +460,26 @@ class FacebookIntegrationController extends Controller
                 'metric' => 'sometimes|string|in:page_views,page_likes,page_impressions,page_engaged_users',
                 'period' => 'sometimes|string|in:day,week,days_28',
                 'since' => 'sometimes|date',
-                'until' => 'sometimes|date'
+                'until' => 'sometimes|date',
             ]);
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
             $config = $integration->config;
 
-            if (!($config['features']['insights'] ?? false)) {
+            if (! ($config['features']['insights'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook insights not enabled for this integration'
+                    'message' => 'Facebook insights not enabled for this integration',
                 ], 403);
             }
 
@@ -494,15 +494,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'insights' => $insights
+                'insights' => $insights,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to fetch Facebook insights: ' . $e->getMessage());
+            Log::error('Failed to fetch Facebook insights: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch page insights'
+                'message' => 'Failed to fetch page insights',
             ], 500);
         }
     }
@@ -516,17 +516,17 @@ class FacebookIntegrationController extends Controller
             $request->validate([
                 'limit' => 'sometimes|integer|min:1|max:100',
                 'since' => 'sometimes|date',
-                'until' => 'sometimes|date'
+                'until' => 'sometimes|date',
             ]);
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -542,15 +542,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'posts' => $posts
+                'posts' => $posts,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to fetch Facebook posts: ' . $e->getMessage());
+            Log::error('Failed to fetch Facebook posts: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch page posts'
+                'message' => 'Failed to fetch page posts',
             ], 500);
         }
     }
@@ -565,26 +565,26 @@ class FacebookIntegrationController extends Controller
                 'message' => 'required|string|max:8000',
                 'link' => 'sometimes|url',
                 'scheduled_publish_time' => 'sometimes|date|after:now',
-                'published' => 'sometimes|boolean'
+                'published' => 'sometimes|boolean',
             ]);
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
             $config = $integration->config;
 
-            if (!($config['features']['posts'] ?? false)) {
+            if (! ($config['features']['posts'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook posting not enabled for this integration'
+                    'message' => 'Facebook posting not enabled for this integration',
                 ], 403);
             }
 
@@ -600,15 +600,15 @@ class FacebookIntegrationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Post created successfully',
-                'post' => $post
+                'post' => $post,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to create Facebook post: ' . $e->getMessage());
+            Log::error('Failed to create Facebook post: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create post'
+                'message' => 'Failed to create post',
             ], 500);
         }
     }
@@ -623,10 +623,10 @@ class FacebookIntegrationController extends Controller
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -636,18 +636,18 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'webhook_configured' => !empty($integration->config['webhook_verify_token']),
+                'webhook_configured' => ! empty($integration->config['webhook_verify_token']),
                 'webhook_url' => $this->getWebhookUrlFromDatabase(),
-                'verify_token_set' => !empty($integration->config['webhook_verify_token']),
-                'subscriptions' => $webhookConfig ? $webhookConfig->subscriptions : []
+                'verify_token_set' => ! empty($integration->config['webhook_verify_token']),
+                'subscriptions' => $webhookConfig ? $webhookConfig->subscriptions : [],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get webhook config: ' . $e->getMessage());
+            Log::error('Failed to get webhook config: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get webhook configuration'
+                'message' => 'Failed to get webhook configuration',
             ], 500);
         }
     }
@@ -680,34 +680,34 @@ class FacebookIntegrationController extends Controller
                  attire, payment_options, culinary_team, general_manager, price_range, awards, hometown, current_location, bio, affiliation,
                  birthday, personal_info, personal_interests, members, checkins, page_upcoming_change, page_change_proposal, merchant_review,
                  product_review, videos, live_videos, video_text_question_responses, registration, payment_request_update, publisher_subscriptions,
-                 invalid_topic_placeholder'
+                 invalid_topic_placeholder',
             ];
 
             $validated = $request->validate([
                 'subscriptions' => 'required|array',
-                'subscriptions.*' => 'boolean'
+                'subscriptions.*' => 'boolean',
             ]);
 
             $invalidSubscriptions = array_diff($validated['subscriptions'], $allowedSubscriptions);
             if (empty($invalidSubscriptions)) {
                 throw new \Illuminate\Validation\ValidationException(
                     validator([], []),
-                    ['subscriptions' => ['Invalid subscription types: ' . implode(', ', $invalidSubscriptions)]]
+                    ['subscriptions' => ['Invalid subscription types: '.implode(', ', $invalidSubscriptions)]]
                 );
             }
 
             $enabledSubscriptions = array_keys(array_filter($validated['subscriptions']));
 
-            Log::info('Subscribing to webhook: ' . json_encode($enabledSubscriptions));
+            Log::info('Subscribing to webhook: '.json_encode($enabledSubscriptions));
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -726,11 +726,11 @@ class FacebookIntegrationController extends Controller
                 FacebookWebhookConfig::updateOrCreate(
                     [
                         'app_id' => $config['app_id'],
-                        'page_id' => $config['page_id']
+                        'page_id' => $config['page_id'],
                     ],
                     [
                         'subscriptions' => $enabledSubscriptions,
-                        'active' => true
+                        'active' => true,
                     ]
                 );
             }
@@ -738,15 +738,15 @@ class FacebookIntegrationController extends Controller
             return response()->json([
                 'success' => $result['success'],
                 'message' => $result['success'] ? 'Webhook subscribed successfully' : 'Failed to subscribe webhook',
-                'subscriptions' => $enabledSubscriptions
+                'subscriptions' => $enabledSubscriptions,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to subscribe webhook: ' . $e->getMessage() . $e->getCode());
+            Log::error('Failed to subscribe webhook: '.$e->getMessage().$e->getCode());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to subscribe to webhook'
+                'message' => 'Failed to subscribe to webhook',
             ], 500);
         }
     }
@@ -761,10 +761,10 @@ class FacebookIntegrationController extends Controller
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -775,15 +775,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'page_info' => $pageInfo
+                'page_info' => $pageInfo,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get page info: ' . $e->getMessage());
+            Log::error('Failed to get page info: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get page information'
+                'message' => 'Failed to get page information',
             ], 500);
         }
     }
@@ -794,7 +794,7 @@ class FacebookIntegrationController extends Controller
             $perPage = $request->get('per_page', 10);
             $pages = MetaPage::orderBy('last_updated')
                 ->when($request->get('search'), function ($query, $search) {
-                    $query->where('name', 'like', '%' . $search . '%');
+                    $query->where('name', 'like', '%'.$search.'%');
                 })
                 ->paginate($perPage)->withQueryString();
 
@@ -814,7 +814,7 @@ class FacebookIntegrationController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get pages'
+                'message' => 'Failed to get pages',
             ]);
         }
     }
@@ -828,7 +828,7 @@ class FacebookIntegrationController extends Controller
         $pageId = $validatedRequest['page_id'];
         $page = MetaPage::where('id', $pageId)->first();
 
-        if (!$page) {
+        if (! $page) {
             return response()->json([
                 'message' => 'Page not found',
                 'success' => false,
@@ -839,7 +839,7 @@ class FacebookIntegrationController extends Controller
             $perPage = $request->get('per_page', 10);
             $pages = LeadForm::where('page_id', $page->page_id)
                 ->when($request->get('search'), function ($query, $search) {
-                    $query->where('name', 'like', '%' . $search . '%');
+                    $query->where('name', 'like', '%'.$search.'%');
                 })
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage)->withQueryString();
@@ -860,7 +860,7 @@ class FacebookIntegrationController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get forms' . $e->getMessage()
+                'message' => 'Failed to get forms'.$e->getMessage(),
             ]);
         }
     }
@@ -878,7 +878,7 @@ class FacebookIntegrationController extends Controller
 
         $page = MetaPage::where('id', $pageId)->first();
 
-        if (!$page) {
+        if (! $page) {
             return response()->json([
                 'message' => 'Page not found',
                 'success' => false,
@@ -889,7 +889,7 @@ class FacebookIntegrationController extends Controller
             ->where('id', $formId)
             ->first();
 
-        if (!$form) {
+        if (! $form) {
             return response()->json([
                 'message' => 'Form not found',
                 'success' => false,
@@ -910,7 +910,7 @@ class FacebookIntegrationController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get forms' . $e->getMessage()
+                'message' => 'Failed to get forms'.$e->getMessage(),
             ]);
         }
     }
@@ -925,37 +925,38 @@ class FacebookIntegrationController extends Controller
                 'sync_posts' => 'sometimes|boolean',
                 'sync_comments' => 'sometimes|boolean',
                 'sync_messages' => 'sometimes|boolean',
-                'limit' => 'sometimes|integer|min:1|max:1000'
+                'sync_forms' => 'sometimes|boolean',
+                'limit' => 'sometimes|integer|min:1|max:1000',
             ]);
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
             // Dispatch background job for data sync
             \App\Jobs\SyncFacebookPageData::dispatch(
                 $integration->id,
-                $request->only(['sync_posts', 'sync_comments', 'sync_messages', 'limit'])
+                $request->only(['sync_posts', 'sync_comments', 'sync_messages', 'sync_forms', 'limit'])
             );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data sync started in background'
+                'message' => 'Data sync started in background',
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to start sync: ' . $e->getMessage());
+            Log::error('Failed to start sync: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start data sync'
+                'message' => 'Failed to start data sync',
             ], 500);
         }
     }
@@ -968,10 +969,10 @@ class FacebookIntegrationController extends Controller
         try {
             $integration = Integration::where('provider', 'facebook')->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -986,15 +987,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Facebook integration deactivated successfully'
+                'message' => 'Facebook integration deactivated successfully',
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to deactivate integration: ' . $e->getMessage());
+            Log::error('Failed to deactivate integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to deactivate integration'
+                'message' => 'Failed to deactivate integration',
             ], 500);
         }
     }
@@ -1007,10 +1008,10 @@ class FacebookIntegrationController extends Controller
         try {
             $integration = Integration::where('provider', 'facebook')->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found'
+                    'message' => 'Facebook integration not found',
                 ], 404);
             }
 
@@ -1026,15 +1027,15 @@ class FacebookIntegrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Facebook integration deleted successfully'
+                'message' => 'Facebook integration deleted successfully',
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to delete integration: ' . $e->getMessage());
+            Log::error('Failed to delete integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete integration'
+                'message' => 'Failed to delete integration',
             ], 500);
         }
     }
@@ -1060,10 +1061,10 @@ class FacebookIntegrationController extends Controller
                 $subscriptions
             );
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 Log::warning('Failed to subscribe to Facebook webhook', [
                     'page_id' => $config['page_id'],
-                    'error' => $result['error']
+                    'error' => $result['error'],
                 ]);
             }
 
@@ -1071,16 +1072,16 @@ class FacebookIntegrationController extends Controller
             FacebookWebhookConfig::updateOrCreate(
                 [
                     'app_id' => $config['app_id'],
-                    'page_id' => $config['page_id']
+                    'page_id' => $config['page_id'],
                 ],
                 [
                     'subscriptions' => $subscriptions,
-                    'active' => true
+                    'active' => true,
                 ]
             );
 
         } catch (Exception $e) {
-            Log::error('Failed to setup webhook: ' . $e->getMessage());
+            Log::error('Failed to setup webhook: '.$e->getMessage());
         }
     }
 
@@ -1094,19 +1095,19 @@ class FacebookIntegrationController extends Controller
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found or inactive'
+                    'message' => 'Facebook integration not found or inactive',
                 ], 404);
             }
 
             $config = $integration->config;
 
-            if (!($config['features']['leadgen'] ?? $config['features']['lead_generation'] ?? false)) {
+            if (! ($config['features']['leadgen'] ?? $config['features']['lead_generation'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lead generation not enabled for this integration'
+                    'message' => 'Lead generation not enabled for this integration',
                 ], 403);
             }
 
@@ -1122,22 +1123,22 @@ class FacebookIntegrationController extends Controller
                 [
                     'sync_type' => 'lead_forms',
                     'synced_count' => $syncedCount,
-                    'page_id' => $pageId
+                    'page_id' => $pageId,
                 ]
             );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Lead forms synced successfully',
-                'count' => $syncedCount
+                'count' => $syncedCount,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to sync lead forms: ' . $e->getMessage());
+            Log::error('Failed to sync lead forms: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to sync lead forms from Facebook'
+                'message' => 'Failed to sync lead forms from Facebook',
             ], 500);
         }
     }
@@ -1150,26 +1151,26 @@ class FacebookIntegrationController extends Controller
         try {
             $request->validate([
                 'form_id' => 'sometimes|string',
-                'limit' => 'sometimes|integer|min:1|max:1000'
+                'limit' => 'sometimes|integer|min:1|max:1000',
             ]);
 
             $integration = Integration::where('provider', 'facebook')
                 ->where('active', true)
                 ->first();
 
-            if (!$integration) {
+            if (! $integration) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Facebook integration not found or inactive'
+                    'message' => 'Facebook integration not found or inactive',
                 ], 404);
             }
 
             $config = $integration->config;
 
-            if (!($config['features']['leadgen'] ?? $config['features']['lead_generation'] ?? false)) {
+            if (! ($config['features']['leadgen'] ?? $config['features']['lead_generation'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lead generation not enabled for this integration'
+                    'message' => 'Lead generation not enabled for this integration',
                 ], 403);
             }
 
@@ -1201,15 +1202,15 @@ class FacebookIntegrationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Leads synced successfully',
-                'count' => $syncedCount
+                'count' => $syncedCount,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to sync leads: ' . $e->getMessage());
+            Log::error('Failed to sync leads: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to sync leads from Facebook'
+                'message' => 'Failed to sync leads from Facebook',
             ], 500);
         }
     }
@@ -1222,14 +1223,14 @@ class FacebookIntegrationController extends Controller
         try {
             $integration = Integration::where('provider', 'facebook')->first();
 
-            if (!$integration || empty($integration->config['webhook_url'])) {
+            if (! $integration || empty($integration->config['webhook_url'])) {
                 // Fallback to route-based URL if not configured in database
                 return route('facebook.webhook');
             }
 
             return $integration->config['webhook_url'];
         } catch (Exception $e) {
-            Log::error('Failed to get webhook URL from database: ' . $e->getMessage());
+            Log::error('Failed to get webhook URL from database: '.$e->getMessage());
 
             // Fallback to route-based URL
             return route('facebook.webhook');
@@ -1241,7 +1242,7 @@ class FacebookIntegrationController extends Controller
      */
     private function getTokenUrgency(array $tokenStatus): string
     {
-        if (!$tokenStatus['has_token']) {
+        if (! $tokenStatus['has_token']) {
             return 'none';
         }
 

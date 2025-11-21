@@ -5,20 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Integration;
 use App\Models\MetaPage;
 use App\Models\OAuthSession;
-use App\Services\FacebookService;
+use Exception;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Exception;
 
 class FacebookOAuthController extends Controller
 {
     private string $clientId;
+
     private string $clientSecret;
+
     private string $redirectUri;
+
     private array $scopes;
 
     private string $apiVersion = 'v23.0';
@@ -42,7 +44,7 @@ class FacebookOAuthController extends Controller
     /**
      * Initiate Facebook OAuth flow
      */
-    public function authorize(Request $request): JsonResponse
+    public function initiateOAuth(Request $request): JsonResponse
     {
         try {
             $userId = $request->user()->id;
@@ -53,7 +55,7 @@ class FacebookOAuthController extends Controller
             OAuthSession::create([
                 'user_id' => $userId,
                 'state' => $state,
-                'expires_at' => now()->addHour()
+                'expires_at' => now()->addHour(),
             ]);
 
             Log::info('Initiated Facebook OAuth flow', [
@@ -62,27 +64,27 @@ class FacebookOAuthController extends Controller
                 'scopes' => $this->scopes,
             ]);
 
-            $authUrl = "https://www.facebook.com/$apiVersion/dialog/oauth?" . http_build_query([
-                    'client_id' => $this->clientId,
-                    'redirect_uri' => $this->redirectUri,
-                    'scope' => implode(',', $this->scopes),
-                    'response_type' => 'code',
-                    'state' => $state,
-                    'display' => 'popup'
-                ]);
+            $authUrl = "https://www.facebook.com/$apiVersion/dialog/oauth?".http_build_query([
+                'client_id' => $this->clientId,
+                'redirect_uri' => $this->redirectUri,
+                'scope' => implode(',', $this->scopes),
+                'response_type' => 'code',
+                'state' => $state,
+                'display' => 'popup',
+            ]);
 
             return response()->json([
                 'success' => true,
                 'auth_url' => $authUrl,
-                'state' => $state
+                'state' => $state,
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to initiate Facebook OAuth flow: ' . $e->getMessage());
+            Log::error('Failed to initiate Facebook OAuth flow: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to initiate authorization'
+                'message' => 'Failed to initiate authorization',
             ], 500);
         }
     }
@@ -103,15 +105,15 @@ class FacebookOAuthController extends Controller
                 return redirect(route('facebook.integration.index'))->with([
                     'success' => 'false',
                     'error' => $error,
-                    'message' => 'Facebook authorization was denied or failed'
+                    'message' => 'Facebook authorization was denied or failed',
                 ]);
             }
 
-            if (!$code || !$state) {
+            if (! $code || ! $state) {
                 return redirect(route('facebook.integration.index'))->with([
                     'success' => 'false',
                     'error' => 'missing_params',
-                    'message' => 'Missing authorization code or state'
+                    'message' => 'Missing authorization code or state',
                 ]);
             }
 
@@ -120,11 +122,11 @@ class FacebookOAuthController extends Controller
                 ->where('expires_at', '>', now())
                 ->first();
 
-            if (!$oauthSession) {
+            if (! $oauthSession) {
                 return redirect(route('integrations'))->with([
                     'success' => 'false',
                     'error' => 'invalid_session',
-                    'message' => 'Invalid or expired OAuth session'
+                    'message' => 'Invalid or expired OAuth session',
                 ]);
             }
 
@@ -134,7 +136,7 @@ class FacebookOAuthController extends Controller
             // Get user from OAuth session
             $user = \App\Models\User::find($oauthSession->user_id);
 
-            if (!$user) {
+            if (! $user) {
                 throw new Exception('User not found');
             }
 
@@ -148,7 +150,7 @@ class FacebookOAuthController extends Controller
             Log::info('Facebook user token stored', [
                 'user_id' => $user->id,
                 'token_expires_at' => $user->facebook_token_expires_at,
-                'has_refresh_token' => !empty($tokens['refresh_token'])
+                'has_refresh_token' => ! empty($tokens['refresh_token']),
             ]);
 
             // Get user's Facebook pages
@@ -158,10 +160,9 @@ class FacebookOAuthController extends Controller
                 return redirect(route('integrations'))->with([
                     'success' => 'false',
                     'error' => 'no_pages',
-                    'message' => 'No Facebook pages found for this account'
+                    'message' => 'No Facebook pages found for this account',
                 ]);
             }
-
 
             // Store pages in the meta_pages table
             foreach ($pages as $pageData) {
@@ -172,7 +173,7 @@ class FacebookOAuthController extends Controller
             $tempData = [
                 'user_access_token' => $tokens['access_token'],
                 'pages' => $pages,
-                'expires_at' => now()->addMinutes(10)
+                'expires_at' => now()->addMinutes(10),
             ];
 
             // Store in cache for page selection
@@ -185,16 +186,16 @@ class FacebookOAuthController extends Controller
             return redirect(route('integrations'))->with([
                 'success' => 'true',
                 'step' => 'select_page',
-                'message' => 'Please select a Facebook page to integrate'
+                'message' => 'Please select a Facebook page to integrate',
             ]);
 
         } catch (Exception $e) {
-            Log::error('Facebook OAuth callback failed: ' . $e->getMessage());
+            Log::error('Facebook OAuth callback failed: '.$e->getMessage());
 
             return redirect(route('integrations'))->with([
                 'success' => 'false',
                 'error' => 'server_error',
-                'message' => 'Failed to complete authorization'
+                'message' => 'Failed to complete authorization',
             ]);
         }
     }
@@ -204,12 +205,12 @@ class FacebookOAuthController extends Controller
         MetaPage::updateOrCreate(
             [
                 'user_id' => $userId,
-                'page_id' => $pageData['id']
+                'page_id' => $pageData['id'],
             ],
             [
                 'name' => $pageData['name'],
                 'access_token' => $pageData['access_token'] ?? '',
-                'last_updated' => now()
+                'last_updated' => now(),
             ]
         );
     }
@@ -223,24 +224,24 @@ class FacebookOAuthController extends Controller
             $userId = $request->user()->id;
             $tempData = cache()->get("facebook_oauth_temp_{$userId}");
 
-            if (!$tempData || $tempData['expires_at']->isPast()) {
+            if (! $tempData || $tempData['expires_at']->isPast()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'OAuth session expired. Please restart the authorization process.'
+                    'message' => 'OAuth session expired. Please restart the authorization process.',
                 ], 400);
             }
 
             return response()->json([
                 'success' => true,
-                'pages' => $tempData['pages']
+                'pages' => $tempData['pages'],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get Facebook pages: ' . $e->getMessage());
+            Log::error('Failed to get Facebook pages: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get available pages'
+                'message' => 'Failed to get available pages',
             ], 500);
         }
     }
@@ -257,26 +258,26 @@ class FacebookOAuthController extends Controller
                 'enable_posts' => 'sometimes|boolean',
                 'enable_insights' => 'sometimes|boolean',
                 'enable_comments' => 'sometimes|boolean',
-                'webhook_verify_token' => 'sometimes|string|min:8|max:50'
+                'webhook_verify_token' => 'sometimes|string|min:8|max:50',
             ]);
 
             $userId = $request->user()->id;
             $tempData = cache()->get("facebook_oauth_temp_{$userId}");
 
-            if (!$tempData || $tempData['expires_at']->isPast()) {
+            if (! $tempData || $tempData['expires_at']->isPast()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'OAuth session expired. Please restart the authorization process.'
+                    'message' => 'OAuth session expired. Please restart the authorization process.',
                 ], 400);
             }
 
             $selectedPageId = $request->page_id;
             $selectedPage = collect($tempData['pages'])->firstWhere('id', $selectedPageId);
 
-            if (!$selectedPage) {
+            if (! $selectedPage) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid page selected'
+                    'message' => 'Invalid page selected',
                 ], 400);
             }
 
@@ -306,7 +307,7 @@ class FacebookOAuthController extends Controller
             $integration = Integration::updateOrCreate(
                 ['provider' => 'facebook'],
                 [
-                    'name' => 'Facebook - ' . $selectedPage['name'],
+                    'name' => 'Facebook - '.$selectedPage['name'],
                     'config' => $config,
                     'active' => true,
                 ]
@@ -324,16 +325,16 @@ class FacebookOAuthController extends Controller
                     'name' => $integration->name,
                     'active' => $integration->active,
                     'page_name' => $selectedPage['name'],
-                    'page_id' => $selectedPageId
-                ]
+                    'page_id' => $selectedPageId,
+                ],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to complete Facebook integration: ' . $e->getMessage());
+            Log::error('Failed to complete Facebook integration: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to complete integration'
+                'message' => 'Failed to complete integration',
             ], 500);
         }
     }
@@ -347,20 +348,21 @@ class FacebookOAuthController extends Controller
             $userId = $request->user()->id;
             $tempData = cache()->get("facebook_oauth_temp_{$userId}");
 
-            if (!$tempData) {
+            if (! $tempData) {
                 return response()->json([
                     'success' => true,
                     'status' => 'not_started',
-                    'message' => 'OAuth flow not started'
+                    'message' => 'OAuth flow not started',
                 ]);
             }
 
             if ($tempData['expires_at']->isPast()) {
                 cache()->forget("facebook_oauth_temp_{$userId}");
+
                 return response()->json([
                     'success' => true,
                     'status' => 'expired',
-                    'message' => 'OAuth session expired'
+                    'message' => 'OAuth session expired',
                 ]);
             }
 
@@ -369,15 +371,15 @@ class FacebookOAuthController extends Controller
                 'status' => 'pending_page_selection',
                 'message' => 'Ready for page selection',
                 'pages_count' => count($tempData['pages']),
-                'expires_at' => $tempData['expires_at']
+                'expires_at' => $tempData['expires_at'],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get OAuth status: ' . $e->getMessage());
+            Log::error('Failed to get OAuth status: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get OAuth status'
+                'message' => 'Failed to get OAuth status',
             ], 500);
         }
     }
@@ -395,7 +397,7 @@ class FacebookOAuthController extends Controller
             'client_id' => $this->clientId,
             'client_secret_length' => strlen($this->clientSecret),
             'redirect_uri' => $this->redirectUri,
-            'code_length' => strlen($code)
+            'code_length' => strlen($code),
         ]);
 
         $tokenUrl = 'https://graph.facebook.com/v23.0/oauth/access_token';
@@ -410,7 +412,7 @@ class FacebookOAuthController extends Controller
             'url' => $tokenUrl,
             'client_id' => $params['client_id'],
             'redirect_uri' => $params['redirect_uri'],
-            'client_secret_masked' => substr($params['client_secret'], 0, 8) . '...'
+            'client_secret_masked' => substr($params['client_secret'], 0, 8).'...',
         ]);
 
         $response = Http::post($tokenUrl, $params);
@@ -419,21 +421,21 @@ class FacebookOAuthController extends Controller
             'status' => $response->status(),
             'successful' => $response->successful(),
             'body' => $response->body(),
-            'headers' => $response->headers()
+            'headers' => $response->headers(),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $errorBody = $response->body();
             Log::error('Facebook token exchange failed', [
                 'status' => $response->status(),
                 'response' => $errorBody,
                 'request_params' => [
                     'client_id' => $params['client_id'],
-                    'redirect_uri' => $params['redirect_uri']
-                ]
+                    'redirect_uri' => $params['redirect_uri'],
+                ],
             ]);
 
-            throw new Exception('Failed to exchange code for tokens: ' . $errorBody);
+            throw new Exception('Failed to exchange code for tokens: '.$errorBody);
         }
 
         return $response->json();
@@ -447,14 +449,15 @@ class FacebookOAuthController extends Controller
     {
         $response = Http::get('https://graph.facebook.com/v23.0/me/accounts', [
             'access_token' => $accessToken,
-            'fields' => 'id,name,category,access_token,tasks,picture'
+            'fields' => 'id,name,category,access_token,tasks,picture',
         ]);
 
-        if (!$response->successful()) {
-            throw new Exception('Failed to get user pages: ' . $response->body());
+        if (! $response->successful()) {
+            throw new Exception('Failed to get user pages: '.$response->body());
         }
 
         $data = $response->json();
+
         return $data['data'] ?? [];
     }
 
@@ -469,11 +472,11 @@ class FacebookOAuthController extends Controller
             'grant_type' => 'fb_exchange_token',
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
-            'fb_exchange_token' => $userAccessToken
+            'fb_exchange_token' => $userAccessToken,
         ]);
 
-        if (!$response->successful()) {
-            throw new Exception('Failed to get long-lived user token: ' . $response->body());
+        if (! $response->successful()) {
+            throw new Exception('Failed to get long-lived user token: '.$response->body());
         }
 
         $longLivedUserToken = $response->json()['access_token'];
@@ -481,17 +484,17 @@ class FacebookOAuthController extends Controller
         // Get page access token using long-lived user token
         $pagesResponse = Http::get('https://graph.facebook.com/v23.0/me/accounts', [
             'access_token' => $longLivedUserToken,
-            'fields' => 'id,access_token'
+            'fields' => 'id,access_token',
         ]);
 
-        if (!$pagesResponse->successful()) {
-            throw new Exception('Failed to get page access token: ' . $pagesResponse->body());
+        if (! $pagesResponse->successful()) {
+            throw new Exception('Failed to get page access token: '.$pagesResponse->body());
         }
 
         $pages = $pagesResponse->json()['data'] ?? [];
         $selectedPage = collect($pages)->firstWhere('id', $pageId);
 
-        if (!$selectedPage || !isset($selectedPage['access_token'])) {
+        if (! $selectedPage || ! isset($selectedPage['access_token'])) {
             throw new Exception('Page access token not found');
         }
 

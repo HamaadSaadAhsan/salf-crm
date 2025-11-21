@@ -22,7 +22,7 @@ class WorkflowResource extends JsonResource
             'last_execution' => $this?->when(
                 $this?->relationLoaded('executions') && $this?->executions?->isNotEmpty(),
                 $this?->executions?->first()?->created_at
-            )
+            ),
         ];
     }
 }

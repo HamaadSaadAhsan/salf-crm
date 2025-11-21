@@ -1,6 +1,7 @@
 <?php
 
 // app/Http/Requests/StoreWorkflowRequest.php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,7 +43,7 @@ class StoreWorkflowRequest extends FormRequest
             'connections' => 'nullable|array',
             'connections.*.from_step_temp_id' => 'required|string',
             'connections.*.to_step_temp_id' => 'required|string',
-            'connections.*.conditions' => 'nullable|array'
+            'connections.*.conditions' => 'nullable|array',
         ];
     }
 
@@ -52,7 +53,7 @@ class StoreWorkflowRequest extends FormRequest
             'steps.required' => 'Workflow must have at least one step',
             'steps.*.step_type.in' => 'Step type must be either trigger or action',
             'steps.*.service.required' => 'Each step must specify a service',
-            'steps.*.operation.required' => 'Each step must specify an operation'
+            'steps.*.operation.required' => 'Each step must specify an operation',
         ];
     }
 }

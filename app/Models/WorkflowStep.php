@@ -18,12 +18,12 @@ class WorkflowStep extends Model
         'operation',
         'order',
         'configuration',
-        'enabled'
+        'enabled',
     ];
 
     protected $casts = [
         'configuration' => 'array',
-        'enabled' => 'boolean'
+        'enabled' => 'boolean',
     ];
 
     public function workflow(): BelongsTo

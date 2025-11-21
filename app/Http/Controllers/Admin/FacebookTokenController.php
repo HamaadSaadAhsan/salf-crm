@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Integration;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use App\Models\User;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class FacebookTokenController extends Controller
 {
@@ -31,7 +30,7 @@ class FacebookTokenController extends Controller
                 ->get()
                 ->map(function ($user) {
                     $tokenStatus = $user->getFacebookTokenStatus();
-                    
+
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
@@ -44,7 +43,7 @@ class FacebookTokenController extends Controller
                             'expires_in_hours' => $tokenStatus['expires_in_hours'],
                             'has_refresh_token' => $tokenStatus['has_refresh_token'],
                             'status' => $this->getTokenStatusLabel($tokenStatus),
-                        ]
+                        ],
                     ];
                 });
 
@@ -53,6 +52,7 @@ class FacebookTokenController extends Controller
             $expiredTokens = $usersWithTokens->where('token_status.is_expired', true)->count();
             $expiringSoon = $usersWithTokens->filter(function ($user) {
                 $hoursToExpiry = $user['token_status']['expires_in_hours'];
+
                 return $hoursToExpiry !== null && $hoursToExpiry > 0 && $hoursToExpiry <= 24;
             })->count();
             $healthy = $totalWithTokens - $expiredTokens - $expiringSoon;
@@ -69,11 +69,11 @@ class FacebookTokenController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get Facebook token overview: ' . $e->getMessage());
+            Log::error('Failed to get Facebook token overview: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve token overview'
+                'message' => 'Failed to retrieve token overview',
             ], 500);
         }
     }
@@ -85,20 +85,20 @@ class FacebookTokenController extends Controller
     {
         try {
             $user = User::findOrFail($userId);
-            
-            if (!$user->hasFacebookToken()) {
+
+            if (! $user->hasFacebookToken()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User does not have Facebook token'
+                    'message' => 'User does not have Facebook token',
                 ], 404);
             }
 
             $tokenStatus = $user->getFacebookTokenStatus();
-            
+
             // Get integration information
             $integration = Integration::where('provider', 'facebook')->first();
             $integrationInfo = null;
-            
+
             if ($integration) {
                 $config = $integration->config;
                 $integrationInfo = [
@@ -127,7 +127,7 @@ class FacebookTokenController extends Controller
                     'expires_at' => $tokenStatus['expires_at']?->toISOString(),
                     'connected_at' => $tokenStatus['connected_at']?->toISOString(),
                     'expires_in_hours' => $tokenStatus['expires_in_hours'],
-                    'expires_in_days' => $tokenStatus['expires_in_hours'] ? 
+                    'expires_in_days' => $tokenStatus['expires_in_hours'] ?
                         round($tokenStatus['expires_in_hours'] / 24, 1) : null,
                     'has_refresh_token' => $tokenStatus['has_refresh_token'],
                     'status' => $this->getTokenStatusLabel($tokenStatus),
@@ -137,11 +137,11 @@ class FacebookTokenController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get user token details: ' . $e->getMessage());
+            Log::error('Failed to get user token details: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve user token details'
+                'message' => 'Failed to retrieve user token details',
             ], 500);
         }
     }
@@ -157,14 +157,14 @@ class FacebookTokenController extends Controller
                 ->get()
                 ->map(function ($user) {
                     $tokenStatus = $user->getFacebookTokenStatus();
-                    
+
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
                         'expired_at' => $tokenStatus['expires_at']?->toISOString(),
                         'connected_at' => $tokenStatus['connected_at']?->toISOString(),
-                        'days_expired' => $tokenStatus['expires_at'] ? 
+                        'days_expired' => $tokenStatus['expires_at'] ?
                             $tokenStatus['expires_at']->diffInDays(now()) : null,
                     ];
                 });
@@ -176,11 +176,11 @@ class FacebookTokenController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get expired tokens: ' . $e->getMessage());
+            Log::error('Failed to get expired tokens: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve expired tokens'
+                'message' => 'Failed to retrieve expired tokens',
             ], 500);
         }
     }
@@ -192,13 +192,13 @@ class FacebookTokenController extends Controller
     {
         try {
             $hours = $request->get('hours', 72); // Default to 3 days
-            
+
             $expiringSoonUsers = User::withFacebookTokenExpiringSoon($hours)
                 ->select(['id', 'name', 'email', 'facebook_token_expires_at', 'facebook_connected_at'])
                 ->get()
                 ->map(function ($user) {
                     $tokenStatus = $user->getFacebookTokenStatus();
-                    
+
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
@@ -206,7 +206,7 @@ class FacebookTokenController extends Controller
                         'expires_at' => $tokenStatus['expires_at']?->toISOString(),
                         'connected_at' => $tokenStatus['connected_at']?->toISOString(),
                         'expires_in_hours' => $tokenStatus['expires_in_hours'],
-                        'expires_in_days' => $tokenStatus['expires_in_hours'] ? 
+                        'expires_in_days' => $tokenStatus['expires_in_hours'] ?
                             round($tokenStatus['expires_in_hours'] / 24, 1) : null,
                         'urgency' => $this->getTokenUrgency($tokenStatus),
                     ];
@@ -220,11 +220,11 @@ class FacebookTokenController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to get tokens expiring soon: ' . $e->getMessage());
+            Log::error('Failed to get tokens expiring soon: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve tokens expiring soon'
+                'message' => 'Failed to retrieve tokens expiring soon',
             ], 500);
         }
     }
@@ -236,11 +236,11 @@ class FacebookTokenController extends Controller
     {
         try {
             $user = User::findOrFail($userId);
-            
-            if (!$user->hasFacebookToken()) {
+
+            if (! $user->hasFacebookToken()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User does not have Facebook token to revoke'
+                    'message' => 'User does not have Facebook token to revoke',
                 ], 404);
             }
 
@@ -250,7 +250,7 @@ class FacebookTokenController extends Controller
             Log::info('Admin revoked Facebook token for user', [
                 'admin_user_id' => auth()->id(),
                 'target_user_id' => $userId,
-                'target_user_email' => $user->email
+                'target_user_email' => $user->email,
             ]);
 
             return response()->json([
@@ -260,15 +260,15 @@ class FacebookTokenController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                ]
+                ],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to revoke user token: ' . $e->getMessage());
+            Log::error('Failed to revoke user token: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to revoke user token'
+                'message' => 'Failed to revoke user token',
             ], 500);
         }
     }
@@ -280,11 +280,11 @@ class FacebookTokenController extends Controller
     {
         try {
             $user = User::findOrFail($userId);
-            
-            if (!$user->hasFacebookToken()) {
+
+            if (! $user->hasFacebookToken()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User does not have Facebook token'
+                    'message' => 'User does not have Facebook token',
                 ], 404);
             }
 
@@ -294,7 +294,7 @@ class FacebookTokenController extends Controller
                 'admin_user_id' => auth()->id(),
                 'target_user_id' => $userId,
                 'target_user_email' => $user->email,
-                'token_expires_at' => $user->facebook_token_expires_at
+                'token_expires_at' => $user->facebook_token_expires_at,
             ]);
 
             return response()->json([
@@ -304,15 +304,15 @@ class FacebookTokenController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                ]
+                ],
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to notify user of token expiry: ' . $e->getMessage());
+            Log::error('Failed to notify user of token expiry: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send notification'
+                'message' => 'Failed to send notification',
             ], 500);
         }
     }
@@ -322,28 +322,28 @@ class FacebookTokenController extends Controller
      */
     private function getTokenStatusLabel(array $tokenStatus): string
     {
-        if (!$tokenStatus['has_token']) {
+        if (! $tokenStatus['has_token']) {
             return 'No Token';
         }
-        
+
         if ($tokenStatus['is_expired']) {
             return 'Expired';
         }
-        
+
         $hoursToExpiry = $tokenStatus['expires_in_hours'];
-        
+
         if ($hoursToExpiry === null) {
             return 'Unknown';
         }
-        
+
         if ($hoursToExpiry <= 24) {
             return 'Expires Today';
         }
-        
+
         if ($hoursToExpiry <= 72) {
             return 'Expires Soon';
         }
-        
+
         return 'Active';
     }
 
@@ -352,32 +352,32 @@ class FacebookTokenController extends Controller
      */
     private function getTokenUrgency(array $tokenStatus): string
     {
-        if (!$tokenStatus['has_token']) {
+        if (! $tokenStatus['has_token']) {
             return 'none';
         }
-        
+
         if ($tokenStatus['is_expired']) {
             return 'critical';
         }
-        
+
         $hoursToExpiry = $tokenStatus['expires_in_hours'];
-        
+
         if ($hoursToExpiry === null) {
             return 'unknown';
         }
-        
+
         if ($hoursToExpiry <= 6) {
             return 'critical';
         }
-        
+
         if ($hoursToExpiry <= 24) {
             return 'high';
         }
-        
+
         if ($hoursToExpiry <= 72) {
             return 'medium';
         }
-        
+
         return 'low';
     }
 }

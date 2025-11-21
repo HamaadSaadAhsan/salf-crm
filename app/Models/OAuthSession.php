@@ -9,14 +9,17 @@ use Illuminate\Support\Str;
 class OAuthSession extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
+
     protected $table = 'oauth_sessions';
 
     protected $fillable = [
         'user_id',
         'state',
-        'expires_at'
+        'expires_at',
     ];
 
     protected $casts = [

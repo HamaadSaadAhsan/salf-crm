@@ -13,7 +13,7 @@ class FacebookLeadProcessed extends FacebookIntegrationEvent implements ShouldBr
         return [
             new PrivateChannel("user.{$this->userId}.facebook-integration"),
             new PrivateChannel("integration.{$this->integrationId}"),
-            new PrivateChannel("leads.new") // Global channel for new leads
+            new PrivateChannel('leads.new'), // Global channel for new leads
         ];
     }
 
@@ -30,7 +30,7 @@ class FacebookLeadProcessed extends FacebookIntegrationEvent implements ShouldBr
             'facebook_lead_id' => $this->data['facebook_lead_id'] ?? null,
             'form_name' => $this->data['form_name'] ?? null,
             'action_taken' => $this->data['action'] ?? 'created',
-            'timestamp' => now()->toISOString()
+            'timestamp' => now()->toISOString(),
         ];
     }
 }

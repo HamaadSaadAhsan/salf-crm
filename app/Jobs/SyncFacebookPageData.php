@@ -6,22 +6,24 @@ use App\Models\Integration;
 use App\Models\LeadForm;
 use App\Models\MetaPage;
 use App\Services\FacebookService;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class SyncFacebookPageData implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected string $integrationId;
+
     protected array $syncOptions;
 
     public $timeout = 300; // 5 minutes
+
     public $tries = 3;
 
     public function __construct(string $integrationId, array $syncOptions = [])
@@ -35,8 +37,9 @@ class SyncFacebookPageData implements ShouldQueue
         try {
             $integration = Integration::findOrFail($this->integrationId);
 
-            if (!$integration->active || $integration->provider !== 'facebook') {
+            if (! $integration->active || $integration->provider !== 'facebook') {
                 Log::warning("Skipping sync for inactive or non-Facebook integration: {$this->integrationId}");
+
                 return;
             }
 
@@ -45,13 +48,27 @@ class SyncFacebookPageData implements ShouldQueue
             $pageId = $config['page_id'];
             $limit = $this->syncOptions['limit'] ?? 100;
 
+            // If no sync options provided, default to syncing forms only
+            $hasAnySyncOption = isset($this->syncOptions['sync_posts']) ||
+                               isset($this->syncOptions['sync_comments']) ||
+                               isset($this->syncOptions['sync_messages']) ||
+                               isset($this->syncOptions['sync_forms']) ||
+                               isset($this->syncOptions['sync_leads']);
+
+            if (! $hasAnySyncOption) {
+                Log::info("No sync options provided for integration {$this->integrationId}, defaulting to sync_forms");
+                $this->syncOptions['sync_forms'] = true;
+            }
+
+            Log::info("Sync options for integration {$this->integrationId}: ".json_encode($this->syncOptions));
+
             $results = [
                 'posts_synced' => 0,
                 'comments_synced' => 0,
                 'messages_synced' => 0,
                 'forms_synced' => 0,
                 'leads_synced' => 0,
-                'errors' => []
+                'errors' => [],
             ];
 
             // Sync posts
@@ -61,7 +78,7 @@ class SyncFacebookPageData implements ShouldQueue
                     Log::info("Synced {$results['posts_synced']} posts for integration {$this->integrationId}");
                 } catch (Exception $e) {
                     $results['errors']['posts'] = $e->getMessage();
-                    Log::error("Failed to sync posts for integration {$this->integrationId}: " . $e->getMessage());
+                    Log::error("Failed to sync posts for integration {$this->integrationId}: ".$e->getMessage());
                 }
             }
 
@@ -72,7 +89,7 @@ class SyncFacebookPageData implements ShouldQueue
                     Log::info("Comments sync completed for integration {$this->integrationId}");
                 } catch (Exception $e) {
                     $results['errors']['comments'] = $e->getMessage();
-                    Log::error("Failed to sync comments for integration {$this->integrationId}: " . $e->getMessage());
+                    Log::error("Failed to sync comments for integration {$this->integrationId}: ".$e->getMessage());
                 }
             }
 
@@ -83,34 +100,41 @@ class SyncFacebookPageData implements ShouldQueue
                     Log::info("Messages sync completed for integration {$this->integrationId}");
                 } catch (Exception $e) {
                     $results['errors']['messages'] = $e->getMessage();
-                    Log::error("Failed to sync messages for integration {$this->integrationId}: " . $e->getMessage());
+                    Log::error("Failed to sync messages for integration {$this->integrationId}: ".$e->getMessage());
                 }
             }
 
-            // Sync messages (if enabled)
-            if ($this->syncOptions['sync_forms']) {
+            // Sync forms (if enabled)
+            if ($this->syncOptions['sync_forms'] ?? false) {
                 try {
-                    // Implementation for syncing messages would go here
+                    Log::info("Starting forms sync for integration {$this->integrationId}");
                     $metaPages = MetaPage::all();
+                    Log::info("Found {$metaPages->count()} MetaPages to sync forms from");
+
+                    $totalFormsSynced = 0;
                     foreach ($metaPages as $metaPage) {
-                        $results['forms_synced'] = $facebookService->syncForms($metaPage->access_token, $metaPage->page_id, $limit);
+                        Log::info("Syncing forms for MetaPage: {$metaPage->page_id} (Name: {$metaPage->name})");
+                        $syncedCount = $facebookService->syncForms($metaPage->access_token, $metaPage->page_id, $limit);
+                        $totalFormsSynced += $syncedCount;
+                        Log::info("Synced {$syncedCount} forms for MetaPage {$metaPage->page_id}");
                     }
 
-                    Log::info("Messages sync completed for integration {$this->integrationId}");
+                    $results['forms_synced'] = $totalFormsSynced;
+                    Log::info("Forms sync completed for integration {$this->integrationId}. Total forms synced: {$totalFormsSynced}");
                 } catch (Exception $e) {
-                    $results['errors']['messages'] = $e->getMessage();
-                    Log::error("Failed to sync messages for integration {$this->integrationId}: " . $e->getMessage());
+                    $results['errors']['forms'] = $e->getMessage();
+                    Log::error("Failed to sync forms for integration {$this->integrationId}: ".$e->getMessage());
                 }
             }
 
-            // Sync messages (if enabled)
-            if ($this->syncOptions['sync_leads']) {
+            // Sync leads (if enabled)
+            if ($this->syncOptions['sync_leads'] ?? false) {
                 try {
                     // Implementation for syncing messages would go here
                     $metaPages = MetaPage::all();
                     foreach ($metaPages as $metaPage) {
                         $forms = LeadForm::where('page_id', $metaPage->page_id)->get();
-                        if($forms->count()){
+                        if ($forms->count()) {
                             foreach ($forms as $form) {
                                 $results['leads_synced'] = $facebookService->syncLeads($metaPage->access_token, $form->external_id, $limit);
                             }
@@ -120,7 +144,7 @@ class SyncFacebookPageData implements ShouldQueue
                     Log::info("Messages sync completed for integration {$this->integrationId}");
                 } catch (Exception $e) {
                     $results['errors']['messages'] = $e->getMessage();
-                    Log::error("Failed to sync messages for integration {$this->integrationId}: " . $e->getMessage());
+                    Log::error("Failed to sync messages for integration {$this->integrationId}: ".$e->getMessage());
                 }
             }
 
@@ -128,18 +152,18 @@ class SyncFacebookPageData implements ShouldQueue
             $integration->update([
                 'config' => array_merge($config, [
                     'last_sync' => now(),
-                    'last_sync_results' => $results
-                ])
+                    'last_sync_results' => $results,
+                ]),
             ]);
 
         } catch (Exception $e) {
-            Log::error("Facebook data sync job failed for integration {$this->integrationId}: " . $e->getMessage());
+            Log::error("Facebook data sync job failed for integration {$this->integrationId}: ".$e->getMessage());
             $this->fail($e);
         }
     }
 
     public function failed(Exception $exception): void
     {
-        Log::error("Facebook data sync job permanently failed for integration {$this->integrationId}: " . $exception->getMessage());
+        Log::error("Facebook data sync job permanently failed for integration {$this->integrationId}: ".$exception->getMessage());
     }
 }

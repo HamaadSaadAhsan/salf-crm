@@ -1,119 +1,126 @@
-import { useState, useCallback } from 'react'
-import { WorkflowService } from '@/lib/api/workflow-service'
-import { Workflow } from '@/types/workflow'
-import { WorkflowHelpers } from '@/lib/workflow-helpers'
+import { router } from '@inertiajs/react';
+import { WorkflowHelpers } from '@/lib/workflow-helpers';
+import { Workflow } from '@/types/workflow';
+import { useCallback, useState, useEffect } from 'react';
 
-export const useWorkflowEdit = (workflowId: number) => {
-  const [workflow, setWorkflow] = useState<Workflow | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) => {
+    const [workflow, setWorkflow] = useState<Workflow | null>(initialWorkflow || null);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [originalWorkflow, setOriginalWorkflow] = useState<Workflow | null>(initialWorkflow || null);
 
-  const loadWorkflow = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
+    // Update workflow when initialWorkflow changes
+    useEffect(() => {
+        if (initialWorkflow) {
+            setWorkflow(initialWorkflow);
+            setOriginalWorkflow(initialWorkflow);
+            setHasUnsavedChanges(false);
+        }
+    }, [initialWorkflow]);
 
-      const response = await WorkflowService.getWorkflow(workflowId)
+    // Track changes against original workflow
+    const checkForChanges = useCallback((newWorkflow: Workflow) => {
+        if (!originalWorkflow) return false;
+        return JSON.stringify(newWorkflow) !== JSON.stringify(originalWorkflow);
+    }, [originalWorkflow]);
 
-      if (response.success) {
-        setWorkflow(response.data)
-        setHasUnsavedChanges(false)
-      } else {
-        setError('Failed to load workflow')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load workflow')
-    } finally {
-      setLoading(false)
-    }
-  }, [workflowId])
+    const updateWorkflow = useCallback((updates: Partial<Workflow>) => {
+        setWorkflow((prev) => {
+            if (!prev) return null;
+            const newWorkflow = { ...prev, ...updates };
+            
+            // Check if there are changes compared to original
+            const hasChanges = checkForChanges(newWorkflow);
+            setHasUnsavedChanges(hasChanges);
+            
+            return newWorkflow;
+        });
+    }, [checkForChanges]);
 
-// Add dependency array to prevent unnecessary re-creation
-const updateWorkflow = useCallback((updates: Partial<Workflow>) => {
-  setWorkflow(prev => {
-    if (!prev) return null
-    const newWorkflow = { ...prev, ...updates }
-    
-    // Only update if there are actual changes
-    if (JSON.stringify(newWorkflow) !== JSON.stringify(prev)) {
-      setHasUnsavedChanges(true)
-      return newWorkflow
-    }
-    return prev
-  })
-}, []) // Remove workflow dependency to prevent recreation
+    const saveWorkflow = useCallback(async () => {
+        if (!workflow) return false;
 
-// Optimize validation calls
-const saveWorkflow = useCallback(async () => {
-  if (!workflow) return false
+        return new Promise<boolean>((resolve) => {
+            setSaving(true);
+            setError(null);
 
-  try {
-    setSaving(true)
+            // Validate before saving
+            const validation = WorkflowHelpers.validateWorkflow(workflow);
+            if (!validation.isValid) {
+                setError(validation.errors.join(', '));
+                setSaving(false);
+                resolve(false);
+                return;
+            }
 
-    // Validate before saving
-    const validation = WorkflowHelpers.validateWorkflow(workflow)
-    if (!validation.isValid) {
-      setError(validation.errors.join(', '))
-      return false
-    }
+            router.put(`/workflows/${workflowId}`, {
+                name: workflow.name,
+                description: workflow.description,
+                status: workflow.status,
+                steps: workflow.steps,
+            }, {
+                onSuccess: () => {
+                    setSaving(false);
+                    setHasUnsavedChanges(false);
+                    setOriginalWorkflow(workflow);
+                    resolve(true);
+                },
+                onError: (errors) => {
+                    setSaving(false);
+                    setError(Object.values(errors).join(', ') || 'Failed to save workflow');
+                    resolve(false);
+                },
+                preserveScroll: true
+            });
+        });
+    }, [workflow, workflowId]);
 
-    const updateData = WorkflowHelpers.transformForAPI(workflow)
-    const response = await WorkflowService.updateWorkflow(workflowId, updateData)
+    const publishWorkflow = useCallback(async () => {
+        if (!workflow) return false;
 
-    if (response.success) {
-      setWorkflow(response.data)
-      setHasUnsavedChanges(false)
-      setError(null)
-      return true
-    } else {
-      setError('Failed to save workflow')
-      return false
-    }
-  } catch (err: any) {
-    setError(err.message || 'Failed to save workflow')
-    return false
-  } finally {
-    setSaving(false)
-  }
-}, [workflow, workflowId]) // Keep necessary dependencies
+        return new Promise<boolean>((resolve) => {
+            // First update status to active
+            const updatedWorkflow = { ...workflow, status: 'active' as const };
+            setWorkflow(updatedWorkflow);
+            
+            setSaving(true);
+            setError(null);
 
-  const publishWorkflow = useCallback(async () => {
-    if (!workflow) return false
+            router.put(`/workflows/${workflowId}`, {
+                name: updatedWorkflow.name,
+                description: updatedWorkflow.description,
+                status: updatedWorkflow.status,
+                steps: updatedWorkflow.steps,
+            }, {
+                onSuccess: () => {
+                    setSaving(false);
+                    setHasUnsavedChanges(false);
+                    setOriginalWorkflow(updatedWorkflow);
+                    resolve(true);
+                },
+                onError: (errors) => {
+                    setSaving(false);
+                    // Revert status change on error
+                    setWorkflow(workflow);
+                    setError(Object.values(errors).join(', ') || 'Failed to publish workflow');
+                    resolve(false);
+                },
+                preserveScroll: true
+            });
+        });
+    }, [workflow, workflowId]);
 
-    try {
-      // Save first if there are unsaved changes
-      if (hasUnsavedChanges) {
-        const saved = await saveWorkflow()
-        if (!saved) return false
-      }
-
-      const response = await WorkflowService.activateWorkflow(workflowId)
-
-      if (response.success) {
-        setWorkflow(prev => prev ? { ...prev, status: 'active' } : null)
-        return true
-      } else {
-        setError('Failed to publish workflow')
-        return false
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to publish workflow')
-      return false
-    }
-  }, [workflow, workflowId, hasUnsavedChanges, saveWorkflow])
-
-  return {
-    workflow,
-    loading,
-    saving,
-    error,
-    hasUnsavedChanges,
-    loadWorkflow,
-    updateWorkflow,
-    saveWorkflow,
-    publishWorkflow,
-    setError
-  }
-}
+    return {
+        workflow,
+        loading,
+        saving,
+        error,
+        hasUnsavedChanges,
+        updateWorkflow,
+        saveWorkflow,
+        publishWorkflow,
+        setError,
+    };
+};

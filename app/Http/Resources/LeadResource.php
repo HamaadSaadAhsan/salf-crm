@@ -23,7 +23,7 @@ class LeadResource extends JsonResource
                 $this->latitude && $this->longitude,
                 [
                     'lat' => $this->latitude,
-                    'lng' => $this->longitude
+                    'lng' => $this->longitude,
                 ]
             ),
             'inquiry_status' => $this->inquiry_status,
@@ -38,10 +38,22 @@ class LeadResource extends JsonResource
             'has_attachment' => $this->has_attachment ?? false,
 
             // Relationships
-            'service' => ServiceResource::make($this->whenLoaded('service')),
-            'source' => LeadSourceResource::make($this->whenLoaded('source')),
-            'assigned_to' => UserResource::make($this->whenLoaded('assignedTo')),
-            'created_by' => UserResource::make($this->whenLoaded('createdBy')),
+            'service' => $this->when(
+                $this->relationLoaded('service') && $this->service,
+                fn () => ServiceResource::make($this->service)
+            ),
+            'source' => $this->when(
+                $this->relationLoaded('source') && $this->source,
+                fn () => LeadSourceResource::make($this->source)
+            ),
+            'assigned_to' => $this->when(
+                $this->relationLoaded('assignedTo') && $this->assignedTo,
+                fn () => UserResource::make($this->assignedTo)
+            ),
+            'created_by' => $this->when(
+                $this->relationLoaded('createdBy') && $this->createdBy,
+                fn () => UserResource::make($this->createdBy)
+            ),
 
             // Computed fields
             'days_since_created' => $this->days_since_created,
@@ -58,7 +70,29 @@ class LeadResource extends JsonResource
 
             // Additional data for detail view
             'activities' => LeadActivityResource::collection($this->whenLoaded('activities')),
-//            'notes' => LeadNoteResource::collection($this->whenLoaded('notes')),
+            //            'notes' => LeadNoteResource::collection($this->whenLoaded('notes')),
+            'tasks' => TaskResource::collection($this->whenLoaded('tasks')),
+            'next_task' => $this->whenLoaded('tasks', function () {
+                $task = $this->tasks->first();
+                if (! $task) {
+                    return null;
+                }
+
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => $task->status->value,
+                    'priority' => $task->priority->value,
+                    'due_at' => $task->due_at?->toISOString(),
+                    'assigned_to' => $task->assignedTo ? [
+                        'id' => $task->assignedTo->id,
+                        'name' => $task->assignedTo->name,
+                        'email' => $task->assignedTo->email,
+                    ] : null,
+                    'created_at' => $task->created_at->toISOString(),
+                ];
+            }),
 
             // URLs for frontend routing
             'urls' => [

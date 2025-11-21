@@ -1,10 +1,10 @@
 import { ACL } from '@/lib/acl';
+import { User } from '@/types/auth';
 import { useMemo } from 'react';
-import {User} from "@/types/auth";
 import { useAuth } from './auth';
 
 export function useACL() {
-    const { user }: {user: User} = useAuth({middleware: 'auth'});
+    const { user }: { user: User } = useAuth({ middleware: 'auth' });
     const acl = useMemo(() => new ACL(user), [user]);
 
     return {
@@ -19,6 +19,6 @@ export function useACL() {
         isSuperAdmin: acl.isSuperAdmin.bind(acl),
         getAllPermissions: acl.getAllPermissions.bind(acl),
         getRoles: acl.getRoles.bind(acl),
-        getPermissions: acl.getAllPermissions.bind(acl)
+        getPermissions: acl.getAllPermissions.bind(acl),
     };
 }

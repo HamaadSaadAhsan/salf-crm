@@ -2,32 +2,27 @@
 
 namespace App\Services;
 
+use App\Events\FacebookDataSynced;
+use App\Events\FacebookErrorOccurred;
+use App\Events\FacebookLeadProcessed;
 use App\Models\Lead;
 use App\Models\LeadForm;
 use App\Models\LeadSource;
+use App\Models\SocialMessage;
+use App\Models\SocialPost;
 use App\Models\User;
 use Carbon\Carbon;
 use DB;
+use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use App\Models\SocialPost;
-use App\Models\SocialMessage;
-use App\Models\SocialComment;
-use App\Events\FacebookConnected;
-use App\Events\FacebookDisconnected;
-use App\Events\FacebookWebhookReceived;
-use App\Events\FacebookDataSynced;
-use App\Events\FacebookErrorOccurred;
-use App\Events\FacebookHealthStatusChanged;
-use App\Events\FacebookLeadProcessed;
-use Exception;
 
 class FacebookService
 {
     private string $apiVersion;
+
     private string $baseUrl;
 
     private $facebookLeadSourceId;
@@ -50,41 +45,41 @@ class FacebookService
 
             // Test the access token
             $response = Http::get("{$this->baseUrl}/me", [
-                'access_token' => $accessToken
+                'access_token' => $accessToken,
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return [
                     'verified' => false,
-                    'error' => 'Invalid access token or app credentials'
+                    'error' => 'Invalid access token or app credentials',
                 ];
             }
 
             // Test page access
             $pageResponse = Http::get("{$this->baseUrl}/{$pageId}", [
                 'access_token' => $accessToken,
-                'fields' => 'id,name,category,followers_count,fan_count'
+                'fields' => 'id,name,category,followers_count,fan_count',
             ]);
 
-            if (!$pageResponse->successful()) {
+            if (! $pageResponse->successful()) {
                 return [
                     'verified' => false,
-                    'error' => 'Cannot access the specified page. Check page ID and token permissions.'
+                    'error' => 'Cannot access the specified page. Check page ID and token permissions.',
                 ];
             }
 
             return [
                 'verified' => true,
                 'user_info' => $response->json(),
-                'page_info' => $pageResponse->json()
+                'page_info' => $pageResponse->json(),
             ];
 
         } catch (Exception $e) {
-            Log::error('Facebook verification error: ' . $e->getMessage());
+            Log::error('Facebook verification error: '.$e->getMessage());
 
             return [
                 'verified' => false,
-                'error' => 'Failed to verify credentials with Facebook'
+                'error' => 'Failed to verify credentials with Facebook',
             ];
         }
     }
@@ -99,19 +94,19 @@ class FacebookService
         // Test 1: Basic API connectivity
         try {
             $response = Http::get("{$this->baseUrl}/me", [
-                'access_token' => $accessToken
+                'access_token' => $accessToken,
             ]);
 
             $tests['api_connectivity'] = [
                 'status' => $response->successful() ? 'passed' : 'failed',
                 'message' => $response->successful() ? 'API connection successful' : 'API connection failed',
-                'details' => $response->successful() ? null : $response->json()
+                'details' => $response->successful() ? null : $response->json(),
             ];
         } catch (Exception $e) {
             $tests['api_connectivity'] = [
                 'status' => 'failed',
                 'message' => 'API connection failed',
-                'details' => $e->getMessage()
+                'details' => $e->getMessage(),
             ];
         }
 
@@ -120,19 +115,19 @@ class FacebookService
             $pageId = $config['page_id'];
             $response = Http::get("{$this->baseUrl}/{$pageId}", [
                 'access_token' => $accessToken,
-                'fields' => 'id,name,access_token'
+                'fields' => 'id,name,access_token',
             ]);
 
             $tests['page_access'] = [
                 'status' => $response->successful() ? 'passed' : 'failed',
                 'message' => $response->successful() ? 'Page access successful' : 'Cannot access page',
-                'details' => $response->json()
+                'details' => $response->json(),
             ];
         } catch (Exception $e) {
             $tests['page_access'] = [
                 'status' => 'failed',
                 'message' => 'Page access failed',
-                'details' => $e->getMessage()
+                'details' => $e->getMessage(),
             ];
         }
 
@@ -141,19 +136,19 @@ class FacebookService
             try {
                 $response = Http::get("{$this->baseUrl}/{$config['page_id']}/conversations", [
                     'access_token' => $accessToken,
-                    'limit' => 1
+                    'limit' => 1,
                 ]);
 
                 $tests['messaging_permissions'] = [
                     'status' => $response->successful() ? 'passed' : 'failed',
                     'message' => $response->successful() ? 'Messaging permissions OK' : 'Messaging permissions denied',
-                    'details' => $response->successful() ? null : $response->json()
+                    'details' => $response->successful() ? null : $response->json(),
                 ];
             } catch (Exception $e) {
                 $tests['messaging_permissions'] = [
                     'status' => 'failed',
                     'message' => 'Messaging permissions test failed',
-                    'details' => $e->getMessage()
+                    'details' => $e->getMessage(),
                 ];
             }
         }
@@ -163,19 +158,19 @@ class FacebookService
             try {
                 $response = Http::get("{$this->baseUrl}/{$config['page_id']}/posts", [
                     'access_token' => $accessToken,
-                    'limit' => 1
+                    'limit' => 1,
                 ]);
 
                 $tests['posts_permissions'] = [
                     'status' => $response->successful() ? 'passed' : 'failed',
                     'message' => $response->successful() ? 'Posts permissions OK' : 'Posts permissions denied',
-                    'details' => $response->successful() ? null : $response->json()
+                    'details' => $response->successful() ? null : $response->json(),
                 ];
             } catch (Exception $e) {
                 $tests['posts_permissions'] = [
                     'status' => 'failed',
                     'message' => 'Posts permissions test failed',
-                    'details' => $e->getMessage()
+                    'details' => $e->getMessage(),
                 ];
             }
         }
@@ -189,13 +184,14 @@ class FacebookService
     public function getPageInsights(string $accessToken, string $pageId, array $params = []): array
     {
         try {
-            $cacheKey = "facebook_insights_{$pageId}_" . md5(serialize($params));
+            $cacheKey = "facebook_insights_{$pageId}_".md5(serialize($params));
 
-            return Cache::remember($cacheKey, 300, function () use ($accessToken, $pageId, $params) {
+            // Use flexible caching - fresh for 2 minutes, stale for 5 minutes
+            return cache()->flexible($cacheKey, [120, 300], function () use ($accessToken, $pageId, $params) {
                 $queryParams = [
                     'access_token' => $accessToken,
                     'metric' => $params['metric'] ?? 'page_impressions,page_engaged_users',
-                    'period' => $params['period'] ?? 'day'
+                    'period' => $params['period'] ?? 'day',
                 ];
 
                 if (isset($params['since'])) {
@@ -207,15 +203,15 @@ class FacebookService
 
                 $response = Http::get("{$this->baseUrl}/{$pageId}/insights", $queryParams);
 
-                if (!$response->successful()) {
-                    throw new Exception('Failed to fetch insights: ' . $response->body());
+                if (! $response->successful()) {
+                    throw new Exception('Failed to fetch insights: '.$response->body());
                 }
 
                 return $response->json()['data'] ?? [];
             });
 
         } catch (Exception $e) {
-            Log::error('Facebook insights error: ' . $e->getMessage());
+            Log::error('Facebook insights error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -228,8 +224,8 @@ class FacebookService
         try {
             $queryParams = [
                 'access_token' => $accessToken,
-                'fields' => 'id,message,created_time,type,link,picture,likes.summary(true),comments.summary(true),shares',
-                'limit' => $params['limit'] ?? 25
+                'fields' => 'id,message,created_time,type,link,picture,likes.summary(true),comments.summary(true)',
+                'limit' => $params['limit'] ?? 25,
             ];
 
             if (isset($params['since'])) {
@@ -241,14 +237,14 @@ class FacebookService
 
             $response = Http::get("{$this->baseUrl}/{$pageId}/posts", $queryParams);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch posts: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to fetch posts: '.$response->body());
             }
 
             return $response->json()['data'] ?? [];
 
         } catch (Exception $e) {
-            Log::error('Facebook posts error: ' . $e->getMessage());
+            Log::error('Facebook posts error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -261,7 +257,7 @@ class FacebookService
         try {
             $params = [
                 'access_token' => $accessToken,
-                'message' => $postData['message']
+                'message' => $postData['message'],
             ];
 
             if (isset($postData['link'])) {
@@ -277,8 +273,8 @@ class FacebookService
 
             $response = Http::post("{$this->baseUrl}/{$pageId}/feed", $params);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to create post: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to create post: '.$response->body());
             }
 
             $result = $response->json();
@@ -294,14 +290,14 @@ class FacebookService
                 'metadata' => [
                     'link' => $postData['link'] ?? null,
                     'scheduled' => isset($postData['scheduled_publish_time']),
-                    'published' => $params['published']
-                ]
+                    'published' => $params['published'],
+                ],
             ]);
 
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Facebook create post error: ' . $e->getMessage());
+            Log::error('Facebook create post error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -318,13 +314,13 @@ class FacebookService
             $appAccessTokenResponse = Http::get("{$this->baseUrl}/oauth/access_token", [
                 'client_id' => config('services.facebook.app_id'),
                 'client_secret' => config('services.facebook.app_secret'),
-                'grant_type' => 'client_credentials'
+                'grant_type' => 'client_credentials',
             ]);
 
-            if (!$appAccessTokenResponse->successful()) {
+            if (! $appAccessTokenResponse->successful()) {
                 return [
                     'success' => false,
-                    'error' => 'Failed to get app access token'
+                    'error' => 'Failed to get app access token',
                 ];
             }
 
@@ -333,29 +329,29 @@ class FacebookService
             // Step 2: Create an app subscription
             $response = $this->createFacebookWebhookSubscription($appId, $appAccessToken, $subscribedFields, $webhookUrl, $verifyToken);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to create Facebook webhook subscription: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to create Facebook webhook subscription: '.$response->body());
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return [
                     'success' => false,
                     'error' => 'Failed to create app subscription with Facebook',
-                    'details' => $response->json()
+                    'details' => $response->json(),
                 ];
             }
 
             // Step 3: Subscribe page to app
             $pageSubscriptionResponse = Http::post("{$this->baseUrl}/{$pageId}/subscribed_apps", [
                 'access_token' => $pageAccessToken,
-                'subscribed_fields' => implode(',', $subscribedFields)
+                'subscribed_fields' => implode(',', $subscribedFields),
             ]);
 
-            if (!$pageSubscriptionResponse->successful()) {
+            if (! $pageSubscriptionResponse->successful()) {
                 return [
                     'success' => false,
                     'error' => 'Failed to subscribe page to app',
-                    'details' => $pageSubscriptionResponse->json()
+                    'details' => $pageSubscriptionResponse->json(),
                 ];
             }
 
@@ -363,18 +359,18 @@ class FacebookService
                 'success' => true,
                 'data' => [
                     'app_subscription' => $response->json(),
-                    'page_subscription' => $pageSubscriptionResponse->json()
-                ]
+                    'page_subscription' => $pageSubscriptionResponse->json(),
+                ],
             ];
 
         } catch (Exception $e) {
-            Log::error('Facebook webhook subscription error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+            Log::error('Facebook webhook subscription error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -384,7 +380,7 @@ class FacebookService
     /**
      * @throws Exception
      */
-    function createFacebookWebhookSubscription($appId, $appAccessToken, $subscribedFields, $webhookUrl, $verifyToken): Response
+    public function createFacebookWebhookSubscription($appId, $appAccessToken, $subscribedFields, $webhookUrl, $verifyToken): Response
     {
         return Http::withQueryParameters([
             'verify_token' => $verifyToken,
@@ -409,7 +405,7 @@ class FacebookService
                 SocialPost::updateOrCreate(
                     [
                         'provider' => 'facebook',
-                        'provider_id' => $postData['id']
+                        'provider_id' => $postData['id'],
                     ],
                     [
                         'content' => $postData['message'] ?? '',
@@ -421,8 +417,8 @@ class FacebookService
                             'picture' => $postData['picture'] ?? null,
                             'likes_count' => $postData['likes']['summary']['total_count'] ?? 0,
                             'comments_count' => $postData['comments']['summary']['total_count'] ?? 0,
-                            'shares_count' => $postData['shares']['count'] ?? 0
-                        ]
+                            'shares_count' => $postData['shares']['count'] ?? 0,
+                        ],
                     ]
                 );
                 $syncedCount++;
@@ -431,7 +427,7 @@ class FacebookService
             return $syncedCount;
 
         } catch (Exception $e) {
-            Log::error('Facebook sync posts error: ' . $e->getMessage());
+            Log::error('Facebook sync posts error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -459,7 +455,7 @@ class FacebookService
                         'questions' => $form['questions'],
                         'status' => 'active',
                         'created_at' => $form['created_time'],
-                        'last_synced' => now()
+                        'last_synced' => now(),
                     ]);
 
                 $syncedCount++;
@@ -467,7 +463,7 @@ class FacebookService
 
             return $syncedCount;
         } catch (Exception $e) {
-            Log::error('Facebook sync forms error: ' . $e->getMessage());
+            Log::error('Facebook sync forms error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -482,11 +478,11 @@ class FacebookService
                 'access_token' => $accessToken,
                 'messaging_type' => 'RESPONSE',
                 'recipient' => ['id' => $recipientId],
-                'message' => ['text' => $message]
+                'message' => ['text' => $message],
             ]);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to send message: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to send message: '.$response->body());
             }
 
             $result = $response->json();
@@ -500,14 +496,14 @@ class FacebookService
                 'metadata' => [
                     'recipient_id' => $recipientId,
                     'messaging_type' => 'RESPONSE',
-                    'direction' => 'outbound'
-                ]
+                    'direction' => 'outbound',
+                ],
             ]);
 
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Facebook send message error: ' . $e->getMessage());
+            Log::error('Facebook send message error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -521,7 +517,7 @@ class FacebookService
             $queryParams = [
                 'access_token' => $pageAccessToken,
                 'fields' => 'id,name,questions,created_time',
-                'limit' => $params['limit'] ?? 25
+                'limit' => $params['limit'] ?? 25,
             ];
 
             if (isset($params['since'])) {
@@ -533,8 +529,8 @@ class FacebookService
 
             $response = Http::get("{$this->baseUrl}/{$pageId}/leadgen_forms", $queryParams);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch posts: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to fetch posts: '.$response->body());
             }
 
             Log::info('Facebook forms', $response->json());
@@ -543,7 +539,7 @@ class FacebookService
 
         } catch (ConnectionException $e) {
             return [
-                'error' => 'Failed to fetch forms: ' . $e->getMessage()
+                'error' => 'Failed to fetch forms: '.$e->getMessage(),
             ];
         }
     }
@@ -569,15 +565,15 @@ class FacebookService
 
             $response = Http::get("{$this->baseUrl}/{$formId}/leads", $queryParams);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch leads: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to fetch leads: '.$response->body());
             }
 
             return $response->json()['data'] ?? [];
 
         } catch (ConnectionException $e) {
             return [
-                'error' => 'Failed to fetch leads: ' . $e->getMessage()
+                'error' => 'Failed to fetch leads: '.$e->getMessage(),
             ];
         }
     }
@@ -606,7 +602,7 @@ class FacebookService
                     'sync_type' => 'leads',
                     'synced_count' => $syncedCount,
                     'duration' => $duration,
-                    'form_id' => $formId
+                    'form_id' => $formId,
                 ]
             );
 
@@ -617,7 +613,7 @@ class FacebookService
                     'error_type' => 'SYNC_ERROR',
                     'error_message' => $e->getMessage(),
                     'severity' => 'error',
-                    'sync_type' => 'leads'
+                    'sync_type' => 'leads',
                 ]
             );
             throw $e;
@@ -631,7 +627,7 @@ class FacebookService
         $result = [
             'action' => 'none',
             'lead_id' => null,
-            'errors' => []
+            'errors' => [],
         ];
 
         try {
@@ -642,7 +638,7 @@ class FacebookService
 
             // Find the form
             $form = LeadForm::where('external_id', $formId)->first();
-            if (!$form) {
+            if (! $form) {
                 throw new \Exception("Form not found: {$formId}");
             }
 
@@ -669,13 +665,13 @@ class FacebookService
                 }
             }
 
-//            // Log the processing
-//            $this->logProcessing($facebookLeadId, $result['action'], $leadData, $result['lead_id']);
-//
-//            // Update sync job stats
-//            if ($syncJobId) {
-//                $this->updateSyncJobStats($syncJobId, $result['action']);
-//            }
+            //            // Log the processing
+            //            $this->logProcessing($facebookLeadId, $result['action'], $leadData, $result['lead_id']);
+            //
+            //            // Update sync job stats
+            //            if ($syncJobId) {
+            //                $this->updateSyncJobStats($syncJobId, $result['action']);
+            //            }
 
             DB::commit();
 
@@ -687,7 +683,7 @@ class FacebookService
                         'lead_id' => $result['lead_id'],
                         'facebook_lead_id' => $facebookLeadId,
                         'form_name' => $form->name ?? 'Unknown Form',
-                        'action' => $result['action']
+                        'action' => $result['action'],
                     ]
                 );
             }
@@ -698,7 +694,7 @@ class FacebookService
             $result = [
                 'action' => 'error',
                 'lead_id' => null,
-                'errors' => [$e->getMessage()]
+                'errors' => [$e->getMessage()],
             ];
 
             // Emit error event
@@ -708,13 +704,13 @@ class FacebookService
                     'error_type' => 'LEAD_PROCESSING_ERROR',
                     'error_message' => $e->getMessage(),
                     'severity' => 'error',
-                    'facebook_lead_id' => $leadData['id'] ?? null
+                    'facebook_lead_id' => $leadData['id'] ?? null,
                 ]
             );
 
-            Log::error("Lead processing failed", [
+            Log::error('Lead processing failed', [
                 'facebook_lead_id' => $leadData['id'],
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -728,7 +724,7 @@ class FacebookService
     {
         $phoneNumber = $this->extractPhoneFromLeadData($leadData);
 
-        if (!$phoneNumber) {
+        if (! $phoneNumber) {
             return null;
         }
 
@@ -754,7 +750,7 @@ class FacebookService
         // Try a partial match for international numbers (last 10 digits)
         if (strlen($cleanPhone) >= 10) {
             $lastTenDigits = substr($cleanPhone, -10);
-            $existingLead = Lead::whereRaw("regexp_replace(phone, '[^0-9]', '', 'g') LIKE ?", ['%' . $lastTenDigits])
+            $existingLead = Lead::whereRaw("regexp_replace(phone, '[^0-9]', '', 'g') LIKE ?", ['%'.$lastTenDigits])
                 ->first();
             if ($existingLead) {
                 return $existingLead;
@@ -771,7 +767,7 @@ class FacebookService
     {
         $email = $this->extractEmailFromLeadData($leadData);
 
-        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (! $email || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return null;
         }
 
@@ -789,6 +785,7 @@ class FacebookService
                 return trim($field['values'][0] ?? '');
             }
         }
+
         return null;
     }
 
@@ -803,6 +800,7 @@ class FacebookService
                 return trim($field['values'][0] ?? '');
             }
         }
+
         return null;
     }
 
@@ -845,12 +843,12 @@ class FacebookService
                 // Add a tag to mark it as contacted again
                 $existingLead->addTag([
                     'label' => 'Contacted Again',
-                    'value' => 'contacted_again'
+                    'value' => 'contacted_again',
                 ]);
 
                 // Update activity timestamp
                 $existingLead->update([
-                    'last_activity_at' => now()
+                    'last_activity_at' => now(),
                 ]);
 
                 $existingLead->save();
@@ -858,21 +856,21 @@ class FacebookService
                 return [
                     'action' => 'marked_contacted_again',
                     'lead_id' => $existingLead->id,
-                    'errors' => []
+                    'errors' => [],
                 ];
             }
 
             return [
                 'action' => 'duplicate_skipped',
                 'lead_id' => $existingLead->id,
-                'errors' => []
+                'errors' => [],
             ];
         }
 
         // If matched by phone or email, this is a new Facebook lead from same person
         if (in_array($matchType, ['phone_match', 'email_match'])) {
             // Update the existing lead with Facebook data if it doesn't have it
-            if (!$existingLead->external_id) {
+            if (! $existingLead->external_id) {
                 $leadAttributes = $this->extractLeadAttributes($leadData);
 
                 // Only update specific fields, preserve existing lead data
@@ -890,19 +888,19 @@ class FacebookService
             // Add tags to indicate this is a multichannel lead
             $existingLead->addTag([
                 'label' => 'Multi-Channel Lead',
-                'value' => 'multi_channel'
+                'value' => 'multi_channel',
             ]);
 
             $existingLead->addTag([
                 'label' => 'Facebook Lead',
-                'value' => 'facebook_lead'
+                'value' => 'facebook_lead',
             ]);
 
             // If previously contacted, mark as contacted again
             if (in_array($existingLead->inquiry_status, ['contacted', 'qualified', 'proposal', 'won'])) {
                 $existingLead->addTag([
                     'label' => 'Contacted Again',
-                    'value' => 'contacted_again'
+                    'value' => 'contacted_again',
                 ]);
             }
 
@@ -911,7 +909,7 @@ class FacebookService
             return [
                 'action' => 'merged_with_existing',
                 'lead_id' => $existingLead->id,
-                'errors' => []
+                'errors' => [],
             ];
         }
 
@@ -922,7 +920,7 @@ class FacebookService
         return [
             'action' => 'updated',
             'lead_id' => $existingLead->id,
-            'errors' => []
+            'errors' => [],
         ];
     }
 
@@ -946,14 +944,14 @@ class FacebookService
         // Add Facebook tag
         $lead->addTag([
             'label' => 'Facebook Lead',
-            'value' => 'facebook_lead'
+            'value' => 'facebook_lead',
         ]);
 
         // Add organic tag if applicable
         if ($leadData['is_organic']) {
             $lead->addTag([
                 'label' => 'Organic',
-                'value' => 'organic'
+                'value' => 'organic',
             ]);
         }
 
@@ -962,7 +960,7 @@ class FacebookService
         return [
             'action' => 'created',
             'lead_id' => $lead->id,
-            'errors' => []
+            'errors' => [],
         ];
     }
 
@@ -974,6 +972,7 @@ class FacebookService
 
         // Extract structured data from field_data and map to your existing fields
         $fieldMapping = $this->mapFieldData($leadData['field_data']);
+
         return array_merge($attributes, $fieldMapping);
     }
 
@@ -988,7 +987,7 @@ class FacebookService
             'city' => null,
             'country' => null,
             'detail' => null,
-            'custom_fields' => []
+            'custom_fields' => [],
         ];
 
         foreach ($fieldData as $field) {
@@ -1009,7 +1008,7 @@ class FacebookService
                     break;
                 case 'last_name':
                 case 'family_name':
-                    $mapping['name'] = trim(($mapping['name'] ?? '') . ' ' . $fieldValue);
+                    $mapping['name'] = trim(($mapping['name'] ?? '').' '.$fieldValue);
                     break;
                 case 'email':
                     $mapping['email'] = $fieldValue;
@@ -1064,12 +1063,12 @@ class FacebookService
     {
         // Extract budget amount and currency from Facebook budget field
         if (preg_match('/(\d+(?:,\d{3})*(?:\.\d{2})?)\s*([A-Z]{3})?/', $budgetValue, $matches)) {
-            $amount = (float)str_replace(',', '', $matches[1]);
+            $amount = (float) str_replace(',', '', $matches[1]);
             $currency = $matches[2] ?? 'USD';
 
             $mapping['budget'] = [
                 'amount' => $amount,
-                'currency' => $currency
+                'currency' => $currency,
             ];
         } else {
             // Store as text in custom fields if we can't parse it
@@ -1080,6 +1079,7 @@ class FacebookService
     private function getFacebookLeadSourceId(): ?string
     {
         $facebookSource = LeadSource::where('name', 'Facebook Ads')->first();
+
         return $facebookSource?->id;
     }
 
@@ -1091,17 +1091,17 @@ class FacebookService
         try {
             $response = Http::get("{$this->baseUrl}/{$pageId}/leadgen_forms", [
                 'access_token' => $accessToken,
-                'fields' => 'id,name,status,created_time,questions,thank_you_page,privacy_policy_url,context_card'
+                'fields' => 'id,name,status,created_time,questions,thank_you_page,privacy_policy_url,context_card',
             ]);
 
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch lead forms: ' . $response->body());
+            if (! $response->successful()) {
+                throw new Exception('Failed to fetch lead forms: '.$response->body());
             }
 
             return $response->json()['data'] ?? [];
 
         } catch (Exception $e) {
-            Log::error('Failed to get lead forms: ' . $e->getMessage());
+            Log::error('Failed to get lead forms: '.$e->getMessage());
             throw $e;
         }
     }
@@ -1129,15 +1129,15 @@ class FacebookService
                                 'thank_you_page' => $form['thank_you_page'] ?? null,
                                 'privacy_policy_url' => $form['privacy_policy_url'] ?? null,
                                 'context_card' => $form['context_card'] ?? null,
-                            ]
+                            ],
                         ]
                     );
 
                     $syncedCount++;
                 } catch (Exception $e) {
-                    Log::error('Failed to sync lead form: ' . $e->getMessage(), [
+                    Log::error('Failed to sync lead form: '.$e->getMessage(), [
                         'form_id' => $form['id'],
-                        'form_name' => $form['name'] ?? 'Unknown'
+                        'form_name' => $form['name'] ?? 'Unknown',
                     ]);
 
                     FacebookErrorOccurred::dispatch(
@@ -1146,7 +1146,7 @@ class FacebookService
                             'error_type' => 'FORM_SYNC_ERROR',
                             'error_message' => $e->getMessage(),
                             'severity' => 'warning',
-                            'form_id' => $form['id']
+                            'form_id' => $form['id'],
                         ]
                     );
                 }
@@ -1161,7 +1161,7 @@ class FacebookService
                     'sync_type' => 'lead_forms',
                     'synced_count' => $syncedCount,
                     'duration' => $duration,
-                    'page_id' => $pageId
+                    'page_id' => $pageId,
                 ]
             );
 
@@ -1172,7 +1172,7 @@ class FacebookService
                     'error_type' => 'SYNC_ERROR',
                     'error_message' => $e->getMessage(),
                     'severity' => 'error',
-                    'sync_type' => 'lead_forms'
+                    'sync_type' => 'lead_forms',
                 ]
             );
             throw $e;

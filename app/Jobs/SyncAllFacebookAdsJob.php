@@ -14,16 +14,19 @@ use Meilisearch\Endpoints\Delegates\HandlesBatches;
 
 class SyncAllFacebookAdsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable, HandlesBatches;
+    use Batchable, Dispatchable, HandlesBatches, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 900; // 15 minutes (increased for job chaining)
+
     public $tries = 2; // Reduced since we're using job chaining
+
     public $maxExceptions = 2;
 
     protected $userId;
+
     protected $useJobChaining;
 
-    public function __construct(string $userId = null, bool $useJobChaining = true)
+    public function __construct(?string $userId = null, bool $useJobChaining = true)
     {
         $this->userId = $userId;
         $this->useJobChaining = $useJobChaining;
@@ -31,29 +34,29 @@ class SyncAllFacebookAdsJob implements ShouldQueue
 
     public function handle(FacebookAdsSyncService $adsSyncService)
     {
-        Log::info("Starting sync of all Facebook ads and adsets", [
+        Log::info('Starting sync of all Facebook ads and adsets', [
             'user_id' => $this->userId,
             'use_job_chaining' => $this->useJobChaining,
-            'attempt' => $this->attempts()
+            'attempt' => $this->attempts(),
         ]);
 
         try {
             if ($this->useJobChaining) {
                 // Use the new job chaining approach for better dependency management
                 $adsSyncService->syncAllPagesAdsAndAdSets();
-                Log::info("Successfully dispatched job chains for all Facebook pages");
+                Log::info('Successfully dispatched job chains for all Facebook pages');
             } else {
                 // Fallback to the legacy synchronous approach
-                Log::warning("Using legacy synchronous sync method");
+                Log::warning('Using legacy synchronous sync method');
                 $this->syncLegacyMethod($adsSyncService);
             }
 
         } catch (\Exception $e) {
-            Log::error("Failed to sync all Facebook ads and adsets", [
+            Log::error('Failed to sync all Facebook ads and adsets', [
                 'error' => $e->getMessage(),
                 'user_id' => $this->userId,
                 'attempt' => $this->attempts(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;
@@ -80,15 +83,15 @@ class SyncAllFacebookAdsJob implements ShouldQueue
 
                 } catch (\Exception $e) {
                     Log::error("Failed legacy sync for page: {$page->page_id}", [
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                     // Continue with other pages
                 }
             }
 
         } catch (\Exception $e) {
-            Log::error("Failed legacy sync method", [
-                'error' => $e->getMessage()
+            Log::error('Failed legacy sync method', [
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -103,7 +106,7 @@ class SyncAllFacebookAdsJob implements ShouldQueue
 
         // Step 1: Sync campaigns
         $campaigns = $adsSyncService->getCampaignsFromPage($page);
-        if (!empty($campaigns)) {
+        if (! empty($campaigns)) {
             $adsSyncService->processCampaigns($campaigns, $userId);
         }
 
@@ -111,7 +114,7 @@ class SyncAllFacebookAdsJob implements ShouldQueue
         foreach ($campaigns as $campaignData) {
             try {
                 $adSets = $adsSyncService->getAdSetsFromCampaign($campaignData['id'], $page->access_token);
-                if (!empty($adSets)) {
+                if (! empty($adSets)) {
                     $adsSyncService->processAdSets($adSets, $userId);
                 }
 
@@ -119,19 +122,19 @@ class SyncAllFacebookAdsJob implements ShouldQueue
                 foreach ($adSets as $adSetData) {
                     try {
                         $ads = $adsSyncService->getAdsFromAdSet($adSetData['id'], $page->access_token);
-                        if (!empty($ads)) {
+                        if (! empty($ads)) {
                             $adsSyncService->processAds($ads, $userId);
                         }
                     } catch (\Exception $e) {
                         Log::error("Failed to sync ads for adset: {$adSetData['id']}", [
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
 
             } catch (\Exception $e) {
                 Log::error("Failed to sync adsets for campaign: {$campaignData['id']}", [
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -142,12 +145,12 @@ class SyncAllFacebookAdsJob implements ShouldQueue
      */
     public function failed(\Throwable $exception)
     {
-        Log::error("SyncAllFacebookAdsJob permanently failed", [
+        Log::error('SyncAllFacebookAdsJob permanently failed', [
             'error' => $exception->getMessage(),
             'user_id' => $this->userId,
             'attempts' => $this->attempts(),
             'use_job_chaining' => $this->useJobChaining,
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
 
         // Could send notification here

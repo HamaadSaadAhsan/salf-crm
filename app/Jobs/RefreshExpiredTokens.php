@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Jobs;
 
 use App\Models\CalendarIntegration;
@@ -29,7 +30,7 @@ class RefreshExpiredTokens implements ShouldQueue
                 $this->refreshToken($integration);
                 Log::info("Successfully refreshed token for integration {$integration->id}");
             } catch (\Exception $e) {
-                Log::error("Failed to refresh token for integration {$integration->id}: " . $e->getMessage());
+                Log::error("Failed to refresh token for integration {$integration->id}: ".$e->getMessage());
 
                 // Optionally deactivate integration if refresh fails
                 $integration->update(['is_active' => false]);
@@ -50,7 +51,7 @@ class RefreshExpiredTokens implements ShouldQueue
             'grant_type' => 'refresh_token',
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \Exception('Failed to refresh access token');
         }
 

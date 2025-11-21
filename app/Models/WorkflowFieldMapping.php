@@ -16,12 +16,12 @@ class WorkflowFieldMapping extends Model
         'target_field',
         'field_type',
         'transformation_rules',
-        'required'
+        'required',
     ];
 
     protected $casts = [
         'transformation_rules' => 'array',
-        'required' => 'boolean'
+        'required' => 'boolean',
     ];
 
     public function workflowStep(): BelongsTo

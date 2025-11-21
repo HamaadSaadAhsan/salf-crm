@@ -8,7 +8,9 @@ use Illuminate\Support\Str;
 class Campaign extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -18,7 +20,7 @@ class Campaign extends Model
         'objective',
         'status',
         'created_at',
-        'last_synced'
+        'last_synced',
     ];
 
     protected $casts = [

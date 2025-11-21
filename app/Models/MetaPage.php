@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class MetaPage extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -17,7 +19,7 @@ class MetaPage extends Model
         'page_id',
         'access_token',
         'name',
-        'last_updated'
+        'last_updated',
     ];
 
     protected $hidden = [
