@@ -60,9 +60,13 @@ supervisorctl restart laravel-horizon
 echo "🔄 Restarting Laravel Reverb..."
 supervisorctl restart laravel-reverb
 
+# Restart Inertia SSR
+echo "🔄 Restarting Inertia SSR..."
+supervisorctl restart laravel-inertia-ssr
+
 # Check daemon status
 echo "📊 Checking daemon status..."
-supervisorctl status laravel-horizon laravel-reverb
+supervisorctl status laravel-horizon laravel-reverb laravel-inertia-ssr
 
 # Set proper permissions
 echo "🔐 Setting permissions..."

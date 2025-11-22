@@ -99,8 +99,13 @@ jobs:
             echo "✅ Reverb restarted"
 
             echo ""
+            echo "🔄 Restarting Inertia SSR..."
+            supervisorctl restart laravel-inertia-ssr
+            echo "✅ Inertia SSR restarted"
+
+            echo ""
             echo "📊 Checking daemon status..."
-            supervisorctl status laravel-horizon laravel-reverb
+            supervisorctl status laravel-horizon laravel-reverb laravel-inertia-ssr
 
             echo ""
             echo "🎉 Deployment completed successfully!"
