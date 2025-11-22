@@ -46,6 +46,15 @@ jobs:
             echo "✅ Current directory: $(pwd)"
 
             echo ""
+            echo "🔧 Setting up PHP wrapper..."
+            # Create a temporary directory in PATH that contains a 'php' symlink to php8.4
+            mkdir -p ${{ secrets.SERVER_PATH }}/tmp-php-bin
+            ln -sf $(which php8.4) ${{ secrets.SERVER_PATH }}/tmp-php-bin/php
+            export PATH=${{ secrets.SERVER_PATH }}/tmp-php-bin:$PATH
+            echo "PHP version in PATH: $(php -v | head -n 1)"
+            echo "✅ PHP wrapper configured"
+
+            echo ""
             echo "🔄 Pulling latest changes from main..."
             git fetch origin main
             echo "✅ Git fetch completed"
@@ -53,35 +62,29 @@ jobs:
 
             echo ""
             echo "📦 Installing PHP dependencies..."
-            php8.4 $(which composer) install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            php $(which composer) install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             echo "✅ Composer install completed"
 
             echo ""
             echo "📦 Installing Node dependencies and building assets..."
             npm ci
-            echo "Creating PHP wrapper to use php8.4..."
-            # Create a temporary directory in PATH that contains a 'php' symlink to php8.4
-            mkdir -p ${{ secrets.SERVER_PATH }}/tmp-php-bin
-            ln -sf $(which php8.4) ${{ secrets.SERVER_PATH }}/tmp-php-bin/php
-            export PATH=${{ secrets.SERVER_PATH }}/tmp-php-bin:$PATH
-            echo "PHP version in PATH: $(php -v | head -n 1)"
-            echo "✅ NPM build completed"
+            echo "✅ NPM install completed"
             npm run build:ssr
-            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
+            echo "✅ NPM build completed"
 
             echo ""
             echo "🔗 Creating storage symlink..."
-            php8.4 artisan storage:link
+            php artisan storage:link
             echo "✅ Storage link created"
 
             echo ""
             echo "🗄️ Running database migrations..."
-            php8.4 artisan migrate --force
+            php artisan migrate --force
             echo "✅ Migrations completed"
 
             echo ""
             echo "⚡ Optimizing application..."
-            php8.4 artisan optimize
+            php artisan optimize
             echo "✅ Optimization completed"
             # php artisan optimize:clear
             # php artisan config:cache
@@ -89,23 +92,24 @@ jobs:
             # php artisan cache:clear
 
             echo ""
-            echo "🔄 Restarting Laravel Horizon..."
-            supervisorctl restart laravel-horizon
-            echo "✅ Horizon restarted"
+            echo "🔄 Gracefully restarting Laravel Horizon..."
+            php artisan horizon:terminate
+            echo "✅ Horizon terminated (supervisor will auto-restart)"
 
             echo ""
-            echo "🔄 Restarting Laravel Reverb..."
-            supervisorctl restart laravel-reverb
+            echo "🔄 Gracefully restarting Laravel Reverb..."
+            php artisan reverb:restart
             echo "✅ Reverb restarted"
 
             echo ""
-            echo "🔄 Restarting Inertia SSR..."
-            supervisorctl restart laravel-inertia-ssr
-            echo "✅ Inertia SSR restarted"
+            echo "🔄 Gracefully stopping Inertia SSR..."
+            php artisan inertia:stop-ssr
+            echo "✅ Inertia SSR stopped (supervisor will auto-restart)"
 
             echo ""
-            echo "📊 Checking daemon status..."
-            supervisorctl status laravel-horizon laravel-reverb laravel-inertia-ssr
+            echo "🧹 Cleaning up temporary files..."
+            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
+            echo "✅ Cleanup completed"
 
             echo ""
             echo "🎉 Deployment completed successfully!"
