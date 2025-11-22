@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
-const phpCommand = process.env.PHP_EXECUTABLE || 'php8.4';
+const phpCommand = process.env.PHP_EXECUTABLE || 'php';
 
 export default defineConfig({
     plugins: [
