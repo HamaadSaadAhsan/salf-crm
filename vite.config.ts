@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
+const phpCommand = process.env.PHP_EXECUTABLE || 'php';
+
 export default defineConfig({
     plugins: [
         laravel({
@@ -15,6 +17,7 @@ export default defineConfig({
         tailwindcss(),
         wayfinder({
             formVariants: true,
+            command: `${phpCommand} artisan wayfinder:generate`,
         }),
     ],
     esbuild: {

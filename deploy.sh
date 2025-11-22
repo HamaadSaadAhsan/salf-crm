@@ -29,6 +29,7 @@ npm ci
 
 # Build frontend assets
 echo "🏗️  Building frontend assets..."
+export PHP_EXECUTABLE=php8.4
 npm run build
 
 # Run database migrations
