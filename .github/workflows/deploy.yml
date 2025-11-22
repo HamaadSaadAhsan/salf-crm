@@ -59,10 +59,14 @@ jobs:
             echo ""
             echo "📦 Installing Node dependencies and building assets..."
             npm ci
-            echo "Setting PHP_EXECUTABLE to php8.4 for build..."
-            export PHP_EXECUTABLE=php8.4
-            echo "PHP_EXECUTABLE is set to: $PHP_EXECUTABLE"
+            echo "Creating PHP wrapper to use php8.4..."
+            # Create a temporary directory in PATH that contains a 'php' symlink to php8.4
+            mkdir -p ${{ secrets.SERVER_PATH }}/tmp-php-bin
+            ln -sf $(which php8.4) ${{ secrets.SERVER_PATH }}/tmp-php-bin/php
+            export PATH=${{ secrets.SERVER_PATH }}/tmp-php-bin:$PATH
+            echo "PHP version in PATH: $(php -v | head -n 1)"
             npm run build
+            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
             echo "✅ NPM build completed"
             # npm run build:ssr
 

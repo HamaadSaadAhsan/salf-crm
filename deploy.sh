@@ -29,8 +29,14 @@ npm ci
 
 # Build frontend assets
 echo "🏗️  Building frontend assets..."
-export PHP_EXECUTABLE=php8.4
+# Create temporary php wrapper for php8.4
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+mkdir -p "$SCRIPT_DIR/tmp-php-bin"
+ln -sf $(which php8.4) "$SCRIPT_DIR/tmp-php-bin/php"
+export PATH="$SCRIPT_DIR/tmp-php-bin:$PATH"
+echo "PHP version in PATH: $(php -v | head -n 1)"
 npm run build
+rm -rf "$SCRIPT_DIR/tmp-php-bin"
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
