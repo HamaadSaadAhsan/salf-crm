@@ -58,8 +58,8 @@ jobs:
 
             echo ""
             echo "📦 Installing Node dependencies and building assets..."
-            export PHP_EXECUTABLE=php8.4
-            npm ci && npm run build
+            npm ci
+            PHP_EXECUTABLE=php8.4 npm run build
             echo "✅ NPM build completed"
             # npm run build:ssr
 
