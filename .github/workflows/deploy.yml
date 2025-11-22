@@ -14,6 +14,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Test SSH Connection
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          debug: true
+          script: |
+            echo "✅ SSH connection successful!"
+            echo "Current user: $(whoami)"
+            echo "Current directory: $(pwd)"
+            echo "Server hostname: $(hostname)"
+            echo "PHP version: $(php8.4 -v | head -n 1)"
+            echo "Node version: $(node -v)"
+            echo "NPM version: $(npm -v)"
+            echo "Composer version: $(php8.4 $(which composer) --version)"
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,32 +39,50 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          debug: true
           script: |
+            echo "📂 Navigating to project directory..."
             cd ${{ secrets.SERVER_PATH }}
+            echo "✅ Current directory: $(pwd)"
 
-            # Pull latest changes
+            echo ""
+            echo "🔄 Pulling latest changes from main..."
             git fetch origin main
+            echo "✅ Git fetch completed"
             # git reset --hard origin/main
 
-            # Install PHP dependencies
+            echo ""
+            echo "📦 Installing PHP dependencies..."
             php8.4 $(which composer) install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            echo "✅ Composer install completed"
 
-            # Install Node dependencies and build assets
+            echo ""
+            echo "📦 Installing Node dependencies and building assets..."
             npm ci && npm run build
+            echo "✅ NPM build completed"
             # npm run build:ssr
 
+            echo ""
+            echo "🔗 Creating storage symlink..."
             php8.4 artisan storage:link
+            echo "✅ Storage link created"
 
-            # Run database migrations
+            echo ""
+            echo "🗄️ Running database migrations..."
             php8.4 artisan migrate --force
+            echo "✅ Migrations completed"
 
-            # Clear and optimize caches
+            echo ""
+            echo "⚡ Optimizing application..."
+            php8.4 artisan optimize
+            echo "✅ Optimization completed"
             # php artisan optimize:clear
             # php artisan config:cache
             # php artisan route:cache
-            php artisan cache:clear
-            php8.4 artisan optimize
+            # php artisan cache:clear
 
+            echo ""
+            echo "🎉 Deployment completed successfully!"
             # Restart Laravel Horizon (queue workers)
             # php artisan horizon:terminate
 
