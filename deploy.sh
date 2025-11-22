@@ -52,9 +52,17 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Restart queue workers
-echo "🔄 Restarting queue workers..."
-php artisan queue:restart
+# Restart Laravel Horizon
+echo "🔄 Restarting Laravel Horizon..."
+supervisorctl restart laravel-horizon
+
+# Restart Laravel Reverb
+echo "🔄 Restarting Laravel Reverb..."
+supervisorctl restart laravel-reverb
+
+# Check daemon status
+echo "📊 Checking daemon status..."
+supervisorctl status laravel-horizon laravel-reverb
 
 # Set proper permissions
 echo "🔐 Setting permissions..."

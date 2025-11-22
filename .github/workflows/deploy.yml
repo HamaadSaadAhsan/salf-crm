@@ -65,10 +65,9 @@ jobs:
             ln -sf $(which php8.4) ${{ secrets.SERVER_PATH }}/tmp-php-bin/php
             export PATH=${{ secrets.SERVER_PATH }}/tmp-php-bin:$PATH
             echo "PHP version in PATH: $(php -v | head -n 1)"
-            npm run build
-            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
             echo "✅ NPM build completed"
-            # npm run build:ssr
+            npm run build:ssr
+            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
 
             echo ""
             echo "🔗 Creating storage symlink..."
@@ -90,12 +89,18 @@ jobs:
             # php artisan cache:clear
 
             echo ""
+            echo "🔄 Restarting Laravel Horizon..."
+            supervisorctl restart laravel-horizon
+            echo "✅ Horizon restarted"
+
+            echo ""
+            echo "🔄 Restarting Laravel Reverb..."
+            supervisorctl restart laravel-reverb
+            echo "✅ Reverb restarted"
+
+            echo ""
+            echo "📊 Checking daemon status..."
+            supervisorctl status laravel-horizon laravel-reverb
+
+            echo ""
             echo "🎉 Deployment completed successfully!"
-            # Restart Laravel Horizon (queue workers)
-            # php artisan horizon:terminate
-
-            # Restart Laravel Reverb (WebSocket server)
-            # php artisan reverb:restart
-
-            # Set proper permissions
-            # chmod -R 775 storage bootstrap/cache
