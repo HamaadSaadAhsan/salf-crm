@@ -20,6 +20,9 @@ class AsteriskCallController extends Controller
         $validated = $request->validated();
 
         try {
+            // Get extension from authenticated user
+            $exten = auth()->user()->extension;
+
             // Normalize phone number for matching
             $phone = $this->normalizePhoneNumber($validated['caller']);
 
@@ -53,7 +56,7 @@ class AsteriskCallController extends Controller
             broadcast(new InboundCallReceived(
                 event: $validated['event'],
                 caller: $validated['caller'],
-                exten: $validated['exten'],
+                exten: $exten,
                 uniqueid: $validated['uniqueid'],
                 linkedid: $validated['linkedid'] ?? null,
                 lead: $lead
