@@ -56,10 +56,8 @@ jobs:
 
             echo ""
             echo "🔄 Pulling latest changes from main..."
-            git fetch origin main
-            echo "✅ Git fetch completed"
-            git reset --hard origin/main
-            echo "✅ Git reset completed"
+            git pull origin main
+            echo "✅ Git pull completed"
 
             echo ""
             echo "📦 Installing PHP dependencies..."
