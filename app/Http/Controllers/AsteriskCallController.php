@@ -31,6 +31,22 @@ class AsteriskCallController extends Controller
             // Log call activity if lead exists
             if ($lead && $validated['event'] === 'ring') {
                 $this->logCallActivity($lead, $validated);
+
+                // Link the lead to the call session
+                $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
+                    ->whereNull('lead_id')
+                    ->where('call_direction', 'inbound')
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if ($callSession) {
+                    $callSession->update(['lead_id' => $lead->id]);
+                    Log::info('Linked existing lead to call session', [
+                        'lead_id' => $lead->id,
+                        'call_session_id' => $callSession->id,
+                    ]);
+                }
             }
 
             // Broadcast the event to connected users
@@ -123,6 +139,22 @@ class AsteriskCallController extends Controller
                 'source_system' => 'asterisk',
                 'external_id' => $validated['uniqueid'],
             ]);
+
+            // Link the lead to the call session
+            $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
+                ->whereNull('lead_id')
+                ->where('call_direction', 'inbound')
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($callSession) {
+                $callSession->update(['lead_id' => $lead->id]);
+                Log::info('Linked lead to call session', [
+                    'lead_id' => $lead->id,
+                    'call_session_id' => $callSession->id,
+                ]);
+            }
 
             DB::commit();
 

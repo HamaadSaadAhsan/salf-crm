@@ -86,10 +86,6 @@ jobs:
             echo "⚡ Optimizing application..."
             php artisan optimize
             echo "✅ Optimization completed"
-            # php artisan optimize:clear
-            # php artisan config:cache
-            # php artisan route:cache
-            # php artisan cache:clear
 
             echo ""
             echo "🔄 Gracefully restarting Laravel Horizon..."

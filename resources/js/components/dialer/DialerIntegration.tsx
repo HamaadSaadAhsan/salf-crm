@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useCall } from '@/providers/CallContextProvider';
-import { FloatingDialerButton } from './FloatingDialerButton';
 import { PhoneDialer } from './PhoneDialer';
 import { ActiveCallWidget } from './ActiveCallWidget';
 
@@ -46,14 +45,7 @@ export function DialerIntegration() {
         toggleContactFavorite,
     } = useCall();
 
-    const [missedCallsCount, setMissedCallsCount] = useState(0);
     const [callDuration, setCallDuration] = useState(0);
-
-    // Calculate missed calls count
-    useEffect(() => {
-        const missedCount = recentCalls.filter((call) => call.status === 'missed').length;
-        setMissedCallsCount(missedCount);
-    }, [recentCalls]);
 
     // Update call duration for active calls
     useEffect(() => {
@@ -129,14 +121,6 @@ export function DialerIntegration() {
 
     return (
         <>
-            {/* Floating Dialer Button - Always visible */}
-            {!currentCall && (
-                <FloatingDialerButton
-                    onClick={openDialer}
-                    missedCallsCount={missedCallsCount}
-                />
-            )}
-
             {/* Main Dialer Sheet */}
             <PhoneDialer
                 open={dialerOpen}
