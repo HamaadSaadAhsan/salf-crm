@@ -58,7 +58,8 @@ jobs:
             echo "🔄 Pulling latest changes from main..."
             git fetch origin main
             echo "✅ Git fetch completed"
-            # git reset --hard origin/main
+            git reset --hard origin/main
+            echo "✅ Git reset completed"
 
             echo ""
             echo "📦 Installing PHP dependencies..."
