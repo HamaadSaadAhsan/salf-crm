@@ -11,21 +11,30 @@ export function InboundCallManager() {
     const [showNewLeadDialog, setShowNewLeadDialog] = useState(false);
 
     React.useEffect(() => {
+        console.log('InboundCallManager: activeCall changed', {
+            activeCall,
+            hasLead: !!activeCall?.lead,
+            leadData: activeCall?.lead
+        });
+
         if (activeCall) {
             setShowNotification(true);
 
             // Automatically show the appropriate dialog based on whether lead exists
             if (activeCall.lead) {
                 // Lead exists - show existing lead dialog
+                console.log('InboundCallManager: Opening existing lead dialog');
                 setShowLeadDialog(true);
                 setShowNotification(false);
             } else {
                 // No lead exists - show new lead creation dialog
+                console.log('InboundCallManager: Opening new lead dialog');
                 setShowNewLeadDialog(true);
                 setShowNotification(false);
             }
         } else {
             // Reset state when call ends
+            console.log('InboundCallManager: Call ended, resetting state');
             setShowLeadDialog(false);
             setShowNewLeadDialog(false);
             setShowNotification(true);

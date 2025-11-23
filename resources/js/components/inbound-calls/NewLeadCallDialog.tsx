@@ -1,10 +1,12 @@
-import LeadServiceCombobox from '@/components/LeadServiceCombobox';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { ActiveCall } from '@/hooks/useInboundCalls';
+import { useServices } from '@/lib/useServices';
+import type { Service } from '@/types/lead';
 import { Loader2, Phone, User } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -24,6 +26,9 @@ interface NewLeadCallDialogProps {
 }
 
 export function NewLeadCallDialog({ isOpen, onClose, call, onSubmit }: NewLeadCallDialogProps) {
+    console.log('NewLeadCallDialog render:', { isOpen, call });
+
+    const { services, loading: servicesLoading } = useServices();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -36,6 +41,10 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onSubmit }: NewLeadCa
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    React.useEffect(() => {
+        console.log('NewLeadCallDialog: isOpen changed to', isOpen);
+    }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -153,10 +162,31 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onSubmit }: NewLeadCa
                         {/* Service */}
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="service">Service</Label>
-                            <LeadServiceCombobox
-                                value={formData.service_id}
-                                onValueChange={(value) => setFormData({ ...formData, service_id: value })}
-                            />
+                            <Select
+                                value={formData.service_id?.toString()}
+                                onValueChange={(value) => setFormData({ ...formData, service_id: parseInt(value) })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a service" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {servicesLoading ? (
+                                        <SelectItem value="loading" disabled>
+                                            Loading services...
+                                        </SelectItem>
+                                    ) : services.length === 0 ? (
+                                        <SelectItem value="empty" disabled>
+                                            No services available
+                                        </SelectItem>
+                                    ) : (
+                                        services.map((service: Service) => (
+                                            <SelectItem key={service.id} value={service.id.toString()}>
+                                                {service.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
