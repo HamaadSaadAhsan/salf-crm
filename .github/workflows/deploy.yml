@@ -57,7 +57,7 @@ jobs:
             echo ""
             echo "🔄 Pulling latest changes from main..."
             git pull origin main
-            echo "✅ Git pull completed"
+            echo "✅ Git pull from main completed"
 
             echo ""
             echo "📦 Installing PHP dependencies..."
