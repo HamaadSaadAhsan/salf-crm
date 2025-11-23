@@ -84,7 +84,7 @@ jobs:
 
             echo ""
             echo "⚡ Optimizing application..."
-            php artisan optimize
+            php artisan optimize:clear
             echo "✅ Optimization completed"
 
             echo ""
