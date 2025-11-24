@@ -40,7 +40,10 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const getInitials = (name: string) => {
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) {
+            return '??'; // Default initials when name is not available
+        }
         return name
             .split(' ')
             .map((n) => n[0])
@@ -76,7 +79,7 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Phone className="h-5 w-5 text-primary" />
-                        Call with {call.lead.name}
+                        Call with {call.lead.name || call.caller}
                     </DialogTitle>
                     <DialogDescription className="flex items-center gap-3">
                         <span className="flex items-center gap-1">
@@ -92,7 +95,7 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
                         <div className="flex items-start gap-4">
                             <Avatar className="h-16 w-16 border-2 border-primary/20">
                                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-lg font-semibold text-primary">
-                                    {getInitials(call.lead.name)}
+                                    {getInitials(call.lead?.name)}
                                 </AvatarFallback>
                             </Avatar>
 
@@ -100,11 +103,11 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
                                 {/* Name and Status */}
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h3 className="text-lg font-semibold">{call.lead.name}</h3>
+                                        <h3 className="text-lg font-semibold">{call.lead.name || call.lead.phone || 'Unknown'}</h3>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                        <Badge variant="secondary">{call.lead.inquiry_status}</Badge>
-                                        <Badge variant="outline">{call.lead.priority}</Badge>
+                                        {call.lead.inquiry_status && <Badge variant="secondary">{call.lead.inquiry_status}</Badge>}
+                                        {call.lead.priority && <Badge variant="outline">{call.lead.priority}</Badge>}
                                         {call.lead.lead_score && (
                                             <Badge variant="default">Score: {call.lead.lead_score}</Badge>
                                         )}
