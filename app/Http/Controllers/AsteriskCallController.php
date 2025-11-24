@@ -55,6 +55,13 @@ class AsteriskCallController extends Controller
                 }
             } elseif ($validated['event'] === 'connect') {
                 // Call was answered by an extension - generate call signature
+                // Refresh lead data in case it was created by Node.js server
+                if (! $lead) {
+                    $lead = Lead::where('phone', 'LIKE', '%'.$phone.'%')
+                        ->with(['service', 'assignedTo', 'source'])
+                        ->first();
+                }
+
                 if ($callSession) {
                     // Find the user who answered (by extension)
                     $answeredBy = \App\Models\User::where('extension', $exten)->first();
@@ -71,11 +78,17 @@ class AsteriskCallController extends Controller
                         'call_signature' => $callSignature,
                     ]);
 
+                    // Update lead_id if lead exists now
+                    if ($lead && ! $callSession->lead_id) {
+                        $callSession->update(['lead_id' => $lead->id]);
+                    }
+
                     Log::info('Inbound call answered, signature generated', [
                         'call_session_id' => $callSession->id,
                         'call_signature' => $callSignature,
                         'extension' => $exten,
                         'answered_by' => $answeredBy?->id,
+                        'lead_found' => $lead !== null,
                     ]);
                 }
             } elseif ($validated['event'] === 'hangup') {

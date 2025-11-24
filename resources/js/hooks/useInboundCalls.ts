@@ -84,7 +84,13 @@ export function useInboundCalls() {
     const handleConnectEvent = (data: InboundCallData) => {
         setActiveCall((prev) => {
             if (prev && prev.uniqueid === data.uniqueid) {
-                return { ...prev, event: 'connect' };
+                // Merge new data (especially lead) with existing call state
+                return {
+                    ...prev,
+                    ...data,
+                    event: 'connect',
+                    startTime: prev.startTime, // Keep original start time
+                };
             }
             return {
                 ...data,
