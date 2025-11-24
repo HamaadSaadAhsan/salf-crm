@@ -20,8 +20,8 @@ class AsteriskCallController extends Controller
         $validated = $request->validated();
 
         try {
-            // Get extension from authenticated user
-            $exten = auth()->user()->extension;
+            // Get extension from authenticated user or from request
+            $exten = $validated['exten'] ?? auth()->user()?->extension;
 
             // Normalize phone number for matching
             $phone = $this->normalizePhoneNumber($validated['caller']);
@@ -31,23 +31,69 @@ class AsteriskCallController extends Controller
                 ->with(['service', 'assignedTo', 'source'])
                 ->first();
 
-            // Log call activity if lead exists
-            if ($lead && $validated['event'] === 'ring') {
-                $this->logCallActivity($lead, $validated);
+            // Find or create call session
+            $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
+                ->where('call_direction', 'inbound')
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->orderBy('created_at', 'desc')
+                ->first();
 
-                // Link the lead to the call session
-                $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
-                    ->whereNull('lead_id')
-                    ->where('call_direction', 'inbound')
-                    ->where('created_at', '>=', now()->subMinutes(5))
-                    ->orderBy('created_at', 'desc')
-                    ->first();
+            // Handle different call events
+            if ($validated['event'] === 'ring') {
+                // Log call activity if lead exists
+                if ($lead) {
+                    $this->logCallActivity($lead, $validated);
 
+                    // Link the lead to the call session
+                    if ($callSession) {
+                        $callSession->update(['lead_id' => $lead->id]);
+                        Log::info('Linked existing lead to call session', [
+                            'lead_id' => $lead->id,
+                            'call_session_id' => $callSession->id,
+                        ]);
+                    }
+                }
+            } elseif ($validated['event'] === 'connect') {
+                // Call was answered by an extension - generate call signature
                 if ($callSession) {
-                    $callSession->update(['lead_id' => $lead->id]);
-                    Log::info('Linked existing lead to call session', [
-                        'lead_id' => $lead->id,
+                    // Find the user who answered (by extension)
+                    $answeredBy = \App\Models\User::where('extension', $exten)->first();
+
+                    // Generate call signature
+                    $callSignature = \App\Models\CallSession::generateCallSignature(
+                        $lead?->id,
+                        $answeredBy?->id ?? auth()->id()
+                    );
+
+                    $callSession->update([
+                        'status' => 'answered',
+                        'answered_at' => now(),
+                        'call_signature' => $callSignature,
+                    ]);
+
+                    Log::info('Inbound call answered, signature generated', [
                         'call_session_id' => $callSession->id,
+                        'call_signature' => $callSignature,
+                        'extension' => $exten,
+                        'answered_by' => $answeredBy?->id,
+                    ]);
+                }
+            } elseif ($validated['event'] === 'hangup') {
+                // Call ended - update recording path if call was answered
+                if ($callSession && $callSession->call_signature) {
+                    $recordingFilename = "{$callSession->call_signature}.wav";
+                    $callSession->update([
+                        'status' => 'ended',
+                        'ended_at' => now(),
+                        'duration' => $callSession->answered_at
+                            ? now()->diffInSeconds($callSession->answered_at)
+                            : null,
+                        'recording_path' => $recordingFilename,
+                    ]);
+
+                    Log::info('Inbound call ended, recording path updated', [
+                        'call_session_id' => $callSession->id,
+                        'recording_path' => $recordingFilename,
                     ]);
                 }
             }
@@ -68,6 +114,8 @@ class AsteriskCallController extends Controller
                 'data' => [
                     'lead_found' => $lead !== null,
                     'lead_id' => $lead?->id,
+                    'call_session_id' => $callSession?->id,
+                    'call_signature' => $callSession?->call_signature,
                 ],
             ]);
         } catch (\Exception $e) {
