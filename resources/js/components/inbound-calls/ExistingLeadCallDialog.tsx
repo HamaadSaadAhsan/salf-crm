@@ -144,9 +144,9 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
                                     <div className="flex items-start gap-2">
                                         <Tag className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                                         <div className="flex flex-wrap gap-2">
-                                            {call.lead.tags.map((tag: any, index: number) => (
+                                            {call.lead.tags.map((tag: { label?: string } | string, index: number) => (
                                                 <Badge key={index} variant="outline" className="text-xs">
-                                                    {tag.label || tag}
+                                                    {typeof tag === 'object' ? tag.label : tag}
                                                 </Badge>
                                             ))}
                                         </div>
