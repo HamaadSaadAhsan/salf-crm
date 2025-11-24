@@ -22,6 +22,7 @@ class StoreInboundCallRequest extends FormRequest
         return [
             'event' => ['required', 'string', 'in:ring,connect,disconnect,hangup'],
             'caller' => ['required', 'string'],
+            'exten' => ['nullable', 'string'],
             'uniqueid' => ['required', 'string'],
             'linkedid' => ['nullable', 'string'],
         ];

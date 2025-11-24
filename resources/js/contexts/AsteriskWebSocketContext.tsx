@@ -228,11 +228,12 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                     // Check if this is an inbound call event and forward to Laravel
                     if (data.event && ['ring', 'connect', 'disconnect', 'hangup'].includes(data.event)) {
                         try {
-                            // For inbound calls: caller is the phone number (data.exten)
-                            // exten will be determined by backend from auth()->user()->extension
+                            // For inbound calls: caller = phone number, exten = extension receiving call
+                            // For outbound calls: caller = agent extension, exten = phone number being called
                             await axios.post(inboundCall().url, {
                                 event: data.event,
-                                caller: data.exten, // The actual phone number calling in
+                                caller: data.caller, // Phone number (03334114879) or agent extension
+                                exten: data.exten,   // Extension (201) or phone number
                                 uniqueid: data.uniqueid,
                                 linkedid: data.linkedid,
                             });
