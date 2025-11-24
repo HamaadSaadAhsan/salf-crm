@@ -278,19 +278,21 @@ class AsteriskCallController extends Controller
      */
     private function logCallActivity(Lead $lead, array $callData): void
     {
+        $exten = $callData['exten'] ?? auth()->user()?->extension ?? 'unknown';
+
         LeadActivity::create([
             'lead_id' => $lead->id,
             'user_id' => $lead->assigned_to ?? auth()->id(),
             'type' => 'call',
             'subject' => 'Inbound call received',
-            'description' => "Inbound call to extension {$callData['exten']}",
+            'description' => "Inbound call to extension {$exten}",
             'status' => 'pending',
             'scheduled_at' => now(),
             'metadata' => [
                 'call_id' => $callData['uniqueid'],
                 'linked_id' => $callData['linkedid'] ?? null,
                 'caller' => $callData['caller'],
-                'exten' => $callData['exten'],
+                'exten' => $exten,
                 'direction' => 'inbound',
                 'event' => $callData['event'],
             ],
