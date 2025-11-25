@@ -3,7 +3,8 @@ import { useEcho } from '@laravel/echo-react';
 import axios from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { callLead, callNotes } from '@/routes/api/asterisk';
+import { callNotes } from '@/routes/api/asterisk';
+import { update as updateLead } from '@/routes/leads';
 
 export interface InboundCallData {
     event: 'ring' | 'connect' | 'disconnect' | 'hangup';
@@ -127,58 +128,43 @@ export function useInboundCalls() {
         }
     };
 
-    const createLeadFromCall = async (leadData: {
-        name: string;
-        phone: string;
-        email?: string;
-        city?: string;
-        service_id?: number;
-        detail?: string;
-        budget?: any;
-    }) => {
+    const updateLeadFromCall = async (
+        leadId: string,
+        leadData: {
+            name?: string;
+            email?: string;
+            city?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: any;
+        },
+        notes: string,
+        duration: number
+    ) => {
         if (!activeCall) {
             throw new Error('No active call');
         }
 
         try {
-            const response = await axios.post(callLead().url, {
-                ...leadData,
-                uniqueid: activeCall.uniqueid,
-                caller: activeCall.caller,
-            });
+            // Update the lead information
+            await axios.put(updateLead(leadId).url, leadData);
 
-            toast.success('Lead created successfully');
-
-            // Refresh lead data if needed
-            router.reload({ only: ['leads'] });
-
-            return response.data.data.lead;
-        } catch (error: any) {
-            toast.error('Failed to create lead', {
-                description: error.response?.data?.message || 'An error occurred',
-            });
-            throw error;
-        }
-    };
-
-    const saveCallNotes = async (leadId: string, notes: string, duration?: number) => {
-        if (!activeCall) {
-            throw new Error('No active call');
-        }
-
-        try {
-            const response = await axios.post(callNotes().url, {
+            // Save call notes as activity
+            await axios.post(callNotes().url, {
                 lead_id: leadId,
                 notes,
                 uniqueid: activeCall.uniqueid,
                 duration,
             });
 
-            toast.success('Notes saved successfully');
+            toast.success('Lead updated and notes saved successfully');
 
-            return response.data.data.activity;
+            // Refresh lead data if needed
+            router.reload({ only: ['leads'] });
+
+            return true;
         } catch (error: any) {
-            toast.error('Failed to save notes', {
+            toast.error('Failed to update lead', {
                 description: error.response?.data?.message || 'An error occurred',
             });
             throw error;
@@ -188,7 +174,6 @@ export function useInboundCalls() {
     return {
         activeCall,
         callHistory,
-        createLeadFromCall,
-        saveCallNotes,
+        updateLeadFromCall,
     };
 }
