@@ -159,9 +159,6 @@ export function useInboundCalls() {
 
             toast.success('Lead updated and notes saved successfully');
 
-            // Refresh lead data if needed
-            router.reload({ only: ['leads'] });
-
             return true;
         } catch (error: any) {
             toast.error('Failed to update lead', {
