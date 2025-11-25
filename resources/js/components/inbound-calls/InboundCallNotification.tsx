@@ -36,7 +36,10 @@ export function InboundCallNotification({
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const getInitials = (name: string) => {
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) {
+            return '??';
+        }
         return name
             .split(' ')
             .map((n) => n[0])
@@ -70,7 +73,7 @@ export function InboundCallNotification({
                             <div className="flex items-center gap-2">
                                 <Phone className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-medium">
-                                    {call.lead ? call.lead.name : 'Incoming Call'}
+                                    {call.lead ? (call.lead.name || 'Unknown Lead') : 'Incoming Call'}
                                 </p>
                             </div>
                             <p className="text-xs text-muted-foreground">Extension: {call.exten}</p>
@@ -86,7 +89,7 @@ export function InboundCallNotification({
                     <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
                         <div className="flex items-start justify-between">
                             <div className="space-y-1">
-                                <h3 className="font-semibold">{call.lead.name}</h3>
+                                <h3 className="font-semibold">{call.lead.name || 'Unknown Lead'}</h3>
                                 <div className="flex flex-wrap gap-2">
                                     <Badge variant="secondary" className="text-xs">
                                         {call.lead.inquiry_status}
