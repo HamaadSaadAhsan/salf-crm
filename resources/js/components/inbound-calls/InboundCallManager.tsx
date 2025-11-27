@@ -15,20 +15,25 @@ export function InboundCallManager() {
             leadData: activeCall?.lead
         });
 
-        if (activeCall && activeCall.lead) {
-            setShowNotification(true);
+        if (!activeCall) {
+            // Call ended - reset everything
+            console.log('InboundCallManager: Call ended, resetting state');
+            setShowLeadDialog(false);
+            setShowNotification(false);
+            return;
+        }
 
-            // Automatically show dialog when lead exists (created by server.js)
+        if (activeCall.lead) {
+            // Automatically show dialog when lead exists
             console.log('InboundCallManager: Opening lead update dialog');
             setShowLeadDialog(true);
             setShowNotification(false);
-        } else {
-            // Reset state when call ends or no lead
-            console.log('InboundCallManager: Call ended or no lead, resetting state');
-            setShowLeadDialog(false);
+        } else if (!showLeadDialog) {
+            // Only show notification if dialog is not already open
+            // This prevents closing the dialog if it's already open with lead data
             setShowNotification(true);
         }
-    }, [activeCall]);
+    }, [activeCall, showLeadDialog]);
 
     if (!activeCall) {
         return null;

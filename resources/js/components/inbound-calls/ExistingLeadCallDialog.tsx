@@ -109,7 +109,7 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
                                         {call.lead.inquiry_status && <Badge variant="secondary">{call.lead.inquiry_status}</Badge>}
                                         {call.lead.priority && <Badge variant="outline">{call.lead.priority}</Badge>}
                                         {call.lead.lead_score && (
-                                            <Badge variant="default">Score: {call.lead.lead_score}</Badge>
+                                            <Badge variant="primary">Score: {call.lead.lead_score}</Badge>
                                         )}
                                     </div>
                                 </div>

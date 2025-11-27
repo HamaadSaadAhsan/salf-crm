@@ -84,11 +84,20 @@ export function useInboundCalls() {
 
     const handleConnectEvent = (data: InboundCallData) => {
         setActiveCall((prev) => {
-            if (prev && prev.uniqueid === data.uniqueid) {
-                // Merge new data (especially lead) with existing call state
+            // Match by either uniqueid or linkedid (same call session)
+            const isSameCall = prev && (
+                prev.uniqueid === data.uniqueid ||
+                prev.linkedid === data.linkedid ||
+                prev.uniqueid === data.linkedid
+            );
+
+            if (isSameCall) {
+                // Merge new data with existing call state
+                // IMPORTANT: Preserve lead data from prev if new data doesn't have it
                 return {
                     ...prev,
                     ...data,
+                    lead: data.lead || prev.lead, // Keep existing lead if new event doesn't have one
                     event: 'connect',
                     startTime: prev.startTime, // Keep original start time
                 };
@@ -107,7 +116,14 @@ export function useInboundCalls() {
 
     const handleDisconnectEvent = (data: InboundCallData) => {
         setActiveCall((prev) => {
-            if (prev && prev.uniqueid === data.uniqueid) {
+            // Match by either uniqueid or linkedid (same call session)
+            const isSameCall = prev && (
+                prev.uniqueid === data.uniqueid ||
+                prev.linkedid === data.linkedid ||
+                prev.uniqueid === data.linkedid
+            );
+
+            if (isSameCall) {
                 return null;
             }
             return prev;
