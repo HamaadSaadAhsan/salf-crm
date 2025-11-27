@@ -95,18 +95,24 @@ class AsteriskCallController extends Controller
                 // Call ended - update recording path if call was answered
                 if ($callSession && $callSession->call_signature) {
                     $recordingFilename = "{$callSession->call_signature}.wav";
+
+                    // Calculate duration: ensure positive integer value
+                    $duration = null;
+                    if ($callSession->answered_at) {
+                        $duration = abs($callSession->answered_at->diffInSeconds(now()));
+                    }
+
                     $callSession->update([
                         'status' => 'ended',
                         'ended_at' => now(),
-                        'duration' => $callSession->answered_at
-                            ? now()->diffInSeconds($callSession->answered_at)
-                            : null,
+                        'duration' => $duration,
                         'recording_path' => $recordingFilename,
                     ]);
 
                     Log::info('Inbound call ended, recording path updated', [
                         'call_session_id' => $callSession->id,
                         'recording_path' => $recordingFilename,
+                        'duration' => $duration,
                     ]);
                 }
             }
