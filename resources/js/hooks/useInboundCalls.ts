@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import axios from 'axios';
 import { useState } from 'react';
@@ -162,8 +161,12 @@ export function useInboundCalls() {
         }
 
         try {
+            // Generate the update URL
+            const updateUrl = updateLead(leadId).url;
+            console.log('Updating lead:', { leadId, updateUrl, leadData });
+
             // Update the lead information
-            await axios.put(updateLead(leadId).url, leadData);
+            await axios.put(updateUrl, leadData);
 
             // Save call notes as activity
             await axios.post(callNotes().url, {
@@ -177,6 +180,7 @@ export function useInboundCalls() {
 
             return true;
         } catch (error: any) {
+            console.error('Failed to update lead:', error);
             toast.error('Failed to update lead', {
                 description: error.response?.data?.message || 'An error occurred',
             });
