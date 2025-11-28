@@ -23,20 +23,18 @@ class AsteriskCallController extends Controller
             // Get extension from authenticated user or from request
             $exten = $validated['exten'] ?? auth()->user()?->extension;
 
-            // Normalize phone number for matching
-            $phone = $this->normalizePhoneNumber($validated['caller']);
-
-            // Find lead by phone number
-            $lead = Lead::where('phone', 'LIKE', '%'.$phone.'%')
-                ->with(['service', 'assignedTo', 'source'])
-                ->first();
-
-            // Find or create call session
-            $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
+            // Find call session by uniqueid (created by incoming.php)
+            $callSession = \App\Models\CallSession::where('uniqueid', $validated['uniqueid'])
                 ->where('call_direction', 'inbound')
-                ->where('created_at', '>=', now()->subMinutes(5))
-                ->orderBy('created_at', 'desc')
                 ->first();
+
+            // Get lead from call session if exists
+            $lead = null;
+            if ($callSession && $callSession->lead_id) {
+                $lead = Lead::where('id', $callSession->lead_id)
+                    ->with(['service', 'assignedTo', 'source'])
+                    ->first();
+            }
 
             // Handle different call events
             if ($validated['event'] === 'ring') {
@@ -54,40 +52,16 @@ class AsteriskCallController extends Controller
                     }
                 }
             } elseif ($validated['event'] === 'connect') {
-                // Call was answered by an extension - generate call signature
-                // Refresh lead data in case it was created by Node.js server
-                if (! $lead) {
-                    $lead = Lead::where('phone', 'LIKE', '%'.$phone.'%')
-                        ->with(['service', 'assignedTo', 'source'])
-                        ->first();
-                }
-
+                // Call was answered - just update status
                 if ($callSession) {
-                    // Find the user who answered (by extension)
-                    $answeredBy = \App\Models\User::where('extension', $exten)->first();
-
-                    // Generate call signature
-                    $callSignature = \App\Models\CallSession::generateCallSignature(
-                        $lead?->id,
-                        $answeredBy?->id ?? auth()->id()
-                    );
-
                     $callSession->update([
                         'status' => 'answered',
                         'answered_at' => now(),
-                        'call_signature' => $callSignature,
                     ]);
 
-                    // Update lead_id if lead exists now
-                    if ($lead && ! $callSession->lead_id) {
-                        $callSession->update(['lead_id' => $lead->id]);
-                    }
-
-                    Log::info('Inbound call answered, signature generated', [
+                    Log::info('Inbound call answered', [
                         'call_session_id' => $callSession->id,
-                        'call_signature' => $callSignature,
                         'extension' => $exten,
-                        'answered_by' => $answeredBy?->id,
                         'lead_found' => $lead !== null,
                     ]);
                 }
