@@ -975,11 +975,25 @@ class LeadController extends Controller
                 ];
             }
 
+            // Return JSON for API requests, redirect for browser requests
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json($responseData, 200);
+            }
+
             return back()->with($responseData);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lead update failed: '.$e->getMessage());
+
+            // Return JSON error for API requests
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update lead',
+                    'error' => app()->environment('local') ? $e->getMessage() : null,
+                ], 500);
+            }
 
             return back()->withErrors(['error' => 'Failed to update lead']);
         }

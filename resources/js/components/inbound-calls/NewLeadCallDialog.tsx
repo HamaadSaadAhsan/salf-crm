@@ -14,14 +14,21 @@ interface NewLeadCallDialogProps {
     isOpen: boolean;
     onClose: () => void;
     call: ActiveCall;
-    onUpdateLead: (leadId: string, data: {
-        name?: string;
-        email?: string;
-        city?: string;
-        service_id?: number;
-        detail?: string;
-        budget?: any;
-    }, callNotes: string, duration: number) => Promise<void>;
+    onUpdateLead: (
+        leadId: string,
+        data: {
+            name?: string;
+            email?: string;
+            city?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: {
+                amount: number;
+            };
+        },
+        callNotes: string,
+        duration: number
+    ) => Promise<void>;
 }
 
 export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLeadCallDialogProps) {
@@ -112,7 +119,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
                     city: formData.city || undefined,
                     service_id: formData.service_id,
                     detail: formData.detail || undefined,
-                    budget: formData.budget ? { amount: formData.budget } : undefined,
+                    budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
                 },
                 callNotes,
                 duration

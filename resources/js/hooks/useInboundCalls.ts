@@ -23,8 +23,10 @@ export interface InboundCallData {
         inquiry_status: string;
         priority: string;
         detail?: string;
-        budget?: any;
-        tags?: any;
+        budget?: {
+            amount: number;
+        };
+        tags?: Record<string, string>;
         lead_score?: number;
         last_activity_at?: string;
     };
@@ -151,7 +153,7 @@ export function useInboundCalls() {
             city?: string;
             service_id?: number;
             detail?: string;
-            budget?: any;
+            budget?: number;
         },
         notes: string,
         duration: number
