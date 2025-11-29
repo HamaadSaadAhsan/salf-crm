@@ -23,9 +23,13 @@ class AsteriskCallController extends Controller
             // Get extension from authenticated user or from request
             $exten = $validated['exten'] ?? auth()->user()?->extension;
 
-            // Find call session by uniqueid (created by incoming.php)
-            $callSession = \App\Models\CallSession::where('uniqueid', $validated['uniqueid'])
-                ->where('call_direction', 'inbound')
+            // Find call session by uniqueid or linkedid (created by incoming.php)
+            // Match by linkedid because Asterisk creates multiple channels with different uniqueids but same linkedid
+            $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                ->where(function ($query) use ($validated) {
+                    $query->where('uniqueid', $validated['uniqueid'])
+                          ->orWhere('uniqueid', $validated['linkedid']);
+                })
                 ->first();
 
             // Get lead from call session if exists
