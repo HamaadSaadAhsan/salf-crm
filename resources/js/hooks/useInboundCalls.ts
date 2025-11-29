@@ -166,7 +166,13 @@ export function useInboundCalls() {
             console.log('Updating lead:', { leadId, updateUrl, leadData });
 
             // Update the lead information
-            await axios.put(updateUrl, leadData);
+            // Add X-Inertia: false header to prevent Inertia redirect handling
+            await axios.put(updateUrl, leadData, {
+                headers: {
+                    'X-Inertia': 'false',
+                    'Accept': 'application/json',
+                },
+            });
 
             // Save call notes as activity
             await axios.post(callNotes().url, {
