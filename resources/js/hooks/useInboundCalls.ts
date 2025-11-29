@@ -155,7 +155,7 @@ export function useInboundCalls() {
         },
         notes: string,
         duration: number
-    ) => {
+    ): Promise<void> => {
         if (!activeCall) {
             throw new Error('No active call');
         }
@@ -177,8 +177,6 @@ export function useInboundCalls() {
             });
 
             toast.success('Lead updated and notes saved successfully');
-
-            return true;
         } catch (error: any) {
             console.error('Failed to update lead:', error);
             toast.error('Failed to update lead', {

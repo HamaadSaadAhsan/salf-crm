@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ActiveCall } from '@/hooks/useInboundCalls';
 import { useServices } from '@/lib/useServices';
 import type { Service } from '@/types/lead';
-import { Clock, Loader2, Phone, User } from 'lucide-react';
+import { Clock, Loader2, User } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface NewLeadCallDialogProps {
@@ -32,7 +32,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
     const [duration, setDuration] = useState(0);
 
     // Initialize form data with existing lead data if available
-    const getInitialFormData = () => {
+    const getInitialFormData = React.useCallback(() => {
         if (call.lead) {
             return {
                 name: call.lead.name || '',
@@ -53,21 +53,22 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
             detail: '',
             budget: '',
         };
-    };
+    }, [call.lead, call.caller]);
 
-    const [formData, setFormData] = useState(getInitialFormData());
+    const [formData, setFormData] = useState(getInitialFormData);
     const [callNotes, setCallNotes] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Reset form data when dialog opens or call changes
+    // Reset form data when uniqueid changes (new call)
+    const previousUniqueid = React.useRef(call.uniqueid);
     React.useEffect(() => {
-        if (isOpen) {
-            console.log('NewLeadCallDialog: isOpen changed to', isOpen, 'resetting form data');
+        if (previousUniqueid.current !== call.uniqueid) {
+            previousUniqueid.current = call.uniqueid;
             setFormData(getInitialFormData());
             setCallNotes('');
             setErrors({});
         }
-    }, [isOpen, call.uniqueid]);
+    }, [call.uniqueid, getInitialFormData]);
 
     // Track call duration
     React.useEffect(() => {

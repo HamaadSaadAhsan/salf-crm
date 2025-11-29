@@ -28,7 +28,7 @@ class AsteriskCallController extends Controller
             $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
                 ->where(function ($query) use ($validated) {
                     $query->where('uniqueid', $validated['uniqueid'])
-                          ->orWhere('uniqueid', $validated['linkedid']);
+                        ->orWhere('uniqueid', $validated['linkedid']);
                 })
                 ->first();
 
@@ -77,7 +77,7 @@ class AsteriskCallController extends Controller
                     // Calculate duration: ensure positive integer value
                     $duration = null;
                     if ($callSession->answered_at) {
-                        $duration = abs($callSession->answered_at->diffInSeconds(now()));
+                        $duration = (int) abs($callSession->answered_at->diffInSeconds(now()));
                     }
 
                     $callSession->update([
