@@ -1,0 +1,101 @@
+import { Head } from '@inertiajs/react';
+import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap } from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
+import { PageHeader } from './page-header';
+import { ManagementCard } from './management-card';
+import { Content } from '@/crm/layout/components/content';
+
+export default function ManagementSettingsPage() {
+  const locationManagementSections = [
+    {
+      title: 'Countries',
+      description: 'Manage countries and regional settings',
+      icon: Globe,
+      href: '/countries',
+    },
+    {
+      title: 'Provinces',
+      description: 'Configure provinces and states',
+      icon: Map,
+      href: '/provinces',
+    },
+    {
+      title: 'Cities',
+      description: 'Manage cities and municipalities',
+      icon: MapPinned,
+      href: '/cities',
+    },
+    {
+      title: 'Zones',
+      description: 'Define operational zones and territories',
+      icon: MapPin,
+      href: '/zones',
+    },
+    {
+      title: 'Offices',
+      description: 'Manage office locations and assignments',
+      icon: Building2,
+      href: '/offices',
+    },
+  ];
+
+  const programManagementSections = [
+    {
+      title: 'Programs',
+      description: 'Manage educational and training programs',
+      icon: GraduationCap,
+      href: '/services',
+      disabled: false,
+    },
+  ];
+
+  return (
+    <AppLayout>
+      <Head title="Management Settings" />
+      <PageHeader />
+      <Content className="px-0">
+        <div className="py-6">
+          <div className="container-fluid">
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-base font-semibold text-muted-foreground mb-4">
+                  Location Management
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {locationManagementSections.map((section) => (
+                    <ManagementCard
+                      key={section.title}
+                      title={section.title}
+                      description={section.description}
+                      icon={section.icon}
+                      href={section.href}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-muted-foreground mb-4">
+                  Program Management
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {programManagementSections.map((section) => (
+                    <ManagementCard
+                      key={section.title}
+                      title={section.title}
+                      description={section.description}
+                      icon={section.icon}
+                      href={section.href}
+                      disabled={section.disabled}
+                      badge={section.badge}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Content>
+    </AppLayout>
+  );
+}
