@@ -4,22 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        Schema::table('leads', function (Blueprint $table) use ($useSqlite) {
-            if ($useSqlite) {
-                $table->json('tags')->nullable()->after('custom_fields');
-            } else {
-                $table->jsonb('tags')->nullable()->after('custom_fields');
-                $table->index('tags', null, 'gin');
-            }
+        Schema::table('leads', function (Blueprint $table) {
+            $table->jsonb('tags')->nullable()->after('custom_fields');
+            $table->index('tags', null, 'gin');
         });
 
         // Migrate existing tags from custom_fields to the new column
@@ -31,15 +24,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
         // First, move tags back to custom_fields if needed
         $this->moveTagsBackToCustomFields();
 
-        Schema::table('leads', function (Blueprint $table) use ($useSqlite) {
-            if (! $useSqlite) {
-                $table->dropIndex(['tags']);
-            }
+        Schema::table('leads', function (Blueprint $table) {
+            $table->dropIndex(['tags']);
             $table->dropColumn('tags');
         });
     }
@@ -56,12 +45,12 @@ return new class extends Migration
         foreach ($leads as $lead) {
             $customFields = json_decode($lead->custom_fields, true);
 
-            if (! empty($customFields['tags'])) {
+            if (!empty($customFields['tags'])) {
                 // Get tags from custom_fields
                 $tags = $customFields['tags'];
 
                 // Ensure tags are in the correct format (array of objects)
-                if (! is_array(reset($tags))) {
+                if (!is_array(reset($tags))) {
                     // If tags are just values, convert to objects
                     $tags = array_map(function ($tagValue) {
                         return $this->findTagObject($tagValue);
@@ -100,7 +89,7 @@ return new class extends Migration
             $tags = json_decode($lead->tags, true);
             $customFields = json_decode($lead->custom_fields, true) ?? [];
 
-            if (! empty($tags)) {
+            if (!empty($tags)) {
                 $customFields['tags'] = $tags;
 
                 DB::table('leads')

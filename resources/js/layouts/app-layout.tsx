@@ -13,6 +13,8 @@ import { useLeadAssignmentListener } from '@/hooks/useLeadAssignmentListener';
 import { DialerIntegration } from '@/components/dialer/DialerIntegration';
 import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
+import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -47,15 +49,18 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
             <ReactQueryProvider>
                 <AsteriskWebSocketProvider>
                     <CallContextComponent user={auth.user}>
+                        {/* Impersonation Banner - shows when super admin is impersonating */}
+                        <ImpersonationBanner />
+
                         <Layout breadcrumbs={breadcrumbs}>
                             {children}
                         </Layout>
 
-                        {/* Phone Dialer Integration */}
-                        <DialerIntegration />
-
                         {/* Inbound Call Manager - handles incoming calls */}
                         <InboundCallManager />
+
+                        {/* Outbound Call Manager - handles outgoing calls */}
+                        <OutboundCallManager />
                     </CallContextComponent>
                 </AsteriskWebSocketProvider>
             </ReactQueryProvider>

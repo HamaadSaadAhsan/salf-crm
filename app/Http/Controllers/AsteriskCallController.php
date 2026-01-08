@@ -95,6 +95,18 @@ class AsteriskCallController extends Controller
                 }
             }
 
+            // Determine call direction and get routing info
+            $callDirection = $callSession?->call_direction ?? 'inbound';
+            $targetExtension = $callSession?->callee_number; // Extension receiving inbound call
+            $agentExtension = $callSession?->caller_number ?? $exten; // For outbound, agent's extension
+
+            // Get user ID if call was answered (connect event)
+            $answeredByUserId = null;
+            if ($validated['event'] === 'connect' && $exten) {
+                $answeredByUser = \App\Models\User::where('extension', $exten)->first();
+                $answeredByUserId = $answeredByUser?->id;
+            }
+
             // Broadcast the event to connected users
             broadcast(new InboundCallReceived(
                 event: $validated['event'],
@@ -102,7 +114,11 @@ class AsteriskCallController extends Controller
                 exten: $exten,
                 uniqueid: $validated['uniqueid'],
                 linkedid: $validated['linkedid'] ?? null,
-                lead: $lead
+                lead: $lead,
+                callDirection: $callDirection,
+                targetExtension: $targetExtension,
+                agentExtension: $agentExtension,
+                answeredByUserId: $answeredByUserId
             ));
 
             return response()->json([

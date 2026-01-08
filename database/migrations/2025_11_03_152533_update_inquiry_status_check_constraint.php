@@ -3,20 +3,15 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+        DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
 
-        // PostgreSQL only - SQLite doesn't support ALTER TABLE ADD CONSTRAINT
-        if (! $useSqlite) {
-            DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
-
-            DB::statement("
+        DB::statement("
                 ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
                 CHECK (inquiry_status IN (
                     'new',
@@ -33,7 +28,6 @@ return new class extends Migration
                     'nurturing'
                 ))
             ");
-        }
     }
 
     /**
@@ -41,13 +35,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+        DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
 
-        // PostgreSQL only
-        if (! $useSqlite) {
-            DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
-
-            DB::statement("
+        DB::statement("
                 ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
                 CHECK (inquiry_status IN (
                     'new',
@@ -59,6 +49,5 @@ return new class extends Migration
                     'nurturing'
                 ))
             ");
-        }
     }
 };

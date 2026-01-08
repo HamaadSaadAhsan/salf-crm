@@ -19,7 +19,11 @@ class InboundCallReceived implements ShouldBroadcast
         public string $exten,
         public string $uniqueid,
         public ?string $linkedid = null,
-        public ?Lead $lead = null
+        public ?Lead $lead = null,
+        public string $callDirection = 'inbound',
+        public ?string $targetExtension = null,
+        public ?string $agentExtension = null,
+        public ?int $answeredByUserId = null
     ) {}
 
     /**
@@ -51,6 +55,10 @@ class InboundCallReceived implements ShouldBroadcast
             'exten' => $this->exten,
             'uniqueid' => $this->uniqueid,
             'linkedid' => $this->linkedid,
+            'call_direction' => $this->callDirection,
+            'target_extension' => $this->targetExtension,
+            'agent_extension' => $this->agentExtension,
+            'answered_by_user_id' => $this->answeredByUserId,
             'lead' => $this->lead ? [
                 'id' => $this->lead->id,
                 'name' => $this->lead->name,

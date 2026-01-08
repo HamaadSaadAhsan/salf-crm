@@ -3,23 +3,17 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+        // Drop the existing check constraint
+        DB::statement('ALTER TABLE lead_activities DROP CONSTRAINT lead_activities_type_check');
 
-        // PostgreSQL only - SQLite doesn't support ALTER TABLE DROP/ADD CONSTRAINT
-        if (! $useSqlite) {
-            // Drop the existing check constraint
-            DB::statement('ALTER TABLE lead_activities DROP CONSTRAINT lead_activities_type_check');
-
-            // Add the new check constraint with 'message' included
-            DB::statement("ALTER TABLE lead_activities ADD CONSTRAINT lead_activities_type_check CHECK (type IN ('call', 'email', 'meeting', 'note', 'message', 'task', 'follow_up', 'status_change', 'assignment_change'))");
-        }
+        // Add the new check constraint with 'message' included
+        DB::statement("ALTER TABLE lead_activities ADD CONSTRAINT lead_activities_type_check CHECK (type IN ('call', 'email', 'meeting', 'note', 'message', 'task', 'follow_up', 'status_change', 'assignment_change'))");
     }
 
     /**
@@ -27,13 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        // PostgreSQL only
-        if (! $useSqlite) {
-            // Drop the constraint and recreate without 'message'
-            DB::statement('ALTER TABLE lead_activities DROP CONSTRAINT lead_activities_type_check');
-            DB::statement("ALTER TABLE lead_activities ADD CONSTRAINT lead_activities_type_check CHECK (type IN ('call', 'email', 'meeting', 'note', 'task', 'follow_up', 'status_change', 'assignment_change'))");
-        }
+        // Drop the constraint and recreate without 'message'
+        DB::statement('ALTER TABLE lead_activities DROP CONSTRAINT lead_activities_type_check');
+        DB::statement("ALTER TABLE lead_activities ADD CONSTRAINT lead_activities_type_check CHECK (type IN ('call', 'email', 'meeting', 'note', 'task', 'follow_up', 'status_change', 'assignment_change'))");
     }
 };

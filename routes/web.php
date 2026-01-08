@@ -10,6 +10,7 @@ use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\GoogleCalendarController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StatusController;
@@ -45,6 +46,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Users Management Page
     Route::get('/users', [UserController::class, 'page'])->name('users.page');
+
+    // User Impersonation (Super Admin only)
+    // Note: /leave route must come BEFORE /{user} to avoid "leave" being treated as user ID
+    Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])->name('impersonate.leave');
+    Route::post('/impersonate/{user}', [ImpersonationController::class, 'impersonate'])->name('impersonate');
 
     // Users API Resource
     Route::prefix('api')->group(function () {

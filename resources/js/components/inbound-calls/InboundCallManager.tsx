@@ -12,30 +12,57 @@ export function InboundCallManager() {
         console.log('InboundCallManager: activeCall changed', {
             activeCall,
             hasLead: !!activeCall?.lead,
-            leadData: activeCall?.lead
+            leadData: activeCall?.lead,
+            isOwner: activeCall?.isOwner,
+            event: activeCall?.event
         });
 
         if (!activeCall) {
-            // Call ended - reset everything
-            console.log('InboundCallManager: Call ended, resetting state');
+            // Call ended or cleared (picked up by another CRO) - reset everything
+            console.log('InboundCallManager: Call ended or cleared, resetting state');
             setShowLeadDialog(false);
             setShowNotification(false);
             return;
         }
 
-        if (activeCall.lead) {
-            // Automatically show dialog when lead exists
-            console.log('InboundCallManager: Opening lead update dialog');
-            setShowLeadDialog(true);
-            setShowNotification(false);
-        } else if (!showLeadDialog) {
-            // Only show notification if dialog is not already open
-            // This prevents closing the dialog if it's already open with lead data
+        // For ring events: Show notification to all CROs
+        if (activeCall.event === 'ring') {
+            console.log('InboundCallManager: Ring event, showing notification');
             setShowNotification(true);
+            setShowLeadDialog(false);
+            return;
+        }
+
+        // For connect events: Only show dialog if we own the call
+        if (activeCall.event === 'connect' && activeCall.isOwner) {
+            console.log('InboundCallManager: Connect event, we are owner, opening dialog');
+            if (activeCall.lead) {
+                // Automatically show dialog when lead exists
+                setShowLeadDialog(true);
+                setShowNotification(false);
+            } else if (!showLeadDialog) {
+                // No lead yet, show notification first
+                setShowNotification(true);
+            }
+            return;
+        }
+
+        // If we're not the owner and call is connected, hide everything
+        if (activeCall.event === 'connect' && !activeCall.isOwner) {
+            console.log('InboundCallManager: Connect event but not owner, hiding');
+            setShowLeadDialog(false);
+            setShowNotification(false);
+            return;
         }
     }, [activeCall, showLeadDialog]);
 
+    // Don't render anything if no active call
     if (!activeCall) {
+        return null;
+    }
+
+    // Don't render anything if we're not the owner and call is connected
+    if (activeCall.event === 'connect' && !activeCall.isOwner) {
         return null;
     }
 
@@ -46,7 +73,10 @@ export function InboundCallManager() {
 
     const handleCloseLeadDialog = () => {
         setShowLeadDialog(false);
-        setShowNotification(true);
+        // Only show notification again if we're the owner
+        if (activeCall?.isOwner) {
+            setShowNotification(true);
+        }
     };
 
     const handleDismiss = () => {
@@ -55,7 +85,7 @@ export function InboundCallManager() {
 
     return (
         <>
-            {/* Call Notification Popup */}
+            {/* Call Notification Popup - shows during ring for all, shows during connect only for owner */}
             {showNotification && (
                 <InboundCallNotification
                     call={activeCall}
@@ -65,8 +95,8 @@ export function InboundCallManager() {
                 />
             )}
 
-            {/* Lead Update Dialog - only shows when lead exists */}
-            {activeCall.lead && (
+            {/* Lead Update Dialog - only shows when lead exists AND we're the owner */}
+            {activeCall.lead && activeCall.isOwner && (
                 <NewLeadCallDialog
                     isOpen={showLeadDialog}
                     onClose={handleCloseLeadDialog}

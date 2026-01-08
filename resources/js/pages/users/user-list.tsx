@@ -11,11 +11,11 @@ import {
   useReactTable,
   flexRender,
 } from '@tanstack/react-table';
-import { Building, Search, Shield, X, Edit, MapPin, Globe, Building2 } from 'lucide-react';
+import { Building, Search, Shield, X, Edit, MapPin, Globe, Building2, UserCog } from 'lucide-react';
 import { EditOfficeSheet } from './edit-office-sheet';
 import { EditZoneSheet } from './edit-zone-sheet';
 import { EditServicesSheet } from './edit-services-sheet';
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { type SharedData } from '@/types';
 
 interface User {
   id: number;
@@ -127,6 +128,10 @@ interface UserListProps {
 const UserList = ({ users, zones = [], offices = [], services = [] }: UserListProps) => {
   // Ensure users is always an array
   const usersList = Array.isArray(users) ? users : [];
+  const { auth } = usePage<SharedData>().props;
+  const isSuperAdmin = auth.isSuperAdmin;
+  const currentUserId = auth.user.id;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -146,6 +151,25 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
   const [showOfficeSheet, setShowOfficeSheet] = useState(false);
   const [showZoneSheet, setShowZoneSheet] = useState(false);
   const [showServicesSheet, setShowServicesSheet] = useState(false);
+
+  // Impersonate a user (super admin only)
+  const handleImpersonate = (user: User) => {
+    if (!isSuperAdmin || user.id === currentUserId) return;
+
+    // Check if target user is super-admin (cannot impersonate)
+    const isSuperAdminUser = user.roles?.some(role => role.name === 'super-admin');
+    if (isSuperAdminUser) return;
+
+    router.post(`/impersonate/${user.id}`);
+  };
+
+  // Check if a user can be impersonated
+  const canImpersonate = (user: User): boolean => {
+    if (!isSuperAdmin) return false;
+    if (user.id === currentUserId) return false;
+    const isSuperAdminUser = user.roles?.some(role => role.name === 'super-admin');
+    return !isSuperAdminUser;
+  };
 
   const columns: ColumnDef<User>[] = [
     {
@@ -864,6 +888,18 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
                               <span>View Details</span>
                             </Link>
                           </ContextMenuItem>
+                          {canImpersonate(row.original) && (
+                            <>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                onClick={() => handleImpersonate(row.original)}
+                                className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                              >
+                                <UserCog className="mr-2 h-4 w-4" />
+                                <span>Impersonate User</span>
+                              </ContextMenuItem>
+                            </>
+                          )}
                         </ContextMenuContent>
                       </ContextMenu>
                     ))

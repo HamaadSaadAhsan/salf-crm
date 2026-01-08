@@ -1,11 +1,20 @@
 import { Head } from '@inertiajs/react';
-import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap } from 'lucide-react';
+import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from './page-header';
 import { ManagementCard } from './management-card';
 import { Content } from '@/crm/layout/components/content';
 
 export default function ManagementSettingsPage() {
+  const userManagementSections = [
+    {
+      title: 'Users',
+      description: 'Manage user accounts, roles, and permissions',
+      icon: Users,
+      href: '/users',
+    },
+  ];
+
   const locationManagementSections = [
     {
       title: 'Countries',
@@ -57,6 +66,23 @@ export default function ManagementSettingsPage() {
         <div className="py-6">
           <div className="container-fluid">
             <div className="space-y-8">
+              <div>
+                <h2 className="text-base font-semibold text-muted-foreground mb-4">
+                  User Management
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {userManagementSections.map((section) => (
+                    <ManagementCard
+                      key={section.title}
+                      title={section.title}
+                      description={section.description}
+                      icon={section.icon}
+                      href={section.href}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <h2 className="text-base font-semibold text-muted-foreground mb-4">
                   Location Management

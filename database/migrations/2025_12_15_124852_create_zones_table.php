@@ -4,16 +4,13 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        Schema::create('zones', function (Blueprint $table) use ($useSqlite) {
+        Schema::create('zones', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
             $table->string('code', 50)->nullable()->unique();
@@ -21,11 +18,7 @@ return new class extends Migration
             $table->string('country_code', 2)->nullable();
             $table->boolean('is_active')->default(true);
 
-            if ($useSqlite) {
-                $table->json('metadata')->nullable();
-            } else {
-                $table->jsonb('metadata')->nullable();
-            }
+            $table->jsonb('metadata')->nullable();
 
             $table->timestamps();
             $table->softDeletes();

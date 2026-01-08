@@ -1,9 +1,11 @@
 import { useEcho } from '@laravel/echo-react';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { callNotes } from '@/routes/api/asterisk';
 import { update as updateLead } from '@/routes/leads';
+import type { SharedData } from '@/types';
 
 export interface InboundCallData {
     event: 'ring' | 'connect' | 'disconnect' | 'hangup';
@@ -11,6 +13,10 @@ export interface InboundCallData {
     exten: string;
     uniqueid: string;
     linkedid?: string;
+    call_direction?: 'inbound' | 'outbound';
+    target_extension?: string;
+    agent_extension?: string;
+    answered_by_user_id?: number;
     lead?: {
         id: string;
         name: string;
@@ -36,15 +42,55 @@ export interface InboundCallData {
 export interface ActiveCall extends InboundCallData {
     startTime: Date;
     duration: number;
+    isOwner: boolean; // Whether current user owns this call (picked it up or initiated it)
 }
 
 export function useInboundCalls() {
+    const { auth } = usePage<SharedData>().props;
+    const currentUserExtension = auth.user.extension;
+    const currentUserId = auth.user.id;
+
     const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
     const [callHistory, setCallHistory] = useState<InboundCallData[]>([]);
 
+    // Check if current user should own this call
+    const isCallOwner = useCallback((data: InboundCallData, event: string): boolean => {
+        // For inbound calls:
+        // - Ring: Everyone sees it (return false for ownership, but show notification)
+        // - Connect: Only the CRO who answered (their extension matches) owns it
+        // - Hangup: Only the owner should see the dialog close
+
+        if (data.call_direction === 'outbound') {
+            // Outbound call: Only the agent who made the call owns it
+            return data.agent_extension === currentUserExtension;
+        }
+
+        // Inbound call
+        if (event === 'ring') {
+            // Everyone should see ring events, but no one "owns" it yet
+            return false;
+        }
+
+        if (event === 'connect') {
+            // The CRO who answered owns the call
+            // Check by user ID first (most reliable), then by extension
+            if (data.answered_by_user_id) {
+                return data.answered_by_user_id === currentUserId;
+            }
+            return data.exten === currentUserExtension;
+        }
+
+        // For disconnect/hangup, check if we were the owner of the active call
+        return false;
+    }, [currentUserExtension, currentUserId]);
+
     // Subscribe to inbound call events using useEcho hook
     useEcho('inbound-calls', '.inbound.call', (data: InboundCallData) => {
-        console.log('Inbound call event received:', data);
+        console.log('Inbound call event received:', data, {
+            currentUserExtension,
+            currentUserId,
+            isOwner: isCallOwner(data, data.event)
+        });
 
         // Update call history
         setCallHistory((prev) => [data, ...prev.slice(0, 49)]);
@@ -65,10 +111,13 @@ export function useInboundCalls() {
     });
 
     const handleRingEvent = (data: InboundCallData) => {
+        // For ring events, everyone should see the notification
+        // (so all CROs know there's an incoming call)
         const newCall: ActiveCall = {
             ...data,
             startTime: new Date(),
             duration: 0,
+            isOwner: false, // No one owns the call during ring
         };
 
         setActiveCall(newCall);
@@ -84,6 +133,8 @@ export function useInboundCalls() {
     };
 
     const handleConnectEvent = (data: InboundCallData) => {
+        const isOwner = isCallOwner(data, 'connect');
+
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
             const isSameCall = prev && (
@@ -93,7 +144,13 @@ export function useInboundCalls() {
             );
 
             if (isSameCall) {
-                // Merge new data with existing call state
+                // If another CRO picked up the call, clear it from non-owners
+                if (!isOwner) {
+                    console.log('Call picked up by another CRO, clearing from current user');
+                    return null;
+                }
+
+                // Merge new data with existing call state for the owner
                 // IMPORTANT: Preserve lead data from prev if new data doesn't have it
                 return {
                     ...prev,
@@ -101,18 +158,29 @@ export function useInboundCalls() {
                     lead: data.lead || prev.lead, // Keep existing lead if new event doesn't have one
                     event: 'connect',
                     startTime: prev.startTime, // Keep original start time
+                    isOwner: true,
                 };
             }
-            return {
-                ...data,
-                startTime: new Date(),
-                duration: 0,
-            };
+
+            // If we didn't have an active call but we're the owner, create it
+            if (isOwner) {
+                return {
+                    ...data,
+                    startTime: new Date(),
+                    duration: 0,
+                    isOwner: true,
+                };
+            }
+
+            return prev;
         });
 
-        toast.success('Call connected', {
-            description: `Connected with ${data.caller}`,
-        });
+        // Only show toast to the owner
+        if (isOwner) {
+            toast.success('Call connected', {
+                description: `Connected with ${data.caller}`,
+            });
+        }
     };
 
     const handleDisconnectEvent = (data: InboundCallData) => {
@@ -125,13 +193,15 @@ export function useInboundCalls() {
             );
 
             if (isSameCall) {
+                // Only show toast if we were the owner
+                if (prev.isOwner) {
+                    toast.info('Call ended', {
+                        description: `Call with ${data.caller} has ended`,
+                    });
+                }
                 return null;
             }
             return prev;
-        });
-
-        toast.info('Call ended', {
-            description: `Call with ${data.caller} has ended`,
         });
     };
 
@@ -153,7 +223,7 @@ export function useInboundCalls() {
             city?: string;
             service_id?: number;
             detail?: string;
-            budget?: number;
+            budget?: { amount: number };
         },
         notes: string,
         duration: number

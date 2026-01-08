@@ -3,6 +3,15 @@ import { LucideIcon } from 'lucide-react';
 
 export interface Auth {
     user: User;
+    isSuperAdmin: boolean;
+}
+
+export interface Impersonation {
+    isImpersonating: boolean;
+    impersonator: {
+        id: number;
+        name: string;
+    } | null;
 }
 
 export interface BreadcrumbItem {
@@ -26,6 +35,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    impersonation: Impersonation;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

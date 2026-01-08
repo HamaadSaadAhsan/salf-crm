@@ -9,12 +9,8 @@ return new class extends Migration
 {
     public function up()
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        // Create ENUM type first (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::statement("DO $$ BEGIN CREATE TYPE lead_source_status AS ENUM ('active', 'inactive'); EXCEPTION WHEN duplicate_object THEN null; END $$;");
-        }
+        // Create ENUM type first
+        DB::statement("DO $$ BEGIN CREATE TYPE lead_source_status AS ENUM ('active', 'inactive'); EXCEPTION WHEN duplicate_object THEN null; END $$;");
 
         Schema::create('lead_sources', function (Blueprint $table) {
             $table->id();
@@ -30,51 +26,48 @@ return new class extends Migration
             $table->index('identifier');
         });
 
-        // PostgreSQL specific enhancements
-        if (! $useSqlite) {
-            // Add check constraints
-            DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_name_length CHECK (LENGTH(TRIM(name)) >= 2)');
-            DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_slug_length CHECK (LENGTH(TRIM(slug)) >= 2)');
-            DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_identifier_length CHECK (identifier IS NULL OR LENGTH(TRIM(identifier)) >= 2)');
+        // Add check constraints
+        DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_name_length CHECK (LENGTH(TRIM(name)) >= 2)');
+        DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_slug_length CHECK (LENGTH(TRIM(slug)) >= 2)');
+        DB::statement('ALTER TABLE lead_sources ADD CONSTRAINT lead_sources_identifier_length CHECK (identifier IS NULL OR LENGTH(TRIM(identifier)) >= 2)');
 
-            // Create GIN index for search
-            DB::statement('CREATE INDEX idx_lead_sources_name_search ON lead_sources USING gin(to_tsvector(\'english\', name))');
-            DB::statement('CREATE INDEX idx_lead_sources_status ON lead_sources(status)');
+        // Create GIN index for search
+        DB::statement('CREATE INDEX idx_lead_sources_name_search ON lead_sources USING gin(to_tsvector(\'english\', name))');
+        DB::statement('CREATE INDEX idx_lead_sources_status ON lead_sources(status)');
 
-            // Create or reuse the update trigger function
-            DB::statement('
-                CREATE OR REPLACE FUNCTION update_updated_at_column()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    NEW.updated_at = CURRENT_TIMESTAMP;
-                    RETURN NEW;
-                END;
-                $$ language \'plpgsql\'
-            ');
+        // Create or reuse the update trigger function
+        DB::statement('
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ language \'plpgsql\'
+        ');
 
-            // Create the trigger
-            DB::statement('
-                CREATE TRIGGER update_lead_sources_updated_at
-                    BEFORE UPDATE ON lead_sources
-                    FOR EACH ROW
-                    EXECUTE FUNCTION update_updated_at_column()
-            ');
+        // Create the trigger
+        DB::statement('
+            CREATE TRIGGER update_lead_sources_updated_at
+                BEFORE UPDATE ON lead_sources
+                FOR EACH ROW
+                EXECUTE FUNCTION update_updated_at_column()
+        ');
 
-            // Create view
-            DB::statement('
-                CREATE VIEW active_lead_sources AS
-                SELECT
-                    id,
-                    name,
-                    slug,
-                    identifier,
-                    created_at,
-                    updated_at
-                FROM lead_sources
-                WHERE status = \'active\'
-                ORDER BY name
-            ');
-        }
+        // Create view
+        DB::statement('
+            CREATE VIEW active_lead_sources AS
+            SELECT
+                id,
+                name,
+                slug,
+                identifier,
+                created_at,
+                updated_at
+            FROM lead_sources
+            WHERE status = \'active\'
+            ORDER BY name
+        ');
 
         // Insert sample data with slugs and identifiers
         DB::table('lead_sources')->insert([
@@ -93,16 +86,11 @@ return new class extends Migration
 
     public function down()
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+        // Drop view
+        DB::statement('DROP VIEW IF EXISTS active_lead_sources');
 
-        // PostgreSQL specific cleanup
-        if (! $useSqlite) {
-            // Drop view
-            DB::statement('DROP VIEW IF EXISTS active_lead_sources');
-
-            // Drop ENUM type
-            DB::statement('DROP TYPE IF EXISTS lead_source_status');
-        }
+        // Drop ENUM type
+        DB::statement('DROP TYPE IF EXISTS lead_source_status');
 
         // Drop table
         Schema::dropIfExists('lead_sources');

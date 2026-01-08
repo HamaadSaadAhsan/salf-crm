@@ -5,16 +5,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        Schema::create('service_user', function (Blueprint $table) use ($useSqlite) {
+        Schema::create('service_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
@@ -22,11 +19,7 @@ return new class extends Migration
             $table->string('status')->default('active');
             $table->text('notes')->nullable();
 
-            if ($useSqlite) {
-                $table->json('metadata')->nullable();
-            } else {
-                $table->jsonb('metadata')->nullable()->comment('Flexible storage for assignment-specific data');
-            }
+            $table->jsonb('metadata')->nullable()->comment('Flexible storage for assignment-specific data');
 
             $table->timestamps();
 
@@ -38,16 +31,12 @@ return new class extends Migration
             $table->index(['user_id', 'status']);
             $table->index('assigned_at');
 
-            if (! $useSqlite) {
-                // PostgreSQL specific: Partial indexes for active assignments only
-                $table->index(['service_id'], 'service_user_service_id_active_idx');
-                $table->index(['user_id'], 'service_user_user_id_active_idx');
-            }
+            // PostgreSQL specific: Partial indexes for active assignments only
+            $table->index(['service_id'], 'service_user_service_id_active_idx');
+            $table->index(['user_id'], 'service_user_user_id_active_idx');
         });
 
-        // PostgreSQL specific enhancements (skip for SQLite)
-        if (! $useSqlite) {
-            DB::unprepared("
+        DB::unprepared("
                 -- Add check constraint for status values
                 ALTER TABLE service_user
                 ADD CONSTRAINT service_user_status_check
@@ -74,7 +63,6 @@ return new class extends Migration
                 ON service_user (user_id, service_id, assigned_at)
                 WHERE status = 'active';
             ");
-        }
     }
 
     /**
@@ -82,17 +70,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        // Drop custom indexes first (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::unprepared('
+        DB::unprepared('
                 DROP INDEX IF EXISTS service_user_service_id_active_idx;
                 DROP INDEX IF EXISTS service_user_user_id_active_idx;
                 DROP INDEX IF EXISTS service_user_metadata_gin_idx;
                 DROP INDEX IF EXISTS service_user_active_assignments_idx;
             ');
-        }
 
         Schema::dropIfExists('service_user');
     }

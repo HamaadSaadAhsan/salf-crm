@@ -13,6 +13,9 @@ use Spatie\Permission\Models\Role;
  * - Program Performance
  * - Task Completion Analysis
  * - Lead Lifecycle Analysis
+ *
+ * Note: These tests require PostgreSQL due to EXTRACT(EPOCH FROM ...) and other
+ * PostgreSQL-specific SQL functions used in the dashboard queries.
  */
 describe('Advanced Metrics Endpoints', function () {
     beforeEach(function () {

@@ -5,19 +5,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        // Drop the view temporarily (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::statement('DROP VIEW IF EXISTS active_lead_activities');
-        }
+        DB::statement('DROP VIEW IF EXISTS active_lead_activities');
 
         Schema::table('leads', function (Blueprint $table) {
             // Make phone NOT nullable (only required field)
@@ -33,8 +27,7 @@ return new class extends Migration
         });
 
         // Recreate the view (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::statement('
+        DB::statement('
                 CREATE OR REPLACE VIEW active_lead_activities AS
                 SELECT a.id,
                     a.lead_id,
@@ -68,7 +61,6 @@ return new class extends Migration
                 WHERE a.deleted_at IS NULL
                 ORDER BY a.scheduled_at DESC
             ');
-        }
     }
 
     /**
@@ -76,12 +68,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
         // Drop the view temporarily (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::statement('DROP VIEW IF EXISTS active_lead_activities');
-        }
+        DB::statement('DROP VIEW IF EXISTS active_lead_activities');
 
         Schema::table('leads', function (Blueprint $table) {
             // Reverse the changes
@@ -95,8 +83,7 @@ return new class extends Migration
         });
 
         // Recreate the view (PostgreSQL only)
-        if (! $useSqlite) {
-            DB::statement('
+        DB::statement('
                 CREATE OR REPLACE VIEW active_lead_activities AS
                 SELECT a.id,
                     a.lead_id,
@@ -130,6 +117,5 @@ return new class extends Migration
                 WHERE a.deleted_at IS NULL
                 ORDER BY a.scheduled_at DESC
             ');
-        }
     }
 };

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
+import { useOutboundCalls } from '@/hooks/useOutboundCalls';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { toast } from 'sonner';
@@ -44,9 +45,10 @@ export function PageHeader({ lead }: { lead: Lead }) {
     const [isFavorite, setIsFavorite] = useState(false);
     const [isCalling, setIsCalling] = useState(false);
     const { state, actions } = useAsteriskWebSocket();
+    const { startOutboundCall } = useOutboundCalls();
     const { auth } = usePage<SharedData>().props;
 
-    console.log(auth.user.extension)
+    console.log(auth.user.extension);
 
     const handleCall = async () => {
         if (!lead.phone) {
@@ -67,15 +69,20 @@ export function PageHeader({ lead }: { lead: Lead }) {
         setIsCalling(true);
 
         try {
+            // Trigger outbound call notification immediately
+            startOutboundCall(lead.phone, lead.id, {
+                id: String(lead.id),
+                name: lead.name,
+                phone: lead.phone,
+            });
+
             const success = await actions.makeCall({
                 extension: auth.user.extension!,
                 phoneNumber: lead.phone,
                 leadId: lead.id,
             });
 
-            if (success) {
-                toast.success(`Calling ${lead.name} at ${lead.phone}...`);
-            } else {
+            if (!success) {
                 toast.error('Failed to initiate call. Please try again.');
             }
         } catch (error) {

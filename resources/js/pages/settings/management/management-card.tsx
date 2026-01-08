@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import React from 'react';
 
 interface ManagementCardProps {
   title: string;
