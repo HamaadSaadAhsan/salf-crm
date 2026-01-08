@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('leads', function (Blueprint $table) {
-            $table->jsonb('tags')->nullable()->after('custom_fields');
-            $table->index('tags', null, 'gin');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        Schema::table('leads', function (Blueprint $table) use ($useSqlite) {
+            if ($useSqlite) {
+                $table->json('tags')->nullable()->after('custom_fields');
+            } else {
+                $table->jsonb('tags')->nullable()->after('custom_fields');
+                $table->index('tags', null, 'gin');
+            }
         });
 
         // Migrate existing tags from custom_fields to the new column
@@ -25,11 +31,15 @@ return new class extends Migration
      */
     public function down(): void
     {
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
         // First, move tags back to custom_fields if needed
         $this->moveTagsBackToCustomFields();
 
-        Schema::table('leads', function (Blueprint $table) {
-            $table->dropIndex(['tags']);
+        Schema::table('leads', function (Blueprint $table) use ($useSqlite) {
+            if (! $useSqlite) {
+                $table->dropIndex(['tags']);
+            }
             $table->dropColumn('tags');
         });
     }

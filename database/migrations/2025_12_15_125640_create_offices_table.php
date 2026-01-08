@@ -11,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('offices', function (Blueprint $table) {
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        Schema::create('offices', function (Blueprint $table) use ($useSqlite) {
             $table->id();
             $table->foreignId('zone_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
@@ -23,7 +25,13 @@ return new class extends Migration
             $table->string('phone', 50)->nullable();
             $table->string('email')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->jsonb('metadata')->nullable();
+
+            if ($useSqlite) {
+                $table->json('metadata')->nullable();
+            } else {
+                $table->jsonb('metadata')->nullable();
+            }
+
             $table->timestamps();
             $table->softDeletes();
 

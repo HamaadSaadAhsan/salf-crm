@@ -9,8 +9,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Enable PostGIS extension if not already enabled
-        DB::statement('CREATE EXTENSION IF NOT EXISTS postgis');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        // Enable PostGIS extension if not already enabled (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::statement('CREATE EXTENSION IF NOT EXISTS postgis');
+        }
 
         Schema::create('leads', function (Blueprint $table) {
             // Primary key with UUID for better distribution
@@ -79,27 +83,30 @@ return new class extends Migration
             $table->index(['lead_score', 'last_activity_at']);
         });
 
-        // Add check constraints using raw SQL statements
-        DB::statement('ALTER TABLE leads ADD CONSTRAINT lead_score_range CHECK (lead_score >= 0 AND lead_score <= 100)');
-        DB::statement('ALTER TABLE leads ADD CONSTRAINT valid_latitude CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90))');
-        DB::statement('ALTER TABLE leads ADD CONSTRAINT valid_longitude CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180))');
+        // PostgreSQL specific enhancements
+        if (! $useSqlite) {
+            // Add check constraints using raw SQL statements
+            DB::statement('ALTER TABLE leads ADD CONSTRAINT lead_score_range CHECK (lead_score >= 0 AND lead_score <= 100)');
+            DB::statement('ALTER TABLE leads ADD CONSTRAINT valid_latitude CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90))');
+            DB::statement('ALTER TABLE leads ADD CONSTRAINT valid_longitude CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180))');
 
-        // Create additional indexes for performance (removed CONCURRENTLY)
-        DB::statement('CREATE INDEX leads_full_text_search ON leads USING gin(to_tsvector(\'english\', coalesce(name,\'\') || \' \' || coalesce(email,\'\') || \' \' || coalesce(phone,\'\') || \' \' || coalesce(detail,\'\')))');
-        // Partial indexes for active leads
-        DB::statement('CREATE INDEX leads_active_idx ON leads (created_at, inquiry_status) WHERE deleted_at IS NULL');
-        DB::statement('CREATE INDEX leads_hot_idx ON leads (lead_score, last_activity_at) WHERE deleted_at IS NULL AND inquiry_status IN (\'new\', \'contacted\', \'qualified\')');
+            // Create additional indexes for performance (removed CONCURRENTLY)
+            DB::statement('CREATE INDEX leads_full_text_search ON leads USING gin(to_tsvector(\'english\', coalesce(name,\'\') || \' \' || coalesce(email,\'\') || \' \' || coalesce(phone,\'\') || \' \' || coalesce(detail,\'\')))');
+            // Partial indexes for active leads
+            DB::statement('CREATE INDEX leads_active_idx ON leads (created_at, inquiry_status) WHERE deleted_at IS NULL');
+            DB::statement('CREATE INDEX leads_hot_idx ON leads (lead_score, last_activity_at) WHERE deleted_at IS NULL AND inquiry_status IN (\'new\', \'contacted\', \'qualified\')');
 
-        // Create PostGIS spatial index for geographic queries
-        DB::statement('CREATE INDEX leads_spatial_idx ON leads USING gist(ST_Point(longitude, latitude)) WHERE longitude IS NOT NULL AND latitude IS NOT NULL');
+            // Create PostGIS spatial index for geographic queries
+            DB::statement('CREATE INDEX leads_spatial_idx ON leads USING gist(ST_Point(longitude, latitude)) WHERE longitude IS NOT NULL AND latitude IS NOT NULL');
 
-        // Create trigger for updating updated_at (reuse existing function)
-        DB::statement('
-            CREATE TRIGGER update_leads_updated_at
-                BEFORE UPDATE ON leads
-                FOR EACH ROW
-                EXECUTE FUNCTION update_updated_at_column()
-        ');
+            // Create trigger for updating updated_at (reuse existing function)
+            DB::statement('
+                CREATE TRIGGER update_leads_updated_at
+                    BEFORE UPDATE ON leads
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_updated_at_column()
+            ');
+        }
     }
 
     public function down(): void

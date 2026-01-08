@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('service_user', function (Blueprint $table) {
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        Schema::create('service_user', function (Blueprint $table) use ($useSqlite) {
             $table->id();
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
@@ -20,8 +22,11 @@ return new class extends Migration
             $table->string('status')->default('active');
             $table->text('notes')->nullable();
 
-            // PostgreSQL specific: JSONB for flexible metadata storage
-            $table->jsonb('metadata')->nullable()->comment('Flexible storage for assignment-specific data');
+            if ($useSqlite) {
+                $table->json('metadata')->nullable();
+            } else {
+                $table->jsonb('metadata')->nullable()->comment('Flexible storage for assignment-specific data');
+            }
 
             $table->timestamps();
 
@@ -33,39 +38,43 @@ return new class extends Migration
             $table->index(['user_id', 'status']);
             $table->index('assigned_at');
 
-            // PostgreSQL specific: Partial indexes for active assignments only
-            $table->index(['service_id'], 'service_user_service_id_active_idx');
-            $table->index(['user_id'], 'service_user_user_id_active_idx');
+            if (! $useSqlite) {
+                // PostgreSQL specific: Partial indexes for active assignments only
+                $table->index(['service_id'], 'service_user_service_id_active_idx');
+                $table->index(['user_id'], 'service_user_user_id_active_idx');
+            }
         });
 
-        // PostgreSQL specific enhancements
-        DB::unprepared("
-            -- Add check constraint for status values
-            ALTER TABLE service_user
-            ADD CONSTRAINT service_user_status_check
-            CHECK (status IN ('active', 'inactive', 'pending'));
+        // PostgreSQL specific enhancements (skip for SQLite)
+        if (! $useSqlite) {
+            DB::unprepared("
+                -- Add check constraint for status values
+                ALTER TABLE service_user
+                ADD CONSTRAINT service_user_status_check
+                CHECK (status IN ('active', 'inactive', 'pending'));
 
-            -- Create partial indexes for active assignments
-            DROP INDEX IF EXISTS service_user_service_id_active_idx;
-            DROP INDEX IF EXISTS service_user_user_id_active_idx;
+                -- Create partial indexes for active assignments
+                DROP INDEX IF EXISTS service_user_service_id_active_idx;
+                DROP INDEX IF EXISTS service_user_user_id_active_idx;
 
-            CREATE INDEX service_user_service_id_active_idx
-            ON service_user (service_id)
-            WHERE status = 'active';
+                CREATE INDEX service_user_service_id_active_idx
+                ON service_user (service_id)
+                WHERE status = 'active';
 
-            CREATE INDEX service_user_user_id_active_idx
-            ON service_user (user_id)
-            WHERE status = 'active';
+                CREATE INDEX service_user_user_id_active_idx
+                ON service_user (user_id)
+                WHERE status = 'active';
 
-            -- GIN index for JSONB metadata queries
-            CREATE INDEX service_user_metadata_gin_idx
-            ON service_user USING GIN (metadata);
+                -- GIN index for JSONB metadata queries
+                CREATE INDEX service_user_metadata_gin_idx
+                ON service_user USING GIN (metadata);
 
-            -- Composite index for common queries
-            CREATE INDEX service_user_active_assignments_idx
-            ON service_user (user_id, service_id, assigned_at)
-            WHERE status = 'active';
-        ");
+                -- Composite index for common queries
+                CREATE INDEX service_user_active_assignments_idx
+                ON service_user (user_id, service_id, assigned_at)
+                WHERE status = 'active';
+            ");
+        }
     }
 
     /**
@@ -73,13 +82,17 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop custom indexes first
-        DB::unprepared('
-            DROP INDEX IF EXISTS service_user_service_id_active_idx;
-            DROP INDEX IF EXISTS service_user_user_id_active_idx;
-            DROP INDEX IF EXISTS service_user_metadata_gin_idx;
-            DROP INDEX IF EXISTS service_user_active_assignments_idx;
-        ');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        // Drop custom indexes first (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::unprepared('
+                DROP INDEX IF EXISTS service_user_service_id_active_idx;
+                DROP INDEX IF EXISTS service_user_user_id_active_idx;
+                DROP INDEX IF EXISTS service_user_metadata_gin_idx;
+                DROP INDEX IF EXISTS service_user_active_assignments_idx;
+            ');
+        }
 
         Schema::dropIfExists('service_user');
     }

@@ -11,14 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('zones', function (Blueprint $table) {
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        Schema::create('zones', function (Blueprint $table) use ($useSqlite) {
             $table->id();
             $table->string('name')->unique();
             $table->string('code', 50)->nullable()->unique();
             $table->text('description')->nullable();
             $table->string('country_code', 2)->nullable();
             $table->boolean('is_active')->default(true);
-            $table->jsonb('metadata')->nullable();
+
+            if ($useSqlite) {
+                $table->json('metadata')->nullable();
+            } else {
+                $table->jsonb('metadata')->nullable();
+            }
+
             $table->timestamps();
             $table->softDeletes();
 
