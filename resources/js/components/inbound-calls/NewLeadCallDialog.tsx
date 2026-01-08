@@ -29,10 +29,27 @@ interface NewLeadCallDialogProps {
         callNotes: string,
         duration: number
     ) => Promise<void>;
+    onCreateLead: (
+        data: {
+            name: string;
+            phone: string;
+            email?: string;
+            city?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: {
+                amount: number;
+            };
+        },
+        callNotes: string,
+        duration: number,
+        sessionId: string
+    ) => Promise<void>;
 }
 
-export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLeadCallDialogProps) {
-    console.log('NewLeadCallDialog render:', { isOpen, call, hasLead: !!call.lead });
+export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreateLead }: NewLeadCallDialogProps) {
+    const isNewLead = !call.lead;
+    console.log('NewLeadCallDialog render:', { isOpen, call, hasLead: !!call.lead, isNewLead });
 
     const { services, loading: servicesLoading } = useServices();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,12 +114,6 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
         setErrors({});
 
         try {
-            if (!call.lead) {
-                setErrors({ general: 'No lead data available' });
-                setIsSubmitting(false);
-                return;
-            }
-
             // Validate that notes are provided
             if (!callNotes.trim()) {
                 setErrors({ callNotes: 'Please add notes about this call' });
@@ -110,20 +121,45 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
                 return;
             }
 
-            // Update lead with the modified data and call notes
-            await onUpdateLead(
-                call.lead.id,
-                {
-                    name: formData.name,
-                    email: formData.email || undefined,
-                    city: formData.city || undefined,
-                    service_id: formData.service_id,
-                    detail: formData.detail || undefined,
-                    budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
-                },
-                callNotes,
-                duration
-            );
+            if (isNewLead) {
+                // Validate required fields for new lead
+                if (!formData.name?.trim()) {
+                    setErrors({ name: 'Name is required for new leads' });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Create new lead
+                await onCreateLead(
+                    {
+                        name: formData.name,
+                        phone: formData.phone,
+                        email: formData.email || undefined,
+                        city: formData.city || undefined,
+                        service_id: formData.service_id,
+                        detail: formData.detail || undefined,
+                        budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
+                    },
+                    callNotes,
+                    duration,
+                    call.sessionId
+                );
+            } else {
+                // Update existing lead
+                await onUpdateLead(
+                    call.lead!.id,
+                    {
+                        name: formData.name,
+                        email: formData.email || undefined,
+                        city: formData.city || undefined,
+                        service_id: formData.service_id,
+                        detail: formData.detail || undefined,
+                        budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
+                    },
+                    callNotes,
+                    duration
+                );
+            }
             onClose();
         } catch (error: any) {
             if (error.response?.data?.errors) {
@@ -140,39 +176,40 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Don't render if no lead data
-    if (!call.lead) {
-        return null;
-    }
-
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <User className="h-5 w-5" />
-                        Call with {call.lead.name || 'Lead'}
+                        {isNewLead ? 'New Incoming Call' : `Call with ${call.lead?.name || 'Lead'}`}
                     </DialogTitle>
                     <DialogDescription className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
                         <span>{formatDuration(duration)}</span>
+                        {isNewLead && <span className="ml-2 text-amber-600">• New caller - please create lead</span>}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Lead Information Fields */}
                     <div className="space-y-4">
-                        <h3 className="text-sm font-semibold">Update Lead Information</h3>
+                        <h3 className="text-sm font-semibold">
+                            {isNewLead ? 'Create New Lead' : 'Update Lead Information'}
+                        </h3>
                         <div className="grid gap-4 md:grid-cols-2">
                             {/* Name */}
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">
+                                    Name {isNewLead && <span className="text-destructive">*</span>}
+                                </Label>
                                 <Input
                                     id="name"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="Enter lead name"
                                     className={errors.name ? 'border-destructive' : ''}
+                                    autoFocus={isNewLead}
                                 />
                                 {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                             </div>
@@ -284,9 +321,9 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead }: NewLe
                         <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                             Close
                         </Button>
-                        <Button type="submit" disabled={isSubmitting || !callNotes.trim()}>
+                        <Button type="submit" disabled={isSubmitting || !callNotes.trim() || (isNewLead && !formData.name?.trim())}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save & Update Lead
+                            {isNewLead ? 'Create Lead & Save' : 'Save & Update Lead'}
                         </Button>
                     </div>
                 </form>

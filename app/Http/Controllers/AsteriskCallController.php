@@ -114,6 +114,7 @@ class AsteriskCallController extends Controller
                 exten: $exten,
                 uniqueid: $validated['uniqueid'],
                 linkedid: $validated['linkedid'] ?? null,
+                sessionId: $callSession?->session_id,
                 lead: $lead,
                 callDirection: $callDirection,
                 targetExtension: $targetExtension,
@@ -332,6 +333,52 @@ class AsteriskCallController extends Controller
         }
 
         return $normalized;
+    }
+
+    /**
+     * Link a lead to a call session.
+     */
+    public function linkLeadToSession(\Illuminate\Http\Request $request, string $sessionId): JsonResponse
+    {
+        $validated = $request->validate([
+            'lead_id' => ['required', 'exists:leads,id'],
+        ]);
+
+        try {
+            $callSession = \App\Models\CallSession::where('session_id', $sessionId)->first();
+
+            if (! $callSession) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Call session not found',
+                ], 404);
+            }
+
+            $callSession->update(['lead_id' => $validated['lead_id']]);
+
+            Log::info('Linked lead to call session', [
+                'lead_id' => $validated['lead_id'],
+                'call_session_id' => $callSession->id,
+                'session_id' => $sessionId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead linked to call session successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error linking lead to call session', [
+                'error' => $e->getMessage(),
+                'session_id' => $sessionId,
+                'lead_id' => $validated['lead_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error linking lead',
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**

@@ -4,7 +4,7 @@ import { InboundCallNotification } from './InboundCallNotification';
 import { NewLeadCallDialog } from './NewLeadCallDialog';
 
 export function InboundCallManager() {
-    const { activeCall, updateLeadFromCall } = useInboundCalls();
+    const { activeCall, updateLeadFromCall, createLeadFromCall } = useInboundCalls();
     const [showNotification, setShowNotification] = useState(true);
     const [showLeadDialog, setShowLeadDialog] = useState(false);
 
@@ -36,14 +36,9 @@ export function InboundCallManager() {
         // For connect events: Only show dialog if we own the call
         if (activeCall.event === 'connect' && activeCall.isOwner) {
             console.log('InboundCallManager: Connect event, we are owner, opening dialog');
-            if (activeCall.lead) {
-                // Automatically show dialog when lead exists
-                setShowLeadDialog(true);
-                setShowNotification(false);
-            } else if (!showLeadDialog) {
-                // No lead yet, show notification first
-                setShowNotification(true);
-            }
+            // Automatically show dialog for owner (both new leads and existing leads)
+            setShowLeadDialog(true);
+            setShowNotification(false);
             return;
         }
 
@@ -54,7 +49,7 @@ export function InboundCallManager() {
             setShowNotification(false);
             return;
         }
-    }, [activeCall, showLeadDialog]);
+    }, [activeCall]);
 
     // Don't render anything if no active call
     if (!activeCall) {
@@ -95,13 +90,14 @@ export function InboundCallManager() {
                 />
             )}
 
-            {/* Lead Update Dialog - only shows when lead exists AND we're the owner */}
-            {activeCall.lead && activeCall.isOwner && (
+            {/* Lead Dialog - shows for owner (both new leads and existing leads) */}
+            {activeCall.isOwner && (
                 <NewLeadCallDialog
                     isOpen={showLeadDialog}
                     onClose={handleCloseLeadDialog}
                     call={activeCall}
                     onUpdateLead={updateLeadFromCall}
+                    onCreateLead={createLeadFromCall}
                 />
             )}
         </>

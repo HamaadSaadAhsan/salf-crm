@@ -275,6 +275,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('api/asterisk')->group(function () {
         Route::post('/call-lead', [\App\Http\Controllers\AsteriskCallController::class, 'storeCallLead'])->name('api.asterisk.call-lead');
         Route::post('/call-notes', [\App\Http\Controllers\AsteriskCallController::class, 'saveCallNotes'])->name('api.asterisk.call-notes');
+        Route::patch('/call-sessions/{sessionId}/link-lead', [\App\Http\Controllers\AsteriskCallController::class, 'linkLeadToSession'])->name('api.asterisk.link-lead');
     });
 });
 

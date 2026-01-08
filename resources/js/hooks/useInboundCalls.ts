@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { callNotes } from '@/routes/api/asterisk';
-import { update as updateLead } from '@/routes/leads';
+import { update as updateLead, store as storeLead } from '@/routes/leads';
 import type { SharedData } from '@/types';
 
 export interface InboundCallData {
@@ -13,6 +13,7 @@ export interface InboundCallData {
     exten: string;
     uniqueid: string;
     linkedid?: string;
+    sessionId: string;
     call_direction?: 'inbound' | 'outbound';
     target_extension?: string;
     agent_extension?: string;
@@ -264,9 +265,78 @@ export function useInboundCalls() {
         }
     };
 
+    const createLeadFromCall = async (
+        leadData: {
+            name: string;
+            phone: string;
+            email?: string;
+            city?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: { amount: number };
+        },
+        notes: string,
+        duration: number,
+        sessionId: string
+    ): Promise<void> => {
+        if (!activeCall) {
+            throw new Error('No active call');
+        }
+
+        try {
+            // Create the lead
+            const storeUrl = storeLead().url;
+            console.log('Creating lead:', { storeUrl, leadData });
+
+            const response = await axios.post(storeUrl, {
+                ...leadData,
+                inquiry_type: 'phone', // Call-based lead
+                inquiry_status: 'new',
+            }, {
+                headers: {
+                    'X-Inertia': 'false',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const newLeadId = response.data?.data?.id || response.data?.id;
+
+            if (!newLeadId) {
+                throw new Error('Failed to get new lead ID from response');
+            }
+
+            // Save call notes as activity
+            await axios.post(callNotes().url, {
+                lead_id: newLeadId,
+                notes,
+                uniqueid: activeCall.uniqueid,
+                duration,
+                session_id: sessionId,
+            });
+
+            // Update call session to link to the new lead
+            try {
+                await axios.patch(`/api/asterisk/call-sessions/${sessionId}/link-lead`, {
+                    lead_id: newLeadId,
+                });
+            } catch (linkError) {
+                console.warn('Failed to link lead to call session:', linkError);
+            }
+
+            toast.success('Lead created and notes saved successfully');
+        } catch (error: any) {
+            console.error('Failed to create lead:', error);
+            toast.error('Failed to create lead', {
+                description: error.response?.data?.message || 'An error occurred',
+            });
+            throw error;
+        }
+    };
+
     return {
         activeCall,
         callHistory,
         updateLeadFromCall,
+        createLeadFromCall,
     };
 }
