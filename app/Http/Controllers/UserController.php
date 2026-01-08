@@ -30,11 +30,34 @@ class UserController extends Controller
         $filters = $request->validated();
         $result = $this->buildUsersQuery($filters);
 
+        // Load zones, offices, and services for edit dialogs
+        $zones = \App\Models\Zone::query()
+            ->select(['id', 'name', 'code', 'description', 'is_active'])
+            ->orderBy('name')
+            ->get();
+
+        $offices = \App\Models\Office::query()
+            ->with('zone:id,name,code')
+            ->select(['id', 'name', 'code', 'zone_id', 'is_active'])
+            ->orderBy('name')
+            ->get();
+
+        $services = Service::query()
+            ->with('children:id,name,detail,country_code,country_name,parent_id')
+            ->whereNull('parent_id') // Only get parent services
+            ->select(['id', 'name', 'detail', 'country_code', 'country_name', 'parent_id'])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('users/index', [
             'users' => [
                 'data' => $result['data']->resolve(),
                 'meta' => $result['meta'],
             ],
+            'zones' => $zones,
+            'offices' => $offices,
+            'services' => $services,
         ]);
     }
 
@@ -81,6 +104,9 @@ class UserController extends Controller
                 'leads:id,name,email,service_id,assigned_to,inquiry_status,created_at',
                 'leads.service:id,name',
                 'roles:id,name',
+                'zone:id,name,code',
+                'office:id,name,code,zone_id',
+                'office.zone:id,name,code',
             ])
             ->withCount([
                 'activeServices',
@@ -94,6 +120,8 @@ class UserController extends Controller
                 'name',
                 'email',
                 'email_verified_at',
+                'zone_id',
+                'office_id',
                 'created_at',
                 'updated_at',
             ]);
@@ -383,7 +411,7 @@ class UserController extends Controller
             DB::commit();
 
             // Clear cache
-            $this->cacheService->forgetWithTags(['users', 'users_list']);
+            CacheService::flush('users');
 
             // Load relationships for response
             $user->load(['roles', 'activeServices']);
@@ -472,7 +500,7 @@ class UserController extends Controller
             DB::commit();
 
             // Clear cache
-            $this->cacheService->forgetWithTags(['users', 'users_list']);
+            CacheService::flush('users');
 
             // Load relationships for response
             $user->fresh(['roles', 'activeServices', 'activeServices.parent']);
@@ -512,7 +540,7 @@ class UserController extends Controller
             $user->delete();
 
             // Clear cache
-            $this->cacheService->forgetWithTags(['users', 'users_list']);
+            CacheService::flush('users');
 
             return response()->json([
                 'message' => 'User deleted successfully.',
@@ -520,6 +548,110 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to delete user.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user's office
+     */
+    public function updateOffice(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'office_id' => 'nullable|exists:offices,id',
+            ]);
+
+            $user->update([
+                'office_id' => $validated['office_id'],
+            ]);
+
+            // Clear cache
+            CacheService::flush('users');
+
+            // Load relationships for response
+            $user->fresh(['office', 'office.zone']);
+
+            return response()->json([
+                'message' => 'Office updated successfully.',
+                'data' => new UserResource($user),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update office.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user's zone
+     */
+    public function updateZone(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'zone_id' => 'nullable|exists:zones,id',
+            ]);
+
+            $user->update([
+                'zone_id' => $validated['zone_id'],
+            ]);
+
+            // Clear cache
+            CacheService::flush('users');
+
+            // Load relationships for response
+            $user->fresh(['zone']);
+
+            return response()->json([
+                'message' => 'Zone updated successfully.',
+                'data' => new UserResource($user),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update zone.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user's services
+     */
+    public function updateServices(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'service_ids' => 'required|array',
+                'service_ids.*' => 'exists:services,id',
+            ]);
+
+            // Sync services with user
+            $syncData = [];
+            foreach ($validated['service_ids'] as $serviceId) {
+                $syncData[$serviceId] = [
+                    'assigned_at' => now(),
+                    'status' => 'active',
+                ];
+            }
+
+            $user->services()->sync($syncData);
+
+            // Clear cache
+            CacheService::flush('users');
+
+            // Load relationships for response
+            $user->fresh(['activeServices', 'activeServices.parent']);
+
+            return response()->json([
+                'message' => 'Services updated successfully.',
+                'data' => new UserResource($user),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update services.',
                 'error' => $e->getMessage(),
             ], 500);
         }

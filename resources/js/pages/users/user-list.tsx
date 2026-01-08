@@ -2,16 +2,19 @@ import { useMemo, useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
+  ColumnPinningState,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
-  Row,
   flexRender,
 } from '@tanstack/react-table';
-import { Building, Search, Shield, X, Edit, MapPin, Globe } from 'lucide-react';
+import { Building, Search, Shield, X, Edit, MapPin, Globe, Building2 } from 'lucide-react';
+import { EditOfficeSheet } from './edit-office-sheet';
+import { EditZoneSheet } from './edit-zone-sheet';
+import { EditServicesSheet } from './edit-services-sheet';
 import { Link } from '@inertiajs/react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +40,6 @@ import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { DataGridColumnVisibility } from '@/components/ui/data-grid-column-visibility';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
-import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -54,6 +56,8 @@ interface User {
   active_services_count?: number;
   leads_count?: number;
   active_leads_count?: number;
+  zone_id?: number;
+  office_id?: number;
   active_services?: Array<{
     id: number;
     name: string;
@@ -64,16 +68,63 @@ interface User {
     id: number;
     name: string;
   }>;
+  zone?: {
+    id: number;
+    name: string;
+    code?: string;
+  };
+  office?: {
+    id: number;
+    name: string;
+    code?: string;
+    zone?: {
+      id: number;
+      name: string;
+    };
+  };
   created_at: string;
   updated_at: string;
 }
 
+interface Zone {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+  is_active: boolean;
+}
+
+interface Office {
+  id: number;
+  name: string;
+  code?: string;
+  zone_id?: number;
+  zone?: {
+    id: number;
+    name: string;
+  };
+  is_active: boolean;
+}
+
+interface Service {
+  id: number;
+  name: string;
+  detail?: string;
+  country_code?: string;
+  country_name?: string;
+  parent_id?: number;
+  children?: Service[];
+}
+
 interface UserListProps {
   users?: User[];
+  zones?: Zone[];
+  offices?: Office[];
+  services?: Service[];
   filter?: 'all' | 'active' | 'inactive';
 }
 
-const UserList = ({ users, filter = 'all' }: UserListProps) => {
+const UserList = ({ users, zones = [], offices = [], services = [] }: UserListProps) => {
   // Ensure users is always an array
   const usersList = Array.isArray(users) ? users : [];
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,17 +133,19 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
   >({});
-  const [columnPinning, setColumnPinning] = useState({
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     left: ['select', 'name'],
     right: [],
   });
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  const [selectedZones, setSelectedZones] = useState<number[]>([]);
+  const [selectedOffices, setSelectedOffices] = useState<number[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [editMode, setEditMode] = useState<
-    'programs' | 'office' | 'region' | null
-  >(null);
+  const [showOfficeSheet, setShowOfficeSheet] = useState(false);
+  const [showZoneSheet, setShowZoneSheet] = useState(false);
+  const [showServicesSheet, setShowServicesSheet] = useState(false);
 
   const columns: ColumnDef<User>[] = [
     {
@@ -202,19 +255,79 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
       ),
       minSize: 200,
       size: 280,
+      cell: ({ row }) => {
+        const services = row.original.active_services || [];
+        const maxVisible = 1;
+        const visibleServices = services.slice(0, maxVisible);
+        const remainingCount = services.length - maxVisible;
+
+        return (
+          <div className="flex items-center gap-1 min-w-0">
+            {services.length > 0 ? (
+              <>
+                {visibleServices.map((service) => (
+                  <Badge
+                    key={service.id}
+                    variant="outline"
+                    className="text-xs max-w-[160px] shrink-0"
+                    title={service.name}
+                  >
+                    <span className="truncate block">
+                      {service.name}
+                    </span>
+                  </Badge>
+                ))}
+                {remainingCount > 0 && (
+                  <Badge variant="secondary" size="sm" className="text-xs shrink-0">
+                    +{remainingCount}
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <span className="text-muted-foreground text-xs">
+                No programs assigned
+              </span>
+            )}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: 'zone',
+      header: ({ column }) => (
+        <DataGridColumnHeader column={column} title="Zone" />
+      ),
+      minSize: 150,
+      size: 180,
       cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.active_services &&
-          row.original.active_services.length > 0 ? (
-            row.original.active_services.map((service) => (
-              <Badge key={service.id} variant="outline" className="text-xs">
-                {service.name}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-muted-foreground text-xs">
-              No programs assigned
+        <div className="flex items-center">
+          {row.original.zone ? (
+            <span className="text-sm">
+              {row.original.zone.name}
             </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">No zone</span>
+          )}
+        </div>
+      ),
+      enableSorting: false,
+    },
+    {
+      accessorKey: 'office',
+      header: ({ column }) => (
+        <DataGridColumnHeader column={column} title="Office" />
+      ),
+      minSize: 150,
+      size: 200,
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          {row.original.office ? (
+            <span className="text-sm">
+              {row.original.office.name}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">No office</span>
           )}
         </div>
       ),
@@ -319,6 +432,22 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
       );
     }
 
+    // Apply zone filter
+    if (selectedZones.length > 0) {
+      filtered = filtered.filter(
+        (user) =>
+          user.zone_id && selectedZones.includes(user.zone_id),
+      );
+    }
+
+    // Apply office filter
+    if (selectedOffices.length > 0) {
+      filtered = filtered.filter(
+        (user) =>
+          user.office_id && selectedOffices.includes(user.office_id),
+      );
+    }
+
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -330,7 +459,7 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
     }
 
     return filtered;
-  }, [usersList, selectedRoles, selectedPrograms, searchQuery]);
+  }, [usersList, selectedRoles, selectedPrograms, selectedZones, selectedOffices, searchQuery]);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -344,23 +473,17 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
 
   const handleEditPrograms = (user: User) => {
     setEditingUser(user);
-    setEditMode('programs');
-    // TODO: Open programs edit dialog
-    console.log('Edit programs for user:', user);
+    setShowServicesSheet(true);
   };
 
   const handleEditOffice = (user: User) => {
     setEditingUser(user);
-    setEditMode('office');
-    // TODO: Open office edit dialog
-    console.log('Edit office for user:', user);
+    setShowOfficeSheet(true);
   };
 
   const handleEditRegion = (user: User) => {
     setEditingUser(user);
-    setEditMode('region');
-    // TODO: Open region edit dialog
-    console.log('Edit region for user:', user);
+    setShowZoneSheet(true);
   };
 
   const table = useReactTable({
@@ -526,14 +649,120 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
                 </Popover>
               )}
 
+              {/* Zone Filter */}
+              {zones.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Globe className="size-4" />
+                      Zones
+                      {selectedZones.length > 0 && (
+                        <Badge variant="secondary" className="ml-1">
+                          {selectedZones.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search zones..." />
+                      <CommandList>
+                        <CommandEmpty>No zones found.</CommandEmpty>
+                        <CommandGroup>
+                          {zones.filter((z) => z.is_active).map((zone) => (
+                            <CommandItem
+                              key={zone.id}
+                              value={zone.name}
+                              className="flex items-center gap-2.5 bg-transparent!"
+                            >
+                              <Checkbox
+                                id={`zone-${zone.id}`}
+                                checked={selectedZones.includes(zone.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedZones((prev) =>
+                                    checked
+                                      ? [...prev, zone.id]
+                                      : prev.filter((id) => id !== zone.id),
+                                  );
+                                }}
+                                size="sm"
+                              />
+                              {zone.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {/* Office Filter */}
+              {offices.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Building2 className="size-4" />
+                      Offices
+                      {selectedOffices.length > 0 && (
+                        <Badge variant="secondary" className="ml-1">
+                          {selectedOffices.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search offices..." />
+                      <CommandList>
+                        <CommandEmpty>No offices found.</CommandEmpty>
+                        <CommandGroup>
+                          {offices.filter((o) => o.is_active).map((office) => (
+                            <CommandItem
+                              key={office.id}
+                              value={office.name}
+                              className="flex items-center gap-2.5 bg-transparent!"
+                            >
+                              <Checkbox
+                                id={`office-${office.id}`}
+                                checked={selectedOffices.includes(office.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedOffices((prev) =>
+                                    checked
+                                      ? [...prev, office.id]
+                                      : prev.filter((id) => id !== office.id),
+                                  );
+                                }}
+                                size="sm"
+                              />
+                              {office.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+
               {/* Clear Filters */}
-              {(selectedRoles.length > 0 || selectedPrograms.length > 0) && (
+              {(selectedRoles.length > 0 || selectedPrograms.length > 0 || selectedZones.length > 0 || selectedOffices.length > 0) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setSelectedRoles([]);
                     setSelectedPrograms([]);
+                    setSelectedZones([]);
+                    setSelectedOffices([]);
                   }}
                 >
                   Clear Filters
@@ -659,6 +888,26 @@ const UserList = ({ users, filter = 'all' }: UserListProps) => {
           <DataGridPagination className="py-1" />
         </CardFooter>
       </Card>
+
+      {/* Edit Sheets */}
+      <EditOfficeSheet
+        open={showOfficeSheet}
+        onOpenChange={setShowOfficeSheet}
+        user={editingUser}
+        offices={offices.filter((o) => o.is_active)}
+      />
+      <EditZoneSheet
+        open={showZoneSheet}
+        onOpenChange={setShowZoneSheet}
+        user={editingUser}
+        zones={zones.filter((z) => z.is_active)}
+      />
+      <EditServicesSheet
+        open={showServicesSheet}
+        onOpenChange={setShowServicesSheet}
+        user={editingUser}
+        services={services}
+      />
     </DataGrid>
   );
 };

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Events\LeadAssigned;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadServiceAssignment;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -125,7 +127,7 @@ class IntelligentAssignmentService
     }
 
     /**
-     * Get available Advisors with optional specialization matching
+     * Get available Advisors with optional specialization matching and zone filtering
      */
     private function getAvailableAdvisors(Lead $lead)
     {
@@ -137,13 +139,44 @@ class IntelligentAssignmentService
             })
             ->where('current_lead_count', '<', self::MAX_ADVISOR_WORKLOAD);
 
+        // Filter by zone if lead has a zone
+        if ($lead->zone_id) {
+            $zoneQuery = (clone $query)->where('zone_id', $lead->zone_id);
+
+            // First try to find advisors with matching service AND zone
+            if ($lead->service_id) {
+                $advisorsWithServiceAndZone = (clone $zoneQuery)
+                    ->whereHas('services', function ($q) use ($lead) {
+                        $q->where('service_id', $lead->service_id)
+                            ->where('service_user.status', 'active');
+                    })
+                    ->with('roles', 'services', 'zone')
+                    ->get();
+
+                if ($advisorsWithServiceAndZone->isNotEmpty()) {
+                    return $advisorsWithServiceAndZone;
+                }
+            }
+
+            // If no advisors with service in zone, try any advisors in the zone
+            $advisorsInZone = $zoneQuery->with('roles', 'services', 'zone')->get();
+
+            if ($advisorsInZone->isNotEmpty()) {
+                return $advisorsInZone;
+            }
+
+            // If no advisors in zone, fall through to general logic below
+            Log::warning("No advisors found in zone {$lead->zone_id} for lead {$lead->id}, falling back to general assignment");
+        }
+
+        // Original service matching logic (no zone filter)
         if ($lead->service_id) {
             $advisorsWithService = (clone $query)
                 ->whereHas('services', function ($q) use ($lead) {
                     $q->where('service_id', $lead->service_id)
                         ->where('service_user.status', 'active');
                 })
-                ->with('roles', 'services')
+                ->with('roles', 'services', 'zone')
                 ->get();
 
             if ($advisorsWithService->isNotEmpty()) {
@@ -151,7 +184,7 @@ class IntelligentAssignmentService
             }
         }
 
-        return $query->with('roles', 'services')->get();
+        return $query->with('roles', 'services', 'zone')->get();
     }
 
     /**
@@ -243,11 +276,79 @@ class IntelligentAssignmentService
         $user->increment('total_leads_assigned');
         $user->update(['last_assignment_at' => now()]);
 
+        $this->trackServiceAssignment($lead, $user);
+
         $this->createAssignmentActivity($lead, $user, $assignmentType, $assignedBy);
 
         event(new LeadAssigned($lead, $user, $assignmentType, $assignedBy));
 
         $this->clearAssignmentCache();
+    }
+
+    /**
+     * Track service assignments for hierarchical service reporting
+     */
+    private function trackServiceAssignment(Lead $lead, User $user): void
+    {
+        if (! $lead->service_id) {
+            return;
+        }
+
+        $service = Service::find($lead->service_id);
+
+        if (! $service) {
+            return;
+        }
+
+        // Check if this service has children (is a parent service)
+        $children = $service->children()->get();
+
+        if ($children->isNotEmpty()) {
+            // This is a parent service - create records for parent and all children
+            // Create parent service assignment
+            LeadServiceAssignment::updateOrCreate(
+                [
+                    'lead_id' => $lead->id,
+                    'service_id' => $service->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'is_parent_service' => true,
+                    'parent_service_id' => null,
+                    'assigned_at' => now(),
+                ]
+            );
+
+            // Create child service assignments
+            foreach ($children as $child) {
+                LeadServiceAssignment::updateOrCreate(
+                    [
+                        'lead_id' => $lead->id,
+                        'service_id' => $child->id,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'is_parent_service' => false,
+                        'parent_service_id' => $service->id,
+                        'assigned_at' => now(),
+                    ]
+                );
+            }
+        } else {
+            // This is either a standalone service or a child service
+            LeadServiceAssignment::updateOrCreate(
+                [
+                    'lead_id' => $lead->id,
+                    'service_id' => $service->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'is_parent_service' => false,
+                    'parent_service_id' => $service->parent_id,
+                    'assigned_at' => now(),
+                ]
+            );
+        }
     }
 
     /**

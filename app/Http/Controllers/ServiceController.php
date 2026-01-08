@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ServiceFilterRequest;
+use App\Http\Requests\StoreServiceRequest;
+use App\Http\Requests\UpdateServiceRequest;
 use App\Http\Resources\ServiceResource;
 use App\Models\Service;
 use App\Services\CacheService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class ServiceController extends Controller
@@ -19,29 +19,61 @@ class ServiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(ServiceFilterRequest $request): JsonResponse
+    public function index(ServiceFilterRequest $request)
     {
-        $filters = $request->validated();
-        $cacheKey = Service::getListCacheKey($filters);
+        // Check if request wants JSON response (for API calls)
+        if ($request->wantsJson() || $request->is('api/*')) {
+            $filters = $request->validated();
+            $cacheKey = Service::getListCacheKey($filters);
 
-        // Try to get from the cache first
-        $result = $this->cacheService->remember($cacheKey, function () use ($filters) {
-            return $this->buildServicesQuery($filters);
-        }, now()->addMinutes(15)->diffInSeconds(), ['services', 'services_list']);
+            // Try to get from the cache first
+            $result = $this->cacheService->remember($cacheKey, function () use ($filters) {
+                return $this->buildServicesQuery($filters);
+            }, now()->addMinutes(15)->diffInSeconds(), ['services', 'services_list']);
 
-        // Real-time data for critical updates
-        if ($this->shouldBypassCache($filters)) {
-            $result = $this->buildServicesQuery($filters);
+            // Real-time data for critical updates
+            if ($this->shouldBypassCache($filters)) {
+                $result = $this->buildServicesQuery($filters);
+            }
+
+            return response()->json([
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+                'cache_info' => [
+                    'cached' => $this->cacheService->hasWithTags($cacheKey, ['services', 'services_list']),
+                    'cache_key' => $cacheKey,
+                    'expires_at' => $this->cacheService->getTTL(),
+                ],
+            ]);
         }
 
-        return response()->json([
-            'data' => $result['data'],
-            'meta' => $result['meta'],
-            'cache_info' => [
-                'cached' => $this->cacheService->hasWithTags($cacheKey, ['services', 'services_list']),
-                'cache_key' => $cacheKey,
-                'expires_at' => $this->cacheService->getTTL(),
-            ],
+        // Return Inertia view for web requests
+        $services = Service::with(['parent:id,name', 'children:id,name,parent_id'])
+            ->withCount(['activeUsers', 'leads', 'children'])
+            ->ordered()
+            ->get()
+            ->map(function ($service) {
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'detail' => $service->detail,
+                    'country_code' => $service->country_code,
+                    'country_name' => $service->country_name,
+                    'parent_id' => $service->parent_id,
+                    'parent_name' => $service->parent?->name,
+                    'sort_order' => $service->sort_order,
+                    'status' => $service->status,
+                    'is_parent' => $service->children_count > 0,
+                    'children_count' => $service->children_count,
+                    'active_users_count' => $service->active_users_count,
+                    'leads_count' => $service->leads_count,
+                    'created_at' => $service->created_at?->toDateTimeString(),
+                    'updated_at' => $service->updated_at?->toDateTimeString(),
+                ];
+            });
+
+        return \Inertia\Inertia::render('services/index', [
+            'services' => $services,
         ]);
     }
 
@@ -180,9 +212,16 @@ class ServiceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreServiceRequest $request)
     {
-        //
+        $validated = $request->validated();
+
+        $service = Service::create($validated);
+
+        // Clear cache
+        Cache::tags(['services', 'services_list'])->flush();
+
+        return back()->with('success', 'Service created successfully');
     }
 
     /**
@@ -190,23 +229,31 @@ class ServiceController extends Controller
      */
     public function show(Service $service)
     {
-        //
-    }
+        $service->load([
+            'parent',
+            'children',
+            'activeUsers',
+            'leads' => fn ($query) => $query->latest()->limit(10),
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Service $service)
-    {
-        //
+        return \Inertia\Inertia::render('services/show', [
+            'service' => ServiceResource::make($service),
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Service $service)
+    public function update(UpdateServiceRequest $request, Service $service)
     {
-        //
+        $validated = $request->validated();
+
+        $service->update($validated);
+
+        // Clear cache
+        Cache::tags(['services', 'services_list'])->flush();
+
+        return back()->with('success', 'Service updated successfully');
     }
 
     /**
@@ -214,6 +261,26 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
-        //
+        // Check if service has children
+        if ($service->children()->count() > 0) {
+            return back()->withErrors(['error' => 'Cannot delete service with child services. Please delete or reassign child services first.']);
+        }
+
+        // Check if service has active users
+        if ($service->activeUsers()->count() > 0) {
+            return back()->withErrors(['error' => 'Cannot delete service with assigned users. Please unassign all users first.']);
+        }
+
+        // Check if service has leads
+        if ($service->leads()->count() > 0) {
+            return back()->withErrors(['error' => 'Cannot delete service with associated leads.']);
+        }
+
+        $service->delete();
+
+        // Clear cache
+        Cache::tags(['services', 'services_list'])->flush();
+
+        return back()->with('success', 'Service deleted successfully');
     }
 }

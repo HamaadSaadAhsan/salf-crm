@@ -28,6 +28,37 @@ interface User {
   updated_at: string;
 }
 
+interface Zone {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+  is_active: boolean;
+}
+
+interface Office {
+  id: number;
+  name: string;
+  code?: string;
+  zone_id?: number;
+  zone?: {
+    id: number;
+    name: string;
+    code?: string;
+  };
+  is_active: boolean;
+}
+
+interface Service {
+  id: number;
+  name: string;
+  detail?: string;
+  country_code?: string;
+  country_name?: string;
+  parent_id?: number;
+  children?: Service[];
+}
+
 interface UsersPageProps {
   users: {
     data: User[];
@@ -38,9 +69,12 @@ interface UsersPageProps {
       last_page: number;
     };
   };
+  zones?: Zone[];
+  offices?: Office[];
+  services?: Service[];
 }
 
-export default function UsersPage({ users }: UsersPageProps) {
+export default function UsersPage({ users, zones = [], offices = [], services = [] }: UsersPageProps) {
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
 
   const handleNewUser = () => {
@@ -57,7 +91,12 @@ export default function UsersPage({ users }: UsersPageProps) {
         <PageHeader onNewUser={handleNewUser} />
         <Content className="px-0">
           <div className="py-4">
-            <UserList users={usersData} />
+            <UserList
+              users={usersData}
+              zones={zones}
+              offices={offices}
+              services={services}
+            />
           </div>
         </Content>
       </AppLayout>

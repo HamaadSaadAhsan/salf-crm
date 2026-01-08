@@ -36,7 +36,7 @@ return [
     ],
 
     'google' => [
-        'client_id' => env('GOOGLE1aq``~~~_CLIENT_ID'),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/calendar/callback'),
     ],

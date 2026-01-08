@@ -146,7 +146,7 @@ class UserSeeder extends Seeder
 
         // Assign roles if they exist
         $this->assignRolesIfExist([
-            $admin->email => 'admin',
+            $admin->email => 'super-admin',
             $manager1->email => 'manager',
             $manager2->email => 'manager',
             $salesRep1->email => 'sales',

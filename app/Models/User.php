@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -40,6 +41,12 @@ class User extends Authenticatable
         'facebook_token_expires_at',
         'facebook_refresh_token',
         'facebook_connected_at',
+        'last_assignment_at',
+        'current_lead_count',
+        'performance_weight',
+        'conversion_rate',
+        'zone_id',
+        'office_id',
     ];
 
     /**
@@ -69,12 +76,26 @@ class User extends Authenticatable
             'availability_date' => 'date',
             'facebook_token_expires_at' => 'datetime',
             'facebook_connected_at' => 'datetime',
+            'last_assignment_at' => 'datetime',
+            'current_lead_count' => 'integer',
+            'performance_weight' => 'decimal:2',
+            'conversion_rate' => 'decimal:2',
         ];
     }
 
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class, 'assigned_to');
+    }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    public function office(): BelongsTo
+    {
+        return $this->belongsTo(Office::class);
     }
 
     // Many-to-many relationship with services
@@ -408,5 +429,10 @@ class User extends Authenticatable
             ->where('is_enabled', true)
             ->where('status', 'registered')
             ->latest();
+    }
+
+    public function serviceAssignments(): HasMany
+    {
+        return $this->hasMany(LeadServiceAssignment::class);
     }
 }

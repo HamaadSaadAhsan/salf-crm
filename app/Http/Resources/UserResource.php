@@ -90,6 +90,26 @@ class UserResource extends JsonResource
                     });
                 }
             ),
+            'zone' => $this->whenLoaded('zone', function () {
+                return [
+                    'id' => $this->zone?->id,
+                    'name' => $this->zone?->name,
+                    'code' => $this->zone?->code,
+                ];
+            }),
+            'office' => $this->whenLoaded('office', function () {
+                return [
+                    'id' => $this->office?->id,
+                    'name' => $this->office?->name,
+                    'code' => $this->office?->code,
+                    'zone_id' => $this->office?->zone_id,
+                    'zone' => $this->office?->relationLoaded('zone') ? [
+                        'id' => $this->office?->zone?->id,
+                        'name' => $this->office?->zone?->name,
+                        'code' => $this->office?->zone?->code,
+                    ] : null,
+                ];
+            }),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

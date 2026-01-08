@@ -49,7 +49,45 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Users API Resource
     Route::prefix('api')->group(function () {
         Route::apiResource('users', UserController::class)->except(['create', 'edit'])->names('users');
+        Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
+        Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
+        Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
+
+        // Location Hierarchy API
+        Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
+        Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
+        Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
     });
+
+    // Zones Management
+    Route::get('/zones', [\App\Http\Controllers\ZoneController::class, 'index'])->name('zones.index');
+    Route::post('/zones', [\App\Http\Controllers\ZoneController::class, 'store'])->name('zones.store');
+    Route::patch('/zones/{zone}', [\App\Http\Controllers\ZoneController::class, 'update'])->name('zones.update');
+    Route::delete('/zones/{zone}', [\App\Http\Controllers\ZoneController::class, 'destroy'])->name('zones.destroy');
+
+    // Offices Management
+    Route::get('/offices', [\App\Http\Controllers\OfficeController::class, 'index'])->name('offices.index');
+    Route::post('/offices', [\App\Http\Controllers\OfficeController::class, 'store'])->name('offices.store');
+    Route::patch('/offices/{office}', [\App\Http\Controllers\OfficeController::class, 'update'])->name('offices.update');
+    Route::delete('/offices/{office}', [\App\Http\Controllers\OfficeController::class, 'destroy'])->name('offices.destroy');
+
+    // Countries Management
+    Route::get('/countries', [\App\Http\Controllers\CountryController::class, 'index'])->name('countries.index');
+    Route::post('/countries', [\App\Http\Controllers\CountryController::class, 'store'])->name('countries.store');
+    Route::put('/countries/{country}', [\App\Http\Controllers\CountryController::class, 'update'])->name('countries.update');
+    Route::delete('/countries/{country}', [\App\Http\Controllers\CountryController::class, 'destroy'])->name('countries.destroy');
+
+    // Provinces Management
+    Route::get('/provinces', [\App\Http\Controllers\ProvinceController::class, 'index'])->name('provinces.index');
+    Route::post('/provinces', [\App\Http\Controllers\ProvinceController::class, 'store'])->name('provinces.store');
+    Route::put('/provinces/{province}', [\App\Http\Controllers\ProvinceController::class, 'update'])->name('provinces.update');
+    Route::delete('/provinces/{province}', [\App\Http\Controllers\ProvinceController::class, 'destroy'])->name('provinces.destroy');
+
+    // Cities Management
+    Route::get('/cities', [\App\Http\Controllers\CityController::class, 'index'])->name('cities.index');
+    Route::post('/cities', [\App\Http\Controllers\CityController::class, 'store'])->name('cities.store');
+    Route::put('/cities/{city}', [\App\Http\Controllers\CityController::class, 'update'])->name('cities.update');
+    Route::delete('/cities/{city}', [\App\Http\Controllers\CityController::class, 'destroy'])->name('cities.destroy');
 
     // Lead Activities
     Route::apiResource('lead-activities', LeadActivityController::class)->names('lead-activities');

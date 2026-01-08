@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -13,11 +11,38 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Location Hierarchy (must be first)
+        $this->call([
+            CountrySeeder::class,
+            ProvinceSeeder::class,
+            CitySeeder::class,
+            ZoneSeeder::class,
+            OfficeSeeder::class,
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Core Application Data
+        $this->call([
+            StatusSeeder::class,
+            ServiceSeeder::class,
+            LeadSourceSeeder::class,
+        ]);
+
+        // Users and Permissions
+        $this->call([
+            UserSeeder::class,
+            TicketsLeadsPermissionsSeeder::class,
+        ]);
+
+        // Leads and Related Data
+        $this->call([
+            LeadSeeder::class,
+            InboundCallLeadSourceSeeder::class,
+        ]);
+
+        // Analytics and Metrics (last)
+        $this->call([
+            LeadConversionSeeder::class,
+            MetricsSeeder::class,
         ]);
     }
 }

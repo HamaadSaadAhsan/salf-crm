@@ -151,12 +151,16 @@ export const MAIN_NAV: NavConfig = [
         {
             id: 'settings',
             title: 'Settings',
-            path: '#',
+            path: '/settings/management',
             icon: Settings2,
             items: [
                 {
                     title: 'General',
-                    path: '#',
+                    path: '/settings/profile',
+                },
+                {
+                    title: 'Management',
+                    path: '/settings/management',
                 },
                 {
                     title: 'Security',

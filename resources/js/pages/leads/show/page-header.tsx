@@ -46,6 +46,8 @@ export function PageHeader({ lead }: { lead: Lead }) {
     const { state, actions } = useAsteriskWebSocket();
     const { auth } = usePage<SharedData>().props;
 
+    console.log(auth.user.extension)
+
     const handleCall = async () => {
         if (!lead.phone) {
             toast.error('No phone number available for this lead');

@@ -27,6 +27,7 @@ class Lead extends Model
         'last_activity_at', 'next_follow_up_at', 'tags',
         'form_external_id', 'lead_form_id', 'ad_external_id',
         'loss_reason', 'requalify_reason', 'qualified_by', 'qualified_at', 'converted_at',
+        'zone_id',
     ];
 
     protected $attributes = [
@@ -337,6 +338,11 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'qualified_by');
     }
 
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(LeadActivity::class);
@@ -350,6 +356,11 @@ class Lead extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(LeadNote::class);
+    }
+
+    public function serviceAssignments(): HasMany
+    {
+        return $this->hasMany(LeadServiceAssignment::class);
     }
 
     public function tasks(): MorphMany
