@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('user_id');
             $table->string('state')->unique();
             $table->timestamp('created_at')->useCurrent();
-            $table->timestamp('expires_at')->default(DB::raw("now() + interval '1 hour'"));
+            $table->timestamp('expires_at')->nullable();
         });
     }
 

@@ -1,15 +1,32 @@
 <?php
 
 use App\Services\AsteriskService;
+use Illuminate\Http\Client\Factory as HttpFactory;
 
 it('can be instantiated', function () {
-    $service = new AsteriskService;
+    $httpClient = new HttpFactory;
+
+    $service = new AsteriskService(
+        httpClient: $httpClient,
+        host: 'localhost',
+        port: '8088',
+        username: 'admin',
+        secret: 'admin'
+    );
 
     expect($service)->toBeInstanceOf(AsteriskService::class);
 });
 
 it('can generate channel id', function () {
-    $service = new AsteriskService;
+    $httpClient = new HttpFactory;
+
+    $service = new AsteriskService(
+        httpClient: $httpClient,
+        host: 'localhost',
+        port: '8088',
+        username: 'admin',
+        secret: 'admin'
+    );
 
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('generateChannelId');

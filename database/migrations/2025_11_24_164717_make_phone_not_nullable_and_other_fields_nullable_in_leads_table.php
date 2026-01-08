@@ -12,8 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop the view temporarily
-        DB::statement('DROP VIEW IF EXISTS active_lead_activities');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        // Drop the view temporarily (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::statement('DROP VIEW IF EXISTS active_lead_activities');
+        }
 
         Schema::table('leads', function (Blueprint $table) {
             // Make phone NOT nullable (only required field)
@@ -28,41 +32,43 @@ return new class extends Migration
             $table->integer('pending_activities_count')->nullable()->change();
         });
 
-        // Recreate the view
-        DB::statement("
-            CREATE OR REPLACE VIEW active_lead_activities AS
-            SELECT a.id,
-                a.lead_id,
-                a.user_id,
-                a.type,
-                a.status,
-                a.subject,
-                a.description,
-                a.metadata,
-                a.scheduled_at,
-                a.completed_at,
-                a.due_at,
-                a.priority,
-                a.category,
-                a.duration_minutes,
-                a.cost,
-                a.outcome,
-                a.notes,
-                a.attachments,
-                a.external_id,
-                a.source_system,
-                a.created_at,
-                a.updated_at,
-                a.deleted_at,
-                l.name AS lead_name,
-                l.email AS lead_email,
-                u.name AS user_name
-            FROM lead_activities a
-            JOIN leads l ON a.lead_id = l.id
-            JOIN users u ON a.user_id = u.id
-            WHERE a.deleted_at IS NULL
-            ORDER BY a.scheduled_at DESC
-        ");
+        // Recreate the view (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::statement('
+                CREATE OR REPLACE VIEW active_lead_activities AS
+                SELECT a.id,
+                    a.lead_id,
+                    a.user_id,
+                    a.type,
+                    a.status,
+                    a.subject,
+                    a.description,
+                    a.metadata,
+                    a.scheduled_at,
+                    a.completed_at,
+                    a.due_at,
+                    a.priority,
+                    a.category,
+                    a.duration_minutes,
+                    a.cost,
+                    a.outcome,
+                    a.notes,
+                    a.attachments,
+                    a.external_id,
+                    a.source_system,
+                    a.created_at,
+                    a.updated_at,
+                    a.deleted_at,
+                    l.name AS lead_name,
+                    l.email AS lead_email,
+                    u.name AS user_name
+                FROM lead_activities a
+                JOIN leads l ON a.lead_id = l.id
+                JOIN users u ON a.user_id = u.id
+                WHERE a.deleted_at IS NULL
+                ORDER BY a.scheduled_at DESC
+            ');
+        }
     }
 
     /**
@@ -70,8 +76,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop the view temporarily
-        DB::statement('DROP VIEW IF EXISTS active_lead_activities');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
+
+        // Drop the view temporarily (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::statement('DROP VIEW IF EXISTS active_lead_activities');
+        }
 
         Schema::table('leads', function (Blueprint $table) {
             // Reverse the changes
@@ -84,40 +94,42 @@ return new class extends Migration
             $table->integer('pending_activities_count')->nullable(false)->change();
         });
 
-        // Recreate the view
-        DB::statement("
-            CREATE OR REPLACE VIEW active_lead_activities AS
-            SELECT a.id,
-                a.lead_id,
-                a.user_id,
-                a.type,
-                a.status,
-                a.subject,
-                a.description,
-                a.metadata,
-                a.scheduled_at,
-                a.completed_at,
-                a.due_at,
-                a.priority,
-                a.category,
-                a.duration_minutes,
-                a.cost,
-                a.outcome,
-                a.notes,
-                a.attachments,
-                a.external_id,
-                a.source_system,
-                a.created_at,
-                a.updated_at,
-                a.deleted_at,
-                l.name AS lead_name,
-                l.email AS lead_email,
-                u.name AS user_name
-            FROM lead_activities a
-            JOIN leads l ON a.lead_id = l.id
-            JOIN users u ON a.user_id = u.id
-            WHERE a.deleted_at IS NULL
-            ORDER BY a.scheduled_at DESC
-        ");
+        // Recreate the view (PostgreSQL only)
+        if (! $useSqlite) {
+            DB::statement('
+                CREATE OR REPLACE VIEW active_lead_activities AS
+                SELECT a.id,
+                    a.lead_id,
+                    a.user_id,
+                    a.type,
+                    a.status,
+                    a.subject,
+                    a.description,
+                    a.metadata,
+                    a.scheduled_at,
+                    a.completed_at,
+                    a.due_at,
+                    a.priority,
+                    a.category,
+                    a.duration_minutes,
+                    a.cost,
+                    a.outcome,
+                    a.notes,
+                    a.attachments,
+                    a.external_id,
+                    a.source_system,
+                    a.created_at,
+                    a.updated_at,
+                    a.deleted_at,
+                    l.name AS lead_name,
+                    l.email AS lead_email,
+                    u.name AS user_name
+                FROM lead_activities a
+                JOIN leads l ON a.lead_id = l.id
+                JOIN users u ON a.user_id = u.id
+                WHERE a.deleted_at IS NULL
+                ORDER BY a.scheduled_at DESC
+            ');
+        }
     }
 };

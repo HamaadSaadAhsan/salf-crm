@@ -19,6 +19,16 @@ class ProcessCallInitiation implements ShouldQueue
 
     public $timeout = 60;
 
+    /**
+     * Calculate the number of seconds to wait before retrying the job.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [10, 30, 60];
+    }
+
     public function __construct(
         public CallSession $callSession,
         public array $sipData = []

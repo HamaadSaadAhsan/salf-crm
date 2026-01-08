@@ -21,14 +21,19 @@ class AsteriskService
 
     protected HttpFactory $httpClient;
 
-    public function __construct(?HttpFactory $httpClient = null)
-    {
-        $this->asteriskHost = config('asterisk.host', 'localhost');
-        $this->asteriskPort = config('asterisk.port', '8088');
-        $this->asteriskUsername = config('asterisk.username', 'admin');
-        $this->asteriskSecret = config('asterisk.secret', 'admin');
+    public function __construct(
+        ?HttpFactory $httpClient = null,
+        ?string $host = null,
+        ?string $port = null,
+        ?string $username = null,
+        ?string $secret = null
+    ) {
+        $this->asteriskHost = $host ?? config('asterisk.host', 'localhost');
+        $this->asteriskPort = $port ?? config('asterisk.port', '8088');
+        $this->asteriskUsername = $username ?? config('asterisk.username', 'admin');
+        $this->asteriskSecret = $secret ?? config('asterisk.secret', 'admin');
         $this->apiEndpoint = "http://{$this->asteriskHost}:{$this->asteriskPort}/ari";
-        $this->httpClient = $httpClient ?: app(HttpFactory::class);
+        $this->httpClient = $httpClient ?? (function_exists('app') ? app(HttpFactory::class) : new HttpFactory);
     }
 
     public function initiateCall(string $callerNumber, string $calleeNumber, array $sipData = []): string

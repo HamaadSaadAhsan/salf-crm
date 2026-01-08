@@ -10,25 +10,30 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
 
-        DB::statement("
-            ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
-            CHECK (inquiry_status IN (
-                'new',
-                'assigned_to_cro',
-                'contacted',
-                'qualified',
-                'assigned_to_advisor',
-                'proposal',
-                'converted',
-                'won',
-                'lost',
-                'unqualified',
-                'requalify',
-                'nurturing'
-            ))
-        ");
+        // PostgreSQL only - SQLite doesn't support ALTER TABLE ADD CONSTRAINT
+        if (! $useSqlite) {
+            DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
+
+            DB::statement("
+                ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
+                CHECK (inquiry_status IN (
+                    'new',
+                    'assigned_to_cro',
+                    'contacted',
+                    'qualified',
+                    'assigned_to_advisor',
+                    'proposal',
+                    'converted',
+                    'won',
+                    'lost',
+                    'unqualified',
+                    'requalify',
+                    'nurturing'
+                ))
+            ");
+        }
     }
 
     /**
@@ -36,19 +41,24 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
+        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
 
-        DB::statement("
-            ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
-            CHECK (inquiry_status IN (
-                'new',
-                'contacted',
-                'qualified',
-                'proposal',
-                'won',
-                'lost',
-                'nurturing'
-            ))
-        ");
+        // PostgreSQL only
+        if (! $useSqlite) {
+            DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_inquiry_status_check');
+
+            DB::statement("
+                ALTER TABLE leads ADD CONSTRAINT leads_inquiry_status_check
+                CHECK (inquiry_status IN (
+                    'new',
+                    'contacted',
+                    'qualified',
+                    'proposal',
+                    'won',
+                    'lost',
+                    'nurturing'
+                ))
+            ");
+        }
     }
 };

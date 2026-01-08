@@ -1043,7 +1043,9 @@ class LeadController extends Controller
                     continue;
                 }
 
-                $label = $item['label'] ?? ucwords(str_replace('-', ' ', $value));
+                $label = isset($item['label'])
+                    ? preg_replace('/\s+/', ' ', trim($item['label']))
+                    : ucwords(str_replace('-', ' ', $value));
                 $color = $item['color'] ?? 'gray';
 
                 $normalized[] = [
