@@ -68,8 +68,8 @@ export function InboundCallManager() {
 
     const handleCloseLeadDialog = () => {
         setShowLeadDialog(false);
-        // Only show notification again if we're the owner
-        if (activeCall?.isOwner) {
+        // Show notification again during ring or if we're the owner
+        if (activeCall?.isOwner || activeCall?.event === 'ring') {
             setShowNotification(true);
         }
     };
@@ -90,8 +90,8 @@ export function InboundCallManager() {
                 />
             )}
 
-            {/* Lead Dialog - shows for owner (both new leads and existing leads) */}
-            {activeCall.isOwner && (
+            {/* Lead Dialog - shows during ring (when user clicks button) or for owner during connect */}
+            {(activeCall.isOwner || activeCall.event === 'ring') && (
                 <NewLeadCallDialog
                     isOpen={showLeadDialog}
                     onClose={handleCloseLeadDialog}

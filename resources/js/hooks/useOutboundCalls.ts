@@ -50,8 +50,10 @@ export function useOutboundCalls() {
 
         // IMPORTANT: Only process outbound calls, skip inbound calls
         // Inbound calls are handled by useInboundCalls hook
-        if (data.call_direction === 'inbound') {
-            console.log('useOutboundCalls: Skipping inbound call event', data);
+        // Check both top-level and nested routing_info for call_direction
+        const callDirection = data.call_direction || data.routing_info?.call_direction;
+        if (callDirection === 'inbound' || (!callDirection && data.event === 'ring')) {
+            console.log('useOutboundCalls: Skipping inbound call event', { callDirection, event: data.event });
             return;
         }
 
