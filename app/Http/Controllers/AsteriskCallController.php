@@ -70,9 +70,11 @@ class AsteriskCallController extends Controller
                     ]);
                 }
             } elseif ($validated['event'] === 'hangup') {
-                // Call ended - update recording path if call was answered
-                if ($callSession && $callSession->call_signature) {
-                    $recordingFilename = "{$callSession->call_signature}.wav";
+                // Call ended - update recording path and determine end reason
+                if ($callSession) {
+                    $recordingFilename = $callSession->call_signature
+                        ? "{$callSession->call_signature}.wav"
+                        : null;
 
                     // Calculate duration: ensure positive integer value
                     $duration = null;
@@ -80,17 +82,24 @@ class AsteriskCallController extends Controller
                         $duration = (int) abs($callSession->answered_at->diffInSeconds(now()));
                     }
 
+                    // Determine end_reason based on whether the call was answered
+                    // If answered_at is null, the call was never answered (missed call)
+                    $endReason = $callSession->answered_at ? 'hangup' : 'no_answer';
+
                     $callSession->update([
                         'status' => 'ended',
                         'ended_at' => now(),
                         'duration' => $duration,
+                        'end_reason' => $endReason,
                         'recording_path' => $recordingFilename,
                     ]);
 
-                    Log::info('Inbound call ended, recording path updated', [
+                    Log::info('Inbound call ended', [
                         'call_session_id' => $callSession->id,
                         'recording_path' => $recordingFilename,
                         'duration' => $duration,
+                        'end_reason' => $endReason,
+                        'was_answered' => $callSession->answered_at !== null,
                     ]);
                 }
             }

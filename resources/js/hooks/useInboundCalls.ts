@@ -1,6 +1,6 @@
 import { useEcho } from '@laravel/echo-react';
 import { usePage } from '@inertiajs/react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { callNotes, callLead } from '@/routes/api/asterisk';
@@ -125,12 +125,6 @@ export function useInboundCalls() {
 
         // Play notification sound
         playNotificationSound('normal');
-
-        // Show toast notification
-        toast.info(`Incoming call from ${data.caller}`, {
-            description: data.lead ? `Lead: ${data.lead.name}` : 'New caller',
-            duration: 10000,
-        });
     };
 
     const handleConnectEvent = (data: InboundCallData) => {
@@ -175,13 +169,6 @@ export function useInboundCalls() {
 
             return prev;
         });
-
-        // Only show toast to the owner
-        if (isOwner) {
-            toast.success('Call connected', {
-                description: `Connected with ${data.caller}`,
-            });
-        }
     };
 
     const handleDisconnectEvent = (data: InboundCallData) => {
@@ -194,12 +181,6 @@ export function useInboundCalls() {
             );
 
             if (isSameCall) {
-                // Only show toast if we were the owner
-                if (prev.isOwner) {
-                    toast.info('Call ended', {
-                        description: `Call with ${data.caller} has ended`,
-                    });
-                }
                 return null;
             }
             return prev;
