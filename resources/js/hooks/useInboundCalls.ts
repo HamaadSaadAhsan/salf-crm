@@ -112,8 +112,29 @@ export function useInboundCalls() {
     });
 
     const handleRingEvent = (data: InboundCallData) => {
-        // For ring events, everyone should see the notification
-        // (so all CROs know there's an incoming call)
+        // Filter: Only show ring notification to the target extension
+        const targetExtension = data.target_extension || data.exten;
+
+        if (data.call_direction === 'outbound') {
+            // Outbound call: Only show to the agent who initiated it
+            if (data.agent_extension !== currentUserExtension) {
+                console.log('Outbound call ring: Not for current user', {
+                    agent_extension: data.agent_extension,
+                    currentUserExtension,
+                });
+                return;
+            }
+        } else {
+            // Inbound call: Only show to the CRO whose extension is being called
+            if (targetExtension !== currentUserExtension) {
+                console.log('Inbound call ring: Not for current user', {
+                    targetExtension,
+                    currentUserExtension,
+                });
+                return;
+            }
+        }
+
         const newCall: ActiveCall = {
             ...data,
             startTime: new Date(),
@@ -237,10 +258,11 @@ export function useInboundCalls() {
             });
 
             toast.success('Lead updated and notes saved successfully');
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to update lead:', error);
+            const axiosError = error as AxiosError<{ message?: string }>;
             toast.error('Failed to update lead', {
-                description: error.response?.data?.message || 'An error occurred',
+                description: axiosError.response?.data?.message || 'An error occurred',
             });
             throw error;
         }
@@ -306,10 +328,11 @@ export function useInboundCalls() {
             }
 
             toast.success('Lead created and notes saved successfully');
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to create lead:', error);
+            const axiosError = error as AxiosError<{ message?: string }>;
             toast.error('Failed to create lead', {
-                description: error.response?.data?.message || 'An error occurred',
+                description: axiosError.response?.data?.message || 'An error occurred',
             });
             throw error;
         }

@@ -48,6 +48,13 @@ export function useOutboundCalls() {
         const message = state.lastMessage;
         const data = message.data;
 
+        // IMPORTANT: Only process outbound calls, skip inbound calls
+        // Inbound calls are handled by useInboundCalls hook
+        if (data.call_direction === 'inbound') {
+            console.log('useOutboundCalls: Skipping inbound call event', data);
+            return;
+        }
+
         // Check if this is an outbound call event for the current user
         // For outbound calls, the exten field contains the agent's extension
         const isMyOutboundCall = data.exten === currentUserExtension ||
