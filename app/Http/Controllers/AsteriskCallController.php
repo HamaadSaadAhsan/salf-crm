@@ -572,19 +572,21 @@ class AsteriskCallController extends Controller
                 }
             }
 
-            // Strategy 3: Last resort - find ANY recent active inbound call from this caller
-            // Even if status has changed, we want to notify the extension
+            // Strategy 3: Last resort - find ANY recent inbound call from this caller
+            // Even if status has changed to 'ended', we still want to notify the extension
+            // This handles the case where the initial dial ended (no answer) and ring group takes over
             if (! $callSession && ! empty($validated['caller'])) {
                 $normalizedCaller = preg_replace('/[^0-9]/', '', $validated['caller']);
                 $last10Digits = substr($normalizedCaller, -10);
 
+                // Find the MOST RECENT call session from this caller (within 2 minutes)
+                // regardless of status - the ring group might start after initial dial ended
                 $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
                     ->where(function ($query) use ($validated, $last10Digits) {
                         $query->where('caller_number', $validated['caller'])
                             ->orWhereRaw("RIGHT(REGEXP_REPLACE(caller_number, '[^0-9]', '', 'g'), 10) = ?", [$last10Digits]);
                     })
-                    ->whereNotIn('status', ['ended', 'failed'])
-                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->where('created_at', '>=', now()->subMinutes(2))
                     ->orderBy('created_at', 'desc')
                     ->first();
 
