@@ -508,4 +508,116 @@ class AsteriskCallController extends Controller
             'external_id' => $callData['uniqueid'],
         ]);
     }
+
+    /**
+     * Handle ring group member notification.
+     * Called when a call is being transferred/routed to a new extension (e.g., via ring group).
+     * This broadcasts a new "ring" event to the new extension so they see the incoming call dialog.
+     */
+    public function handleRingGroupMember(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'exten' => ['required', 'string'],
+            'uniqueid' => ['required', 'string'],
+            'linkedid' => ['required', 'string'],
+            'caller' => ['nullable', 'string'],
+        ]);
+
+        try {
+            // Find call session by linkedid (the common link across all channels in a call)
+            $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                ->where(function ($query) use ($validated) {
+                    $query->where('uniqueid', $validated['linkedid'])
+                        ->orWhere('uniqueid', $validated['uniqueid']);
+                })
+                ->whereIn('status', ['ringing', 'answered'])
+                ->first();
+
+            if (! $callSession) {
+                Log::warning('Ring group member notification: Call session not found', [
+                    'linkedid' => $validated['linkedid'],
+                    'uniqueid' => $validated['uniqueid'],
+                    'exten' => $validated['exten'],
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Call session not found',
+                ], 404);
+            }
+
+            // Skip if call is already answered (connect event already sent)
+            if ($callSession->status === 'answered') {
+                Log::info('Ring group member notification: Call already answered, skipping', [
+                    'call_session_id' => $callSession->id,
+                    'exten' => $validated['exten'],
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Call already answered',
+                    'skipped' => true,
+                ]);
+            }
+
+            // Get lead from call session if exists
+            $lead = null;
+            if ($callSession->lead_id) {
+                $lead = Lead::where('id', $callSession->lead_id)
+                    ->with(['service', 'assignedTo', 'source'])
+                    ->first();
+            }
+
+            // Determine the caller number
+            $callerNumber = $validated['caller'] ?? $callSession->caller_number;
+
+            Log::info('Ring group member notification: Broadcasting ring event', [
+                'call_session_id' => $callSession->id,
+                'new_extension' => $validated['exten'],
+                'original_extension' => $callSession->callee_number,
+                'caller' => $callerNumber,
+                'lead_id' => $lead?->id,
+            ]);
+
+            // Broadcast a new ring event for this extension
+            // This will trigger the incoming call dialog for the new extension
+            broadcast(new InboundCallReceived(
+                event: 'ring',
+                caller: $callerNumber,
+                exten: $validated['exten'],
+                uniqueid: $validated['uniqueid'],
+                linkedid: $validated['linkedid'],
+                sessionId: $callSession->session_id,
+                lead: $lead,
+                callDirection: 'inbound',
+                targetExtension: $validated['exten'], // New extension being rung
+                agentExtension: null,
+                answeredByUserId: null,
+                intendedForUserId: $callSession->intended_for_user_id,
+                isCoverageCall: false
+            ));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ring group member notification sent',
+                'data' => [
+                    'call_session_id' => $callSession->id,
+                    'extension' => $validated['exten'],
+                    'lead_id' => $lead?->id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error processing ring group member notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $validated,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing notification',
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
 }

@@ -30,6 +30,7 @@ Route::post('/facebook/webhook', [FacebookWebhookController::class, 'handle'])->
 // Asterisk Call Webhooks - needs to be publicly accessible or restricted by IP
 Route::post('/asterisk/inbound-call', [\App\Http\Controllers\AsteriskCallController::class, 'handleInboundCall'])->name('asterisk.inbound-call');
 Route::post('/asterisk/call-recording', [CallSessionController::class, 'updateRecording'])->name('asterisk.call-recording');
+Route::post('/asterisk/ring-group-member', [\App\Http\Controllers\AsteriskCallController::class, 'handleRingGroupMember'])->name('asterisk.ring-group-member');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
