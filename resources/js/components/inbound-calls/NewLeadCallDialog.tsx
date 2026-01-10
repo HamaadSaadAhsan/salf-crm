@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ActiveCall } from '@/hooks/useInboundCalls';
 import { useServices } from '@/lib/useServices';
 import type { Service } from '@/types/lead';
-import { Clock, Loader2, User } from 'lucide-react';
+import { AlertCircle, Clock, Loader2, User } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface NewLeadCallDialogProps {
@@ -176,9 +177,18 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Prevent closing dialog on outside click or escape key during active call
+    const handleInteractOutside = (e: Event) => {
+        e.preventDefault();
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={isOpen} onOpenChange={() => { /* Prevent closing via onOpenChange */ }}>
+            <DialogContent
+                className="max-w-2xl max-h-[90vh] overflow-y-auto"
+                onInteractOutside={handleInteractOutside}
+                onEscapeKeyDown={handleInteractOutside}
+            >
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <User className="h-5 w-5" />
@@ -190,6 +200,18 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         {isNewLead && <span className="ml-2 text-amber-600">• New caller - please create lead</span>}
                     </DialogDescription>
                 </DialogHeader>
+
+                {/* Coverage Call Notice */}
+                {call.isCoverageCall && call.lead?.assigned_to && (
+                    <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertTitle className="text-amber-800 dark:text-amber-400">Coverage Call</AlertTitle>
+                        <AlertDescription className="text-amber-700 dark:text-amber-300">
+                            You are handling a call for <span className="font-semibold">{call.lead.assigned_to.name}</span>'s lead.
+                            A follow-up task has been automatically created for them.
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Lead Information Fields */}

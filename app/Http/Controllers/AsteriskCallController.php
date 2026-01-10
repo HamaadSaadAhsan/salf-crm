@@ -56,18 +56,38 @@ class AsteriskCallController extends Controller
                     }
                 }
             } elseif ($validated['event'] === 'connect') {
-                // Call was answered - just update status
+                // Call was answered - update status and track who answered
                 if ($callSession) {
+                    // Find who answered the call
+                    $answeredByUser = $exten ? \App\Models\User::where('extension', $exten)->first() : null;
+                    $answeredByUserId = $answeredByUser?->id;
+
+                    // Check if this is a coverage call (answered by different user than intended)
+                    $isCoverageCall = false;
+                    if ($answeredByUserId && $callSession->intended_for_user_id) {
+                        $isCoverageCall = $answeredByUserId !== $callSession->intended_for_user_id;
+                    }
+
                     $callSession->update([
                         'status' => 'answered',
                         'answered_at' => now(),
+                        'answered_by_user_id' => $answeredByUserId,
+                        'is_coverage_call' => $isCoverageCall,
                     ]);
 
                     Log::info('Inbound call answered', [
                         'call_session_id' => $callSession->id,
                         'extension' => $exten,
                         'lead_found' => $lead !== null,
+                        'answered_by_user_id' => $answeredByUserId,
+                        'intended_for_user_id' => $callSession->intended_for_user_id,
+                        'is_coverage_call' => $isCoverageCall,
                     ]);
+
+                    // Handle coverage call: create activities for the intended CRO
+                    if ($isCoverageCall && $lead && $callSession->intended_for_user_id) {
+                        $this->handleCoverageCall($callSession, $lead, $answeredByUser);
+                    }
                 }
             } elseif ($validated['event'] === 'hangup') {
                 // Call ended - update recording path and determine end reason
@@ -109,9 +129,13 @@ class AsteriskCallController extends Controller
             $targetExtension = $callSession?->callee_number; // Extension receiving inbound call
             $agentExtension = $callSession?->caller_number ?? $exten; // For outbound, agent's extension
 
-            // Get user ID if call was answered (connect event)
-            $answeredByUserId = null;
-            if ($validated['event'] === 'connect' && $exten) {
+            // Get coverage call info from call session (updated in connect event)
+            $answeredByUserId = $callSession?->answered_by_user_id;
+            $intendedForUserId = $callSession?->intended_for_user_id;
+            $isCoverageCall = (bool) $callSession?->is_coverage_call;
+
+            // For connect event, if not yet in session, calculate it
+            if ($validated['event'] === 'connect' && ! $answeredByUserId && $exten) {
                 $answeredByUser = \App\Models\User::where('extension', $exten)->first();
                 $answeredByUserId = $answeredByUser?->id;
             }
@@ -128,7 +152,9 @@ class AsteriskCallController extends Controller
                 callDirection: $callDirection,
                 targetExtension: $targetExtension,
                 agentExtension: $agentExtension,
-                answeredByUserId: $answeredByUserId
+                answeredByUserId: $answeredByUserId,
+                intendedForUserId: $intendedForUserId,
+                isCoverageCall: $isCoverageCall
             ));
 
             return response()->json([
@@ -388,6 +414,71 @@ class AsteriskCallController extends Controller
                 'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    /**
+     * Handle coverage call: create activities for the intended CRO.
+     * This is called when a call is answered by a different CRO than the lead's assigned CRO.
+     */
+    private function handleCoverageCall(
+        \App\Models\CallSession $callSession,
+        Lead $lead,
+        ?\App\Models\User $answeredByUser
+    ): void {
+        $intendedUserId = $callSession->intended_for_user_id;
+        $answeredByName = $answeredByUser?->name ?? 'Another CRO';
+
+        // 1. Create "contacted" activity (completed call activity)
+        LeadActivity::create([
+            'lead_id' => $lead->id,
+            'user_id' => $answeredByUser?->id ?? $intendedUserId,
+            'type' => 'call',
+            'subject' => 'Coverage call - Lead contacted',
+            'description' => "Inbound call answered by {$answeredByName} on behalf of the assigned CRO.",
+            'status' => 'completed',
+            'completed_at' => now(),
+            'metadata' => [
+                'call_session_id' => $callSession->id,
+                'session_id' => $callSession->session_id,
+                'caller_number' => $callSession->caller_number,
+                'is_coverage_call' => true,
+                'answered_by_user_id' => $answeredByUser?->id,
+                'intended_for_user_id' => $intendedUserId,
+                'direction' => 'inbound',
+            ],
+            'source_system' => 'asterisk',
+            'external_id' => $callSession->session_id,
+        ]);
+
+        // 2. Create "follow_up" activity for the intended (assigned) CRO
+        LeadActivity::create([
+            'lead_id' => $lead->id,
+            'user_id' => $intendedUserId,
+            'type' => 'follow_up',
+            'subject' => 'Follow up on coverage call',
+            'description' => "Your lead received an inbound call that was answered by {$answeredByName}. Please follow up to review the call and take any necessary action.",
+            'status' => 'pending',
+            'priority' => 'high',
+            'scheduled_at' => now(),
+            'due_at' => now()->addHours(4),
+            'metadata' => [
+                'call_session_id' => $callSession->id,
+                'session_id' => $callSession->session_id,
+                'caller_number' => $callSession->caller_number,
+                'is_coverage_call' => true,
+                'answered_by_user_id' => $answeredByUser?->id,
+                'answered_by_name' => $answeredByName,
+                'direction' => 'inbound',
+            ],
+            'source_system' => 'asterisk',
+        ]);
+
+        Log::info('Coverage call activities created', [
+            'lead_id' => $lead->id,
+            'intended_for_user_id' => $intendedUserId,
+            'answered_by_user_id' => $answeredByUser?->id,
+            'call_session_id' => $callSession->id,
+        ]);
     }
 
     /**

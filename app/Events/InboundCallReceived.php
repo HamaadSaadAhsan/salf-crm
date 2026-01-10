@@ -24,7 +24,9 @@ class InboundCallReceived implements ShouldBroadcast
         public string $callDirection = 'inbound',
         public ?string $targetExtension = null,
         public ?string $agentExtension = null,
-        public ?int $answeredByUserId = null
+        public ?int $answeredByUserId = null,
+        public ?int $intendedForUserId = null,
+        public bool $isCoverageCall = false
     ) {}
 
     /**
@@ -61,6 +63,8 @@ class InboundCallReceived implements ShouldBroadcast
             'target_extension' => $this->targetExtension,
             'agent_extension' => $this->agentExtension,
             'answered_by_user_id' => $this->answeredByUserId,
+            'intended_for_user_id' => $this->intendedForUserId,
+            'is_coverage_call' => $this->isCoverageCall,
             'lead' => $this->lead ? [
                 'id' => $this->lead->id,
                 'name' => $this->lead->name,

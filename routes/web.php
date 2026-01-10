@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('api')->group(function () {
         Route::get('/leads/{lead}/calls', [CallSessionController::class, 'leadCallHistory'])->name('api.leads.calls');
         Route::get('/leads/{lead}/recordings', [CallSessionController::class, 'leadRecordings'])->name('api.leads.recordings');
+        Route::get('/calls/active', [CallSessionController::class, 'getActiveCall'])->name('api.calls.active');
         Route::get('/calls/{callSession}', [CallSessionController::class, 'show'])->name('api.calls.show');
         Route::get('/calls/{callSession}/recording', [CallSessionController::class, 'streamRecording'])->name('api.calls.recording');
         Route::post('/calls/state', [CallSessionController::class, 'storeCallState'])->name('api.calls.state');

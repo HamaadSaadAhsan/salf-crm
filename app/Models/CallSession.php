@@ -20,12 +20,16 @@ class CallSession extends Model
             'started_at' => 'datetime',
             'answered_at' => 'datetime',
             'ended_at' => 'datetime',
+            'is_coverage_call' => 'boolean',
         ];
     }
 
     protected $fillable = [
         'session_id',
         'caller_id',
+        'answered_by_user_id',
+        'intended_for_user_id',
+        'is_coverage_call',
         'lead_id',
         'caller_sip_account_id',
         'callee_sip_account_id',
@@ -84,6 +88,16 @@ class CallSession extends Model
     public function caller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'caller_id');
+    }
+
+    public function answeredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'answered_by_user_id');
+    }
+
+    public function intendedFor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'intended_for_user_id');
     }
 
     public function lead(): BelongsTo

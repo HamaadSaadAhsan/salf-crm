@@ -1,7 +1,7 @@
 import { useEcho } from '@laravel/echo-react';
 import { usePage } from '@inertiajs/react';
 import axios, { AxiosError } from 'axios';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { callNotes, callLead } from '@/routes/api/asterisk';
 import { update as updateLead } from '@/routes/leads';
@@ -18,6 +18,8 @@ export interface InboundCallData {
     target_extension?: string;
     agent_extension?: string;
     answered_by_user_id?: number;
+    intended_for_user_id?: number;
+    is_coverage_call?: boolean;
     lead?: {
         id: string;
         name: string;
@@ -44,6 +46,7 @@ export interface ActiveCall extends InboundCallData {
     startTime: Date;
     duration: number;
     isOwner: boolean; // Whether current user owns this call (picked it up or initiated it)
+    isCoverageCall: boolean; // Whether this is a coverage call (answered by non-assigned CRO)
 }
 
 export function useInboundCalls() {
@@ -53,6 +56,52 @@ export function useInboundCalls() {
 
     const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
     const [callHistory, setCallHistory] = useState<InboundCallData[]>([]);
+
+    // Fetch active call on mount (for page refresh persistence)
+    useEffect(() => {
+        const fetchActiveCall = async () => {
+            try {
+                const response = await axios.get('/api/calls/active');
+                const data = response.data;
+
+                if (data.success && data.active_call) {
+                    console.log('Restored active call from server:', data.active_call);
+
+                    // Parse the start time from the server
+                    const startTime = data.active_call.started_at
+                        ? new Date(data.active_call.started_at)
+                        : new Date();
+
+                    const restoredCall: ActiveCall = {
+                        event: data.active_call.event,
+                        caller: data.active_call.caller,
+                        exten: data.active_call.exten,
+                        uniqueid: data.active_call.uniqueid || '',
+                        sessionId: data.active_call.sessionId,
+                        call_direction: data.active_call.call_direction,
+                        target_extension: data.active_call.target_extension,
+                        agent_extension: data.active_call.agent_extension,
+                        answered_by_user_id: data.active_call.answered_by_user_id,
+                        intended_for_user_id: data.active_call.intended_for_user_id,
+                        is_coverage_call: data.active_call.is_coverage_call,
+                        lead: data.active_call.lead,
+                        timestamp: new Date().toISOString(),
+                        startTime,
+                        duration: 0,
+                        // User is owner if call is connected and they answered it
+                        isOwner: data.active_call.event === 'connect',
+                        isCoverageCall: data.active_call.is_coverage_call || false,
+                    };
+
+                    setActiveCall(restoredCall);
+                }
+            } catch (error) {
+                console.error('Failed to fetch active call:', error);
+            }
+        };
+
+        fetchActiveCall();
+    }, []);
 
     // Check if current user should own this call
     const isCallOwner = useCallback((data: InboundCallData, event: string): boolean => {
@@ -140,6 +189,7 @@ export function useInboundCalls() {
             startTime: new Date(),
             duration: 0,
             isOwner: false, // No one owns the call during ring
+            isCoverageCall: false, // Not determined yet during ring
         };
 
         setActiveCall(newCall);
@@ -150,6 +200,7 @@ export function useInboundCalls() {
 
     const handleConnectEvent = (data: InboundCallData) => {
         const isOwner = isCallOwner(data, 'connect');
+        const isCoverageCall = data.is_coverage_call || false;
 
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
@@ -163,6 +214,12 @@ export function useInboundCalls() {
                 // If another CRO picked up the call, clear it from non-owners
                 if (!isOwner) {
                     console.log('Call picked up by another CRO, clearing from current user');
+                    // Notify the assigned CRO that someone else answered their lead's call
+                    if (data.intended_for_user_id === currentUserId && isCoverageCall) {
+                        toast.info('Coverage call', {
+                            description: 'Another CRO answered the call for your lead. A follow-up task has been created.',
+                        });
+                    }
                     return null;
                 }
 
@@ -175,6 +232,7 @@ export function useInboundCalls() {
                     event: 'connect',
                     startTime: prev.startTime, // Keep original start time
                     isOwner: true,
+                    isCoverageCall,
                 };
             }
 
@@ -185,6 +243,7 @@ export function useInboundCalls() {
                     startTime: new Date(),
                     duration: 0,
                     isOwner: true,
+                    isCoverageCall,
                 };
             }
 

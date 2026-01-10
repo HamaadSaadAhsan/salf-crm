@@ -22,6 +22,86 @@ class CallSessionController extends Controller
     ) {}
 
     /**
+     * Get active call session for the current user
+     * Used to restore call dialog after page refresh
+     */
+    public function getActiveCall(): JsonResponse
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $user->extension) {
+            return response()->json([
+                'success' => true,
+                'active_call' => null,
+            ]);
+        }
+
+        // Find active call session where user is involved (by extension, user id, or answered the call)
+        $activeCall = CallSession::query()
+            ->where(function ($query) use ($user) {
+                // Inbound calls: callee_number is the user's extension
+                $query->where('callee_number', $user->extension)
+                    // Or outbound calls: caller_id is the user
+                    ->orWhere('caller_id', $user->id)
+                    // Or user answered the call (coverage call scenario)
+                    ->orWhere('answered_by_user_id', $user->id);
+            })
+            ->whereIn('status', ['ringing', 'answered'])
+            ->with(['lead.service', 'lead.assignedTo', 'caller', 'answeredBy', 'intendedFor'])
+            ->orderByDesc('started_at')
+            ->first();
+
+        if (! $activeCall) {
+            return response()->json([
+                'success' => true,
+                'active_call' => null,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'active_call' => [
+                'event' => $activeCall->status === 'answered' ? 'connect' : 'ring',
+                'caller' => $activeCall->caller_number,
+                'exten' => $activeCall->callee_number,
+                'uniqueid' => $activeCall->uniqueid,
+                'sessionId' => $activeCall->session_id,
+                'call_direction' => $activeCall->call_direction,
+                'target_extension' => $activeCall->callee_number,
+                'agent_extension' => $activeCall->call_direction === 'outbound' ? $user->extension : null,
+                'answered_by_user_id' => $activeCall->answered_by_user_id,
+                'intended_for_user_id' => $activeCall->intended_for_user_id,
+                'is_coverage_call' => $activeCall->is_coverage_call,
+                'started_at' => $activeCall->started_at?->toIso8601String(),
+                'answered_at' => $activeCall->answered_at?->toIso8601String(),
+                'lead' => $activeCall->lead ? [
+                    'id' => $activeCall->lead->id,
+                    'name' => $activeCall->lead->name,
+                    'email' => $activeCall->lead->email,
+                    'phone' => $activeCall->lead->phone,
+                    'city' => $activeCall->lead->city,
+                    'country' => $activeCall->lead->country,
+                    'service' => $activeCall->lead->service ? [
+                        'id' => $activeCall->lead->service_id,
+                        'name' => $activeCall->lead->service->name,
+                    ] : null,
+                    'assigned_to' => $activeCall->lead->assignedTo ? [
+                        'id' => $activeCall->lead->assigned_to,
+                        'name' => $activeCall->lead->assignedTo->name,
+                    ] : null,
+                    'inquiry_status' => $activeCall->lead->inquiry_status,
+                    'priority' => $activeCall->lead->priority,
+                    'detail' => $activeCall->lead->detail,
+                    'budget' => $activeCall->lead->budget,
+                    'tags' => $activeCall->lead->tags,
+                    'lead_score' => $activeCall->lead->lead_score,
+                    'last_activity_at' => $activeCall->lead->last_activity_at?->toIso8601String(),
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
      * Get call history for a specific lead
      */
     public function leadCallHistory(Lead $lead): JsonResponse
