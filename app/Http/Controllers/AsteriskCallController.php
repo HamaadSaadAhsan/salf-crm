@@ -513,6 +513,10 @@ class AsteriskCallController extends Controller
      * Handle ring group member notification.
      * Called when a call is being transferred/routed to a new extension (e.g., via ring group).
      * This broadcasts a new "ring" event to the new extension so they see the incoming call dialog.
+     *
+     * IMPORTANT: This should ONLY notify extensions that are DIFFERENT from the original
+     * target extension. The original extension already receives the initial ring notification
+     * from incoming.php -> server.js flow.
      */
     public function handleRingGroupMember(\Illuminate\Http\Request $request): JsonResponse
     {
@@ -524,35 +528,78 @@ class AsteriskCallController extends Controller
         ]);
 
         try {
-            // Find call session by linkedid (the common link across all channels in a call)
+            Log::debug('Ring group member notification: Starting lookup', [
+                'exten' => $validated['exten'],
+                'uniqueid' => $validated['uniqueid'],
+                'linkedid' => $validated['linkedid'],
+                'caller' => $validated['caller'] ?? 'not provided',
+            ]);
+
+            // Strategy 1: Find call session by linkedid/uniqueid match
+            // The linkedid of child channels should match the uniqueid of the parent channel
             $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
                 ->where(function ($query) use ($validated) {
                     $query->where('uniqueid', $validated['linkedid'])
                         ->orWhere('uniqueid', $validated['uniqueid']);
                 })
-                ->whereIn('status', ['ringing', 'answered'])
+                ->whereIn('status', ['ringing', 'initiated', 'answered'])
                 ->first();
 
-            // Fallback: Find by caller_number for recent inbound calls (within last 2 minutes)
-            // This handles cases where the child channel's linkedid doesn't match the parent's uniqueid
+            // Strategy 2: Find by caller_number for recent inbound calls (within last 5 minutes)
+            // This handles cases where ring group creates new channels with different uniqueids
             if (! $callSession && ! empty($validated['caller'])) {
+                // Normalize the caller number for matching
+                $normalizedCaller = preg_replace('/[^0-9]/', '', $validated['caller']);
+                $last10Digits = substr($normalizedCaller, -10);
+
                 $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
-                    ->where('caller_number', $validated['caller'])
-                    ->whereIn('status', ['ringing', 'answered'])
-                    ->where('started_at', '>=', now()->subMinutes(2))
-                    ->orderBy('started_at', 'desc')
+                    ->where(function ($query) use ($validated, $last10Digits) {
+                        // Match exact caller_number OR last 10 digits
+                        $query->where('caller_number', $validated['caller'])
+                            ->orWhereRaw("RIGHT(REGEXP_REPLACE(caller_number, '[^0-9]', '', 'g'), 10) = ?", [$last10Digits]);
+                    })
+                    ->whereIn('status', ['ringing', 'initiated', 'answered'])
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->orderBy('created_at', 'desc')
                     ->first();
 
                 if ($callSession) {
                     Log::info('Ring group member notification: Found call session by caller number', [
                         'caller' => $validated['caller'],
                         'call_session_id' => $callSession->id,
+                        'session_id' => $callSession->session_id,
+                    ]);
+                }
+            }
+
+            // Strategy 3: Last resort - find ANY recent active inbound call from this caller
+            // Even if status has changed, we want to notify the extension
+            if (! $callSession && ! empty($validated['caller'])) {
+                $normalizedCaller = preg_replace('/[^0-9]/', '', $validated['caller']);
+                $last10Digits = substr($normalizedCaller, -10);
+
+                $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                    ->where(function ($query) use ($validated, $last10Digits) {
+                        $query->where('caller_number', $validated['caller'])
+                            ->orWhereRaw("RIGHT(REGEXP_REPLACE(caller_number, '[^0-9]', '', 'g'), 10) = ?", [$last10Digits]);
+                    })
+                    ->whereNotIn('status', ['ended', 'failed'])
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if ($callSession) {
+                    Log::info('Ring group member notification: Found call session by caller (last resort)', [
+                        'caller' => $validated['caller'],
+                        'call_session_id' => $callSession->id,
+                        'session_id' => $callSession->session_id,
+                        'status' => $callSession->status,
                     ]);
                 }
             }
 
             if (! $callSession) {
-                Log::warning('Ring group member notification: Call session not found', [
+                Log::warning('Ring group member notification: Call session not found after all strategies', [
                     'linkedid' => $validated['linkedid'],
                     'uniqueid' => $validated['uniqueid'],
                     'caller' => $validated['caller'] ?? 'not provided',
@@ -579,6 +626,24 @@ class AsteriskCallController extends Controller
                 ]);
             }
 
+            // CRITICAL: Skip notification if this extension was the ORIGINAL target
+            // The original target already received the ring notification via incoming.php -> server.js flow
+            // We only want to notify NEW extensions being added via ring group escalation
+            $originalTargetExtension = $callSession->callee_number;
+            if ($validated['exten'] === $originalTargetExtension) {
+                Log::info('Ring group member notification: Skipping - extension is original target', [
+                    'call_session_id' => $callSession->id,
+                    'exten' => $validated['exten'],
+                    'original_extension' => $originalTargetExtension,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Skipped - extension is original target',
+                    'skipped' => true,
+                ]);
+            }
+
             // Get lead from call session if exists
             $lead = null;
             if ($callSession->lead_id) {
@@ -590,12 +655,13 @@ class AsteriskCallController extends Controller
             // Determine the caller number
             $callerNumber = $validated['caller'] ?? $callSession->caller_number;
 
-            Log::info('Ring group member notification: Broadcasting ring event', [
+            Log::info('Ring group member notification: Broadcasting ring event to new extension', [
                 'call_session_id' => $callSession->id,
                 'new_extension' => $validated['exten'],
-                'original_extension' => $callSession->callee_number,
+                'original_extension' => $originalTargetExtension,
                 'caller' => $callerNumber,
                 'lead_id' => $lead?->id,
+                'session_id' => $callSession->session_id,
             ]);
 
             // Broadcast a new ring event for this extension

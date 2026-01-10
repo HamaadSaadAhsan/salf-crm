@@ -181,3 +181,86 @@ it('uses caller from call session when not provided in request', function () {
         return $event->caller === '03084920401';
     });
 });
+
+it('skips notification when extension matches original target', function () {
+    // This tests the critical fix: when ring group includes the originally targeted extension,
+    // we should NOT send a duplicate notification because they already received one via incoming.php
+    $intendedUser = User::factory()->create(['extension' => '201']);
+    $lead = Lead::factory()->create(['assigned_to' => $intendedUser->id]);
+
+    $callSession = CallSession::create([
+        'session_id' => fake()->uuid(),
+        'uniqueid' => '1768035668.129',
+        'caller_id' => null,
+        'intended_for_user_id' => $intendedUser->id,
+        'call_direction' => 'inbound',
+        'call_type' => 'voice',
+        'status' => 'ringing',
+        'caller_number' => '03084920401',
+        'callee_number' => '201', // Original target is extension 201
+        'started_at' => now(),
+        'call_signature' => 'TEST-SIGNATURE',
+        'lead_id' => $lead->id,
+    ]);
+
+    // Try to notify extension 201 (the SAME as the original target)
+    $response = $this->postJson('/asterisk/ring-group-member', [
+        'exten' => '201', // Same as callee_number - should be skipped!
+        'uniqueid' => '1768035668.130',
+        'linkedid' => '1768035668.129',
+        'caller' => '03084920401',
+    ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Skipped - extension is original target',
+            'skipped' => true,
+        ]);
+
+    // Verify NO event was dispatched because this was a duplicate
+    Event::assertNotDispatched(InboundCallReceived::class);
+});
+
+it('sends notification to different extension in ring group', function () {
+    // This verifies that we DO notify new extensions in the ring group
+    $intendedUser = User::factory()->create(['extension' => '201']);
+    $lead = Lead::factory()->create(['assigned_to' => $intendedUser->id]);
+
+    $callSession = CallSession::create([
+        'session_id' => fake()->uuid(),
+        'uniqueid' => '1768035668.129',
+        'caller_id' => null,
+        'intended_for_user_id' => $intendedUser->id,
+        'call_direction' => 'inbound',
+        'call_type' => 'voice',
+        'status' => 'ringing',
+        'caller_number' => '03084920401',
+        'callee_number' => '201', // Original target is extension 201
+        'started_at' => now(),
+        'call_signature' => 'TEST-SIGNATURE',
+        'lead_id' => $lead->id,
+    ]);
+
+    // Notify extension 209 (DIFFERENT from original target)
+    $response = $this->postJson('/asterisk/ring-group-member', [
+        'exten' => '209', // Different from callee_number - should notify!
+        'uniqueid' => '1768035668.130',
+        'linkedid' => '1768035668.129',
+        'caller' => '03084920401',
+    ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Ring group member notification sent',
+        ]);
+
+    // Verify event WAS dispatched for this new extension
+    Event::assertDispatched(InboundCallReceived::class, function ($event) use ($lead) {
+        return $event->event === 'ring'
+            && $event->exten === '209'
+            && $event->targetExtension === '209'
+            && $event->lead?->id === $lead->id;
+    });
+});
