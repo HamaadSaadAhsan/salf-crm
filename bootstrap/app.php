@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Exclude Asterisk webhook endpoints from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'asterisk/*',
+            'facebook/webhook',
+        ]);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
