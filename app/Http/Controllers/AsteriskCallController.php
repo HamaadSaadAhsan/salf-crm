@@ -533,10 +533,29 @@ class AsteriskCallController extends Controller
                 ->whereIn('status', ['ringing', 'answered'])
                 ->first();
 
+            // Fallback: Find by caller_number for recent inbound calls (within last 2 minutes)
+            // This handles cases where the child channel's linkedid doesn't match the parent's uniqueid
+            if (! $callSession && ! empty($validated['caller'])) {
+                $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                    ->where('caller_number', $validated['caller'])
+                    ->whereIn('status', ['ringing', 'answered'])
+                    ->where('started_at', '>=', now()->subMinutes(2))
+                    ->orderBy('started_at', 'desc')
+                    ->first();
+
+                if ($callSession) {
+                    Log::info('Ring group member notification: Found call session by caller number', [
+                        'caller' => $validated['caller'],
+                        'call_session_id' => $callSession->id,
+                    ]);
+                }
+            }
+
             if (! $callSession) {
                 Log::warning('Ring group member notification: Call session not found', [
                     'linkedid' => $validated['linkedid'],
                     'uniqueid' => $validated['uniqueid'],
+                    'caller' => $validated['caller'] ?? 'not provided',
                     'exten' => $validated['exten'],
                 ]);
 
