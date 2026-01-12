@@ -2,6 +2,7 @@ import { Separator } from '@/components/ui/separator';
 import { HeaderBrand } from './header-brand';
 import { HeaderHelp } from './header-help';
 import { HeaderNew } from './header-new';
+import { HeaderNotifications } from './header-notifications';
 import { HeaderUpgrade } from './header-upgrade';
 import { HeaderUsers } from './header-users';
 
@@ -14,12 +15,10 @@ export function Header() {
                 </div>
                 <div className="flex items-center gap-2"></div>
                 <div className="flex items-center gap-2">
-                    <HeaderUpgrade />
                     <HeaderNew />
                     <Separator orientation="vertical" className="mx-1 h-4 bg-zinc-600" />
+                    <HeaderNotifications />
                     <HeaderHelp />
-                    <Separator orientation="vertical" className="mx-1 h-4 bg-zinc-600" />
-                    <HeaderUsers />
                 </div>
             </div>
         </header>
