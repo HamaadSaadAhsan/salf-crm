@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ActivityItem } from '@/components/activity-list';
+import type { User } from '@/types';
 import {
     Activity,
     Bell,
@@ -25,7 +26,12 @@ type Lead = {
     activities?: { data: ActivityItem[] };
 };
 
-export function LeadRecords({ lead }: { lead: Lead }) {
+type Props = {
+    lead: Lead;
+    users?: User[];
+};
+
+export function LeadRecords({ lead, users = [] }: Props) {
     return (
         <Tabs defaultValue="overview" className="grow text-sm">
             <TabsList
@@ -64,7 +70,7 @@ export function LeadRecords({ lead }: { lead: Lead }) {
             <ScrollArea className="h-[calc(100vh-12rem)] w-full">
                 <div className="px-5 py-4">
                     <TabsContent value="overview" className="mt-0">
-                        <LeadRecordsOverview lead={lead} />
+                        <LeadRecordsOverview lead={lead} users={users} />
                     </TabsContent>
                     <TabsContent value="activity" className="mt-0">
                         <LeadRecordsActivity />

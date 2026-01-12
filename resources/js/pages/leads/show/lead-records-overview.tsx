@@ -4,11 +4,16 @@ import { LeadRecordsOverviewHighlights } from './lead-records-overview-highlight
 import { LeadRecordsOverviewNotes } from './lead-records-overview-notes';
 import { LeadRecordsOverviewTasks } from './lead-records-overview-tasks';
 import { usePage } from '@inertiajs/react';
-import { SharedData } from '@/types';
+import { SharedData, User } from '@/types';
 
 type UserRole = 'support-agent' | 'senior-support-agent' | 'super-admin';
 
-export function LeadRecordsOverview({ lead }: { lead: Lead }) {
+type Props = {
+    lead: Lead;
+    users?: User[];
+};
+
+export function LeadRecordsOverview({ lead, users = [] }: Props) {
     const allActivities = lead.activities?.data || [];
     const tasks = lead.tasks?.data || [];
     const {props: {auth:{user}}} = usePage<SharedData>();
@@ -26,7 +31,7 @@ export function LeadRecordsOverview({ lead }: { lead: Lead }) {
             <LeadRecordsOverviewHighlights lead={lead} />
             <LeadRecordsOverviewActivity activities={activities} />
             <LeadRecordsOverviewNotes />
-            <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} currentUserId={user.id} userRole={userRole}/>
+            <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} users={users} currentUserId={user.id} userRole={userRole}/>
         </div>
     );
 }

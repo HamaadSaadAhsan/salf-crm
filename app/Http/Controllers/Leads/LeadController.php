@@ -32,6 +32,12 @@ class LeadController extends Controller
         $filters['page'] = max(1, (int) ($filters['page'] ?? 1));
         $filters['per_page'] = max(1, min(100, (int) ($filters['per_page'] ?? 25)));
 
+        // Advisors (sales-rep) should only see leads assigned to them
+        $user = auth()->user();
+        if ($user->hasRole('sales-rep') && ! $user->hasAnyRole(['super-admin', 'admin'])) {
+            $filters['assigned_to'] = $user->id;
+        }
+
         $cacheKey = Lead::getListCacheKey($filters);
         $tags = ['leads', 'leads_list'];
         $bypassCache = '';
@@ -655,6 +661,14 @@ class LeadController extends Controller
      */
     public function show(Lead $lead)
     {
+        // Advisors (sales-rep) can only view leads assigned to them
+        $user = auth()->user();
+        if ($user->hasRole('sales-rep') && ! $user->hasAnyRole(['super-admin', 'admin'])) {
+            if ($lead->assigned_to !== $user->id) {
+                abort(403, 'You are not authorized to view this lead.');
+            }
+        }
+
         $cacheKey = $lead->getCacheKey('full');
 
         // Use flexible caching with stale-while-revalidate pattern
@@ -699,8 +713,24 @@ class LeadController extends Controller
                 return (new LeadResource($leadData))->toArray(request());
             });
 
+        // Get CRO users for collaborators selection (only for CROs)
+        $user = auth()->user();
+        $croUsers = [];
+        if ($user->hasAnyRole(['support-agent', 'senior-support-agent'])) {
+            $croUsers = \App\Models\User::select('id', 'name', 'email')
+                ->with('roles:id,name,guard_name')
+                ->whereHas('roles', function ($query) {
+                    $query->whereIn('name', ['support-agent', 'senior-support-agent']);
+                })
+                ->where('id', '!=', $user->id)
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+        }
+
         return Inertia::render('leads/show', [
             'lead' => $resourceData,
+            'users' => $croUsers,
             'permissions' => [
                 'can_edit' => $this->canEdit($lead),
                 'can_assign' => $this->canAssign($lead),

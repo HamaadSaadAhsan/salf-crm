@@ -1,4 +1,5 @@
 import type { ActivityItem } from '@/components/activity-list';
+import type { User } from '@/types';
 import { LeadExtended } from './lead-extended';
 import { LeadRecords } from './lead-records';
 
@@ -34,11 +35,16 @@ type Lead = {
     activities?: { data: ActivityItem[] };
 };
 
-export function Lead({ lead }: { lead: Lead }) {
+type Props = {
+    lead: Lead;
+    users?: User[];
+};
+
+export function Lead({ lead, users = [] }: Props) {
     return (
         <div className="flex h-full overflow-hidden">
             <div className="flex flex-1 border-r">
-                <LeadRecords lead={lead} />
+                <LeadRecords lead={lead} users={users} />
             </div>
             <div className="w-[500px]">
                 <LeadExtended lead={lead} />

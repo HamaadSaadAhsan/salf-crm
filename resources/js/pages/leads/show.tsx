@@ -1,6 +1,6 @@
 import type { ActivityItem } from '@/components/activity-list';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type User } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Lead as LeadComponent } from './show/lead';
 import { PageHeader } from './show/page-header';
@@ -46,7 +46,12 @@ type Lead = {
     activities?: { data: ActivityItem[] };
 };
 
-export default function LeadShow({ lead }: { lead: Lead }) {
+type Props = {
+    lead: Lead;
+    users?: User[];
+};
+
+export default function LeadShow({ lead, users = [] }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Lead - ${lead.name}`} />
@@ -54,7 +59,7 @@ export default function LeadShow({ lead }: { lead: Lead }) {
             <div className="flex flex-col h-full">
                 <PageHeader lead={lead} />
                 <div className="flex-1 overflow-hidden">
-                    <LeadComponent lead={lead} />
+                    <LeadComponent lead={lead} users={users} />
                 </div>
             </div>
         </AppLayout>
