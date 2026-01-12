@@ -66,6 +66,30 @@ function getActivityDescription(activity: ActivityItem): string {
     return typeDescriptions[activity.type] || activity.type;
 }
 
+/**
+ * Format description for display - handles JSON and truncates appropriately
+ */
+function formatDescription(description: string | null, fallback: string): string {
+    if (!description) return fallback;
+
+    // Check if description contains JSON (custom fields changes)
+    if (description.includes('was changed from {') || description.includes('was changed from [')) {
+        // Extract the field name and simplify the message
+        const match = description.match(/^(.+?) was changed/);
+        if (match) {
+            return `${match[1]} was updated`;
+        }
+        return 'Custom fields were updated';
+    }
+
+    // Truncate long descriptions
+    if (description.length > 80) {
+        return description.substring(0, 77) + '...';
+    }
+
+    return description;
+}
+
 export function ActivityList({
     activities,
     title = 'Recent Activity',
@@ -101,11 +125,11 @@ export function ActivityList({
                                             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                                            <span className="font-medium truncate">
+                                            <span className="font-medium shrink-0">
                                                 {userName}
                                             </span>
                                             <span className="text-muted-foreground truncate">
-                                                {activity.description || getActivityDescription(activity)}
+                                                {formatDescription(activity.description, getActivityDescription(activity))}
                                             </span>
                                             {activity.subject && (
                                                 <span className="font-medium truncate">
