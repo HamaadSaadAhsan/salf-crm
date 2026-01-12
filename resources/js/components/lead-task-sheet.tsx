@@ -1,6 +1,14 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import {
     Popover,
@@ -29,7 +37,7 @@ import { User } from '@/types';
 import { Task } from '@/types/task';
 import { router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { CalendarIcon, Clock, Mail, Phone, Users as UsersIcon } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, Clock, Mail, Phone, Users as UsersIcon, X } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -120,6 +128,8 @@ export function LeadTaskSheet({
     const [processing, setProcessing] = useState(false);
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [dueTime, setDueTime] = useState<string>('09:00');
+    const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
+    const [collaboratorSearch, setCollaboratorSearch] = useState('');
 
     // Initialize form data when sheet opens
     useEffect(() => {
@@ -207,6 +217,26 @@ export function LeadTaskSheet({
                 : [...prev.collaborators, userId],
         }));
     };
+
+    const removeCollaborator = (userId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            collaborators: prev.collaborators.filter(id => id !== userId),
+        }));
+    };
+
+    // Get selected collaborators as User objects
+    const selectedCollaborators = useMemo(() => {
+        return availableCollaborators.filter(user => formData.collaborators.includes(user.id));
+    }, [availableCollaborators, formData.collaborators]);
+
+    // Filter available collaborators by search term
+    const filteredCollaborators = useMemo(() => {
+        if (!collaboratorSearch.trim()) return availableCollaborators;
+        return availableCollaborators.filter(user =>
+            user.name.toLowerCase().includes(collaboratorSearch.toLowerCase())
+        );
+    }, [availableCollaborators, collaboratorSearch]);
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -400,21 +430,90 @@ export function LeadTaskSheet({
                             {isCRO && !isAdvisor && availableCollaborators.length > 0 && (
                                 <div className="space-y-2">
                                     <Label>Collaborators</Label>
-                                    <div className="rounded-lg border p-3">
-                                        <div className="space-y-2">
-                                            {availableCollaborators.map((user) => (
-                                                <label
-                                                    key={user.id}
-                                                    className="flex cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted"
+                                    <div className="space-y-2.5">
+                                        {/* Selected collaborators badges */}
+                                        {selectedCollaborators.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {selectedCollaborators.map((user) => (
+                                                    <Badge
+                                                        key={user.id}
+                                                        variant="secondary"
+                                                        appearance="outline"
+                                                        size="md"
+                                                        className="gap-1.5 pe-1.5"
+                                                    >
+                                                        <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                                                            {user.name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                        {user.name}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeCollaborator(user.id)}
+                                                            className="flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                        >
+                                                            <X className="size-3" />
+                                                            <span className="sr-only">Remove {user.name}</span>
+                                                        </button>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Searchable combobox */}
+                                        <Popover open={collaboratorsOpen} onOpenChange={setCollaboratorsOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={collaboratorsOpen}
+                                                    className="w-full justify-between font-normal"
                                                 >
-                                                    <Checkbox
-                                                        checked={formData.collaborators.includes(user.id)}
-                                                        onCheckedChange={() => toggleCollaborator(user.id)}
+                                                    <span className="text-muted-foreground">
+                                                        {selectedCollaborators.length > 0
+                                                            ? `${selectedCollaborators.length} collaborator${selectedCollaborators.length > 1 ? 's' : ''} selected`
+                                                            : 'Search and add collaborators...'}
+                                                    </span>
+                                                    <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[calc(var(--radix-popover-trigger-width))] p-0" align="start">
+                                                <Command shouldFilter={false}>
+                                                    <CommandInput
+                                                        placeholder="Search collaborators..."
+                                                        value={collaboratorSearch}
+                                                        onValueChange={setCollaboratorSearch}
                                                     />
-                                                    <span className="text-sm">{user.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                                    <CommandList>
+                                                        <CommandEmpty>No collaborators found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {filteredCollaborators.map((user) => {
+                                                                const isSelected = formData.collaborators.includes(user.id);
+                                                                return (
+                                                                    <CommandItem
+                                                                        key={user.id}
+                                                                        value={user.name}
+                                                                        onSelect={() => toggleCollaborator(user.id)}
+                                                                        className="cursor-pointer"
+                                                                    >
+                                                                        <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                                                                            {user.name.charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                        <span className="flex-1">{user.name}</span>
+                                                                        <Check
+                                                                            className={cn(
+                                                                                'size-4 shrink-0',
+                                                                                isSelected ? 'opacity-100' : 'opacity-0'
+                                                                            )}
+                                                                        />
+                                                                    </CommandItem>
+                                                                );
+                                                            })}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </div>
                             )}
