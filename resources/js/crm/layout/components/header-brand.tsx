@@ -26,7 +26,7 @@ export function HeaderBrand() {
   return (
     <div className="flex items-center -ms-1">
       <img
-        src={toAbsoluteUrl('favicon.svg')}
+        src={toAbsoluteUrl('favicon.ico')}
         alt=""
         className="h-4"
       />
