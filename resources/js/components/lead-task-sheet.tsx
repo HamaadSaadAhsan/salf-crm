@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
     Popover,
@@ -23,17 +23,17 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { User } from '@/types';
 import { Task } from '@/types/task';
 import { router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { CalendarIcon, CheckSquare, Clock, Mail, MessageCircle, Phone, Users as UsersIcon } from 'lucide-react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { CalendarIcon, Clock, Mail, Phone, Users as UsersIcon } from 'lucide-react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+type UserRole = 'support-agent' | 'senior-support-agent' | 'super-admin' | 'sales-rep';
 
 interface LeadTaskSheetProps {
     open: boolean;
@@ -42,9 +42,40 @@ interface LeadTaskSheetProps {
     task?: Task | null;
     users?: User[];
     currentUserId?: number;
-    userRole?: 'support-agent' | 'senior-support-agent' | 'super-admin';
+    userRole?: UserRole;
     onTaskCompleted?: () => void;
 }
+
+const TASK_TYPES = [
+    { value: 'follow_up', label: 'Follow Up', icon: Clock, color: 'text-blue-500' },
+    { value: 'call', label: 'Call', icon: Phone, color: 'text-green-500' },
+    { value: 'email', label: 'Email', icon: Mail, color: 'text-cyan-500' },
+    { value: 'meeting', label: 'Meeting', icon: UsersIcon, color: 'text-orange-500' },
+] as const;
+
+const PRIORITY_OPTIONS = [
+    { value: 'low', label: 'Low', color: 'bg-green-500' },
+    { value: 'medium', label: 'Medium', color: 'bg-yellow-500' },
+    { value: 'high', label: 'High', color: 'bg-orange-500' },
+    { value: 'urgent', label: 'Urgent', color: 'bg-red-500' },
+] as const;
+
+const STATUS_OPTIONS = [
+    { value: 'pending', label: 'Pending', color: 'bg-gray-500' },
+    { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
+    { value: 'completed', label: 'Completed', color: 'bg-green-500' },
+    { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500' },
+] as const;
+
+// CRO working hours: 10:00 AM to 2:00 AM (two shifts)
+const TIME_SLOTS = [
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+    '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
+    '22:00', '22:30', '23:00', '23:30', '00:00', '00:30',
+    '01:00', '01:30', '02:00',
+];
 
 export function LeadTaskSheet({
     open,
@@ -57,6 +88,20 @@ export function LeadTaskSheet({
     onTaskCompleted,
 }: LeadTaskSheetProps) {
     const isEditMode = !!task;
+    const isCRO = userRole === 'support-agent' || userRole === 'senior-support-agent';
+    const isAdvisor = userRole === 'sales-rep';
+    const canAssignUsers = userRole === 'senior-support-agent' || userRole === 'super-admin';
+
+    // Filter collaborators - CROs can only add other CROs as collaborators
+    const availableCollaborators = useMemo(() => {
+        if (!isCRO) return [];
+        return users.filter(user =>
+            user.id !== currentUserId &&
+            user.roles?.some(role =>
+                role.name === 'support-agent' || role.name === 'senior-support-agent'
+            )
+        );
+    }, [users, currentUserId, isCRO]);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -75,13 +120,11 @@ export function LeadTaskSheet({
     const [processing, setProcessing] = useState(false);
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [dueTime, setDueTime] = useState<string>('09:00');
-    const [createMore, setCreateMore] = useState(false);
 
-    // Initialize form data when task or open state changes
+    // Initialize form data when sheet opens
     useEffect(() => {
         if (open) {
             if (isEditMode && task) {
-                // Edit mode: populate with task data
                 setFormData({
                     title: task.title,
                     description: task.description || '',
@@ -95,21 +138,19 @@ export function LeadTaskSheet({
                     taskable_id: task.taskable_id || leadId,
                 });
 
-                // Set due date/time if exists
                 if (task.due_at) {
                     const date = parseISO(task.due_at);
                     setDueDate(date);
                     setDueTime(format(date, 'HH:mm'));
                 }
             } else {
-                // Create mode: set defaults
                 setFormData({
                     title: '',
                     description: '',
                     type: 'follow_up',
                     priority: 'medium',
                     status: 'pending',
-                    assigned_to_id: userRole === 'support-agent' ? (currentUserId || null) : null,
+                    assigned_to_id: !canAssignUsers ? (currentUserId || null) : null,
                     due_at: '',
                     collaborators: [],
                     taskable_type: 'App\\Models\\Lead',
@@ -120,19 +161,13 @@ export function LeadTaskSheet({
             }
             setErrors({});
         }
-    }, [open, task, isEditMode, leadId, currentUserId, userRole]);
+    }, [open, task, isEditMode, leadId, currentUserId, canAssignUsers]);
 
-    // Sync date and time with form data
+    // Sync date and time
     useEffect(() => {
         if (dueDate && dueTime) {
             const [hours, minutes] = dueTime.split(':');
-
-            // Create datetime string in YYYY-MM-DD HH:mm:ss format
-            const year = format(dueDate, 'yyyy');
-            const month = format(dueDate, 'MM');
-            const day = format(dueDate, 'dd');
-            const dateTimeString = `${year}-${month}-${day} ${hours}:${minutes}:00`;
-
+            const dateTimeString = `${format(dueDate, 'yyyy-MM-dd')} ${hours}:${minutes}:00`;
             setFormData(prev => ({ ...prev, due_at: dateTimeString }));
         } else {
             setFormData(prev => ({ ...prev, due_at: '' }));
@@ -150,134 +185,77 @@ export function LeadTaskSheet({
             preserveScroll: true,
             only: ['lead'],
             onSuccess: () => {
-                toast.success(isEditMode ? 'Task updated successfully!' : 'Task created successfully!');
-
-                // Notify parent if task is completed
+                toast.success(isEditMode ? 'Follow-up updated!' : 'Follow-up scheduled!');
                 if (formData.status === 'completed' && onTaskCompleted) {
                     onTaskCompleted();
                 }
-
-                if (!createMore || isEditMode) {
-                    onOpenChange(false);
-                }
+                onOpenChange(false);
             },
             onError: (errors) => {
                 setErrors(errors);
-                toast.error('Failed to save task');
+                toast.error('Failed to save follow-up');
             },
-            onFinish: () => {
-                setProcessing(false);
-            },
+            onFinish: () => setProcessing(false),
         });
     };
 
-    const handleReset = () => {
-        onOpenChange(false);
+    const toggleCollaborator = (userId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            collaborators: prev.collaborators.includes(userId)
+                ? prev.collaborators.filter(id => id !== userId)
+                : [...prev.collaborators, userId],
+        }));
     };
-
-    const taskTypes = [
-        { value: 'follow_up', label: 'Follow Up', icon: Clock, color: 'text-blue-500' },
-        { value: 'call', label: 'Call', icon: Phone, color: 'text-green-500' },
-        { value: 'message', label: 'Message', icon: MessageCircle, color: 'text-purple-500' },
-        { value: 'meeting', label: 'Meeting', icon: UsersIcon, color: 'text-orange-500' },
-        { value: 'email', label: 'Email', icon: Mail, color: 'text-cyan-500' },
-        { value: 'other', label: 'Other', icon: Clock, color: 'text-gray-500' },
-    ];
-
-    const priorityOptions = [
-        { value: 'low', label: 'Low', color: 'bg-green-500' },
-        { value: 'medium', label: 'Medium', color: 'bg-yellow-500' },
-        { value: 'high', label: 'High', color: 'bg-red-500' },
-        { value: 'urgent', label: 'Urgent', color: 'bg-red-600' },
-    ];
-
-    const statusOptions = [
-        { value: 'pending', label: 'Pending', color: 'bg-gray-500' },
-        { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
-        { value: 'completed', label: 'Completed', color: 'bg-green-500' },
-        { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500' },
-    ];
-
-    // Generate time slots
-    const timeSlots = Array.from({ length: 48 }, (_, i) => {
-        const hours = Math.floor(i / 2);
-        const minutes = i % 2 === 0 ? '00' : '30';
-        return `${hours.toString().padStart(2, '0')}:${minutes}`;
-    });
-
-    const canAssignUsers = userRole === 'senior-support-agent' || userRole === 'super-admin';
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5">
+            <SheetContent className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5">
                 <SheetHeader className="border-b border-border px-5 py-3.5">
                     <SheetTitle className="flex items-center gap-2.5">
-                        <CheckSquare className="size-4 text-primary" />
-                        {isEditMode ? 'Edit Task' : 'New Task'}
+                        <Clock className="size-4 text-primary" />
+                        {isEditMode ? 'Edit Follow-up' : 'Schedule Follow-up'}
                     </SheetTitle>
                 </SheetHeader>
+
                 <SheetBody className="p-0">
-                    <ScrollArea className="h-[calc(100dvh-11.75rem)] ps-3 pe-2 me-1">
-                        <form id="task-form" onSubmit={handleSubmit}>
-                            <div className="space-y-6">
-                                {/* Title */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="title">Task Title *</Label>
-                                    <Textarea
-                                        id="title"
-                                        rows={3}
-                                        placeholder="Enter task title..."
-                                        value={formData.title}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, title: e.target.value })
-                                        }
-                                        className={cn(errors.title && 'border-destructive focus-visible:ring-destructive')}
-                                        required
-                                    />
-                                    {errors.title && (
-                                        <p className="text-xs text-destructive">{errors.title}</p>
-                                    )}
-                                </div>
+                    <ScrollArea className="h-[calc(100dvh-11.75rem)] px-5 py-4">
+                        <form id="task-form" onSubmit={handleSubmit} className="space-y-5">
+                            {/* Title */}
+                            <div className="space-y-2">
+                                <Label htmlFor="title">What needs to be done? *</Label>
+                                <Textarea
+                                    id="title"
+                                    rows={2}
+                                    placeholder="e.g., Call back to discuss pricing..."
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    className={cn(errors.title && 'border-destructive focus-visible:ring-destructive')}
+                                    required
+                                />
+                                {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
+                            </div>
 
-                                {/* Description */}
+                            {/* Type & Priority Row */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <Textarea
-                                        id="description"
-                                        rows={4}
-                                        placeholder="Enter task description..."
-                                        value={formData.description}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, description: e.target.value })
-                                        }
-                                        className={cn(errors.description && 'border-destructive focus-visible:ring-destructive')}
-                                    />
-                                    {errors.description && (
-                                        <p className="text-xs text-destructive">{errors.description}</p>
-                                    )}
-                                </div>
-
-                                {/* Task Type */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="type">Task Type</Label>
+                                    <Label htmlFor="type">Type</Label>
                                     <Select
                                         value={formData.type}
-                                        onValueChange={(value) =>
-                                            setFormData({ ...formData, type: value })
-                                        }
+                                        onValueChange={(value) => setFormData({ ...formData, type: value })}
                                     >
                                         <SelectTrigger id="type">
-                                            <SelectValue placeholder="Select task type" />
+                                            <SelectValue placeholder="Select type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {taskTypes.map((type) => {
+                                            {TASK_TYPES.map((type) => {
                                                 const Icon = type.icon;
                                                 return (
                                                     <SelectItem key={type.value} value={type.value}>
-                                                        <div className="flex items-center gap-2">
+                                                        <span className="flex items-center gap-2">
                                                             <Icon className={cn('size-4', type.color)} />
                                                             {type.label}
-                                                        </div>
+                                                        </span>
                                                     </SelectItem>
                                                 );
                                             })}
@@ -285,259 +263,189 @@ export function LeadTaskSheet({
                                     </Select>
                                 </div>
 
-                                {/* Due Date and Time */}
-                                <div className="flex flex-col gap-2.5">
-                                    <Label className="flex w-full max-w-56 items-center gap-1">
-                                        Due Date
-                                    </Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <div className="relative grow">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    mode="input"
-                                                    placeholder={!dueDate}
-                                                    className={cn(
-                                                        'w-full',
-                                                        errors.due_at && 'border-destructive focus-visible:ring-destructive'
-                                                    )}
-                                                >
-                                                    <CalendarIcon />
-                                                    {dueDate ? (
-                                                        format(dueDate, 'PPP') +
-                                                        (dueTime
-                                                            ? ` - ${dueTime}`
-                                                            : '')
-                                                    ) : (
-                                                        <span>
-                                                            Pick a date and time
-                                                        </span>
-                                                    )}
-                                                </Button>
-                                            </div>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                            className="w-auto p-0"
-                                            align="start"
-                                        >
-                                            <div className="flex max-sm:flex-col">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={dueDate}
-                                                    onSelect={(newDate: Date | undefined) => {
-                                                        if (newDate) {
-                                                            setDueDate(newDate);
-                                                            setDueTime(dueTime || '09:00');
-                                                        }
-                                                    }}
-                                                    className="p-2 sm:pe-5"
-                                                    disabled={[{ before: new Date() }]}
-                                                />
-                                                <div className="relative w-full max-sm:h-48 sm:w-40">
-                                                    <div className="absolute inset-0 py-4 max-sm:border-t">
-                                                        <ScrollArea className="h-full sm:border-s">
-                                                            <div className="space-y-3">
-                                                                <div className="flex h-5 shrink-0 items-center px-5">
-                                                                    <p className="text-sm font-medium">
-                                                                        {dueDate
-                                                                            ? format(
-                                                                                  dueDate,
-                                                                                  'EEEE, d',
-                                                                              )
-                                                                            : 'Pick a date'}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="grid gap-1.5 px-5 max-sm:grid-cols-2">
-                                                                    {timeSlots.map((time) => (
-                                                                        <Button
-                                                                            key={time}
-                                                                            type="button"
-                                                                            variant={
-                                                                                dueTime === time
-                                                                                    ? 'primary'
-                                                                                    : 'outline'
-                                                                            }
-                                                                            size="sm"
-                                                                            className="w-full"
-                                                                            onClick={() =>
-                                                                                setDueTime(time)
-                                                                            }
-                                                                        >
-                                                                            {time}
-                                                                        </Button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </ScrollArea>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                    {errors.due_at && (
-                                        <p className="text-xs text-destructive">
-                                            {errors.due_at}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Priority */}
                                 <div className="space-y-2">
                                     <Label htmlFor="priority">Priority</Label>
                                     <Select
                                         value={formData.priority}
-                                        onValueChange={(value) =>
-                                            setFormData({ ...formData, priority: value })
-                                        }
+                                        onValueChange={(value) => setFormData({ ...formData, priority: value })}
                                     >
-                                        <SelectTrigger id="priority" className={cn(errors.priority && 'border-destructive focus:ring-destructive')}>
+                                        <SelectTrigger id="priority">
                                             <SelectValue placeholder="Select priority" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {priorityOptions.map((priority) => (
+                                            {PRIORITY_OPTIONS.map((priority) => (
                                                 <SelectItem key={priority.value} value={priority.value}>
-                                                    <span className="flex items-center gap-2.5">
-                                                        <span className={cn('size-1.5 rounded-full', priority.color)} />
-                                                        <span>{priority.label}</span>
+                                                    <span className="flex items-center gap-2">
+                                                        <span className={cn('size-2 rounded-full', priority.color)} />
+                                                        {priority.label}
                                                     </span>
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    {errors.priority && (
-                                        <p className="text-xs text-destructive">{errors.priority}</p>
-                                    )}
                                 </div>
+                            </div>
 
-                                {/* Status */}
+                            {/* Due Date */}
+                            <div className="space-y-2">
+                                <Label>When?</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className={cn(
+                                                'w-full justify-start text-left font-normal',
+                                                !dueDate && 'text-muted-foreground',
+                                                errors.due_at && 'border-destructive'
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 size-4" />
+                                            {dueDate ? (
+                                                `${format(dueDate, 'PPP')} at ${dueTime}`
+                                            ) : (
+                                                'Pick date and time'
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <div className="flex max-sm:flex-col">
+                                            <Calendar
+                                                mode="single"
+                                                selected={dueDate}
+                                                onSelect={(date) => {
+                                                    if (date) {
+                                                        setDueDate(date);
+                                                        if (!dueTime) setDueTime('09:00');
+                                                    }
+                                                }}
+                                                disabled={[{ before: new Date() }]}
+                                                className="p-3"
+                                            />
+                                            <div className="border-t p-3 sm:border-l sm:border-t-0">
+                                                <p className="mb-2 text-sm font-medium">
+                                                    {dueDate ? format(dueDate, 'EEE, MMM d') : 'Select time'}
+                                                </p>
+                                                <ScrollArea className="h-48">
+                                                    <div className="grid grid-cols-2 gap-1.5">
+                                                        {TIME_SLOTS.map((time) => (
+                                                            <Button
+                                                                key={time}
+                                                                type="button"
+                                                                variant={dueTime === time ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                className="w-full"
+                                                                onClick={() => setDueTime(time)}
+                                                            >
+                                                                {time}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                {errors.due_at && <p className="text-xs text-destructive">{errors.due_at}</p>}
+                            </div>
+
+                            {/* Status - Only show in edit mode */}
+                            {isEditMode && (
                                 <div className="space-y-2">
                                     <Label htmlFor="status">Status</Label>
                                     <Select
                                         value={formData.status}
-                                        onValueChange={(value) =>
-                                            setFormData({ ...formData, status: value })
-                                        }
+                                        onValueChange={(value) => setFormData({ ...formData, status: value })}
                                     >
-                                        <SelectTrigger id="status" className={cn(errors.status && 'border-destructive focus:ring-destructive')}>
+                                        <SelectTrigger id="status">
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {statusOptions.map((status) => (
+                                            {STATUS_OPTIONS.map((status) => (
                                                 <SelectItem key={status.value} value={status.value}>
-                                                    <span className="flex items-center gap-2.5">
-                                                        <span className={cn('size-1.5 rounded-full', status.color)} />
-                                                        <span>{status.label}</span>
+                                                    <span className="flex items-center gap-2">
+                                                        <span className={cn('size-2 rounded-full', status.color)} />
+                                                        {status.label}
                                                     </span>
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    {errors.status && (
-                                        <p className="text-xs text-destructive">{errors.status}</p>
-                                    )}
                                 </div>
+                            )}
 
-                                {/* Assigned To (role-based) */}
-                                {canAssignUsers && users.length > 0 && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="assigned_to">Assigned To</Label>
-                                        <Select
-                                            value={formData.assigned_to_id?.toString()}
-                                            onValueChange={(value) =>
-                                                setFormData({ ...formData, assigned_to_id: value })
-                                            }
-                                        >
-                                            <SelectTrigger id="assigned_to">
-                                                <SelectValue placeholder="Select user" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="">Unassigned</SelectItem>
-                                                {users.map((user) => (
-                                                    <SelectItem key={user.id} value={user.id.toString()}>
-                                                        {user.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
+                            {/* Assigned To - Only for senior roles */}
+                            {canAssignUsers && users.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="assigned_to">Assign To</Label>
+                                    <Select
+                                        value={formData.assigned_to_id?.toString() || ''}
+                                        onValueChange={(value) => setFormData({ ...formData, assigned_to_id: value || null })}
+                                    >
+                                        <SelectTrigger id="assigned_to">
+                                            <SelectValue placeholder="Select user" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {users.map((user) => (
+                                                <SelectItem key={user.id} value={user.id.toString()}>
+                                                    {user.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
-                                {/* Auto-assigned message for CRO */}
-                                {!canAssignUsers && (
-                                    <div className="rounded-md bg-muted p-3 text-sm">
-                                        <p className="text-muted-foreground">
-                                            This task will be automatically assigned to you.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Collaborators */}
-                                {canAssignUsers && users.length > 0 && (
-                                    <div className="space-y-2">
-                                        <Label>Collaborators</Label>
-                                        <div className="rounded-md border p-4">
-                                            <div className="space-y-2">
-                                                {users.map((user) => (
-                                                    <label
-                                                        key={user.id}
-                                                        className="flex cursor-pointer items-center gap-2"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={formData.collaborators.includes(user.id)}
-                                                            onChange={(e) => {
-                                                                const newCollaborators = e.target.checked
-                                                                    ? [...formData.collaborators, user.id]
-                                                                    : formData.collaborators.filter(
-                                                                          (id) => id !== user.id
-                                                                      );
-                                                                setFormData({
-                                                                    ...formData,
-                                                                    collaborators: newCollaborators,
-                                                                });
-                                                            }}
-                                                            className="rounded border-gray-300"
-                                                        />
-                                                        <span className="text-sm">{user.name}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
+                            {/* Collaborators - Only for CROs, show other CROs */}
+                            {isCRO && !isAdvisor && availableCollaborators.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label>Collaborators</Label>
+                                    <div className="rounded-lg border p-3">
+                                        <div className="space-y-2">
+                                            {availableCollaborators.map((user) => (
+                                                <label
+                                                    key={user.id}
+                                                    className="flex cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted"
+                                                >
+                                                    <Checkbox
+                                                        checked={formData.collaborators.includes(user.id)}
+                                                        onCheckedChange={() => toggleCollaborator(user.id)}
+                                                    />
+                                                    <span className="text-sm">{user.name}</span>
+                                                </label>
+                                            ))}
                                         </div>
                                     </div>
-                                )}
+                                </div>
+                            )}
+
+                            {/* Notes */}
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Notes</Label>
+                                <Textarea
+                                    id="description"
+                                    rows={3}
+                                    placeholder="Additional details..."
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
                             </div>
                         </form>
                     </ScrollArea>
                 </SheetBody>
-                <SheetFooter className="flex items-center border-t border-border px-5 py-3.5 not-only-of-type:justify-between">
-                    {!isEditMode && (
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="create-more"
-                                size="sm"
-                                checked={createMore}
-                                onCheckedChange={setCreateMore}
-                            />
-                            <Label htmlFor="create-more" className="text-xs text-secondary-foreground">
-                                Create more
-                            </Label>
-                        </div>
-                    )}
 
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={handleReset}
-                            type="button"
-                            disabled={processing}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="submit" form="task-form" disabled={processing}>
-                            {processing ? 'Saving...' : isEditMode ? 'Update Task' : 'Save Task'}
-                        </Button>
-                    </div>
+                <SheetFooter className="flex items-center justify-end gap-2 border-t border-border px-5 py-3.5">
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        type="button"
+                        disabled={processing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button type="submit" form="task-form" disabled={processing}>
+                        {processing ? 'Saving...' : isEditMode ? 'Update' : 'Schedule'}
+                    </Button>
                 </SheetFooter>
             </SheetContent>
         </Sheet>
