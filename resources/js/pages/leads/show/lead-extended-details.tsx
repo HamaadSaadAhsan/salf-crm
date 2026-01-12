@@ -1,12 +1,13 @@
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, Calendar, Tag, User, Link2, Tags, Briefcase } from 'lucide-react';
+import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase } from 'lucide-react';
 import { InlineEdit } from '@/components/inline-edit';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import TagInput from '@/components/tag-input';
 import axios from 'axios';
 import { formatDate } from '@/lib/helpers';
 import { Badge } from '@/components/ui/badge';
+import { useEcho } from '@laravel/echo-react';
 
 type TagValue = string | { label: string; value: string; color?: string };
 
@@ -14,7 +15,6 @@ type Lead = {
     id: number | string;
     name: string;
     email: string | null;
-    phone: string | null;
     status: string;
     inquiry_status: string;
     source?: {
@@ -51,17 +51,51 @@ type Lead = {
     created_at: string;
 };
 
-export function LeadExtendedDetails({ lead }: { lead: Lead }) {
+export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLeadUpdated?: () => void }) {
     const [model, setModel] = useState<Lead>(lead);
     const [tags, setTags] = useState<TagValue[]>(lead.tags ?? []);
     const [sources, setSources] = useState<Array<{ value: string; label: string }>>([]);
     const [services, setServices] = useState<Array<{ value: string; label: string }>>([]);
 
+    // Sync local state when lead prop changes (e.g., after Inertia reload)
+    useEffect(() => {
+        setModel(lead);
+        setTags(lead.tags ?? []);
+    }, [lead]);
+
+    // Reload lead data from server
+    const reloadLead = useCallback(() => {
+        router.reload({
+            only: ['lead'],
+            onSuccess: () => {
+                onLeadUpdated?.();
+            },
+        });
+    }, [onLeadUpdated]);
+
+    // Listen for lead qualified events on this specific lead
+    useEcho(`lead.${lead.id}`, '.lead.qualified', () => {
+        console.log('Lead qualified event received for lead:', lead.id);
+        reloadLead();
+    });
+
+    // Listen for lead assigned events on this specific lead
+    useEcho(`lead.${lead.id}`, '.lead.assigned', () => {
+        console.log('Lead assigned event received for lead:', lead.id);
+        reloadLead();
+    });
+
+    // Listen for generic lead updated events
+    useEcho(`lead.${lead.id}`, '.lead.updated', () => {
+        console.log('Lead updated event received for lead:', lead.id);
+        reloadLead();
+    });
+
     useEffect(() => {
         // Fetch lead sources
         axios.get('/sources').then(response => {
             if (response.data?.data) {
-                setSources(response.data.data.map((source: any) => ({
+                setSources(response.data.data.map((source: { id: number; name: string }) => ({
                     value: String(source.id),
                     label: source.name
                 })));
@@ -71,7 +105,7 @@ export function LeadExtendedDetails({ lead }: { lead: Lead }) {
         // Fetch services
         axios.get('/services').then(response => {
             if (response.data?.data) {
-                setServices(response.data.data.map((service: any) => ({
+                setServices(response.data.data.map((service: { id: number; name: string }) => ({
                     value: String(service.id),
                     label: service.name
                 })));
@@ -79,14 +113,14 @@ export function LeadExtendedDetails({ lead }: { lead: Lead }) {
         }).catch(console.error);
     }, []);
 
-    const save = async (patch: Partial<Lead>) => {
+    const save = (patch: Partial<Lead>) => {
         const payload = {
             name: patch.name ?? model.name,
             email: patch.email ?? model.email,
             inquiry_status: patch.inquiry_status ?? model.inquiry_status
         };
 
-        await router.put(`/leads/${model.id}`, payload, {
+        router.put(`/leads/${model.id}`, payload, {
             preserveScroll: true,
             preserveState: true,
             only: ['lead'],
@@ -96,41 +130,42 @@ export function LeadExtendedDetails({ lead }: { lead: Lead }) {
         });
     };
 
-    const saveService = async (serviceId: string) => {
-        await router.put(`/leads/${model.id}`, {
+    const saveService = (serviceId: string) => {
+        router.put(`/leads/${model.id}`, {
             service_id: serviceId ? Number(serviceId) : null,
         }, {
             preserveScroll: true,
             preserveState: true,
             only: ['lead'],
-            onSuccess: (page: any) => {
-                if (page.props.lead) {
-                    setModel(page.props.lead);
+            onSuccess: (page) => {
+                const leadData = (page.props as { lead?: Lead }).lead;
+                if (leadData) {
+                    setModel(leadData);
                 }
             },
         });
     };
 
-    const saveSource = async (sourceId: string) => {
-        await router.put(`/leads/${model.id}`, {
+    const saveSource = (sourceId: string) => {
+        router.put(`/leads/${model.id}`, {
             lead_source_id: sourceId ? Number(sourceId) : null,
         }, {
             preserveScroll: true,
             preserveState: true,
             only: ['lead'],
-            onSuccess: (page: any) => {
-                if (page.props.lead) {
-                    setModel(page.props.lead);
+            onSuccess: (page) => {
+                const leadData = (page.props as { lead?: Lead }).lead;
+                if (leadData) {
+                    setModel(leadData);
                 }
             },
         });
     };
 
-    const saveTags = async (newTags: TagValue[]) => {
-        await router.put(`/leads/${model.id}`, {
+    const saveTags = (newTags: TagValue[]) => {
+        router.put(`/leads/${model.id}`, {
             name: model.name,
             email: model.email,
-            phone: model.phone,
             inquiry_status: model.inquiry_status,
             tags: newTags,
         }, {
@@ -147,6 +182,7 @@ export function LeadExtendedDetails({ lead }: { lead: Lead }) {
         { value: 'new', label: 'New' },
         { value: 'contacted', label: 'Contacted' },
         { value: 'qualified', label: 'Qualified' },
+        { value: 'assigned_to_advisor', label: 'Assigned to Advisor' },
         { value: 'lost', label: 'Lost' },
         { value: 'converted', label: 'Converted' },
     ];
@@ -165,15 +201,6 @@ export function LeadExtendedDetails({ lead }: { lead: Lead }) {
                             <InlineEdit value={model.email ?? ''} placeholder="Add email" readonly onSave={(v) => save({ email: v || null })} />
                         </div>
                     </div>
-                    {/*<div className="flex items-start gap-2 text-sm">*/}
-                    {/*    <Phone className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />*/}
-                    {/*    <div className="flex flex-col">*/}
-                    {/*        <span className="text-muted-foreground text-xs">*/}
-                    {/*            Phone*/}
-                    {/*        </span>*/}
-                    {/*        <InlineEdit value={model.phone ?? ''} placeholder="Add phone" readonly onSave={(v) => save({ phone: v || null })} />*/}
-                    {/*    </div>*/}
-                    {/*</div>*/}
                     <div className="flex items-start gap-2 text-sm">
                         <Tag className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                         <div className="flex flex-col">
