@@ -40,6 +40,12 @@ export interface SharedData {
     [key: string]: unknown;
 }
 
+export interface Role {
+    id: number;
+    name: string;
+    guard_name: string;
+}
+
 export interface User {
     id: number;
     name: string;
@@ -49,6 +55,7 @@ export interface User {
     extension?: string;
     created_at: string;
     updated_at: string;
+    roles?: Role[];
     [key: string]: unknown; // This allows for additional properties...
 }
 

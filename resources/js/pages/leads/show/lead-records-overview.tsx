@@ -6,16 +6,27 @@ import { LeadRecordsOverviewTasks } from './lead-records-overview-tasks';
 import { usePage } from '@inertiajs/react';
 import { SharedData } from '@/types';
 
+type UserRole = 'support-agent' | 'senior-support-agent' | 'super-admin';
+
 export function LeadRecordsOverview({ lead }: { lead: Lead }) {
-    const activities = lead.activities?.data || [];
+    const allActivities = lead.activities?.data || [];
     const tasks = lead.tasks?.data || [];
     const {props: {auth:{user}}} = usePage<SharedData>();
+
+    // CROs (support-agent) should not see advisor-related activities
+    const isCRO = user?.roles?.some(role => role.name === 'support-agent' || role.name === 'senior-support-agent');
+    const activities = isCRO
+        ? allActivities.filter(activity => activity.type !== 'assignment_change')
+        : allActivities;
+
+    const userRole = user?.roles?.[0]?.name as UserRole | undefined;
+
     return (
         <div className="space-y-6">
             <LeadRecordsOverviewHighlights lead={lead} />
             <LeadRecordsOverviewActivity activities={activities} />
             <LeadRecordsOverviewNotes />
-            <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} currentUserId={user.id} userRole={user?.roles[0]?.name}/>
+            <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} currentUserId={user.id} userRole={userRole}/>
         </div>
     );
 }

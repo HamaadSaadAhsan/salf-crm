@@ -37,7 +37,7 @@ export interface Lead {
     created_at: string;
     raw_created_at: ISODateString;
     updated_at: string;
-    activities?: LeadActivity[];
+    activities?: { data: LeadActivity[] };
     has_attachment?: boolean;
     labels?: [];
     tags?: LeadTag[];
@@ -104,8 +104,10 @@ export interface User {
 export interface LeadActivity {
     id: string;
     type: string;
-    description: string;
-    user?: User;
+    status: string;
+    subject: string;
+    description: string | null;
+    user?: User | { data?: User };
     metadata?: Record<string, any>;
     attachments?: Array<{
         original_name: string;
@@ -116,7 +118,7 @@ export interface LeadActivity {
         uploaded_at: string;
     }>;
     created_at: string;
-    created_by: User;
+    created_by?: User;
 }
 
 export interface LeadNote {
