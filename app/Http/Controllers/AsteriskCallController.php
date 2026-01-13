@@ -528,25 +528,30 @@ class AsteriskCallController extends Controller
     {
         $exten = $callData['exten'] ?? auth()->user()?->extension ?? 'unknown';
 
-        LeadActivity::create([
-            'lead_id' => $lead->id,
-            'user_id' => $lead->assigned_to ?? auth()->id(),
-            'type' => 'call',
-            'subject' => 'Inbound call received',
-            'description' => "Inbound call to extension {$exten}",
-            'status' => 'pending',
-            'scheduled_at' => now(),
-            'metadata' => [
-                'call_id' => $callData['uniqueid'],
-                'linked_id' => $callData['linkedid'] ?? null,
-                'caller' => $callData['caller'],
-                'exten' => $exten,
-                'direction' => 'inbound',
-                'event' => $callData['event'],
+        // Use updateOrCreate to handle duplicate ring events (common in ring groups)
+        LeadActivity::updateOrCreate(
+            [
+                'external_id' => $callData['uniqueid'],
+                'source_system' => 'asterisk',
             ],
-            'source_system' => 'asterisk',
-            'external_id' => $callData['uniqueid'],
-        ]);
+            [
+                'lead_id' => $lead->id,
+                'user_id' => $lead->assigned_to ?? auth()->id(),
+                'type' => 'call',
+                'subject' => 'Inbound call received',
+                'description' => "Inbound call to extension {$exten}",
+                'status' => 'pending',
+                'scheduled_at' => now(),
+                'metadata' => [
+                    'call_id' => $callData['uniqueid'],
+                    'linked_id' => $callData['linkedid'] ?? null,
+                    'caller' => $callData['caller'],
+                    'exten' => $exten,
+                    'direction' => 'inbound',
+                    'event' => $callData['event'],
+                ],
+            ]
+        );
     }
 
     /**
