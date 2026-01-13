@@ -166,7 +166,10 @@ class AsteriskCallController extends Controller
 
             // Determine call direction and get routing info
             $callDirection = $callSession?->call_direction ?? 'inbound';
-            $targetExtension = $callSession?->callee_number; // Extension receiving inbound call
+            // IMPORTANT: For ring events, use the exten from the request (current ringing extension)
+            // not from call session (which stores the original target)
+            // This is critical for ring groups where the call moves between extensions
+            $targetExtension = $validated['targetExtension'] ?? $validated['exten'] ?? $callSession?->callee_number;
             $agentExtension = $callSession?->caller_number ?? $exten; // For outbound, agent's extension
 
             // Get coverage call info from call session (updated in connect event)
