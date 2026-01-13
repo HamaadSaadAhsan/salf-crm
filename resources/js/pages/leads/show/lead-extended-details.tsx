@@ -408,7 +408,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                         onSave={(v) => save({ inquiry_status: v })}
                                     />
                                 ) : (
-                                    <span className="text-sm capitalize">{model.inquiry_status.replace(/_/g, ' ')}</span>
+                                    <span className="text-sm capitalize">{model.inquiry_status?.replace(/_/g, ' ') ?? '-'}</span>
                                 )}
                             </div>
                         </div>
