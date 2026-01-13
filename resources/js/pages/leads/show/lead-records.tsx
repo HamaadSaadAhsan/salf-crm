@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { ActivityItem } from '@/components/activity-list';
 import type { User } from '@/types';
 import {
     Activity,
@@ -16,15 +15,8 @@ import { LeadRecordsCalls } from './lead-records-calls';
 import { LeadRecordsNotes } from './lead-records-notes';
 import { LeadRecordsOverview } from './lead-records-overview';
 import { LeadRecordsTasks } from './lead-records-tasks';
+import { Lead } from '@/types/lead';
 
-type Lead = {
-    id: number | string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    status: string;
-    activities?: { data: ActivityItem[] };
-};
 
 type Props = {
     lead: Lead;

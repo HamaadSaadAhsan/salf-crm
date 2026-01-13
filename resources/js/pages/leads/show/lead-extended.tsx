@@ -4,28 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MessagesSquare } from 'lucide-react';
 import { LeadExtendedComments } from './lead-extended-comments';
 import { LeadExtendedDetails } from './lead-extended-details';
-
-type Lead = {
-    id: number | string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    status: string;
-    inquiry_status: string;
-    source?: {
-        data: {
-            id: number;
-            name: string;
-            slug: string;
-        };
-    } | null;
-    owner: {
-        id: number;
-        name: string;
-        email: string;
-    } | null;
-    created_at: string;
-};
+import { Lead } from '@/types/lead';
 
 export function LeadExtended({ lead }: { lead: Lead }) {
     return (
