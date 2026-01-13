@@ -25,6 +25,7 @@ import {
     Info,
     Phone,
     Mail,
+    MoreVertical,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
@@ -88,16 +89,19 @@ export function PageHeader({ lead }: { lead: Lead }) {
     };
 
     return (
-        <div className="flex items-center justify-between border-b px-6 py-4">
-            <h1 className="inline-flex items-center gap-2 text-xl font-semibold">
-                <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-primary/10 text-primary">
+        <div className="flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4">
+            {/* Lead info section */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                <Avatar className="h-8 w-8 shrink-0 sm:h-9 sm:w-9">
+                    <AvatarFallback className="bg-primary/10 text-sm text-primary sm:text-base">
                         {lead.name[0]?.toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col">
-                    <span>{lead.name}</span>
-                    <span className="text-xs font-normal capitalize text-muted-foreground">
+                <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-base font-semibold sm:text-xl">
+                        {lead.name}
+                    </span>
+                    <span className="truncate text-xs capitalize text-muted-foreground">
                         {lead.inquiry_status?.replace(/_/g, ' ')}
                     </span>
                 </div>
@@ -107,6 +111,7 @@ export function PageHeader({ lead }: { lead: Lead }) {
                             <Button
                                 variant="ghost"
                                 size="sm"
+                                className="hidden shrink-0 sm:flex"
                                 onClick={() => setIsFavorite(!isFavorite)}
                             >
                                 <Star
@@ -121,9 +126,10 @@ export function PageHeader({ lead }: { lead: Lead }) {
                         <TooltipContent>Mark as favorite</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-            </h1>
+            </div>
 
-            <div className="flex items-center gap-2">
+            {/* Desktop actions */}
+            <div className="hidden items-center gap-2 md:flex">
                 <TooltipProvider>
                     <div className="flex items-center gap-1">
                         {lead.email && (
@@ -204,6 +210,77 @@ export function PageHeader({ lead }: { lead: Lead }) {
                         <DropdownMenuItem className="text-muted-foreground">
                             <Info className="h-4 w-4" />
                             Learn more
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {/* Mobile/Tablet actions */}
+            <div className="flex items-center gap-1 md:hidden">
+                {/* Primary actions visible on mobile */}
+                {lead.phone && (
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={handleCall}
+                        disabled={isCalling || state.connectionStatus !== 'connected'}
+                    >
+                        <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
+                        <span className="sr-only">Call</span>
+                    </Button>
+                )}
+                {lead.email && (
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                    >
+                        <Mail className="h-4 w-4" />
+                        <span className="sr-only">Email</span>
+                    </Button>
+                )}
+
+                {/* More actions dropdown for mobile */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More actions</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setIsFavorite(!isFavorite)}>
+                            <Star
+                                className={`h-4 w-4 ${
+                                    isFavorite ? 'fill-yellow-500 text-yellow-500' : ''
+                                }`}
+                            />
+                            {isFavorite ? 'Remove favorite' : 'Add to favorites'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <FilePlus className="h-4 w-4" />
+                            New note
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <SquareCheckBig className="h-4 w-4" />
+                            New task
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>More</DropdownMenuLabel>
+                        <DropdownMenuItem>
+                            <BarChart2 className="h-4 w-4" />
+                            Generate Report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <Download className="h-4 w-4" />
+                            Export as CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <Share className="h-4 w-4" />
+                            Share Lead
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
