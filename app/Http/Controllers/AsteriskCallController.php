@@ -45,6 +45,7 @@ class AsteriskCallController extends Controller
                 // Stop ringing event - clear notification from specific extension
                 // This is used when a call moves from one extension to another in a ring group
                 $targetExtension = $validated['targetExtension'] ?? $validated['exten'];
+                $stopRingingUser = $targetExtension ? \App\Models\User::where('extension', $targetExtension)->first() : null;
 
                 Log::info('Stop ringing event received', [
                     'uniqueid' => $validated['uniqueid'],
@@ -53,6 +54,27 @@ class AsteriskCallController extends Controller
                     'reason' => $validated['reason'] ?? 'unknown',
                     'dialstatus' => $validated['dialstatus'] ?? null,
                 ]);
+
+                // Log stop_ringing event to call_logs
+                if ($callSession) {
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'stop_ringing',
+                        "Extension {$targetExtension} stopped ringing",
+                        [
+                            'extension' => $targetExtension,
+                            'user_id' => $stopRingingUser?->id,
+                            'user_name' => $stopRingingUser?->name,
+                            'uniqueid' => $validated['uniqueid'],
+                            'linkedid' => $validated['linkedid'] ?? null,
+                            'reason' => $validated['reason'] ?? 'unknown',
+                            'dialstatus' => $validated['dialstatus'] ?? null,
+                            'caller_number' => $validated['caller'] ?? null,
+                        ],
+                        'asterisk'
+                    );
+                }
 
                 // Broadcast the stop_ringing event to clear notification
                 broadcast(new InboundCallReceived(
@@ -95,6 +117,27 @@ class AsteriskCallController extends Controller
                         ]);
                     }
                 }
+
+                // Log ring event to call_logs
+                if ($callSession) {
+                    $ringUser = $exten ? \App\Models\User::where('extension', $exten)->first() : null;
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'ringing',
+                        "Extension {$exten} ringing",
+                        [
+                            'extension' => $exten,
+                            'user_id' => $ringUser?->id,
+                            'user_name' => $ringUser?->name,
+                            'uniqueid' => $validated['uniqueid'],
+                            'linkedid' => $validated['linkedid'] ?? null,
+                            'caller_number' => $validated['caller'],
+                            'lead_id' => $lead?->id,
+                        ],
+                        'asterisk'
+                    );
+                }
             } elseif ($validated['event'] === 'connect') {
                 // Call was answered - update status and track who answered
                 if ($callSession) {
@@ -114,6 +157,26 @@ class AsteriskCallController extends Controller
                         'answered_by_user_id' => $answeredByUserId,
                         'is_coverage_call' => $isCoverageCall,
                     ]);
+
+                    // Log connect event to call_logs
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'answered',
+                        "Call answered by extension {$exten}",
+                        [
+                            'extension' => $exten,
+                            'user_id' => $answeredByUserId,
+                            'user_name' => $answeredByUser?->name,
+                            'uniqueid' => $validated['uniqueid'],
+                            'linkedid' => $validated['linkedid'] ?? null,
+                            'caller_number' => $validated['caller'],
+                            'lead_id' => $lead?->id,
+                            'is_coverage_call' => $isCoverageCall,
+                            'intended_for_user_id' => $callSession->intended_for_user_id,
+                        ],
+                        'asterisk'
+                    );
 
                     Log::info('Inbound call answered', [
                         'call_session_id' => $callSession->id,
@@ -153,6 +216,26 @@ class AsteriskCallController extends Controller
                         'end_reason' => $endReason,
                         'recording_path' => $recordingFilename,
                     ]);
+
+                    // Log hangup event to call_logs
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'hangup',
+                        $endReason === 'no_answer' ? 'Call ended - no answer' : 'Call ended - hangup',
+                        [
+                            'extension' => $exten,
+                            'uniqueid' => $validated['uniqueid'],
+                            'linkedid' => $validated['linkedid'] ?? null,
+                            'caller_number' => $validated['caller'],
+                            'lead_id' => $lead?->id,
+                            'duration' => $duration,
+                            'end_reason' => $endReason,
+                            'recording_path' => $recordingFilename,
+                            'was_answered' => $callSession->answered_at !== null,
+                        ],
+                        'asterisk'
+                    );
 
                     Log::info('Inbound call ended', [
                         'call_session_id' => $callSession->id,
@@ -713,6 +796,29 @@ class AsteriskCallController extends Controller
                 'lead_id' => $lead?->id,
                 'session_id' => $callSession->session_id,
             ]);
+
+            // Find user for this extension
+            $ringGroupUser = \App\Models\User::where('extension', $validated['exten'])->first();
+
+            // Log the ring event for this ring group member
+            \App\Models\CallLog::createForSession(
+                $callSession,
+                'info',
+                'ring_group_ringing',
+                "Ring group member {$validated['exten']} ringing",
+                [
+                    'extension' => $validated['exten'],
+                    'user_id' => $ringGroupUser?->id,
+                    'user_name' => $ringGroupUser?->name,
+                    'uniqueid' => $validated['uniqueid'],
+                    'linkedid' => $validated['linkedid'],
+                    'caller_number' => $callerNumber,
+                    'lead_id' => $lead?->id,
+                    'is_ring_group_member' => true,
+                    'original_extension' => $originalTargetExtension,
+                ],
+                'asterisk'
+            );
 
             // Broadcast a new ring event for this extension
             // This will trigger the incoming call dialog for the new extension
