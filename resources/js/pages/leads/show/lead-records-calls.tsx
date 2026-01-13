@@ -9,8 +9,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Phone, PhoneIncoming, PhoneMissed, PhoneOff, Play } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Phone, PhoneIncoming, PhoneMissed, PhoneOff, Play, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ type CallSession = {
     id: number;
     session_id: string;
     call_signature: string;
+    call_direction: 'inbound' | 'outbound';
     caller: {
         id: number;
         name: string;
@@ -33,6 +35,17 @@ type CallSession = {
     end_reason: string | null;
     recording_url: string | null;
     has_recording: boolean;
+    is_coverage_call: boolean;
+    answered_by: {
+        id: number;
+        name: string;
+        extension: string;
+    } | null;
+    intended_for: {
+        id: number;
+        name: string;
+        extension: string;
+    } | null;
 };
 
 type CallStatistics = {
@@ -259,8 +272,8 @@ export function LeadRecordsCalls({ leadId }: LeadRecordsCallsProps) {
                             <TableRow>
                                 <TableHead className="w-12"></TableHead>
                                 <TableHead>Date & Time</TableHead>
-                                <TableHead>Caller</TableHead>
-                                <TableHead>Number</TableHead>
+                                <TableHead>Direction</TableHead>
+                                <TableHead>Handled By</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Duration</TableHead>
                                 <TableHead className="w-24">Recording</TableHead>
@@ -276,10 +289,52 @@ export function LeadRecordsCalls({ leadId }: LeadRecordsCallsProps) {
                                         {formatDateTime(call.started_at)}
                                     </TableCell>
                                     <TableCell>
-                                        {call.caller ? call.caller.name : 'Unknown'}
+                                        <div className="flex items-center gap-1.5">
+                                            {call.call_direction === 'inbound' ? (
+                                                <ArrowDownLeft className="size-3.5 text-blue-600" />
+                                            ) : (
+                                                <ArrowUpRight className="size-3.5 text-green-600" />
+                                            )}
+                                            <span className="text-xs capitalize">{call.call_direction}</span>
+                                        </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs">
-                                        {call.callee_number}
+                                    <TableCell>
+                                        {call.answered_by ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm">
+                                                    {call.answered_by.name}
+                                                </span>
+                                                <span className="font-mono text-xs text-muted-foreground">
+                                                    ({call.answered_by.extension})
+                                                </span>
+                                                {call.is_coverage_call && call.intended_for && (
+                                                    <Tooltip>
+                                                        <TooltipTrigger>
+                                                            <Badge variant="outline" className="ml-1 border-purple-200 bg-purple-50 px-1.5 py-0 text-[10px] text-purple-700">
+                                                                <Users className="mr-0.5 size-3" />
+                                                                Coverage
+                                                            </Badge>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Answered on behalf of {call.intended_for.name} ({call.intended_for.extension})</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                )}
+                                            </div>
+                                        ) : call.intended_for ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm text-muted-foreground">
+                                                    {call.intended_for.name}
+                                                </span>
+                                                <span className="font-mono text-xs text-muted-foreground">
+                                                    ({call.intended_for.extension})
+                                                </span>
+                                            </div>
+                                        ) : call.caller ? (
+                                            <span className="text-sm">{call.caller.name}</span>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">-</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         {getStatusBadge(call.status, call.end_reason)}
