@@ -8,7 +8,7 @@ import { update as updateLead } from '@/routes/leads';
 import type { SharedData } from '@/types';
 
 export interface InboundCallData {
-    event: 'ring' | 'connect' | 'disconnect' | 'hangup';
+    event: 'ring' | 'connect' | 'disconnect' | 'hangup' | 'stop_ringing';
     caller: string;
     exten: string;
     uniqueid: string;
@@ -20,6 +20,8 @@ export interface InboundCallData {
     answered_by_user_id?: number;
     intended_for_user_id?: number;
     is_coverage_call?: boolean;
+    reason?: string; // For stop_ringing: timeout, caller_hangup, busy, answered_elsewhere
+    dialstatus?: string; // For stop_ringing: NOANSWER, CANCEL, BUSY, etc.
     lead?: {
         id: string;
         name: string;
@@ -153,6 +155,9 @@ export function useInboundCalls() {
             case 'connect':
                 handleConnectEvent(data);
                 break;
+            case 'stop_ringing':
+                handleStopRingingEvent(data);
+                break;
             case 'disconnect':
             case 'hangup':
                 handleDisconnectEvent(data);
@@ -247,6 +252,54 @@ export function useInboundCalls() {
                 };
             }
 
+            return prev;
+        });
+    };
+
+    /**
+     * Handle stop_ringing event - clears the notification when a dial leg ends
+     * This happens when:
+     * - Extension 201 times out and call moves to Ring Group 299
+     * - Call is answered by another extension
+     * - Caller hangs up before anyone answers
+     */
+    const handleStopRingingEvent = (data: InboundCallData) => {
+        const targetExtension = data.target_extension || data.exten;
+
+        // Only process if this stop_ringing event is for our extension
+        if (targetExtension !== currentUserExtension) {
+            console.log('Stop ringing event: Not for current user', {
+                targetExtension,
+                currentUserExtension,
+                reason: data.reason,
+            });
+            return;
+        }
+
+        console.log('Stop ringing event: Clearing notification for current user', {
+            targetExtension,
+            reason: data.reason,
+            dialstatus: data.dialstatus,
+            linkedid: data.linkedid,
+        });
+
+        setActiveCall((prev) => {
+            // Only clear if this is for the same call (match by linkedid or uniqueid)
+            const isSameCall = prev && (
+                prev.uniqueid === data.uniqueid ||
+                prev.linkedid === data.linkedid ||
+                prev.uniqueid === data.linkedid
+            );
+
+            if (isSameCall) {
+                console.log('Clearing active call notification due to stop_ringing', {
+                    reason: data.reason,
+                    dialstatus: data.dialstatus,
+                });
+                return null;
+            }
+
+            // If not the same call, keep the current state
             return prev;
         });
     };

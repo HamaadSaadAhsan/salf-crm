@@ -41,7 +41,47 @@ class AsteriskCallController extends Controller
             }
 
             // Handle different call events
-            if ($validated['event'] === 'ring') {
+            if ($validated['event'] === 'stop_ringing') {
+                // Stop ringing event - clear notification from specific extension
+                // This is used when a call moves from one extension to another in a ring group
+                $targetExtension = $validated['targetExtension'] ?? $validated['exten'];
+
+                Log::info('Stop ringing event received', [
+                    'uniqueid' => $validated['uniqueid'],
+                    'linkedid' => $validated['linkedid'] ?? null,
+                    'target_extension' => $targetExtension,
+                    'reason' => $validated['reason'] ?? 'unknown',
+                    'dialstatus' => $validated['dialstatus'] ?? null,
+                ]);
+
+                // Broadcast the stop_ringing event to clear notification
+                broadcast(new InboundCallReceived(
+                    event: 'stop_ringing',
+                    caller: $validated['caller'] ?? '',
+                    exten: $targetExtension ?? '',
+                    uniqueid: $validated['uniqueid'],
+                    linkedid: $validated['linkedid'] ?? null,
+                    sessionId: $callSession?->session_id,
+                    lead: $lead,
+                    callDirection: 'inbound',
+                    targetExtension: $targetExtension,
+                    agentExtension: null,
+                    answeredByUserId: null,
+                    intendedForUserId: $callSession?->intended_for_user_id,
+                    isCoverageCall: false,
+                    reason: $validated['reason'] ?? null,
+                    dialstatus: $validated['dialstatus'] ?? null
+                ));
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Stop ringing event processed',
+                    'data' => [
+                        'target_extension' => $targetExtension,
+                        'reason' => $validated['reason'] ?? null,
+                    ],
+                ]);
+            } elseif ($validated['event'] === 'ring') {
                 // Log call activity if lead exists
                 if ($lead) {
                     $this->logCallActivity($lead, $validated);

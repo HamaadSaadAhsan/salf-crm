@@ -20,11 +20,15 @@ class StoreInboundCallRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'event' => ['required', 'string', 'in:ring,connect,disconnect,hangup'],
-            'caller' => ['required', 'string'],
+            'event' => ['required', 'string', 'in:ring,connect,disconnect,hangup,stop_ringing'],
+            'caller' => ['nullable', 'string'],
             'exten' => ['nullable', 'string'],
             'uniqueid' => ['required', 'string'],
             'linkedid' => ['nullable', 'string'],
+            'targetExtension' => ['nullable', 'string'],
+            'reason' => ['nullable', 'string'],
+            'dialstatus' => ['nullable', 'string'],
+            'session_id' => ['nullable', 'string'],
         ];
     }
 
@@ -35,7 +39,7 @@ class StoreInboundCallRequest extends FormRequest
     {
         return [
             'event.required' => 'The call event is required.',
-            'event.in' => 'The call event must be one of: ring, connect, disconnect, hangup.',
+            'event.in' => 'The call event must be one of: ring, connect, disconnect, hangup, stop_ringing.',
             'caller.required' => 'The caller number is required.',
             'exten.required' => 'The extension number is required.',
             'uniqueid.required' => 'The unique call ID is required.',
