@@ -24,10 +24,11 @@ export interface Lead {
     custom_fields?: Record<string, any>;
     detail?: string;
     service?: { data: Service };
-    source: { data?: LeadSource } | LeadSource;
+    source?: { data?: LeadSource };
     status: { data: Status };
-    assigned_to?: User;
+    assigned_to?: { data: User };
     created_by?: User;
+    owner?: User;
     days_since_created: number;
     is_hot_lead: boolean;
     next_follow_up_at?: string;
@@ -64,6 +65,20 @@ export interface LeadBudget {
     currency: string;
     frequency?: 'one-time' | 'monthly' | 'yearly';
 }
+
+export type CustomFieldValue = string | number | boolean | string[] | number[] | null | undefined;
+
+export type CustomFields = {
+    family_size?: number;
+    children_ages?: number[];
+    current_citizenships?: string[];
+    investment_experience?: string;
+    urgency?: string;
+    preferred_regions?: string[];
+    language_spoken?: string;
+    travel_frequency?: string;
+    [key: string]: CustomFieldValue;
+};
 
 export interface Service {
     id: number;

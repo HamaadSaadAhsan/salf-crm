@@ -1,4 +1,3 @@
-import { Separator } from '@/components/ui/separator';
 import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X } from 'lucide-react';
 import { InlineEdit } from '@/components/inline-edit';
 import { useState, useEffect, useCallback } from 'react';
@@ -12,81 +11,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { CustomFields, Lead, LeadStatus } from '@/types/lead';
 
 type TagValue = string | { label: string; value: string; color?: string };
-
-type Budget = {
-    currency: string;
-    amount: number;
-    type: string;
-    timeframe?: string;
-};
-
-type CustomFields = {
-    family_size?: number;
-    children_ages?: number[];
-    current_citizenships?: string[];
-    investment_experience?: string;
-    urgency?: string;
-    preferred_regions?: string[];
-    language_spoken?: string;
-    travel_frequency?: string;
-    [key: string]: unknown;
-};
-
-type Lead = {
-    id: number | string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    occupation: string | null;
-    address: string | null;
-    city: string | null;
-    country: string | null;
-    status: string;
-    inquiry_status: string;
-    priority: string | null;
-    inquiry_type: string | null;
-    lead_score: number | null;
-    budget: Budget | null;
-    formatted_budget: string | null;
-    detail: string | null;
-    custom_fields: CustomFields | null;
-    next_follow_up_at: string | null;
-    last_activity_at: string | null;
-    source?: {
-        data: {
-            id: number;
-            name: string;
-            slug: string;
-        };
-    } | null;
-    service?: {
-        data: {
-            id: number;
-            name: string;
-        };
-    } | null;
-    tags?: TagValue[];
-    assigned_to?: {
-        data: {
-            id: number;
-            name: string;
-            email: string;
-            roles?: Array<{
-                id: number;
-                name: string;
-                guard_name: string;
-            }>;
-        };
-    } | null;
-    owner: {
-        id: number;
-        name: string;
-        email: string;
-    } | null;
-    created_at: string;
-};
 
 type Status = {
     id: number;
@@ -283,7 +210,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const saveCustomField = (key: string, value: string | null) => {
         const originalValue = model.custom_fields?.[key];
 
-        let parsedValue: unknown = value;
+        let parsedValue: string | number | string[] | number[] | null = value;
 
         if (value) {
             // If original was an array, try to parse back to array
@@ -291,10 +218,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                 const items = value.split(',').map(s => s.trim()).filter(Boolean);
                 // If original array contained numbers, convert back to numbers
                 if (originalValue.length > 0 && typeof originalValue[0] === 'number') {
-                    parsedValue = items.map(s => {
-                        const num = Number(s);
-                        return isNaN(num) ? s : num;
-                    });
+                    parsedValue = items.map(s => Number(s)).filter(n => !isNaN(n));
                 } else {
                     parsedValue = items;
                 }
@@ -306,7 +230,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             }
         }
 
-        const updatedCustomFields = {
+        const updatedCustomFields: CustomFields = {
             ...(model.custom_fields || {}),
             [key]: parsedValue || null,
         };
@@ -315,7 +239,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             delete updatedCustomFields[key];
         }
         router.put(`/leads/${model.id}`, {
-            custom_fields: updatedCustomFields,
+            custom_fields: updatedCustomFields as Record<string, string | number | boolean | string[] | number[] | null>,
         }, {
             preserveScroll: true,
             preserveState: true,
@@ -339,10 +263,10 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
 
     // Remove custom field
     const removeCustomField = (key: string) => {
-        const updatedCustomFields = { ...(model.custom_fields || {}) };
+        const updatedCustomFields: CustomFields = { ...(model.custom_fields || {}) };
         delete updatedCustomFields[key];
         router.put(`/leads/${model.id}`, {
-            custom_fields: updatedCustomFields,
+            custom_fields: updatedCustomFields as Record<string, string | number | boolean | string[] | number[] | null>,
         }, {
             preserveScroll: true,
             preserveState: true,
@@ -405,7 +329,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                         type="select"
                                         options={getStatusOptions()}
                                         value={model.inquiry_status}
-                                        onSave={(v) => save({ inquiry_status: v })}
+                                        onSave={(v) => save({ inquiry_status: v as LeadStatus })}
                                     />
                                 ) : (
                                     <span className="text-sm capitalize">{model.inquiry_status?.replace(/_/g, ' ') ?? '-'}</span>

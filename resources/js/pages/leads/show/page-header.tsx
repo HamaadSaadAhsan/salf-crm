@@ -31,15 +31,8 @@ import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { useOutboundCalls } from '@/hooks/useOutboundCalls';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
+import type { Lead } from '@/types/lead';
 import { toast } from 'sonner';
-
-type Lead = {
-    id: number | string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    status: string;
-};
 
 export function PageHeader({ lead }: { lead: Lead }) {
     const [isFavorite, setIsFavorite] = useState(false);
@@ -104,8 +97,8 @@ export function PageHeader({ lead }: { lead: Lead }) {
                 </Avatar>
                 <div className="flex flex-col">
                     <span>{lead.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                        {lead.status}
+                    <span className="text-xs font-normal capitalize text-muted-foreground">
+                        {lead.inquiry_status?.replace(/_/g, ' ')}
                     </span>
                 </div>
                 <TooltipProvider>
