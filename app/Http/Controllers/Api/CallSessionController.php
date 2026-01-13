@@ -115,6 +115,7 @@ class CallSessionController extends Controller
                     'id' => $call->id,
                     'session_id' => $call->session_id,
                     'call_signature' => $call->call_signature,
+                    'call_direction' => $call->call_direction,
                     'caller' => [
                         'id' => $call->caller?->id,
                         'name' => $call->caller?->name,
@@ -130,6 +131,17 @@ class CallSessionController extends Controller
                     'end_reason' => $call->end_reason,
                     'recording_url' => $this->recordingService->getRecordingUrl($call),
                     'has_recording' => $this->recordingService->recordingExists($call),
+                    'is_coverage_call' => $call->is_coverage_call,
+                    'answered_by' => $call->answeredBy ? [
+                        'id' => $call->answeredBy->id,
+                        'name' => $call->answeredBy->name,
+                        'extension' => $call->answeredBy->extension,
+                    ] : null,
+                    'intended_for' => $call->intendedFor ? [
+                        'id' => $call->intendedFor->id,
+                        'name' => $call->intendedFor->name,
+                        'extension' => $call->intendedFor->extension,
+                    ] : null,
                 ];
             }),
             'statistics' => $statistics,

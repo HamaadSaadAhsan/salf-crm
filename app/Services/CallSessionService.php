@@ -117,7 +117,7 @@ class CallSessionService
     public function getLeadCallHistory(Lead $lead, int $limit = 50)
     {
         return $lead->callSessions()
-            ->with(['caller'])
+            ->with(['caller', 'answeredBy', 'intendedFor'])
             ->orderByDesc('started_at')
             ->limit($limit)
             ->get();
