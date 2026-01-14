@@ -17,6 +17,7 @@ import {
     Activity,
     Settings,
     Loader2,
+    XIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
     SheetHeader,
     SheetTitle,
     SheetTrigger,
+    SheetClose
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -363,12 +365,7 @@ export function HeaderNotifications() {
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <div className="relative">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        className="text-white hover:border-zinc-800 hover:bg-zinc-800 hover:text-white"
-                    >
+                    <Button variant="ghost" size="sm" mode="icon" className="text-white hover:border-zinc-800 hover:bg-zinc-800 hover:text-white">
                         <Bell className="size-4 text-white" />
                     </Button>
                     {unreadCount > 0 && (
@@ -376,7 +373,7 @@ export function HeaderNotifications() {
                             variant="destructive"
                             size="xs"
                             shape="circle"
-                            className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center p-0 text-[10px]"
+                            className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center p-0 text-[10px]"
                         >
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </Badge>
@@ -389,26 +386,36 @@ export function HeaderNotifications() {
                 <SheetHeader className="border-b px-5 py-4">
                     <div className="flex items-center justify-between">
                         <SheetTitle className="text-base font-semibold">Notifications</SheetTitle>
-                        {unreadCount > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                                onClick={handleMarkAllAsRead}
-                            >
-                                <CheckCheck className="size-3.5" />
-                                Mark all as read
-                            </Button>
-                        )}
+                        <div className="gap-2">
+                            {unreadCount > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                                    onClick={handleMarkAllAsRead}
+                                >
+                                    <CheckCheck className="size-3.5" />
+                                    Mark all as read
+                                </Button>
+                            )}
+
+                            <SheetClose>
+                                <Button
+                                    className="h-auto gap-1.5 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setOpen(false)}
+                                    aria-label="Close"
+                                >
+                                    <XIcon className="size-3.5" />
+                                </Button>
+                            </SheetClose>
+                        </div>
                     </div>
                 </SheetHeader>
 
                 {/* Tabs */}
-                <Tabs
-                    value={activeTab}
-                    onValueChange={setActiveTab}
-                    className="flex flex-1 flex-col overflow-hidden"
-                >
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
                     <div className="border-b px-5">
                         <TabsList variant="line" size="sm" className="w-full justify-start">
                             <TabsTrigger value="all" className="relative">
@@ -456,8 +463,8 @@ export function HeaderNotifications() {
                                             activeTab === 'unread'
                                                 ? 'No unread notifications'
                                                 : activeTab === 'read'
-                                                ? 'No read notifications yet'
-                                                : "You're all caught up!"
+                                                  ? 'No read notifications yet'
+                                                  : "You're all caught up!"
                                         }
                                     />
                                 )}

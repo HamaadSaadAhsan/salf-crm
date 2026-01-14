@@ -33,8 +33,8 @@ const getLeadScoreQuality = (score: number): string => {
     return 'Low Quality';
 };
 
-const getLeadScoreVariant = (score: number): 'default' | 'secondary' | 'outline' | 'destructive' => {
-    if (score >= 80) return 'default';
+const getLeadScoreVariant = (score: number): 'primary' | 'secondary' | 'outline' | 'destructive' => {
+    if (score >= 80) return 'primary';
     if (score >= 60) return 'secondary';
     return 'outline';
 };
@@ -178,7 +178,7 @@ export function LeadRecordsOverviewHighlights({ lead }: { lead: Lead }) {
                                 {nextTask.due_at && (
                                     <div className="flex items-center gap-2">
                                         <Clock className="text-muted-foreground size-3.5 shrink-0" />
-                                        <Badge size="sm" variant="default">
+                                        <Badge size="sm">
                                             {formatTaskDueDate(nextTask.due_at)}
                                         </Badge>
                                     </div>
