@@ -10,7 +10,6 @@ import { usePage } from '@inertiajs/react';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
 import { useTaskReminderListener } from '@/hooks/useTaskReminderListener';
 import { useLeadAssignmentListener } from '@/hooks/useLeadAssignmentListener';
-import { DialerIntegration } from '@/components/dialer/DialerIntegration';
 import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
 import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
