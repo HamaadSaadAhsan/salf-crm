@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Building2, PanelRight } from 'lucide-react';
 import type { User } from '@/types';
 import type { Lead } from '@/types/lead';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useMediaQuery } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -13,40 +13,46 @@ import {
 import { LeadExtended } from './lead-extended';
 import { LeadRecords } from './lead-records';
 
+const LEAD_DETAILS_BREAKPOINT = 1490;
+
 type Props = {
     lead: Lead;
     users?: User[];
 };
 
 export function LeadPage({ lead, users = [] }: Props) {
-    const isMobile = useIsMobile();
+    const hideLeadDetails = useMediaQuery(LEAD_DETAILS_BREAKPOINT);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
         <div className="flex h-full overflow-hidden">
-            {/* Main content area - full width on mobile, flex-1 on desktop */}
-            <div className="flex min-w-0 flex-1 flex-col lg:border-r">
+            {/* Main content area - full width when sidebar hidden */}
+            <div className={`flex min-w-0 flex-1 flex-col ${!hideLeadDetails ? 'border-r' : ''}`}>
                 <LeadRecords lead={lead} users={users} />
             </div>
 
-            {/* Desktop sidebar - hidden on mobile and tablet */}
-            <div className="hidden w-[500px] shrink-0 lg:block">
-                <LeadExtended lead={lead} />
-            </div>
+            {/* Desktop sidebar - hidden below 1490px */}
+            {!hideLeadDetails && (
+                <div className="w-[500px] shrink-0">
+                    <LeadExtended lead={lead} />
+                </div>
+            )}
 
-            {/* Mobile/Tablet floating action button to open sidebar */}
-            <div className="fixed bottom-6 right-6 z-40 lg:hidden">
-                <Button
-                    size="lg"
-                    className="h-14 w-14 rounded-full shadow-lg"
-                    onClick={() => setSidebarOpen(true)}
-                >
-                    <PanelRight className="h-6 w-6" />
-                    <span className="sr-only">View lead details</span>
-                </Button>
-            </div>
+            {/* Floating action button to open sidebar when hidden */}
+            {hideLeadDetails && (
+                <div className="fixed bottom-6 right-6 z-40">
+                    <Button
+                        size="lg"
+                        className="h-14 w-14 rounded-full shadow-lg"
+                        onClick={() => setSidebarOpen(true)}
+                    >
+                        <PanelRight className="h-6 w-6" />
+                        <span className="sr-only">View lead details</span>
+                    </Button>
+                </div>
+            )}
 
-            {/* Mobile/Tablet Sheet for sidebar content */}
+            {/* Sheet for sidebar content when hidden */}
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                 <SheetContent
                     side="right"
