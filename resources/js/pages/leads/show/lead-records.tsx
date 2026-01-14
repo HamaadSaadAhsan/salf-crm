@@ -31,7 +31,7 @@ export function LeadRecords({ lead, users = [] }: Props) {
                 <ScrollArea className="w-full">
                     <TabsList
                         variant="line"
-                        className="inline-flex w-max min-w-full gap-1 bg-transparent px-3 sm:gap-6 sm:px-5 [&_button]:border-b [&_button]:text-secondary-foreground [&_button_svg]:size-4"
+                        className="inline-flex w-max min-w-full gap-1 bg-transparent px-3 sm:02 sm:px-5 [&_button]:border-b [&_button]:text-secondary-foreground [&_button_svg]:size-4"
                     >
                         <TabsTrigger value="overview" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
                             <Grid2x2Check className="h-4 w-4" />
