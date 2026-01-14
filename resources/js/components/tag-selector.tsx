@@ -146,14 +146,25 @@ export function TagSelector({
                             <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" container={portalContainer} className="w-[200px] p-0">
-                        <Command>
+                    <PopoverContent
+                        align="start"
+                        container={portalContainer}
+                        className="w-[min(200px,calc(100vw-2rem))] p-0"
+                        avoidCollisions={true}
+                        collisionPadding={16}
+                    >
+                        <Command shouldFilter={true}>
                             <CommandInput placeholder="Search tags..." className="h-9" />
-                            <CommandList>
+                            <CommandList className="max-h-[min(300px,50vh)] touch-pan-y overscroll-contain">
                                 <CommandEmpty className="p-3 text-center text-sm">No tag found.</CommandEmpty>
                                 <CommandGroup>
                                     {availableTagsFiltered.map((tag) => (
-                                        <CommandItem key={tag.value} value={tag.value} onSelect={handleSelectTag}>
+                                        <CommandItem
+                                            key={tag.value}
+                                            value={tag.label}
+                                            onSelect={() => handleSelectTag(tag.value)}
+                                            className="min-h-[44px] cursor-pointer sm:min-h-0"
+                                        >
                                             <div
                                                 className={cn(
                                                     'mr-2 h-3 w-3 rounded-full',

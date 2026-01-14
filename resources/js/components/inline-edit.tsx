@@ -151,34 +151,42 @@ export function InlineEdit({
             setEditing(false);
           }
         }}
+        modal={true}
       >
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn('h-6 w-auto justify-between px-2 py-0 text-sm', className)}
+            className={cn('h-6 w-auto max-w-[180px] justify-between truncate px-2 py-0 text-sm sm:max-w-none', className)}
           >
-            {selectedOption ? selectedOption.label : placeholder}
+            <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
             <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0" align="start">
-          <Command>
+        <PopoverContent
+          className="w-[min(200px,calc(100vw-2rem))] p-0"
+          align="start"
+          side="bottom"
+          avoidCollisions={true}
+          collisionPadding={16}
+        >
+          <Command shouldFilter={true}>
             <CommandInput placeholder="Search..." className="h-9" />
-            <CommandList>
+            <CommandList className="max-h-[min(300px,50vh)] touch-pan-y overscroll-contain">
               <CommandEmpty>No option found.</CommandEmpty>
               <CommandGroup>
                 {options.map(opt => (
                   <CommandItem
                     key={opt.value}
-                    value={opt.value}
-                    onSelect={(currentValue) => {
-                      setLocal(currentValue);
+                    value={opt.label}
+                    onSelect={() => {
+                      setLocal(opt.value);
                       setOpen(false);
                       setEditing(false);
-                      void commit(currentValue);
+                      void commit(opt.value);
                     }}
+                    className="min-h-[44px] cursor-pointer sm:min-h-0"
                   >
                     {opt.label}
                     <Check

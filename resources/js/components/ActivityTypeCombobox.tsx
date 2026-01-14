@@ -118,14 +118,25 @@ export default function ActivityTypeCombobox({
                         <p>Select activity type</p>
                     </TooltipContent>
                 </Tooltip>
-                <PopoverContent container={containerRef} align="start" className="w-[200px] p-0">
-                    <Command>
+                <PopoverContent
+                    container={containerRef}
+                    align="start"
+                    className="w-[min(200px,calc(100vw-2rem))] p-0"
+                    avoidCollisions={true}
+                    collisionPadding={16}
+                >
+                    <Command shouldFilter={true}>
                         <CommandInput placeholder="Search activity type..." className="h-9" />
-                        <CommandList>
+                        <CommandList className="max-h-[min(300px,50vh)] touch-pan-y overscroll-contain">
                             <CommandEmpty>No activity found.</CommandEmpty>
                             <CommandGroup>
                                 {frameworks.map((framework) => (
-                                    <CommandItem className="cursor-pointer" key={framework.value} value={framework.value} onSelect={handleTypeSelect}>
+                                    <CommandItem
+                                        className="min-h-[44px] cursor-pointer sm:min-h-0"
+                                        key={framework.value}
+                                        value={framework.label}
+                                        onSelect={() => handleTypeSelect(framework.value)}
+                                    >
                                         {framework.icon}
                                         {framework.label}
                                         <Check className={cn('ml-auto', value === framework.value ? 'opacity-100' : 'opacity-0')} />
