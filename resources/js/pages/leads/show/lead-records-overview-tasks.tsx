@@ -150,25 +150,25 @@ export function LeadRecordsOverviewTasks({
 
     return (
         <Collapsible className="mb-5 space-y-2" open={isTasksOpen} onOpenChange={setIsTasksOpen}>
-            <div className="flex items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <CollapsibleTrigger asChild>
                     <Button
                         size="sm"
                         variant="ghost"
-                        className="text-semibold ps-1.5 text-sm hover:bg-accent [&:not(:hover)[data-state=open]]:bg-transparent"
+                        className="text-semibold min-h-[44px] ps-1.5 text-sm hover:bg-accent [&:not(:hover)[data-state=open]]:bg-transparent"
                     >
                         <ListTodo />
                         Tasks {pendingTasks.length > 0 && `(${pendingTasks.length})`}
                         <ChevronRight className="[[data-state=open]_&]:rotate-90" />
                     </Button>
                 </CollapsibleTrigger>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                     {completedTasks.length > 0 && (
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCompleted(!showCompleted)}
-                            className="text-xs"
+                            className="min-h-[44px] text-xs"
                         >
                             {showCompleted ? 'Hide' : 'Show'} completed ({completedTasks.length})
                         </Button>
@@ -176,7 +176,7 @@ export function LeadRecordsOverviewTasks({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" mode="icon" onClick={handleAddTask}>
+                                <Button variant="ghost" size="sm" mode="icon" className="min-h-[44px] min-w-[44px]" onClick={handleAddTask}>
                                     <Plus />
                                 </Button>
                             </TooltipTrigger>
@@ -206,18 +206,22 @@ export function LeadRecordsOverviewTasks({
                                     <li
                                         key={task.id}
                                         className={cn(
-                                            'flex items-center gap-1 rounded-md p-2 text-sm transition-colors hover:bg-accent/50',
+                                            'flex items-start gap-2 rounded-md p-2 text-sm transition-colors hover:bg-accent/50',
                                             task.is_completed && 'opacity-60'
                                         )}
                                     >
+                                        {/* Checkbox */}
                                         <Checkbox
                                             size="sm"
-                                            className="me-1 mt-[1px]"
+                                            className="mt-1 shrink-0"
                                             checked={task.is_completed}
                                             onCheckedChange={() => handleToggleCompletion(task.id)}
                                         />
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
+
+                                        {/* Content: Title + Badges */}
+                                        <div className="flex-1 min-w-0 space-y-1.5">
+                                            {/* Title row */}
+                                            <div className="flex flex-wrap items-center gap-1.5">
                                                 <span
                                                     className={cn(
                                                         'font-medium hover:text-primary',
@@ -237,71 +241,75 @@ export function LeadRecordsOverviewTasks({
                                                     </Badge>
                                                 )}
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {task.assigned_to && (
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Badge variant="secondary" size="sm" className="cursor-pointer">
-                                                                <UserIcon className="size-3.5" />
-                                                                {task.assigned_to.name}
-                                                            </Badge>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar className="size-6">
-                                                                    <AvatarImage src={task.assigned_to.avatar} />
-                                                                    <AvatarFallback>
-                                                                        {getInitials(task.assigned_to.name)}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <div>
-                                                                    <p className="text-xs font-medium">{task.assigned_to.name}</p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        {task.assigned_to.email}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            )}
-                                            {task.due_at && (
-                                                <Badge
-                                                    variant={task.is_overdue ? 'destructive' : 'secondary'}
-                                                    size="sm"
-                                                    appearance="light"
-                                                >
-                                                    <Calendar className="size-3.5" />
-                                                    {task.due_at_formatted}
-                                                </Badge>
-                                            )}
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm" mode="icon">
-                                                        <MoreVertical className="size-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => handleViewTask(task.id)}>
-                                                        <Eye className="size-4" />
-                                                        View details
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleEditTask(task.id)}>
-                                                        <Pencil className="size-4" />
-                                                        Edit task
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleDeleteTask(task.id)}
-                                                        className="text-destructive"
+
+                                            {/* Meta row: Due date + Assigned user */}
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                {task.due_at && (
+                                                    <Badge
+                                                        variant={task.is_overdue ? 'destructive' : 'secondary'}
+                                                        size="sm"
+                                                        appearance="light"
                                                     >
-                                                        <Trash2 className="size-4" />
-                                                        Delete task
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                        <Calendar className="size-3.5" />
+                                                        {task.due_at_formatted}
+                                                    </Badge>
+                                                )}
+                                                {task.assigned_to && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Badge variant="secondary" size="sm" className="cursor-pointer">
+                                                                    <UserIcon className="size-3.5" />
+                                                                    <span className="truncate max-w-[120px]">{task.assigned_to.name}</span>
+                                                                </Badge>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Avatar className="size-6">
+                                                                        <AvatarImage src={task.assigned_to.avatar} />
+                                                                        <AvatarFallback>
+                                                                            {getInitials(task.assigned_to.name)}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div>
+                                                                        <p className="text-xs font-medium">{task.assigned_to.name}</p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {task.assigned_to.email}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                            </div>
                                         </div>
+
+                                        {/* Menu button - always visible as separate column */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" mode="icon" className="shrink-0 -mt-1 -mr-1">
+                                                    <MoreVertical className="size-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleViewTask(task.id)}>
+                                                    <Eye className="size-4" />
+                                                    View details
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEditTask(task.id)}>
+                                                    <Pencil className="size-4" />
+                                                    Edit task
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                    className="text-destructive"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    Delete task
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </li>
                                 ))}
                             </ul>

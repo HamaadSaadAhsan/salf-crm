@@ -119,43 +119,45 @@ export function ActivityList({
                                     .toUpperCase() || '?';
 
                                 return (
-                                    <li key={activity.id} className="flex items-center gap-1.5 text-sm">
-                                        <Avatar className="size-6">
+                                    <li key={activity.id} className="flex items-start gap-2 text-sm sm:items-center sm:gap-1.5">
+                                        <Avatar className="size-6 shrink-0 mt-0.5 sm:mt-0">
                                             <AvatarImage src="" alt={userName} />
                                             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                                         </Avatar>
-                                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                                            <span className="font-medium shrink-0">
-                                                {userName}
-                                            </span>
-                                            <span className="text-muted-foreground truncate">
-                                                {formatDescription(activity.description, getActivityDescription(activity))}
-                                            </span>
-                                            {activity.subject && (
-                                                <span className="font-medium truncate">
-                                                    {activity.subject}
+                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0 sm:flex-row sm:items-center sm:gap-1">
+                                            <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                                <span className="font-medium shrink-0">
+                                                    {userName}
                                                 </span>
-                                            )}
-                                            {activity.attachments && activity.attachments.length > 0 && (() => {
-                                                const attachment = activity.attachments[0];
-                                                const parts: string[] = [];
+                                                <span className="text-muted-foreground">
+                                                    {formatDescription(activity.description, getActivityDescription(activity))}
+                                                </span>
+                                                {activity.subject && (
+                                                    <span className="font-medium truncate">
+                                                        {activity.subject}
+                                                    </span>
+                                                )}
+                                                {activity.attachments && activity.attachments.length > 0 && (() => {
+                                                    const attachment = activity.attachments[0];
+                                                    const parts: string[] = [];
 
-                                                if (attachment.mime_type) {
-                                                    parts.push(formatMimeType(attachment.mime_type));
-                                                }
+                                                    if (attachment.mime_type) {
+                                                        parts.push(formatMimeType(attachment.mime_type));
+                                                    }
 
-                                                if (attachment.size !== undefined && attachment.size !== null) {
-                                                    parts.push(formatFileSize(attachment.size));
-                                                }
+                                                    if (attachment.size !== undefined && attachment.size !== null) {
+                                                        parts.push(formatFileSize(attachment.size));
+                                                    }
 
-                                                return parts.length ? (
-                                                    <span className="text-muted-foreground truncate">• {parts.join(' • ')}</span>
-                                                ) : null;
-                                            })()}
+                                                    return parts.length ? (
+                                                        <span className="text-muted-foreground truncate">• {parts.join(' • ')}</span>
+                                                    ) : null;
+                                                })()}
+                                            </div>
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap sm:ml-auto">
+                                                {formatDistanceToNow(parseISO(activity.created_at), { addSuffix: true })}
+                                            </span>
                                         </div>
-                                        <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
-                                            {formatDistanceToNow(parseISO(activity.created_at), { addSuffix: true })}
-                                        </span>
                                     </li>
                                 );
                             })}

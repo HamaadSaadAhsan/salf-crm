@@ -83,9 +83,10 @@ export function LeadRecordsOverviewHighlights({ lead }: { lead: Lead }) {
                 Highlights
             </h3>
 
-            <div className="flex gap-4">
+            {/* Responsive grid: 1 column on mobile, 2 columns on sm+ */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:flex lg:gap-4">
                 {/* Lead Score */}
-                <Card className="w-72 shadow-none">
+                <Card className="w-full shadow-none lg:w-72">
                     <CardHeader className="border-0 p-2.5 py-0 min-h-10">
                         <CardTitle className="text-2sm font-normal">
                             Lead Score
@@ -132,7 +133,7 @@ export function LeadRecordsOverviewHighlights({ lead }: { lead: Lead }) {
                 </Card>
 
                 {/* Next Follow-up/Task */}
-                <Card className="w-72 shadow-none">
+                <Card className="w-full shadow-none lg:w-72">
                     <CardHeader className="border-0 p-2.5 py-0 min-h-10">
                         <CardTitle className="text-2sm font-normal">
                             Next Follow-up

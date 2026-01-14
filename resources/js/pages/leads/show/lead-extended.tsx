@@ -15,11 +15,11 @@ export function LeadExtended({ lead }: { lead: Lead }) {
                         variant="line"
                         className="inline-flex w-max min-w-full gap-4 bg-transparent px-4 sm:gap-6 sm:px-5"
                     >
-                        <TabsTrigger value="details" className="gap-1.5">
+                        <TabsTrigger value="details" className="min-h-[44px] gap-1.5">
                             <Building2 className="h-3.5 w-3.5" />
                             Details
                         </TabsTrigger>
-                        <TabsTrigger value="comments" className="gap-1.5">
+                        <TabsTrigger value="comments" className="min-h-[44px] gap-1.5">
                             <MessagesSquare className="h-3.5 w-3.5" />
                             Comments
                             <Badge variant="secondary" className="h-5 px-1.5 text-xs">
@@ -31,7 +31,7 @@ export function LeadExtended({ lead }: { lead: Lead }) {
                 </ScrollArea>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-12rem)] w-full flex-1 lg:h-[calc(100vh-12rem)]">
+            <ScrollArea className="h-[calc(100vh-12rem)] w-full flex-1 touch-pan-y overscroll-contain lg:h-[calc(100vh-12rem)]">
                 <div className="px-4 py-4 sm:px-5">
                     <TabsContent value="details" className="mt-0">
                         <LeadExtendedDetails lead={lead} />

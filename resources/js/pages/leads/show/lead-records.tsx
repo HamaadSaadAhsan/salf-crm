@@ -31,32 +31,32 @@ export function LeadRecords({ lead, users = [] }: Props) {
                 <ScrollArea className="w-full">
                     <TabsList
                         variant="line"
-                        className="inline-flex w-max min-w-full gap-1 bg-transparent px-3 sm:02 sm:px-5 [&_button]:border-b [&_button]:text-secondary-foreground [&_button_svg]:size-4"
+                        className="inline-flex w-max min-w-full gap-0.5 bg-transparent px-2 sm:gap-1 sm:px-5 [&_button]:border-b [&_button]:text-secondary-foreground [&_button_svg]:size-4"
                     >
-                        <TabsTrigger value="overview" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="overview" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Grid2x2Check className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Overview</span>
                         </TabsTrigger>
-                        <TabsTrigger value="activity" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="activity" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Activity className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Activity</span>
                         </TabsTrigger>
-                        <TabsTrigger value="notes" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="notes" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <GalleryVerticalEnd className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Notes</span>
                         </TabsTrigger>
-                        <TabsTrigger value="tasks" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="tasks" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <ListTodo className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Tasks</span>
                             <Badge variant="secondary" className="h-5 px-1.5 text-xs">
                                 3
                             </Badge>
                         </TabsTrigger>
-                        <TabsTrigger value="calls" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="calls" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Phone className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Calls</span>
                         </TabsTrigger>
-                        <TabsTrigger value="files" className="gap-1 px-2 sm:gap-1.5 sm:px-3">
+                        <TabsTrigger value="files" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Bell className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Files</span>
                         </TabsTrigger>
@@ -65,7 +65,7 @@ export function LeadRecords({ lead, users = [] }: Props) {
                 </ScrollArea>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-12rem)] w-full">
+            <ScrollArea className="h-[calc(100vh-12rem)] w-full touch-pan-y overscroll-contain">
                 <div className="px-3 py-3 sm:px-5 sm:py-4">
                     <TabsContent value="overview" className="mt-0">
                         <LeadRecordsOverview lead={lead} users={users} />

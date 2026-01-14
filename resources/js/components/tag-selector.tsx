@@ -1,8 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { ResponsiveSelect, useResponsiveSelectStyles } from '@/components/responsive-select';
 import { useOptimisticLeadUpdate } from '@/hooks/useLead';
 import { cn } from '@/lib/utils';
 import { Lead } from '@/types/lead';
@@ -77,7 +76,7 @@ export function TagSelector({
 }: TagSelectorProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const portalContainer = usePortalContainer();
+    const { isMobile, itemClassName, listClassName, inputClassName, inputWrapperClassName } = useResponsiveSelectStyles();
     const { mutate: updateLead } = useOptimisticLeadUpdate();
     const queryClient = useQueryClient();
 
@@ -134,62 +133,63 @@ export function TagSelector({
                         </Button>
                     </Badge>
                 ))}
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
+                <ResponsiveSelect
+                    open={open}
+                    onOpenChange={setOpen}
+                    trigger={
                         <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={open}
-                            className="h-6 justify-between border-transparent text-black hover:border-border/80 hover:text-foreground dark:bg-gray-800 dark:text-white"
+                            className={cn(
+                                'h-6 justify-between border-transparent text-black hover:border-border/80 hover:text-foreground dark:bg-gray-800 dark:text-white',
+                                isMobile && 'h-9 px-3',
+                            )}
                         >
                             Add tag
                             <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                        align="start"
-                        container={portalContainer}
-                        className="w-[min(200px,calc(100vw-2rem))] p-0"
-                        avoidCollisions={true}
-                        collisionPadding={16}
-                    >
-                        <Command shouldFilter={true}>
-                            <CommandInput placeholder="Search tags..." className="h-9" />
-                            <CommandList className="max-h-[min(300px,50vh)] touch-pan-y overscroll-contain">
-                                <CommandEmpty className="p-3 text-center text-sm">No tag found.</CommandEmpty>
-                                <CommandGroup>
-                                    {availableTagsFiltered.map((tag) => (
-                                        <CommandItem
-                                            key={tag.value}
-                                            value={tag.label}
-                                            onSelect={() => handleSelectTag(tag.value)}
-                                            className="min-h-[44px] cursor-pointer sm:min-h-0"
-                                        >
-                                            <div
-                                                className={cn(
-                                                    'mr-2 h-3 w-3 rounded-full',
-                                                    tag.color?.includes('yellow') && 'bg-yellow-500',
-                                                    tag.color?.includes('red') && 'bg-red-500',
-                                                    tag.color?.includes('green') && 'bg-green-500',
-                                                    tag.color?.includes('gray') && 'bg-gray-500',
-                                                    tag.color?.includes('blue') && 'bg-blue-500',
-                                                    !tag.color && 'bg-muted',
-                                                )}
-                                            />
-                                            {tag.label}
-                                            <Check
-                                                className={cn(
-                                                    'ml-auto',
-                                                    selectedTags.find((t) => t.value === tag.value) ? 'opacity-100' : 'opacity-0',
-                                                )}
-                                            />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                    }
+                    title="Add Tags"
+                    contentClassName={isMobile ? 'w-full' : 'w-[min(200px,calc(100vw-2rem))]'}
+                >
+                    <Command shouldFilter={true} className={inputWrapperClassName}>
+                        <CommandInput placeholder="Search tags..." className={inputClassName} />
+                        <CommandList className={cn(listClassName, 'touch-pan-y overscroll-contain')}>
+                            <CommandEmpty className="p-3 text-center text-sm">No tag found.</CommandEmpty>
+                            <CommandGroup>
+                                {availableTagsFiltered.map((tag) => (
+                                    <CommandItem
+                                        key={tag.value}
+                                        value={tag.label}
+                                        onSelect={() => handleSelectTag(tag.value)}
+                                        className={cn(itemClassName, 'gap-2')}
+                                    >
+                                        <div
+                                            className={cn(
+                                                'h-3 w-3 rounded-full',
+                                                isMobile && 'h-4 w-4',
+                                                tag.color?.includes('yellow') && 'bg-yellow-500',
+                                                tag.color?.includes('red') && 'bg-red-500',
+                                                tag.color?.includes('green') && 'bg-green-500',
+                                                tag.color?.includes('gray') && 'bg-gray-500',
+                                                tag.color?.includes('blue') && 'bg-blue-500',
+                                                !tag.color && 'bg-muted',
+                                            )}
+                                        />
+                                        {tag.label}
+                                        <Check
+                                            className={cn(
+                                                'ml-auto h-4 w-4',
+                                                selectedTags.find((t) => t.value === tag.value) ? 'opacity-100' : 'opacity-0',
+                                            )}
+                                        />
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </ResponsiveSelect>
             </div>
         </div>
     );

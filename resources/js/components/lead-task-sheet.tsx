@@ -15,6 +15,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { ResponsiveSelect, useResponsiveSelectStyles } from '@/components/responsive-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Select,
@@ -32,6 +33,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { User } from '@/types';
 import { Task } from '@/types/task';
@@ -99,6 +101,8 @@ export function LeadTaskSheet({
     const isCRO = userRole === 'support-agent' || userRole === 'senior-support-agent';
     const isAdvisor = userRole === 'sales-rep';
     const canAssignUsers = userRole === 'senior-support-agent' || userRole === 'super-admin';
+    const isMobile = useIsMobile();
+    const { itemClassName, listClassName, inputClassName, inputWrapperClassName } = useResponsiveSelectStyles();
 
     // Filter collaborators - CROs can only add other CROs as collaborators
     const availableCollaborators = useMemo(() => {
@@ -240,7 +244,13 @@ export function LeadTaskSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5">
+            <SheetContent className={cn(
+                'p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5',
+                // Full-screen on mobile, rounded sheet on desktop
+                isMobile
+                    ? 'inset-0 h-full w-full rounded-none'
+                    : 'inset-5 start-auto h-auto rounded-lg',
+            )}>
                 <SheetHeader className="border-b border-border px-5 py-3.5">
                     <SheetTitle className="flex items-center gap-2.5">
                         <Clock className="size-4 text-primary" />
@@ -362,7 +372,7 @@ export function LeadTaskSheet({
                                                             <Button
                                                                 key={time}
                                                                 type="button"
-                                                                variant={dueTime === time ? 'default' : 'outline'}
+                                                                variant={dueTime === time ? 'primary' : 'outline'}
                                                                 size="sm"
                                                                 className="w-full"
                                                                 onClick={() => setDueTime(time)}
@@ -460,14 +470,19 @@ export function LeadTaskSheet({
                                         )}
 
                                         {/* Searchable combobox */}
-                                        <Popover open={collaboratorsOpen} onOpenChange={setCollaboratorsOpen}>
-                                            <PopoverTrigger asChild>
+                                        <ResponsiveSelect
+                                            open={collaboratorsOpen}
+                                            onOpenChange={setCollaboratorsOpen}
+                                            trigger={
                                                 <Button
                                                     type="button"
                                                     variant="outline"
                                                     role="combobox"
                                                     aria-expanded={collaboratorsOpen}
-                                                    className="w-full justify-between font-normal"
+                                                    className={cn(
+                                                        'w-full justify-between font-normal',
+                                                        isMobile && 'h-11',
+                                                    )}
                                                 >
                                                     <span className="text-muted-foreground">
                                                         {selectedCollaborators.length > 0
@@ -476,44 +491,49 @@ export function LeadTaskSheet({
                                                     </span>
                                                     <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
                                                 </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[calc(var(--radix-popover-trigger-width))] p-0" align="start">
-                                                <Command shouldFilter={false}>
-                                                    <CommandInput
-                                                        placeholder="Search collaborators..."
-                                                        value={collaboratorSearch}
-                                                        onValueChange={setCollaboratorSearch}
-                                                    />
-                                                    <CommandList>
-                                                        <CommandEmpty>No collaborators found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {filteredCollaborators.map((user) => {
-                                                                const isSelected = formData.collaborators.includes(user.id);
-                                                                return (
-                                                                    <CommandItem
-                                                                        key={user.id}
-                                                                        value={user.name}
-                                                                        onSelect={() => toggleCollaborator(user.id)}
-                                                                        className="cursor-pointer"
-                                                                    >
-                                                                        <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
-                                                                            {user.name.charAt(0).toUpperCase()}
-                                                                        </span>
-                                                                        <span className="flex-1">{user.name}</span>
-                                                                        <Check
-                                                                            className={cn(
-                                                                                'size-4 shrink-0',
-                                                                                isSelected ? 'opacity-100' : 'opacity-0'
-                                                                            )}
-                                                                        />
-                                                                    </CommandItem>
-                                                                );
-                                                            })}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
+                                            }
+                                            title="Add Collaborators"
+                                            contentClassName={isMobile ? 'w-full' : 'w-[calc(var(--radix-popover-trigger-width))]'}
+                                        >
+                                            <Command shouldFilter={false} className={inputWrapperClassName}>
+                                                <CommandInput
+                                                    placeholder="Search collaborators..."
+                                                    value={collaboratorSearch}
+                                                    onValueChange={setCollaboratorSearch}
+                                                    className={inputClassName}
+                                                />
+                                                <CommandList className={listClassName}>
+                                                    <CommandEmpty>No collaborators found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {filteredCollaborators.map((user) => {
+                                                            const isSelected = formData.collaborators.includes(user.id);
+                                                            return (
+                                                                <CommandItem
+                                                                    key={user.id}
+                                                                    value={user.name}
+                                                                    onSelect={() => toggleCollaborator(user.id)}
+                                                                    className={cn(itemClassName, 'gap-2')}
+                                                                >
+                                                                    <span className={cn(
+                                                                        'flex items-center justify-center rounded-full bg-primary/10 font-medium text-primary',
+                                                                        isMobile ? 'size-7 text-xs' : 'size-5 text-[10px]',
+                                                                    )}>
+                                                                        {user.name.charAt(0).toUpperCase()}
+                                                                    </span>
+                                                                    <span className="flex-1">{user.name}</span>
+                                                                    <Check
+                                                                        className={cn(
+                                                                            'size-4 shrink-0',
+                                                                            isSelected ? 'opacity-100' : 'opacity-0'
+                                                                        )}
+                                                                    />
+                                                                </CommandItem>
+                                                            );
+                                                        })}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </ResponsiveSelect>
                                     </div>
                                 </div>
                             )}

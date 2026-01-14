@@ -40,10 +40,10 @@ export function LeadPage({ lead, users = [] }: Props) {
 
             {/* Floating action button to open sidebar when hidden */}
             {hideLeadDetails && (
-                <div className="fixed bottom-6 right-6 z-40">
+                <div className="fixed bottom-6 right-6 z-40 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
                     <Button
                         size="lg"
-                        className="h-14 w-14 rounded-full shadow-lg"
+                        className="h-14 w-14 rounded-full shadow-lg active:scale-95 transition-transform"
                         onClick={() => setSidebarOpen(true)}
                     >
                         <PanelRight className="h-6 w-6" />
