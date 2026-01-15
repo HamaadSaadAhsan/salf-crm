@@ -69,9 +69,9 @@ class LeadResource extends JsonResource
             'raw_updated_at' => $this->updated_at->toDateTimeString(),
 
             // Additional data for detail view
-            'activities' => LeadActivityResource::collection($this->whenLoaded('activities')),
+            'activities' => $this->whenLoaded('activities', fn () => LeadActivityResource::collection($this->activities)),
             //            'notes' => LeadNoteResource::collection($this->whenLoaded('notes')),
-            'tasks' => TaskResource::collection($this->whenLoaded('tasks')),
+            'tasks' => $this->whenLoaded('tasks', fn () => TaskResource::collection($this->tasks)),
             'next_task' => $this->whenLoaded('tasks', function () {
                 $task = $this->tasks->first();
                 if (! $task) {

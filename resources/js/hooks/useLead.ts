@@ -1,6 +1,6 @@
 import { LeadsAPI } from '@/lib/api/leads';
 import axios from '@/lib/axios';
-import { Lead, LeadFilters, Meta } from '@/types/lead';
+import { Lead, LeadActivity, LeadFilters, Meta } from '@/types/lead';
 import { ApiResponse } from '@/types/user';
 import { router } from '@inertiajs/react';
 import { InfiniteQueryObserverBaseResult } from '@tanstack/query-core';
@@ -769,6 +769,122 @@ export function useInfiniteLeadAllActivities(leadId: string | null) {
             const httpError = error as Error & { status?: number };
             if (httpError?.status && httpError.status >= 400 && httpError.status < 500) return false;
             return failureCount < 2;
+        },
+    });
+}
+
+// LEAD NOTES - Fetch notes (type='note') with pagination
+export function useLeadNotes(leadId: string | null, page: number = 1, perPage: number = 12) {
+    const apiClient = useApiClient();
+
+    return useQuery({
+        queryKey: ['lead-notes', leadId, page, perPage],
+        queryFn: async () => {
+            if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
+
+            const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
+                params: {
+                    lead_id: leadId,
+                    type: 'note',
+                    page,
+                    per_page: perPage,
+                },
+            });
+            return response.data;
+        },
+        enabled: !!leadId && !!apiClient,
+        staleTime: DEFAULT_STALE_TIME,
+        gcTime: DEFAULT_GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+// LEAD ACTIVITIES - Latest 5 for overview
+export function useLeadActivitiesLatest(leadId: string | null, limit: number = 5) {
+    const apiClient = useApiClient();
+
+    return useQuery({
+        queryKey: ['lead-activities', 'latest', leadId, limit],
+        queryFn: async () => {
+            if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
+
+            const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
+                params: {
+                    lead_id: leadId,
+                    per_page: limit,
+                    page: 1,
+                },
+            });
+            return response.data;
+        },
+        enabled: !!leadId && !!apiClient,
+        staleTime: DEFAULT_STALE_TIME,
+        gcTime: DEFAULT_GC_TIME,
+        refetchOnWindowFocus: false,
+        select: (data) => data?.data || [],
+    });
+}
+
+// LEAD ACTIVITIES - Month summary with server-side pagination
+export interface MonthGroup {
+    month: string;
+    month_label: string;
+    total: number;
+    loaded: number;
+    has_more: boolean;
+    activities: LeadActivity[];
+}
+
+export interface MonthSummaryResponse {
+    data: MonthGroup[];
+    meta: {
+        total_months: number;
+        total_activities: number;
+    };
+}
+
+export function useLeadActivitiesMonthSummary(leadId: string | null, perMonth: number = 5) {
+    const apiClient = useApiClient();
+
+    return useQuery<MonthSummaryResponse>({
+        queryKey: ['lead-activities', 'month-summary', leadId, perMonth],
+        queryFn: async () => {
+            if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
+
+            const response = await axios.get(`${apiClient.baseURL}/leads/${leadId}/activities/month-summary`, {
+                params: { per_month: perMonth },
+            });
+            return response.data;
+        },
+        enabled: !!leadId && !!apiClient,
+        staleTime: DEFAULT_STALE_TIME,
+        gcTime: DEFAULT_GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+// Fetch more activities for a specific month
+export function useLoadMoreMonthActivities(leadId: string | null) {
+    const apiClient = useApiClient();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ month, page }: { month: string; page: number }) => {
+            if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
+
+            const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
+                params: {
+                    lead_id: leadId,
+                    month,
+                    page,
+                    per_page: 5,
+                },
+            });
+            return { month, data: response.data };
+        },
+        onSuccess: () => {
+            // Invalidate to refresh the month summary
+            void queryClient.invalidateQueries({ queryKey: ['lead-activities', 'month-summary', leadId] });
         },
     });
 }

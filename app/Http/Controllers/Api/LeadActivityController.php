@@ -100,10 +100,13 @@ class LeadActivityController extends Controller
     {
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
+            'month' => 'nullable|date_format:Y-m',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
         $query = LeadActivity::where('lead_id', $request->lead_id)
-            ->with(['user', 'lead']);
+            ->with(['user:id,name,email,avatar']);
 
         // Filter by type if provided
         if ($request->has('type') && $request->type) {
@@ -120,10 +123,66 @@ class LeadActivityController extends Controller
             }
         }
 
+        // Filter by month if provided (YYYY-MM format)
+        if ($request->has('month') && $request->month) {
+            $year = substr($request->month, 0, 4);
+            $month = substr($request->month, 5, 2);
+
+            $query->whereYear('created_at', $year)
+                ->whereMonth('created_at', $month);
+        }
+
         $activities = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 10));
+            ->paginate($request->get('per_page', 5));
 
         return LeadActivityResource::collection($activities);
+    }
+
+    /**
+     * Get activities grouped by month with counts
+     */
+    public function monthSummary(Request $request, Lead $lead)
+    {
+        $request->validate([
+            'per_month' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $perMonth = $request->get('per_month', 5);
+
+        // Get all activities grouped by month
+        $activities = LeadActivity::where('lead_id', $lead->id)
+            ->select('id', 'lead_id', 'user_id', 'status', 'created_at', 'subject', 'description', 'notes', 'duration_minutes', 'category', 'type', 'attachments', 'metadata')
+            ->with(['user:id,name,email,avatar'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Group by month
+        $grouped = $activities->groupBy(function ($activity) {
+            return \Carbon\Carbon::parse($activity->created_at)->format('Y-m');
+        });
+
+        // Build response with limited items per month
+        $response = $grouped->map(function ($monthActivities, $monthKey) use ($perMonth) {
+            $total = $monthActivities->count();
+            $items = $monthActivities->take($perMonth);
+
+            return [
+                'month' => $monthKey,
+                'month_label' => \Carbon\Carbon::parse($monthKey.'-01')->format('F Y'),
+                'total' => $total,
+                'loaded' => $items->count(),
+                'has_more' => $total > $perMonth,
+                'activities' => LeadActivityResource::collection($items),
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $response,
+            'meta' => [
+                'total_months' => $grouped->count(),
+                'total_activities' => $activities->count(),
+            ],
+        ]);
     }
 
     public function update(Request $request, LeadActivity $activity)

@@ -23,12 +23,14 @@ interface LeadRecordsOverviewNotesProps {
     activities?: LeadActivity[];
     leadId: string;
     onAddNote?: () => void;
+    onViewAll?: () => void;
 }
 
 export function LeadRecordsOverviewNotes({
     activities = [],
     leadId,
     onAddNote,
+    onViewAll,
 }: LeadRecordsOverviewNotesProps) {
     const [isNotesOpen, setIsNotesOpen] = React.useState(true);
 
@@ -204,8 +206,12 @@ export function LeadRecordsOverviewNotes({
                                     })}
                                 </ul>
                                 <div className="flex justify-start">
-                                    <Button mode="link" underline="solid" asChild>
-                                        <Link href="#">View all</Link>
+                                    <Button
+                                        mode="link"
+                                        underline="solid"
+                                        onClick={onViewAll}
+                                    >
+                                        View all
                                     </Button>
                                 </div>
                             </>

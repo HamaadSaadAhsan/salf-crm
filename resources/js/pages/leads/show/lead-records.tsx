@@ -71,13 +71,18 @@ export function LeadRecords({ lead, users = [] }: Props) {
             <ScrollArea className="h-[calc(100vh-12rem)] w-full touch-pan-y overscroll-contain">
                 <div className="px-3 py-3 sm:px-5 sm:py-4">
                     <TabsContent value="overview" className="mt-0">
-                        <LeadRecordsOverview lead={lead} users={users} onViewAllActivity={() => setActiveTab('activity')} />
+                        <LeadRecordsOverview
+                            lead={lead}
+                            users={users}
+                            onViewAllActivity={() => setActiveTab('activity')}
+                            onViewAllNotes={() => setActiveTab('notes')}
+                        />
                     </TabsContent>
                     <TabsContent value="activity" className="mt-0">
-                        <LeadRecordsActivity activities={lead.activities?.data || []} />
+                        <LeadRecordsActivity leadId={lead.id} />
                     </TabsContent>
                     <TabsContent value="notes" className="mt-0">
-                        <LeadRecordsNotes />
+                        <LeadRecordsNotes leadId={lead.id} />
                     </TabsContent>
                     <TabsContent value="tasks" className="mt-0">
                         <LeadRecordsTasks />

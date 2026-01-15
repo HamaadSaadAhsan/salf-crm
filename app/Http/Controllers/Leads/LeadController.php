@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Laravel\Scout\Builder;
 use Throwable;
@@ -691,12 +692,7 @@ class LeadController extends Controller
                         'assignedTo:id,name,email',
                         'assignedTo.roles:id,name,guard_name',
                         'createdBy:id,name',
-                        'activities' => function ($query) {
-                            $query->select('id', 'lead_id', 'user_id', 'status', 'created_at', 'description', 'category', 'type', 'attachments')
-                                ->with('user:id,name,email')
-                                ->orderBy('created_at', 'desc')
-                                ->limit(5);
-                        },
+                        // Activities are loaded via API for server-side pagination
                         'tasks' => function ($query) {
                             $query->with([
                                 'assignedTo:id,name,email',
@@ -870,6 +866,11 @@ class LeadController extends Controller
         }
 
         try {
+            // Build allowed inquiry statuses - include assigned_to_advisor only if lead already has it
+            $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
+            if ($lead->inquiry_status === 'assigned_to_advisor') {
+                $allowedStatuses[] = 'assigned_to_advisor';
+            }
 
             $validated = $request->validate([
                 'name' => 'sometimes|string|max:255',
@@ -880,7 +881,7 @@ class LeadController extends Controller
                 'country' => 'sometimes|string|max:100',
                 'detail' => 'sometimes|string',
                 'status' => 'sometimes|string|in:new,contacted,qualified,lost,converted',
-                'inquiry_status' => 'sometimes|string|in:new,assigned_to_cro,contacted,qualified,proposal,converted,won,lost,unqualified,requalify,nurturing', // Note: assigned_to_advisor is auto-assigned by system
+                'inquiry_status' => ['sometimes', 'string', Rule::in($allowedStatuses)], // Note: assigned_to_advisor is auto-assigned by system, only allowed if already set
 
                 // Validate IDs for relations
                 'service_id' => 'sometimes|nullable|exists:services,id',

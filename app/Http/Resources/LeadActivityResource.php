@@ -40,8 +40,8 @@ class LeadActivityResource extends JsonResource
             'time_until_due' => $this->time_until_due,
 
             // Relationships
-            'user' => UserResource::make($this->whenLoaded('user')),
-            'lead' => LeadResource::make($this->whenLoaded('lead')),
+            'user' => $this->whenLoaded('user', fn () => UserResource::make($this->user)),
+            'lead' => $this->whenLoaded('lead', fn () => LeadResource::make($this->lead)),
 
             // Timestamps
             'scheduled_at' => $this->scheduled_at?->toISOString(),

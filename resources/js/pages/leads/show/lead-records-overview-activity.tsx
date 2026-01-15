@@ -17,6 +17,7 @@ type TimeFilter = 'today' | 'week' | 'month' | 'year';
 
 interface LeadRecordsOverviewActivityProps {
     activities?: LeadActivity[];
+    isLoading?: boolean;
     onViewAll?: () => void;
 }
 
@@ -24,6 +25,7 @@ const ITEMS_PER_MONTH = 3;
 
 export function LeadRecordsOverviewActivity({
     activities = [],
+    isLoading = false,
     onViewAll,
 }: LeadRecordsOverviewActivityProps) {
     const [isActivityOpen, setIsActivityOpen] = React.useState(true);
@@ -174,7 +176,17 @@ export function LeadRecordsOverviewActivity({
 
                 <Card className="shadow-none">
                     <CardContent className="space-y-3 p-3.5">
-                        {filteredActivities.length === 0 ? (
+                        {isLoading ? (
+                            <div className="space-y-3">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex items-center gap-2 animate-pulse">
+                                        <div className="size-6 rounded-full bg-muted" />
+                                        <div className="h-4 bg-muted rounded flex-1 max-w-[200px]" />
+                                        <div className="h-3 bg-muted rounded w-16 ml-auto" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : filteredActivities.length === 0 ? (
                             <div className="text-muted-foreground py-8 text-center text-sm">
                                 No activity for this period
                             </div>

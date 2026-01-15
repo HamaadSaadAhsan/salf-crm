@@ -10,24 +10,29 @@ import {
     ClipboardList,
     UserCheck,
     RefreshCw,
+    Loader2,
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import { formatDistanceToNow, parseISO, format } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { LeadActivity } from '@/types/lead';
-
-const ITEMS_PER_MONTH = 5;
+import { useLeadActivitiesMonthSummary, useLoadMoreMonthActivities, MonthGroup } from '@/hooks/useLead';
 
 interface LeadRecordsActivityProps {
-    activities?: LeadActivity[];
+    leadId: string;
 }
 
-export function LeadRecordsActivity({ activities = [] }: LeadRecordsActivityProps) {
+export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-    const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
     const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+    const [loadedPages, setLoadedPages] = useState<Record<string, number>>({});
+    const [additionalActivities, setAdditionalActivities] = useState<Record<string, LeadActivity[]>>({});
+
+    // Fetch activities grouped by month via API
+    const { data: monthSummary, isLoading, error } = useLeadActivitiesMonthSummary(leadId, 5);
+    const loadMoreMutation = useLoadMoreMonthActivities(leadId);
 
     const getInitials = (name: string) => {
         return name
@@ -99,53 +104,85 @@ export function LeadRecordsActivity({ activities = [] }: LeadRecordsActivityProp
         }
     };
 
-    // Group activities by month
-    const groupedByMonth = activities.reduce((acc, activity) => {
-        const date = parseISO(activity.created_at);
-        const monthKey = format(date, 'MMMM yyyy');
-        if (!acc[monthKey]) {
-            acc[monthKey] = [];
+    const handleSeeMore = async (monthGroup: MonthGroup) => {
+        const currentPage = loadedPages[monthGroup.month] || 1;
+        const nextPage = currentPage + 1;
+
+        try {
+            const result = await loadMoreMutation.mutateAsync({
+                month: monthGroup.month,
+                page: nextPage,
+            });
+
+            // Append new activities to the existing ones
+            setAdditionalActivities((prev) => ({
+                ...prev,
+                [monthGroup.month]: [...(prev[monthGroup.month] || []), ...(result.data?.data || [])],
+            }));
+
+            setLoadedPages((prev) => ({
+                ...prev,
+                [monthGroup.month]: nextPage,
+            }));
+        } catch (error) {
+            console.error('Failed to load more activities:', error);
         }
-        acc[monthKey].push(activity);
-        return acc;
-    }, {} as Record<string, LeadActivity[]>);
+    };
 
-    // Sort activities within each month by date (newest first)
-    Object.keys(groupedByMonth).forEach((monthKey) => {
-        groupedByMonth[monthKey].sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    const getVisibleActivities = (monthGroup: MonthGroup): LeadActivity[] => {
+        const baseActivities = monthGroup.activities || [];
+        const additional = additionalActivities[monthGroup.month] || [];
+        return [...baseActivities, ...additional];
+    };
+
+    const getRemainingCount = (monthGroup: MonthGroup): number => {
+        const loaded = getVisibleActivities(monthGroup).length;
+        return Math.max(0, monthGroup.total - loaded);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="w-full px-2 sm:px-0">
+                <h2 className="text-sm font-semibold mb-6">Activity</h2>
+                <div className="space-y-6">
+                    {[...Array(2)].map((_, monthIdx) => (
+                        <div key={monthIdx} className="space-y-4">
+                            <div className="flex items-center gap-2 animate-pulse">
+                                <div className="size-4 rounded bg-muted" />
+                                <div className="h-4 bg-muted rounded w-24" />
+                                <Separator className="flex-1" />
+                            </div>
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="flex items-start gap-3 animate-pulse ml-4">
+                                    <div className="size-6 rounded-full bg-muted" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-4 bg-muted rounded w-3/4" />
+                                        <div className="h-3 bg-muted rounded w-1/2" />
+                                    </div>
+                                    <div className="h-3 bg-muted rounded w-16" />
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
         );
-    });
-
-    // Sort months by date (newest first)
-    const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => {
-        const dateA = parseISO(groupedByMonth[a][0].created_at);
-        const dateB = parseISO(groupedByMonth[b][0].created_at);
-        return dateB.getTime() - dateA.getTime();
-    });
-
-    // Initialize expanded state for all months
-    if (sortedMonths.length > 0 && Object.keys(expanded).length === 0) {
-        const initialExpanded: Record<string, boolean> = {};
-        sortedMonths.forEach((month) => {
-            initialExpanded[month] = true;
-        });
-        setExpanded(initialExpanded);
     }
 
-    const handleSeeMore = (monthKey: string) => {
-        setVisibleCounts((prev) => ({
-            ...prev,
-            [monthKey]: (prev[monthKey] || ITEMS_PER_MONTH) + ITEMS_PER_MONTH,
-        }));
-    };
+    if (error) {
+        return (
+            <div className="w-full px-2 sm:px-0">
+                <h2 className="text-sm font-semibold mb-6">Activity</h2>
+                <div className="text-destructive py-12 text-center text-sm">
+                    Failed to load activities. Please try again.
+                </div>
+            </div>
+        );
+    }
 
-    const getVisibleActivities = (monthKey: string) => {
-        const count = visibleCounts[monthKey] || ITEMS_PER_MONTH;
-        return groupedByMonth[monthKey].slice(0, count);
-    };
+    const monthGroups = monthSummary?.data || [];
 
-    if (activities.length === 0) {
+    if (monthGroups.length === 0) {
         return (
             <div className="w-full px-2 sm:px-0">
                 <h2 className="text-sm font-semibold mb-6">Activity</h2>
@@ -160,21 +197,22 @@ export function LeadRecordsActivity({ activities = [] }: LeadRecordsActivityProp
         <div className="w-full px-2 sm:px-0">
             <h2 className="text-sm font-semibold mb-6">Activity</h2>
 
-            {sortedMonths.map((month, monthIndex) => {
-                const monthActivities = groupedByMonth[month];
-                const visibleActivities = getVisibleActivities(month);
-                const hasMore = monthActivities.length > visibleActivities.length;
-                const isExpanded = expanded[month] ?? true;
+            {monthGroups.map((monthGroup, monthIndex) => {
+                const visibleActivities = getVisibleActivities(monthGroup);
+                const remainingCount = getRemainingCount(monthGroup);
+                const hasMore = remainingCount > 0;
+                const isExpanded = expanded[monthGroup.month] ?? true;
+                const isLoadingMore = loadMoreMutation.isPending && loadMoreMutation.variables?.month === monthGroup.month;
 
                 return (
-                    <div key={month} className="relative mb-10">
+                    <div key={monthGroup.month} className="relative mb-10">
                         <button
                             className="flex items-center justify-between w-full gap-0.5 cursor-pointer text-xs font-medium text-muted-foreground mb-5 focus:outline-none select-none"
                             onClick={() =>
-                                setExpanded((prev) => ({ ...prev, [month]: !prev[month] }))
+                                setExpanded((prev) => ({ ...prev, [monthGroup.month]: !prev[monthGroup.month] }))
                             }
                             aria-expanded={isExpanded}
-                            aria-controls={`timeline-group-${month}`}
+                            aria-controls={`timeline-group-${monthGroup.month}`}
                             type="button"
                         >
                             <div className="flex items-center gap-2 shrink-0">
@@ -183,7 +221,8 @@ export function LeadRecordsActivity({ activities = [] }: LeadRecordsActivityProp
                                 ) : (
                                     <CalendarRange className="size-4 z-10" />
                                 )}
-                                {month}
+                                {monthGroup.month_label}
+                                <span className="text-muted-foreground/60">({monthGroup.total})</span>
                             </div>
 
                             <Separator className="flex-1 mx-0.5" />
@@ -273,9 +312,17 @@ export function LeadRecordsActivity({ activities = [] }: LeadRecordsActivityProp
                                         variant="ghost"
                                         size="sm"
                                         className="ml-8 text-xs text-muted-foreground"
-                                        onClick={() => handleSeeMore(month)}
+                                        onClick={() => handleSeeMore(monthGroup)}
+                                        disabled={isLoadingMore}
                                     >
-                                        See more ({monthActivities.length - visibleActivities.length} remaining)
+                                        {isLoadingMore ? (
+                                            <>
+                                                <Loader2 className="size-3 mr-1 animate-spin" />
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            `See more (${remainingCount} remaining)`
+                                        )}
                                     </Button>
                                 )}
                             </div>
