@@ -1,6 +1,6 @@
-import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X } from 'lucide-react';
+import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X, ChevronsUpDown, Check, Globe } from 'lucide-react';
 import { InlineEdit } from '@/components/inline-edit';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import TagInput from '@/components/tag-input';
 import axios from 'axios';
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CustomFields, Lead, LeadStatus } from '@/types/lead';
+import { ResponsiveSelect } from '@/components/responsive-select';
+import { useCountryOptions, useCityOptions } from '@/hooks/useLocation';
 
 type TagValue = string | { label: string; value: string; color?: string };
 
@@ -22,6 +24,153 @@ type Status = {
     order: number;
 };
 
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+
+// Statuses where city/country should not be editable
+const QUALIFIED_STATUSES: LeadStatus[] = ['qualified', 'proposal', 'converted', 'won'];
+
+// CountrySelect component
+function CountrySelect({
+    value,
+    options,
+    isLoading,
+    onSelect,
+}: {
+    value: string;
+    options: Array<{ value: string; label: string }>;
+    isLoading: boolean;
+    onSelect: (value: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const selectedLabel = options.find(o => o.value === value)?.label || '';
+
+    return (
+        <ResponsiveSelect
+            open={open}
+            onOpenChange={setOpen}
+            title="Select Country"
+            trigger={
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto min-h-[24px] justify-start px-0 py-0 text-sm font-normal hover:bg-transparent"
+                    disabled={isLoading}
+                >
+                    {isLoading ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                    ) : value ? (
+                        selectedLabel || value
+                    ) : (
+                        <span className="text-muted-foreground">Select country</span>
+                    )}
+                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+            }
+        >
+            <Command>
+                <CommandInput placeholder="Search country..." />
+                <CommandList>
+                    <CommandEmpty>No country found.</CommandEmpty>
+                    <CommandGroup>
+                        {options.map((option) => (
+                            <CommandItem
+                                key={option.value}
+                                value={option.label}
+                                onSelect={() => {
+                                    onSelect(option.value);
+                                    setOpen(false);
+                                }}
+                            >
+                                <Check
+                                    className={cn(
+                                        'mr-2 h-4 w-4',
+                                        value === option.value ? 'opacity-100' : 'opacity-0',
+                                    )}
+                                />
+                                {option.label}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </ResponsiveSelect>
+    );
+}
+
+// CitySelect component
+function CitySelect({
+    value,
+    options,
+    isLoading,
+    disabled,
+    onSelect,
+}: {
+    value: string;
+    options: Array<{ value: string; label: string }>;
+    isLoading: boolean;
+    disabled?: boolean;
+    onSelect: (value: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const selectedLabel = options.find(o => o.value === value)?.label || '';
+
+    if (disabled) {
+        return <span className="text-sm text-muted-foreground">Select country first</span>;
+    }
+
+    return (
+        <ResponsiveSelect
+            open={open}
+            onOpenChange={setOpen}
+            title="Select City"
+            trigger={
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto min-h-[24px] justify-start px-0 py-0 text-sm font-normal hover:bg-transparent"
+                    disabled={isLoading}
+                >
+                    {isLoading ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                    ) : value ? (
+                        selectedLabel || value
+                    ) : (
+                        <span className="text-muted-foreground">Select city</span>
+                    )}
+                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+            }
+        >
+            <Command>
+                <CommandInput placeholder="Search city..." />
+                <CommandList>
+                    <CommandEmpty>No city found.</CommandEmpty>
+                    <CommandGroup>
+                        {options.map((option) => (
+                            <CommandItem
+                                key={option.value}
+                                value={option.label}
+                                onSelect={() => {
+                                    onSelect(option.value);
+                                    setOpen(false);
+                                }}
+                            >
+                                <Check
+                                    className={cn(
+                                        'mr-2 h-4 w-4',
+                                        value === option.value ? 'opacity-100' : 'opacity-0',
+                                    )}
+                                />
+                                {option.label}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </ResponsiveSelect>
+    );
+}
+
 export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLeadUpdated?: () => void }) {
     const [model, setModel] = useState<Lead>(lead);
     const [tags, setTags] = useState<TagValue[]>(lead.tags ?? []);
@@ -31,6 +180,15 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const [isLeadInfoOpen, setIsLeadInfoOpen] = useState(true);
     const [isAdditionalOpen, setIsAdditionalOpen] = useState(false);
     const [newCustomFieldKey, setNewCustomFieldKey] = useState('');
+
+    // Location hooks for countries and cities
+    const { options: countryOptions, isLoading: isLoadingCountries } = useCountryOptions();
+    const { options: cityOptions, isLoading: isLoadingCities } = useCityOptions(model.country || null);
+
+    // Check if lead is qualified (city/country should not be editable)
+    const isQualified = useMemo(() => {
+        return model.inquiry_status ? QUALIFIED_STATUSES.includes(model.inquiry_status) : false;
+    }, [model.inquiry_status]);
 
     // Sync local state when lead prop changes (e.g., after Inertia reload)
     useEffect(() => {
@@ -403,21 +561,46 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             </div>
                         </div>
 
+                        {/* Country */}
+                        <div className="flex items-start gap-2 text-sm">
+                            <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Country</span>
+                                {isQualified ? (
+                                    <span className="text-sm">{countryOptions.find(c => c.value === model.country)?.label || model.country || '—'}</span>
+                                ) : (
+                                    <CountrySelect
+                                        value={model.country ?? ''}
+                                        options={countryOptions}
+                                        isLoading={isLoadingCountries}
+                                        onSelect={(v) => {
+                                            // Clear city when country changes
+                                            if (v !== model.country) {
+                                                saveField('city', null);
+                                            }
+                                            saveField('country', v || null);
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
                         {/* City */}
                         <div className="flex items-start gap-2 text-sm">
                             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">City</span>
-                                <InlineEdit value={model.city ?? ''} placeholder="Add city" onSave={(v) => saveField('city', v || null)} />
-                            </div>
-                        </div>
-
-                        {/* Country */}
-                        <div className="flex items-start gap-2 text-sm">
-                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                            <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Country</span>
-                                <InlineEdit value={model.country ?? ''} placeholder="Add country" onSave={(v) => saveField('country', v || null)} />
+                                {isQualified ? (
+                                    <span className="text-sm">{model.city || '—'}</span>
+                                ) : (
+                                    <CitySelect
+                                        value={model.city ?? ''}
+                                        options={cityOptions}
+                                        isLoading={isLoadingCities}
+                                        disabled={!model.country}
+                                        onSelect={(v) => saveField('city', v || null)}
+                                    />
+                                )}
                             </div>
                         </div>
 

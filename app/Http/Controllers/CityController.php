@@ -22,6 +22,13 @@ class CityController extends Controller
             $query->where('province_id', $request->province_id);
         }
 
+        if ($request->filled('country_code')) {
+            $query->whereHas('province.country', function ($q) use ($request) {
+                $q->where('code', $request->country_code)
+                    ->orWhere('iso2', $request->country_code);
+            });
+        }
+
         $cities = $query->orderBy('name')
             ->get()
             ->map(function ($city) {
