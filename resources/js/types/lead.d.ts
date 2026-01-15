@@ -122,6 +122,8 @@ export interface LeadActivity {
     status: string;
     subject: string;
     description: string | null;
+    notes?: string | null;
+    duration_minutes?: number | null;
     user?: User | { data?: User };
     metadata?: Record<string, any>;
     attachments?: Array<{

@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { ChevronRight, GalleryVerticalEnd, Plus } from 'lucide-react';
+import { ChevronRight, GalleryVerticalEnd, Phone, Plus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -69,6 +70,31 @@ export function LeadRecordsOverviewNotes({
         }
     };
 
+    const formatDuration = (minutes?: number | null) => {
+        if (!minutes) return null;
+
+        if (minutes < 60) {
+            return `${minutes}m`;
+        }
+
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    };
+
+    const getNoteContent = (activity: LeadActivity) => {
+        // For call notes, use the 'notes' field if available
+        if (activity.type === 'call') {
+            return activity.notes || activity.description || 'No call notes recorded';
+        }
+        // For regular notes, use description
+        return activity.description || 'This note has no content';
+    };
+
+    const isCallNote = (activity: LeadActivity) => {
+        return activity.type === 'call';
+    };
+
     return (
         <Collapsible
             className="space-y-2"
@@ -112,9 +138,12 @@ export function LeadRecordsOverviewNotes({
                                 <ul className="flex flex-col gap-2.5">
                                     {sortedNotes.map((activity) => {
                                         const user = getUserData(activity);
+                                        const callNote = isCallNote(activity);
+                                        const duration = formatDuration(activity.duration_minutes);
+
                                         return (
-                                            <li key={activity.id} className="flex items-center gap-1.5 text-sm">
-                                                <Avatar className="size-6">
+                                            <li key={activity.id} className="flex items-start gap-1.5 text-sm">
+                                                <Avatar className="size-6 shrink-0">
                                                     {user?.avatar && (
                                                         <AvatarImage
                                                             src={user.avatar}
@@ -125,21 +154,51 @@ export function LeadRecordsOverviewNotes({
                                                         {user ? getInitials(user.name) : '?'}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <Link
-                                                    href="#"
-                                                    className="font-medium text-foreground hover:text-primary w-[100px] shrink-0"
-                                                >
-                                                    {user?.name || 'Unknown'}
-                                                </Link>
-                                                <Link href="#" className="font-medium hover:text-primary">
-                                                    {activity.subject || 'Untitled note'}
-                                                </Link>
-                                                <span className="text-muted-foreground">
-                                                    {activity.description || 'This note has no content'}
-                                                </span>
-                                                <span className="ml-auto text-xs text-muted-foreground">
-                                                    {formatTimeAgo(activity.created_at)}
-                                                </span>
+
+                                                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <Link
+                                                            href="#"
+                                                            className="font-medium text-foreground hover:text-primary shrink-0"
+                                                        >
+                                                            {user?.name || 'Unknown'}
+                                                        </Link>
+
+                                                        {callNote && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="gap-1 text-xs shrink-0"
+                                                            >
+                                                                <Phone className="size-3" />
+                                                                Call note
+                                                            </Badge>
+                                                        )}
+
+                                                        {duration && (
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="text-xs shrink-0"
+                                                            >
+                                                                {duration}
+                                                            </Badge>
+                                                        )}
+
+                                                        <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                                                            {formatTimeAgo(activity.created_at)}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="text-muted-foreground break-words">
+                                                        <Link
+                                                            href="#"
+                                                            className="font-medium text-foreground hover:text-primary"
+                                                        >
+                                                            {activity.subject || (callNote ? 'Call note' : 'Note')}
+                                                        </Link>
+                                                        {' - '}
+                                                        {getNoteContent(activity)}
+                                                    </div>
+                                                </div>
                                             </li>
                                         );
                                     })}
