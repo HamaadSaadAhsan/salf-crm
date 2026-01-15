@@ -364,6 +364,15 @@ class LeadObserver
             return 'Not set';
         }
 
+        // Handle custom fields with human-readable formatting
+        if ($field === 'custom_fields') {
+            // Ensure value is an array (it might be a JSON string from getDirty())
+            $customFieldsArray = is_string($value) ? json_decode($value, true) : $value;
+            if (is_array($customFieldsArray)) {
+                return $this->formatCustomFieldsForDisplay($customFieldsArray);
+            }
+        }
+
         if (is_array($value)) {
             return json_encode($value);
         }
@@ -403,6 +412,41 @@ class LeadObserver
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Format custom fields array for human-readable display
+     */
+    private function formatCustomFieldsForDisplay(array $customFields): string
+    {
+        if (empty($customFields)) {
+            return 'Not set';
+        }
+
+        $formatted = [];
+
+        foreach ($customFields as $key => $value) {
+            // Convert snake_case to Title Case
+            $label = ucwords(str_replace('_', ' ', $key));
+
+            // Format the value based on type
+            if (is_array($value)) {
+                // Handle array values (like multi-select fields)
+                $formattedValue = implode(', ', array_map(function ($item) {
+                    return is_array($item) ? json_encode($item) : (string) $item;
+                }, $value));
+            } elseif (is_bool($value)) {
+                $formattedValue = $value ? 'Yes' : 'No';
+            } elseif (is_null($value)) {
+                $formattedValue = 'Not set';
+            } else {
+                $formattedValue = (string) $value;
+            }
+
+            $formatted[] = "{$label}: {$formattedValue}";
+        }
+
+        return implode(', ', $formatted);
     }
 
     /**
