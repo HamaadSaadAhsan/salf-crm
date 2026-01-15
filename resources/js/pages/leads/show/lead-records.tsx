@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,8 +25,10 @@ type Props = {
 };
 
 export function LeadRecords({ lead, users = [] }: Props) {
+    const [activeTab, setActiveTab] = React.useState('overview');
+
     return (
-        <Tabs defaultValue="overview" className="flex grow flex-col text-sm">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex grow flex-col text-sm">
             {/* Scrollable tabs container for mobile */}
             <div className="border-b border-border">
                 <ScrollArea className="w-full">
@@ -68,10 +71,10 @@ export function LeadRecords({ lead, users = [] }: Props) {
             <ScrollArea className="h-[calc(100vh-12rem)] w-full touch-pan-y overscroll-contain">
                 <div className="px-3 py-3 sm:px-5 sm:py-4">
                     <TabsContent value="overview" className="mt-0">
-                        <LeadRecordsOverview lead={lead} users={users} />
+                        <LeadRecordsOverview lead={lead} users={users} onViewAllActivity={() => setActiveTab('activity')} />
                     </TabsContent>
                     <TabsContent value="activity" className="mt-0">
-                        <LeadRecordsActivity />
+                        <LeadRecordsActivity activities={lead.activities?.data || []} />
                     </TabsContent>
                     <TabsContent value="notes" className="mt-0">
                         <LeadRecordsNotes />

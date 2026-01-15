@@ -11,9 +11,10 @@ type UserRole = 'support-agent' | 'senior-support-agent' | 'super-admin';
 type Props = {
     lead: Lead;
     users?: User[];
+    onViewAllActivity?: () => void;
 };
 
-export function LeadRecordsOverview({ lead, users = [] }: Props) {
+export function LeadRecordsOverview({ lead, users = [], onViewAllActivity }: Props) {
     const allActivities = lead.activities?.data || [];
     const tasks = lead.tasks?.data || [];
     const {props: {auth:{user}}} = usePage<SharedData>();
@@ -29,8 +30,8 @@ export function LeadRecordsOverview({ lead, users = [] }: Props) {
     return (
         <div className="space-y-6">
             <LeadRecordsOverviewHighlights lead={lead} />
-            <LeadRecordsOverviewActivity activities={activities} />
-            <LeadRecordsOverviewNotes />
+            <LeadRecordsOverviewActivity activities={activities} onViewAll={onViewAllActivity} />
+            <LeadRecordsOverviewNotes activities={allActivities} leadId={lead.id} />
             <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} users={users} currentUserId={user.id} userRole={userRole}/>
         </div>
     );
