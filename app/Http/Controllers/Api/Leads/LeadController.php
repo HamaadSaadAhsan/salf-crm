@@ -769,7 +769,7 @@ class LeadController extends Controller
                 'city' => 'sometimes|string|max:100',
                 'country' => 'sometimes|string|max:100',
                 'detail' => 'sometimes|string',
-                'inquiry_status' => 'sometimes|string|exists:statuses,name',
+                'inquiry_status' => 'sometimes|string|in:new,assigned_to_cro,contacted,qualified,proposal,converted,won,lost,unqualified,requalify,nurturing', // Note: assigned_to_advisor is auto-assigned by system
 
                 // Validate nested objects
                 'service' => 'sometimes|nullable|array',

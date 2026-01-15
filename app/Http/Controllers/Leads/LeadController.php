@@ -880,7 +880,7 @@ class LeadController extends Controller
                 'country' => 'sometimes|string|max:100',
                 'detail' => 'sometimes|string',
                 'status' => 'sometimes|string|in:new,contacted,qualified,lost,converted',
-                'inquiry_status' => 'sometimes|string|exists:statuses,name',
+                'inquiry_status' => 'sometimes|string|in:new,assigned_to_cro,contacted,qualified,proposal,converted,won,lost,unqualified,requalify,nurturing', // Note: assigned_to_advisor is auto-assigned by system
 
                 // Validate IDs for relations
                 'service_id' => 'sometimes|nullable|exists:services,id',
