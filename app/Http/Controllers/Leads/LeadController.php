@@ -877,9 +877,10 @@ class LeadController extends Controller
                 'email' => 'sometimes|email|max:255',
                 'phone' => 'sometimes|string|max:50',
                 'occupation' => 'sometimes|string|max:100',
-                'city' => 'sometimes|string|max:100',
-                'country' => 'sometimes|string|max:100',
-                'detail' => 'sometimes|string',
+                'city' => 'sometimes|nullable|string|max:100',
+                'country' => 'sometimes|nullable|string|max:100',
+                'detail' => 'sometimes|nullable|string',
+                'priority' => 'sometimes|nullable|string|in:low,medium,high,urgent',
                 'status' => 'sometimes|string|in:new,contacted,qualified,lost,converted',
                 'inquiry_status' => ['sometimes', 'string', Rule::in($allowedStatuses)], // Note: assigned_to_advisor is auto-assigned by system, only allowed if already set
 
