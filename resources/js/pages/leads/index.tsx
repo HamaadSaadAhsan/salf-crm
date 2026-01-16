@@ -21,11 +21,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
-import type { Lead } from '@/types/lead';
+import type { Lead, LeadActivity } from '@/types/lead';
 import { Head, router, usePage } from '@inertiajs/react';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import OptimizedLeadRow from './components/LeadRow';
 import { NewLeadSheet } from './components/NewLeadSheet';
 import '../../../css/leads.css'
@@ -241,6 +243,44 @@ export default function LeadsInterface() {
     const [selectAllChecked, setSelectAllChecked] = useState(false);
     const [isNewLeadSheetOpen, setIsNewLeadSheetOpen] = useState(false);
 
+    // Calculate most recent activity from all leads
+    const lastActivity = useMemo<{ text: string; activity: LeadActivity | null }>(() => {
+        if (!Array.isArray(leads) || leads.length === 0) {
+            return { text: 'No recent activity', activity: null };
+        }
+
+        // Find the lead with the most recent activity
+        let mostRecentLead: Lead | null = null;
+        let mostRecentTime: Date | null = null;
+
+        for (const lead of leads) {
+            if (lead.last_activity_at) {
+                const activityTime = new Date(lead.last_activity_at);
+                if (!mostRecentTime || activityTime > mostRecentTime) {
+                    mostRecentTime = activityTime;
+                    mostRecentLead = lead;
+                }
+            }
+        }
+
+        if (!mostRecentLead || !mostRecentTime) {
+            return { text: 'No recent activity', activity: null };
+        }
+
+        // Get the most recent activity from that lead
+        const activities = mostRecentLead.activities?.data || [];
+        const mostRecentActivity = activities.length > 0
+            ? activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+            : null;
+
+        try {
+            const text = formatDistanceToNow(parseISO(mostRecentLead.last_activity_at!), { addSuffix: true });
+            return { text, activity: mostRecentActivity };
+        } catch {
+            return { text: 'No recent activity', activity: null };
+        }
+    }, [leads]);
+
     // Selection management
     const { selectedItems, toggleItem, toggleAll, clearSelection, selectedCount } = useSelection();
 
@@ -433,8 +473,35 @@ export default function LeadsInterface() {
                                     {selectedCount > 0 && <span>{selectedCount} selected</span>}
                                 </div>
                                 <div className="flex items-center">
-                                    <span>Last activity: 17 minutes ago</span>
-                                    <button className="ml-2 text-blue-600 hover:underline">Details</button>
+                                    {lastActivity.activity ? (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="cursor-help">Last activity: {lastActivity.text}</span>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-xs">
+                                                    <div className="space-y-1">
+                                                        <div className="font-semibold">{lastActivity.activity.subject}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Type: {lastActivity.activity.type}
+                                                        </div>
+                                                        {lastActivity.activity.description && (
+                                                            <div className="text-xs">{lastActivity.activity.description}</div>
+                                                        )}
+                                                        {lastActivity.activity.user && (
+                                                            <div className="text-xs text-muted-foreground">
+                                                                By: {'data' in lastActivity.activity.user && lastActivity.activity.user.data
+                                                                    ? lastActivity.activity.user.data.name
+                                                                    : lastActivity.activity.user.name}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    ) : (
+                                        <span>Last activity: {lastActivity.text}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>

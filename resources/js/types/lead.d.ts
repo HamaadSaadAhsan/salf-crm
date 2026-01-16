@@ -54,7 +54,7 @@ export type Status = {
     name: LeadStatus;
 };
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'proposal' | 'won' | 'lost' | 'nurturing';
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'proposal' | 'won' | 'lost' | 'nurturing' | 'converted';
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 

@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Lead } from '@/types/lead';
 import { IconBrandFacebook, IconBrandGoogle, IconBrandLinkedin } from '@tabler/icons-react';
 import {
+    Activity,
     Archive,
     ChevronDownCircleIcon,
     ChevronRightCircleIcon,
@@ -414,10 +415,10 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 <LeadLabels hasAttachment={lead.has_attachment} labels={lead.tags} />
             </div>
 
-            {/* Message Count - Hidden on mobile/tablet */}
+            {/* Activity Count - Hidden on mobile/tablet */}
             <div className="hidden items-center justify-center gap-1 md:flex" role="gridcell">
-                <MessageSquare className="text-gray-500" size={14} />
-                <span className="text-xs text-gray-500">12</span>
+                <Activity className="text-gray-500" size={14} />
+                <span className="text-xs text-gray-500">{lead.activities?.data?.length || 0}</span>
             </div>
 
             {/* Time - Hidden on mobile/tablet */}

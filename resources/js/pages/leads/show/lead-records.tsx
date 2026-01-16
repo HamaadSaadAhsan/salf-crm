@@ -27,6 +27,16 @@ type Props = {
 export function LeadRecords({ lead, users = [] }: Props) {
     const [activeTab, setActiveTab] = React.useState('overview');
 
+    const pendingTasksCount = React.useMemo(() => {
+        const tasks = lead.tasks?.data || [];
+        return tasks.filter(task => !task.is_completed).length;
+    }, [lead.tasks]);
+
+    const activitiesCount = React.useMemo(() => {
+        const activities = lead.activities?.data || [];
+        return activities.length;
+    }, [lead.activities]);
+
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex grow flex-col text-sm">
             {/* Scrollable tabs container for mobile */}
@@ -43,6 +53,11 @@ export function LeadRecords({ lead, users = [] }: Props) {
                         <TabsTrigger value="activity" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Activity className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Activity</span>
+                            {activitiesCount > 0 && (
+                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                                    {activitiesCount}
+                                </Badge>
+                            )}
                         </TabsTrigger>
                         <TabsTrigger value="notes" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <GalleryVerticalEnd className="h-4 w-4" />
@@ -51,9 +66,11 @@ export function LeadRecords({ lead, users = [] }: Props) {
                         <TabsTrigger value="tasks" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <ListTodo className="h-4 w-4" />
                             <span className="hidden xs:inline sm:inline">Tasks</span>
-                            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                                3
-                            </Badge>
+                            {pendingTasksCount > 0 && (
+                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                                    {pendingTasksCount}
+                                </Badge>
+                            )}
                         </TabsTrigger>
                         <TabsTrigger value="calls" className="min-h-[44px] gap-1.5 px-3 sm:gap-1.5 sm:px-3">
                             <Phone className="h-4 w-4" />
@@ -85,7 +102,7 @@ export function LeadRecords({ lead, users = [] }: Props) {
                         <LeadRecordsNotes leadId={lead.id} />
                     </TabsContent>
                     <TabsContent value="tasks" className="mt-0">
-                        <LeadRecordsTasks />
+                        <LeadRecordsTasks lead={lead} users={users} />
                     </TabsContent>
                     <TabsContent value="calls" className="mt-0">
                         <LeadRecordsCalls leadId={lead.id} />

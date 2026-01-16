@@ -17,6 +17,11 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import type { LeadActivity } from '@/types/lead';
 import { useLeadActivitiesMonthSummary, useLoadMoreMonthActivities, MonthGroup } from '@/hooks/useLead';
 
@@ -26,7 +31,7 @@ interface LeadRecordsActivityProps {
 
 export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-    const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+    const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number|string, boolean>>({});
     const [loadedPages, setLoadedPages] = useState<Record<string, number>>({});
     const [additionalActivities, setAdditionalActivities] = useState<Record<string, LeadActivity[]>>({});
 
@@ -201,40 +206,44 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                 const visibleActivities = getVisibleActivities(monthGroup);
                 const remainingCount = getRemainingCount(monthGroup);
                 const hasMore = remainingCount > 0;
-                const isExpanded = expanded[monthGroup.month] ?? true;
+                const isExpanded = expanded[monthGroup.month] ?? (monthIndex === 0);
                 const isLoadingMore = loadMoreMutation.isPending && loadMoreMutation.variables?.month === monthGroup.month;
 
                 return (
-                    <div key={monthGroup.month} className="relative mb-10">
-                        <button
-                            className="flex items-center justify-between w-full gap-0.5 cursor-pointer text-xs font-medium text-muted-foreground mb-5 focus:outline-none select-none"
-                            onClick={() =>
-                                setExpanded((prev) => ({ ...prev, [monthGroup.month]: !prev[monthGroup.month] }))
-                            }
-                            aria-expanded={isExpanded}
-                            aria-controls={`timeline-group-${monthGroup.month}`}
-                            type="button"
-                        >
-                            <div className="flex items-center gap-2 shrink-0">
-                                {monthIndex === 0 ? (
-                                    <CalendarClock className="size-4 z-10" />
-                                ) : (
-                                    <CalendarRange className="size-4 z-10" />
-                                )}
-                                {monthGroup.month_label}
-                                <span className="text-muted-foreground/60">({monthGroup.total})</span>
-                            </div>
-
-                            <Separator className="flex-1 mx-0.5" />
-
-                            <span
-                                className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+                    <Collapsible
+                        key={monthGroup.month}
+                        open={isExpanded}
+                        onOpenChange={(open) =>
+                            setExpanded((prev) => ({ ...prev, [monthGroup.month]: open }))
+                        }
+                        className="relative mb-10"
+                    >
+                        <CollapsibleTrigger asChild>
+                            <button
+                                className="flex items-center justify-between w-full gap-0.5 cursor-pointer text-xs font-medium text-muted-foreground mb-5 focus:outline-none select-none hover:text-foreground transition-colors"
+                                type="button"
                             >
-                                <ChevronDown className="size-4" />
-                            </span>
-                        </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {monthIndex === 0 ? (
+                                        <CalendarClock className="size-4 z-10" />
+                                    ) : (
+                                        <CalendarRange className="size-4 z-10" />
+                                    )}
+                                    {monthGroup.month_label}
+                                    <span className="text-muted-foreground/60">({monthGroup.total})</span>
+                                </div>
 
-                        <div className={`${isExpanded ? 'block' : 'hidden'} relative`}>
+                                <Separator className="flex-1 mx-0.5" />
+
+                                <span
+                                    className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+                                >
+                                    <ChevronDown className="size-4" />
+                                </span>
+                            </button>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent className="relative">
                             <div className="space-y-5">
                                 {visibleActivities.map((activity, itemIdx) => {
                                     const user = getUserData(activity);
@@ -326,8 +335,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                     </Button>
                                 )}
                             </div>
-                        </div>
-                    </div>
+                        </CollapsibleContent>
+                    </Collapsible>
                 );
             })}
         </div>

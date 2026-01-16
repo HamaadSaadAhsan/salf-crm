@@ -42,6 +42,7 @@ class CountrySeeder extends Seeder
             // Asia Pacific
             ['name' => 'China', 'code' => 'CHN', 'iso2' => 'CN', 'phone_code' => '+86', 'currency' => 'CNY', 'currency_symbol' => '¥', 'is_active' => true],
             ['name' => 'Japan', 'code' => 'JPN', 'iso2' => 'JP', 'phone_code' => '+81', 'currency' => 'JPY', 'currency_symbol' => '¥', 'is_active' => true],
+            ['name' => 'Pakistan', 'code' => 'PAK', 'iso2' => 'PK', 'phone_code' => '+92', 'currency' => 'PKR', 'currency_symbol' => '₨', 'is_active' => true],
             ['name' => 'Singapore', 'code' => 'SGP', 'iso2' => 'SG', 'phone_code' => '+65', 'currency' => 'SGD', 'currency_symbol' => '$', 'is_active' => true],
             ['name' => 'Australia', 'code' => 'AUS', 'iso2' => 'AU', 'phone_code' => '+61', 'currency' => 'AUD', 'currency_symbol' => '$', 'is_active' => true],
 

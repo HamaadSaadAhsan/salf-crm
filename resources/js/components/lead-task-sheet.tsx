@@ -17,13 +17,7 @@ import {
 } from '@/components/ui/popover';
 import { ResponsiveSelect, useResponsiveSelectStyles } from '@/components/responsive-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Sheet,
     SheetBody,
@@ -39,7 +33,7 @@ import { User } from '@/types';
 import { Task } from '@/types/task';
 import { router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { CalendarIcon, Check, ChevronsUpDown, Clock, Mail, Phone, Users as UsersIcon, X } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, Mail, Phone, Users as UsersIcon, X, Clock } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -57,7 +51,6 @@ interface LeadTaskSheetProps {
 }
 
 const TASK_TYPES = [
-    { value: 'follow_up', label: 'Follow Up', icon: Clock, color: 'text-blue-500' },
     { value: 'call', label: 'Call', icon: Phone, color: 'text-green-500' },
     { value: 'email', label: 'Email', icon: Mail, color: 'text-cyan-500' },
     { value: 'meeting', label: 'Meeting', icon: UsersIcon, color: 'text-orange-500' },
@@ -118,7 +111,7 @@ export function LeadTaskSheet({
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        type: 'follow_up',
+        type: '',
         priority: 'medium',
         status: 'pending',
         assigned_to_id: null as string | number | null,
@@ -244,13 +237,13 @@ export function LeadTaskSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className={cn(
-                'p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5',
-                // Full-screen on mobile, rounded sheet on desktop
-                isMobile
-                    ? 'inset-0 h-full w-full rounded-none'
-                    : 'inset-5 start-auto h-auto rounded-lg',
-            )}>
+            <SheetContent
+                className={cn(
+                    'p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5',
+                    // Full-screen on mobile, rounded sheet on desktop
+                    isMobile ? 'inset-0 h-full w-full rounded-none' : 'inset-5 start-auto h-auto rounded-lg',
+                )}
+            >
                 <SheetHeader className="border-b border-border px-5 py-3.5">
                     <SheetTitle className="flex items-center gap-2.5">
                         <Clock className="size-4 text-primary" />
@@ -279,36 +272,33 @@ export function LeadTaskSheet({
                             {/* Type & Priority Row */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="type">Type</Label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={(value) => setFormData({ ...formData, type: value })}
-                                    >
+                                    <Label htmlFor="type">Type (Optional)</Label>
+                                    <Select value={formData.type || undefined} onValueChange={(value) => setFormData({ ...formData, type: value })}>
                                         <SelectTrigger id="type">
-                                            <SelectValue placeholder="Select type" />
+                                            <SelectValue placeholder="Select type (optional)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {TASK_TYPES.map((type) => {
-                                                const Icon = type.icon;
-                                                return (
-                                                    <SelectItem key={type.value} value={type.value}>
-                                                        <span className="flex items-center gap-2">
-                                                            <Icon className={cn('size-4', type.color)} />
-                                                            {type.label}
-                                                        </span>
-                                                    </SelectItem>
-                                                );
-                                            })}
+                                            <SelectGroup>
+                                                <SelectLabel>Types</SelectLabel>
+                                                {TASK_TYPES.map((type) => {
+                                                    const Icon = type.icon;
+                                                    return (
+                                                        <SelectItem key={type.value} value={type.value}>
+                                                            <span className="flex items-center gap-2">
+                                                                <Icon className={cn('size-4', type.color)} />
+                                                                {type.label}
+                                                            </span>
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="priority">Priority</Label>
-                                    <Select
-                                        value={formData.priority}
-                                        onValueChange={(value) => setFormData({ ...formData, priority: value })}
-                                    >
+                                    <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
                                         <SelectTrigger id="priority">
                                             <SelectValue placeholder="Select priority" />
                                         </SelectTrigger>
@@ -337,15 +327,11 @@ export function LeadTaskSheet({
                                             className={cn(
                                                 'w-full justify-start text-left font-normal',
                                                 !dueDate && 'text-muted-foreground',
-                                                errors.due_at && 'border-destructive'
+                                                errors.due_at && 'border-destructive',
                                             )}
                                         >
                                             <CalendarIcon className="mr-2 size-4" />
-                                            {dueDate ? (
-                                                `${format(dueDate, 'PPP')} at ${dueTime}`
-                                            ) : (
-                                                'Pick date and time'
-                                            )}
+                                            {dueDate ? `${format(dueDate, 'PPP')} at ${dueTime}` : 'Pick date and time'}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
@@ -362,10 +348,8 @@ export function LeadTaskSheet({
                                                 disabled={[{ before: new Date() }]}
                                                 className="p-3"
                                             />
-                                            <div className="border-t p-3 sm:border-l sm:border-t-0">
-                                                <p className="mb-2 text-sm font-medium">
-                                                    {dueDate ? format(dueDate, 'EEE, MMM d') : 'Select time'}
-                                                </p>
+                                            <div className="border-t p-3 sm:border-t-0 sm:border-l">
+                                                <p className="mb-2 text-sm font-medium">{dueDate ? format(dueDate, 'EEE, MMM d') : 'Select time'}</p>
                                                 <ScrollArea className="h-48">
                                                     <div className="grid grid-cols-2 gap-1.5">
                                                         {TIME_SLOTS.map((time) => (
@@ -393,10 +377,7 @@ export function LeadTaskSheet({
                             {isEditMode && (
                                 <div className="space-y-2">
                                     <Label htmlFor="status">Status</Label>
-                                    <Select
-                                        value={formData.status}
-                                        onValueChange={(value) => setFormData({ ...formData, status: value })}
-                                    >
+                                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                                         <SelectTrigger id="status">
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
@@ -479,10 +460,7 @@ export function LeadTaskSheet({
                                                     variant="outline"
                                                     role="combobox"
                                                     aria-expanded={collaboratorsOpen}
-                                                    className={cn(
-                                                        'w-full justify-between font-normal',
-                                                        isMobile && 'h-11',
-                                                    )}
+                                                    className={cn('w-full justify-between font-normal', isMobile && 'h-11')}
                                                 >
                                                     <span className="text-muted-foreground">
                                                         {selectedCollaborators.length > 0
@@ -514,18 +492,17 @@ export function LeadTaskSheet({
                                                                     onSelect={() => toggleCollaborator(user.id)}
                                                                     className={cn(itemClassName, 'gap-2')}
                                                                 >
-                                                                    <span className={cn(
-                                                                        'flex items-center justify-center rounded-full bg-primary/10 font-medium text-primary',
-                                                                        isMobile ? 'size-7 text-xs' : 'size-5 text-[10px]',
-                                                                    )}>
+                                                                    <span
+                                                                        className={cn(
+                                                                            'flex items-center justify-center rounded-full bg-primary/10 font-medium text-primary',
+                                                                            isMobile ? 'size-7 text-xs' : 'size-5 text-[10px]',
+                                                                        )}
+                                                                    >
                                                                         {user.name.charAt(0).toUpperCase()}
                                                                     </span>
                                                                     <span className="flex-1">{user.name}</span>
                                                                     <Check
-                                                                        className={cn(
-                                                                            'size-4 shrink-0',
-                                                                            isSelected ? 'opacity-100' : 'opacity-0'
-                                                                        )}
+                                                                        className={cn('size-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')}
                                                                     />
                                                                 </CommandItem>
                                                             );
@@ -554,12 +531,7 @@ export function LeadTaskSheet({
                 </SheetBody>
 
                 <SheetFooter className="flex items-center justify-end gap-2 border-t border-border px-5 py-3.5">
-                    <Button
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        type="button"
-                        disabled={processing}
-                    >
+                    <Button variant="outline" onClick={() => onOpenChange(false)} type="button" disabled={processing}>
                         Cancel
                     </Button>
                     <Button type="submit" form="task-form" disabled={processing}>
