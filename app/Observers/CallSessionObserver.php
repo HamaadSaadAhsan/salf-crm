@@ -43,6 +43,28 @@ class CallSessionObserver
                         ],
                     ]);
 
+                    // Create follow-up task for the assignee
+                    $assignedUserId = $lead->assigned_to ?? $callSession->caller_id;
+                    if ($assignedUserId) {
+                        LeadActivity::create([
+                            'lead_id' => $lead->id,
+                            'user_id' => $assignedUserId,
+                            'type' => 'follow_up',
+                            'status' => 'pending',
+                            'subject' => 'Follow up on contacted lead',
+                            'description' => 'Lead has been contacted via outbound call. Schedule follow-up call or meeting to continue the conversation.',
+                            'scheduled_at' => now()->addDays(2),
+                            'due_at' => now()->addDays(3),
+                            'priority' => $lead->priority === 'urgent' ? 'urgent' : 'medium',
+                            'category' => 'follow_up',
+                            'metadata' => [
+                                'triggered_by' => 'outbound_call_answered',
+                                'call_session_id' => $callSession->id,
+                                'session_id' => $callSession->session_id,
+                            ],
+                        ]);
+                    }
+
                     Log::info('Lead status automatically updated to contacted (outbound call)', [
                         'lead_id' => $lead->id,
                         'previous_status' => $previousStatus,
