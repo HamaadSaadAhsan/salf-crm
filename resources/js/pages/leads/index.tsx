@@ -30,6 +30,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import OptimizedLeadRow from './components/LeadRow';
 import { NewLeadSheet } from './components/NewLeadSheet';
+import { FollowUpBanner } from '@/components/follow-up-banner';
 import '../../../css/leads.css'
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -243,6 +244,25 @@ export default function LeadsInterface() {
     const [selectAllChecked, setSelectAllChecked] = useState(false);
     const [isNewLeadSheetOpen, setIsNewLeadSheetOpen] = useState(false);
 
+    // Collect all pending follow-up activities
+    const pendingFollowUps = useMemo<LeadActivity[]>(() => {
+        if (!Array.isArray(leads) || leads.length === 0) {
+            return [];
+        }
+
+        const allActivities: LeadActivity[] = [];
+        for (const lead of leads) {
+            const activities = lead.activities?.data || [];
+            for (const activity of activities) {
+                if (activity.status === 'pending' && activity.type === 'follow_up') {
+                    allActivities.push({ ...activity, lead_id: lead.id });
+                }
+            }
+        }
+
+        return allActivities;
+    }, [leads]);
+
     // Calculate most recent activity from all leads
     const lastActivity = useMemo<{ text: string; activity: LeadActivity | null }>(() => {
         if (!Array.isArray(leads) || leads.length === 0) {
@@ -418,6 +438,13 @@ export default function LeadsInterface() {
                 <div className="flex flex-1 overflow-hidden">
                     {/* Main Content */}
                     <div className="flex-1 overflow-hidden p-4">
+                        {/* Follow-up Banner */}
+                        {pendingFollowUps.length > 0 && (
+                            <div className="mb-4">
+                                <FollowUpBanner activities={pendingFollowUps} />
+                            </div>
+                        )}
+
                         <div className="flex h-full flex-col rounded-lg shadow-sm dark:border">
                             {/* Toolbar */}
                             <div className="flex items-center justify-between px-4 py-2">

@@ -119,12 +119,16 @@ export interface User {
 
 export interface LeadActivity {
     id: string;
+    lead_id?: string;
     type: string;
     status: string;
     subject: string;
     description: string | null;
     notes?: string | null;
     duration_minutes?: number | null;
+    category?: string;
+    due_at?: string;
+    scheduled_at?: string;
     user?: User | { data?: User };
     metadata?: Record<string, any>;
     attachments?: Array<{
