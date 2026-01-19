@@ -151,7 +151,7 @@ class LeadController extends Controller
             'assignedTo:id,name,email',
             'createdBy:id,name',
             'activities' => function ($query) {
-                $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'created_at', 'description', 'category', 'attachments')
+                $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'subject', 'created_at', 'description', 'category', 'attachments')
                     ->with('user:id,name,email')
                     ->latest()
                     ->limit(5);
@@ -392,7 +392,7 @@ class LeadController extends Controller
                 'assignedTo:id,name,email',
                 'createdBy:id,name',
                 'activities' => function ($query) {
-                    $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'created_at', 'description', 'attachments')
+                    $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'subject', 'created_at', 'description', 'attachments')
                         ->latest()
                         ->limit(5);
                 },
@@ -974,7 +974,7 @@ class LeadController extends Controller
                             'assignedTo:id,name,email',
                             'createdBy:id,name',
                             'activities' => function ($query) {
-                                $query->select('id', 'lead_id', 'user_id', 'status', 'created_at', 'description', 'category', 'type', 'attachments')
+                                $query->select('id', 'lead_id', 'user_id', 'status', 'subject', 'created_at', 'description', 'category', 'type', 'attachments')
                                     ->with('user:id,name,email')
                                     ->orderBy('created_at', 'desc')
                                     ->limit(5);

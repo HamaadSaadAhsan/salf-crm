@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import type { CustomFields, Lead, LeadStatus } from '@/types/lead';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { useCountryOptions, useCityOptions } from '@/hooks/useLocation';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 
 type TagValue = string | { label: string; value: string; color?: string };
 
@@ -342,6 +343,16 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr;
             return formatDate(d);
+        } catch {
+            return dateStr;
+        }
+    };
+
+    // Helper to format relative time (e.g., "2 hours ago")
+    const formatRelativeTime = (dateStr: string | null) => {
+        if (!dateStr) return '—';
+        try {
+            return formatDistanceToNow(parseISO(dateStr), { addSuffix: true });
         } catch {
             return dateStr;
         }
@@ -706,7 +717,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                 <Activity className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Last Activity</span>
-                                    <span className="text-sm">{formatDateTime(model.last_activity_at)}</span>
+                                    <span className="text-sm">{formatRelativeTime(model.last_activity_at)}</span>
                                 </div>
                             </div>
                         )}
