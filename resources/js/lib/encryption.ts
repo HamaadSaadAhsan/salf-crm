@@ -10,7 +10,7 @@ import crypto from 'crypto';
 // Encryption configuration
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // For AES, this is always 16 bytes
-const AUTH_TAG_LENGTH = 16; // For GCM mode
+const _AUTH_TAG_LENGTH = 16; // For GCM mode
 
 /**
  * Encrypt a token using AES-256-GCM

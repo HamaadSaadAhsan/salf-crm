@@ -1,9 +1,8 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { useNotificationSound, type NotificationSoundType } from './useNotificationSound';
 import { type Task } from '@/types/task';
-import { differenceInMinutes, differenceInHours, isPast, parseISO } from 'date-fns';
+import { differenceInMinutes, isPast, parseISO } from 'date-fns';
 
 interface TaskReminderOptions {
     enabled?: boolean;

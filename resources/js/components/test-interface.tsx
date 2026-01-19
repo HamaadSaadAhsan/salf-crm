@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Search, Info, ChevronRight, Loader2, ArrowRightIcon, ChevronRightIcon } from 'lucide-react'
+import { Loader2, ChevronRightIcon } from 'lucide-react'
 import { Workflow } from '@/types/workflow'
 import axios from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -29,7 +28,7 @@ export default function TestInterface({ workflow, currentTrigger }: TestInterfac
     [workflow.steps, currentTrigger]
   )
 
-  const actionSteps = useMemo(() => 
+  const _actionSteps = useMemo(() =>
     workflow.steps.filter(s => s.step_type === 'action'),
     [workflow.steps]
   )

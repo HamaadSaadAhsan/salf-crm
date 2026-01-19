@@ -43,7 +43,6 @@ return [
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
-                'verify' => '/etc/apache2/pki/webserver.crt',
             ],
         ],
 

@@ -2,7 +2,6 @@ import { LeadsAPI } from '@/lib/api/leads';
 import axios from '@/lib/axios';
 import { Lead, LeadActivity, LeadFilters, Meta } from '@/types/lead';
 import { ApiResponse } from '@/types/user';
-import { router } from '@inertiajs/react';
 import { InfiniteQueryObserverBaseResult } from '@tanstack/query-core';
 import { keepPreviousData, QueryKey, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';

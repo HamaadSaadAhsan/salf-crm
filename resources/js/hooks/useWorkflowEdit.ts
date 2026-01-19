@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react';
 import { WorkflowHelpers } from '@/lib/workflow-helpers';
 import { Workflow } from '@/types/workflow';
 import { useCallback, useState, useEffect } from 'react';

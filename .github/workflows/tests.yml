@@ -19,8 +19,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: testing
+          POSTGRES_PASSWORD: Al123_45
+          POSTGRES_DB: salam-crm-api-testing
         ports:
           - 5432:5432
         options: >-
@@ -64,6 +64,20 @@ jobs:
 
       - name: Run Migrations
         run: php artisan migrate --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: salam-crm-api-testing
+          DB_USERNAME: postgres
+          DB_PASSWORD: Al123_45
 
       - name: Tests
         run: ./vendor/bin/pest
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: salam-crm-api-testing
+          DB_USERNAME: postgres
+          DB_PASSWORD: Al123_45

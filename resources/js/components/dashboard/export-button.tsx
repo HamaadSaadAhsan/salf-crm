@@ -13,7 +13,7 @@ import {
 import { exportToCSV, exportToJSON, exportToPNG, exportToPDF } from '@/lib/export-utils';
 
 export interface ExportButtonProps {
-  data?: any[];
+  data?: Record<string, unknown>[];
   elementId?: string;
   filename: string;
   title?: string;

@@ -16,7 +16,6 @@ import {
     Phone,
     Activity,
     Settings,
-    Loader2,
     XIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

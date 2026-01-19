@@ -592,7 +592,7 @@ export function LeadDetailDialog({
                 return 'Unknown';
             }
             return new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) || countryCode;
-        } catch (error) {
+        } catch (_error) {
             console.warn('Invalid country code:', countryCode);
             return countryCode || 'Unknown';
         }
@@ -670,7 +670,7 @@ export function LeadDetailDialog({
                 }
             });
 
-            const response = await axios.post(store.url(), formData, {
+            await axios.post(store.url(), formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

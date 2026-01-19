@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { OutboundCall } from '@/hooks/useOutboundCalls';
-import { Building, MapPin, Phone, PhoneOutgoing, Tag, X } from 'lucide-react';
+import { Building, MapPin, Phone, PhoneOutgoing, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 interface OutboundCallNotificationProps {

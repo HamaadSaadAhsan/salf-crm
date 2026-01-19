@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLeadLifecycleAnalysis } from '@/hooks/useDashboard';
 import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, TrendingUp, Clock, Users } from 'lucide-react';
 

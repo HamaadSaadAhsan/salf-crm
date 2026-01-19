@@ -21,7 +21,7 @@ export interface ContainerProps extends VariantProps<typeof containerVariants> {
   className?: string;
 }
 
-export function Container({ children, width, className = '' }: ContainerProps) {
+export function Container({ children, className = '' }: ContainerProps) {
   // const { settings } = useSettings();
   // const effectiveWidth = width ?? settings.container ?? 'fixed';
 

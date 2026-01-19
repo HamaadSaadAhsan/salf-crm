@@ -40,12 +40,12 @@ const NODE_SPACING = {
 }
 
 export default function WorkflowCanvas({
-                                         selectedPage,
-                                         selectedForm,
+                                         selectedPage: _selectedPage,
+                                         selectedForm: _selectedForm,
                                          workflow,
                                          onConfigureFacebookAction,
                                          onConfigureWebhookAction,
-                                         currentTrigger,
+                                         currentTrigger: _currentTrigger,
                                          onWorkflowUpdate
                                        }: WorkflowCanvasProps) {
 

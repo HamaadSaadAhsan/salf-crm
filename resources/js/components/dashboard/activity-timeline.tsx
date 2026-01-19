@@ -130,7 +130,7 @@ export function ActivityTimeline() {
 
                 {/* Timeline */}
                 <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
-                    {data.timeline_data.map((day, dayIndex) => (
+                    {data.timeline_data.map((day) => (
                         <div key={day.date} className="relative">
                             {/* Date Header */}
                             <div className="sticky top-0 z-10 mb-3 flex items-center gap-3 bg-background pb-2">

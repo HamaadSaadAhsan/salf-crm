@@ -3,8 +3,6 @@ import { HeaderBrand } from './header-brand';
 import { HeaderHelp } from './header-help';
 import { HeaderNew } from './header-new';
 import { HeaderNotifications } from './header-notifications';
-import { HeaderUpgrade } from './header-upgrade';
-import { HeaderUsers } from './header-users';
 
 export function Header() {
     return (

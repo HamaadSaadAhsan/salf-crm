@@ -35,13 +35,13 @@ interface IntegrationHealth {
 export default function FacebookIntegrationPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
-    const [showToken, setShowToken] = useState(false);
+    const [_showToken, _setShowToken] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [setupProgress, setSetupProgress] = useState(0);
 
     const [pages, setPages] = useState<FacebookPage[]>([]);
     const [selectedPageId, setSelectedPageId] = useState('');
-    const [pageAccessToken, setPageAccessToken] = useState('');
+    const [_pageAccessToken, setPageAccessToken] = useState('');
     const [isFetchingPages, setIsFetchingPages] = useState(false);
 
     const [healthStatus, setHealthStatus] = useState<IntegrationHealth>({
@@ -63,7 +63,7 @@ export default function FacebookIntegrationPage() {
         webhook_verify_token: '',
     });
 
-    const [webhookUrl, setWebhookUrl] = useState('');
+    const [_webhookUrl, _setWebhookUrl] = useState('');
 
     const [webhookSettings, setWebhookSettings] = useState({
         subscriptions: {
@@ -139,7 +139,7 @@ export default function FacebookIntegrationPage() {
         }
     };
 
-    const handleWebhookToggle = (field: string, value: boolean) => {
+    const _handleWebhookToggle = (field: string, value: boolean) => {
         setWebhookSettings((prev) => {
             const newState = {
                 ...prev,
@@ -165,9 +165,10 @@ export default function FacebookIntegrationPage() {
             } else {
                 throw new Error(response.data.message || 'Failed to fetch pages');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
             console.error('Error fetching pages:', error);
-            toast.error(error.response?.data?.message || 'Failed to fetch Facebook pages');
+            toast.error(axiosError.response?.data?.message || 'Failed to fetch Facebook pages');
         } finally {
             setIsFetchingPages(false);
         }
@@ -217,12 +218,13 @@ export default function FacebookIntegrationPage() {
             } else {
                 throw new Error(response.data.message || 'Failed to save settings');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }> } } };
             console.error('Error saving Facebook integration', error);
 
             // Handle validation errors
-            if (error.response?.data?.errors) {
-                const errorMessages = error.response.data.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+            if (axiosError.response?.data?.errors) {
+                const errorMessages = axiosError.response.data.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
 
                 toast.error(`Validation error: ${errorMessages}`);
             } else {
@@ -232,7 +234,7 @@ export default function FacebookIntegrationPage() {
             setIsLoading(false);
         }
     };
-    const handleSavePages = async () => {
+    const _handleSavePages = async () => {
         setIsLoading(true);
         try {
             const response = await axios.post('/meta-pages', pages, {
@@ -247,12 +249,13 @@ export default function FacebookIntegrationPage() {
                 toast.error(response.data.message || 'Failed to save pages');
                 throw new Error(response.data.message || 'Failed to save pages');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }> } } };
             console.error('Error saving Facebook pages', error);
 
             // Handle validation errors
-            if (error.response?.data?.errors) {
-                const errorMessages = error.response.data.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+            if (axiosError.response?.data?.errors) {
+                const errorMessages = axiosError.response.data.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
 
                 toast.error(`Validation error: ${errorMessages}`);
             } else {
@@ -263,7 +266,7 @@ export default function FacebookIntegrationPage() {
         }
     };
 
-    const requestPermission = async () => {
+    const _requestPermission = async () => {
         setIsLoading(true);
 
         try {
@@ -272,14 +275,14 @@ export default function FacebookIntegrationPage() {
             if (response.data.auth_url) {
                 window.location.href = response.data.auth_url;
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Failed to initiate Facebook OAuth');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const syncLeadForms = async () => {
+    const _syncLeadForms = async () => {
         try {
             setIsLoading(true);
             const response = await axios.post('/integrations/facebook/sync-lead-forms');
@@ -297,7 +300,7 @@ export default function FacebookIntegrationPage() {
         }
     };
 
-    const syncLeads = async () => {
+    const _syncLeads = async () => {
         try {
             setIsLoading(true);
             const response = await axios.post('/integrations/facebook/sync-leads');
@@ -315,7 +318,7 @@ export default function FacebookIntegrationPage() {
         }
     };
 
-    const saveWebhookSettings = async () => {
+    const _saveWebhookSettings = async () => {
         setIsLoading(true);
         try {
             // First, save the webhook settings to your database
@@ -331,9 +334,10 @@ export default function FacebookIntegrationPage() {
             } else {
                 throw new Error(response.data.message || 'Failed to save webhook settings');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
             console.error('Error saving webhook settings', error);
-            toast.error(error.response?.data?.message || 'Failed to set up webhook subscriptions');
+            toast.error(axiosError.response?.data?.message || 'Failed to set up webhook subscriptions');
         } finally {
             setIsLoading(false);
         }

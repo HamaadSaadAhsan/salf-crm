@@ -6,11 +6,10 @@ import { useEffect, useRef, useState } from 'react';
 interface AudioPlayerToastProps {
     audioUrl: string;
     title?: string;
-    onClose?: () => void;
     className?: string;
 }
 
-export function AudioPlayerToast({ audioUrl, title = 'Recording', onClose, className }: AudioPlayerToastProps) {
+export function AudioPlayerToast({ audioUrl, title = 'Recording', className }: AudioPlayerToastProps) {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);

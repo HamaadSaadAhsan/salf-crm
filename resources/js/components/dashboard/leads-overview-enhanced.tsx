@@ -2,7 +2,7 @@ import React, { Fragment, useState, useMemo } from 'react';
 import { CheckCircle, Clock, TrendingUp, Calendar } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { DateRange } from 'react-day-picker';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import {
   Card,
   CardContent,
@@ -40,7 +40,7 @@ interface TooltipProps {
     dataKey: string;
     value: number;
     color: string;
-    payload: any;
+    payload: Record<string, unknown>;
   }>;
   label?: string;
 }
@@ -79,7 +79,7 @@ export function LeadsOverviewEnhanced() {
   const { data, isLoading, error } = useLeadsOverview(selectedPeriod);
 
   // Real-time updates
-  const { isConnected, lastUpdate, updates } = useRealtimeMetrics({
+  const { isConnected, lastUpdate } = useRealtimeMetrics({
     channel: 'dashboard',
     events: ['LeadCreated', 'LeadConverted', 'MetricUpdated'],
     enabled: true,

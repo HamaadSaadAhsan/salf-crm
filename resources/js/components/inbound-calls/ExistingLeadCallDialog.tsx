@@ -62,7 +62,7 @@ export function ExistingLeadCallDialog({ isOpen, onClose, call, onSaveNotes }: E
             await onSaveNotes(call.lead.id, notes, duration);
             setNotes('');
             onClose();
-        } catch (error) {
+        } catch (_error) {
             // Error handled by parent
         } finally {
             setIsSubmitting(false);

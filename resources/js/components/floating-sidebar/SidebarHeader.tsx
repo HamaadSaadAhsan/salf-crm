@@ -1,14 +1,8 @@
 import React from "react"
-import { useState, forwardRef, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
   X,
-  Info,
-  HelpCircle,
-  Settings,
   Edit,
   Maximize2,
   Minimize2,
@@ -145,7 +139,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
       </div>
       <div className="flex justify-between items-center-safe">
         {/* Step Navigation */}
-        <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)}>
+        <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as 'configure' | 'test')}>
           <TabsList className="flex gap-2">
             <TabsTrigger value="configure">Configure</TabsTrigger>
             <TabsTrigger value="test">Test</TabsTrigger>

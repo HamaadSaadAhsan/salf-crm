@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { Plus, Loader2, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Mic,
   MicOff,
   PhoneOff,
   Pause,
   Play,
-  Volume2,
   Hash,
   PhoneForwarded,
   Plus,

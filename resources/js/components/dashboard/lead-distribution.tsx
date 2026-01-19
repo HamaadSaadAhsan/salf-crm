@@ -1,11 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLeadDistribution } from '@/hooks/useDashboard';
 import { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Legend } from 'recharts';
 
 type Dimension = 'source' | 'service' | 'status';
 

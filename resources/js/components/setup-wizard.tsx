@@ -32,7 +32,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
     const [isConnecting, setIsConnecting] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
+    const [_isConnected, _setIsConnected] = useState(false);
 
     const steps: SetupStep[] = [
         {

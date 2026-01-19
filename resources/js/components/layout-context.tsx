@@ -22,7 +22,7 @@ interface LayoutProviderProps {
     breadcrumbs: [];
 }
 
-export function LayoutProvider({ children, sidebarNavItems, breadcrumbs }: LayoutProviderProps) {
+export function LayoutProvider({ children, sidebarNavItems, breadcrumbs: _breadcrumbs }: LayoutProviderProps) {
     const [sidebarCollapse, setSidebarCollapse] = useState(false);
     const initialPinned = sidebarNavItems.filter((item) => item.pinned).map((item) => item.id);
     const [sidebarPinnedNavItems, setSidebarPinnedNavItems] = useState<string[]>(initialPinned);

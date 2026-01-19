@@ -34,12 +34,8 @@ export function DialerIntegration() {
         toggleMute,
         toggleSpeaker,
         endCall,
-        answerCall,
-        declineCall,
 
-        // Audio device actions
-        switchMicrophone,
-        switchSpeaker,
+        // Audio device actions (available for future use)
 
         // Data actions
         toggleContactFavorite,

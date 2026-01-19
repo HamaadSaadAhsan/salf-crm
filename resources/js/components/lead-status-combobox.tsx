@@ -18,7 +18,7 @@ type Props = {
 function LeadStatusCombobox({ lead }: Props) {
     const portalContainer = usePortalContainer();
     const [open, setOpen] = useState(false);
-    const { statuses, loading, error } = useStatuses();
+    const { statuses, loading: _loading, error: _error } = useStatuses();
     const { mutate: updateLead } = useOptimisticLeadUpdate();
     const queryClient = useQueryClient();
 

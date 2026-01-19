@@ -1,4 +1,4 @@
-import { AudioWaveform, Bot, Command, Frame, GalleryVerticalEnd, LayoutGrid, Map, PieChart, Settings2, Users, Phone, PhoneCall, Workflow } from 'lucide-react';
+import { Bot, LayoutGrid, PieChart, Settings2, Users, Phone, PhoneCall, Workflow } from 'lucide-react';
 
 
 import { NavConfig } from '../types';

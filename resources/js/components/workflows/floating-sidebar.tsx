@@ -3,7 +3,6 @@ import React from 'react'
 import { useState, forwardRef, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   Info,
@@ -151,7 +150,7 @@ const FloatingSidebar = React.memo(forwardRef<HTMLDivElement, FloatingSidebarPro
 
 
     // Handle webhook URL update
-    const handleWebhookConfigUpdate = useCallback((url: string, method: string = 'POST', headers?: Record<string, string>) => {
+    const _handleWebhookConfigUpdate = useCallback((url: string, method: string = 'POST', headers?: Record<string, string>) => {
       if (!currentStepData) return
 
       const updatedWorkflow = WorkflowHelpers.updateStep(workflow, currentStepData.id, {
@@ -193,7 +192,7 @@ const FloatingSidebar = React.memo(forwardRef<HTMLDivElement, FloatingSidebarPro
       }
     }, [currentStep])
 
-    const stepTitle = useMemo(() => {
+    const _stepTitle = useMemo(() => {
       const stepNum = stepNumber
 
       if (currentTrigger === 'facebook_lead_ads') {
@@ -217,7 +216,7 @@ const FloatingSidebar = React.memo(forwardRef<HTMLDivElement, FloatingSidebarPro
       }
     }
 
-    const getStepTitle = () => {
+    const _getStepTitle = () => {
       const stepNum = getStepNumber()
 
       if (currentTrigger === 'facebook_lead_ads') {
@@ -294,7 +293,7 @@ const FloatingSidebar = React.memo(forwardRef<HTMLDivElement, FloatingSidebarPro
     }, [currentStepData?.field_mappings])
 
     // Memoize trigger icon to prevent recreation
-    const triggerIcon = useMemo(() => {
+    const _triggerIcon = useMemo(() => {
       const triggerStep = WorkflowHelpers.getTriggerStep(workflow)
       switch (triggerStep?.service) {
         case 'facebook_lead_ads':

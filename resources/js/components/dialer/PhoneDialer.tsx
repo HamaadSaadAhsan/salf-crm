@@ -21,7 +21,6 @@ interface PhoneDialerProps {
   dialedNumber: string;
   onDigitPress: (digit: string) => void;
   onBackspace: () => void;
-  onClearNumber: () => void;
   onCall: () => void;
   recentCalls?: CallLog[];
   quickDialContacts?: QuickDialContact[];
@@ -37,7 +36,6 @@ export function PhoneDialer({
   dialedNumber,
   onDigitPress,
   onBackspace,
-  onClearNumber,
   onCall,
   recentCalls = [],
   quickDialContacts = [],

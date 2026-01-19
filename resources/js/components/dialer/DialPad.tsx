@@ -28,20 +28,20 @@ const DIAL_PAD_BUTTONS = [
 ];
 
 // DTMF tone frequencies (for future audio implementation)
-const DTMF_FREQUENCIES: Record<string, [number, number]> = {
-  '1': [697, 1209],
-  '2': [697, 1336],
-  '3': [697, 1477],
-  '4': [770, 1209],
-  '5': [770, 1336],
-  '6': [770, 1477],
-  '7': [852, 1209],
-  '8': [852, 1336],
-  '9': [852, 1477],
-  '*': [941, 1209],
-  '0': [941, 1336],
-  '#': [941, 1477],
-};
+// const DTMF_FREQUENCIES: Record<string, [number, number]> = {
+//   '1': [697, 1209],
+//   '2': [697, 1336],
+//   '3': [697, 1477],
+//   '4': [770, 1209],
+//   '5': [770, 1336],
+//   '6': [770, 1477],
+//   '7': [852, 1209],
+//   '8': [852, 1336],
+//   '9': [852, 1477],
+//   '*': [941, 1209],
+//   '0': [941, 1336],
+//   '#': [941, 1477],
+// };
 
 export function DialPad({
   dialedNumber,
@@ -82,17 +82,10 @@ export function DialPad({
   }, [handleKeyPress]);
 
   // Play DTMF tone (placeholder for future implementation)
-  const playTone = (digit: string) => {
-    // TODO: Implement actual DTMF tone playback using Web Audio API
-    // const frequencies = DTMF_FREQUENCIES[digit];
-    // if (frequencies) {
-    //   // Play dual-tone using oscillators
-    // }
-  };
+  // TODO: Implement actual DTMF tone playback using Web Audio API
 
   const handleDigitClick = (digit: string) => {
     if (!disabled) {
-      playTone(digit);
       onDigitPress(digit);
     }
   };

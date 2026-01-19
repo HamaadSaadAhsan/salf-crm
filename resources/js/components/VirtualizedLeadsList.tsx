@@ -14,7 +14,7 @@ const OVERSCAN_COUNT = 5;
 const THRESHOLD = 15; // Increased threshold for better UX
 
 interface VirtualizedLeadsListProps {
-    filters: any;
+    filters: Record<string, unknown>;
     selectedItems: Set<string>;
     hoveredLead: string | null;
     onToggleItem: (id: string) => void;
@@ -207,7 +207,7 @@ export const VirtualizedLeadsList: React.FC<VirtualizedLeadsListProps> = ({
 
 // Fixed Smart leads list with better strategy selection
 interface SmartLeadsListProps {
-    filters: any;
+    filters: Record<string, unknown>;
     selectedItems: Set<string>;
     hoveredLead: string | null;
     onToggleItem: (id: string) => void;

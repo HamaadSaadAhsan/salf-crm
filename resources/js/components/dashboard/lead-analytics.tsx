@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChartNoAxesCombined, Info, TrendingUp, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, Wifi } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, XAxis } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -16,11 +16,6 @@ import {
   ChartTooltip,
 } from '@/components/ui/chart';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useLeadAnalytics } from '@/hooks/useDashboard';

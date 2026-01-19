@@ -54,7 +54,7 @@ export function StatMetricCard({
     lastLabel = 'Vs last month',
     positive = true,
     isLoading = false,
-    icon: Icon,
+    icon: _icon,
     showActions = false,
 }: StatMetricCardProps) {
     if (isLoading) {

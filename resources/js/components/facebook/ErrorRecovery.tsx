@@ -93,7 +93,7 @@ export default function ErrorRecovery() {
         return errorRecoveryGuides[errorType || 'default'];
     };
 
-    const handleAutoFix = async (error: any) => {
+    const handleAutoFix = async (error: { id: string; message: string }) => {
         const guide = getRecoveryGuide(error.message);
         if (guide.autoFix) {
             await guide.autoFix();

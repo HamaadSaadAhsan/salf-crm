@@ -12,7 +12,6 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, LogOut, Moon, PanelRightOpen, Settings, Sun, User } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { useLayout } from './layout-context';
 import { logout } from '@/routes';
 

@@ -6,7 +6,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResponsiveSelect, useResponsiveSelectStyles } from '@/components/responsive-select';
 import { cn } from '@/lib/utils';
-import { Lead } from '@/types/lead';
 
 const frameworks = [
     {
@@ -32,12 +31,10 @@ const frameworks = [
 ];
 
 export default function ActivityTypeCombobox({
-    lead,
     commentBoxRef,
     selectedType,
     onTypeChange,
 }: {
-    lead: Lead | null | undefined;
     commentBoxRef: React.RefObject<HTMLDivElement | null>;
     selectedType?: string;
     onTypeChange?: (type: string) => void;
@@ -98,7 +95,7 @@ export default function ActivityTypeCombobox({
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
-                                handleClearValue(e as any);
+                                handleClearValue(e as unknown as React.MouseEvent);
                             }
                         }}
                     >

@@ -66,21 +66,21 @@ const defaultTags: LeadTag[] = [
 ];
 
 export function TagSelector({
-    lead,
+    lead: _lead,
     selectedTags,
     availableTags = defaultTags,
     onTagAdd,
     onTagRemove,
-    showTagsInputs = false,
+    showTagsInputs: _showTagsInputs = false,
     onShowTagsInputsChange,
 }: TagSelectorProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const { isMobile, itemClassName, listClassName, inputClassName, inputWrapperClassName } = useResponsiveSelectStyles();
-    const { mutate: updateLead } = useOptimisticLeadUpdate();
-    const queryClient = useQueryClient();
+    const { mutate: _updateLead } = useOptimisticLeadUpdate();
+    const _queryClient = useQueryClient();
 
-    const handleAddTag = () => {
+    const _handleAddTag = () => {
         onShowTagsInputsChange?.(true);
         // Small delay to ensure the popover renders before opening
         setTimeout(() => setOpen(true), 100);

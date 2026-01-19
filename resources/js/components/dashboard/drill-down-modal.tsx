@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

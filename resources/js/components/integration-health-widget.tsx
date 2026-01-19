@@ -61,7 +61,7 @@ export function IntegrationHealthWidget({
     onForceSyncData,
     onViewLogs,
     onViewTokenDetails,
-    onRefreshTokens,
+    onRefreshTokens: _onRefreshTokens,
 }: IntegrationHealthWidgetProps) {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -97,7 +97,7 @@ export function IntegrationHealthWidget({
         setTimeout(() => setIsRefreshing(false), 1000);
     };
 
-    const getUrgencyColor = (urgency: string) => {
+    const _getUrgencyColor = (urgency: string) => {
         switch (urgency) {
             case 'critical':
                 return 'bg-red-500/10 text-red-500 border-red-500/20';

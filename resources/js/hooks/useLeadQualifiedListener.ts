@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { toast } from 'sonner';
 import { useEcho } from '@laravel/echo-react';
 
 interface LeadQualifiedData {

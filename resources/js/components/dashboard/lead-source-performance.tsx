@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLeadSourcePerformance } from '@/hooks/useDashboard';
 import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 
 type Period = 7 | 14 | 30 | 60 | 90;

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Minimize2, Maximize2, Phone, User } from 'lucide-react';
+import { Minimize2, Maximize2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { CallControls } from './CallControls';
 
 interface ActiveCallWidgetProps {
-  callId: string;
   contactName: string;
   contactAvatar?: string;
   duration: number;
@@ -26,7 +25,6 @@ const STORAGE_KEY = 'active-call-widget-position';
 const SNAP_THRESHOLD = 50; // Distance from edge to trigger snap
 
 export function ActiveCallWidget({
-  callId,
   contactName,
   contactAvatar,
   duration,
@@ -70,16 +68,6 @@ export function ActiveCallWidget({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Get initials from name
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   // Handle drag start (mouse)

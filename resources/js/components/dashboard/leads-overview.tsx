@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useMemo } from 'react';
-import { CheckCircle, Clock, TrendingUp, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle, Clock, TrendingUp, Wifi } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';

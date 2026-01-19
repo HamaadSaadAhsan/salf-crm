@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
 import {
   ColumnDef,
   ColumnFiltersState,

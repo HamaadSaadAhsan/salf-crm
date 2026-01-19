@@ -2,7 +2,7 @@ import axios from '@/lib/axios';
 import { WorkflowResponse, WorkflowsResponse } from '@/types/workflow';
 import { AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const _API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 // Create axios instance with default config
 const apiClient = axios;
