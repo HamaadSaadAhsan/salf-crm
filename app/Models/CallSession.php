@@ -26,6 +26,7 @@ class CallSession extends Model
 
     protected $fillable = [
         'session_id',
+        'uniqueid',
         'caller_id',
         'answered_by_user_id',
         'intended_for_user_id',
