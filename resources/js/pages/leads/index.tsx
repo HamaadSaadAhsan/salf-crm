@@ -45,7 +45,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Inertia page props interface
 interface LeadsPageProps {
-    leads: Lead[] | { data: Lead[] } | any;
+    leads: Lead[] | { data: Lead[] };
     data?: Lead[];
     meta: {
         current_page: number;
@@ -249,32 +249,37 @@ export default function LeadsInterface() {
             return { text: 'No recent activity', activity: null };
         }
 
-        // Find the lead with the most recent activity
-        let mostRecentLead: Lead | null = null;
+        let mostRecentActivity: LeadActivity | null = null;
         let mostRecentTime: Date | null = null;
+        const now = new Date();
 
+        // Find the most recent activity across all leads
         for (const lead of leads) {
-            if (lead.last_activity_at) {
-                const activityTime = new Date(lead.last_activity_at);
-                if (!mostRecentTime || activityTime > mostRecentTime) {
-                    mostRecentTime = activityTime;
-                    mostRecentLead = lead;
+            const activities = lead.activities?.data || [];
+
+            for (const activity of activities) {
+                try {
+                    const activityTime = parseISO(activity.created_at);
+
+                    // Only consider past activities (not future scheduled ones)
+                    if (activityTime <= now) {
+                        if (!mostRecentTime || activityTime > mostRecentTime) {
+                            mostRecentTime = activityTime;
+                            mostRecentActivity = activity;
+                        }
+                    }
+                } catch {
+                    continue;
                 }
             }
         }
 
-        if (!mostRecentLead || !mostRecentTime) {
+        if (!mostRecentActivity || !mostRecentTime) {
             return { text: 'No recent activity', activity: null };
         }
 
-        // Get the most recent activity from that lead
-        const activities = mostRecentLead.activities?.data || [];
-        const mostRecentActivity = activities.length > 0
-            ? activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-            : null;
-
         try {
-            const text = formatDistanceToNow(parseISO(mostRecentLead.last_activity_at!), { addSuffix: true });
+            const text = formatDistanceToNow(mostRecentTime, { addSuffix: true });
             return { text, activity: mostRecentActivity };
         } catch {
             return { text: 'No recent activity', activity: null };
@@ -396,7 +401,7 @@ export default function LeadsInterface() {
                     <SearchInput searchInput={searchInput} onSearchChange={handleSearchChange} isMac={isMac} inputRef={searchInputRef} />
                     <div className="ml-4 flex items-center gap-2">
                         <Button
-                            variant="default"
+                            variant="primary"
                             size="sm"
                             onClick={() => setIsNewLeadSheetOpen(true)}
                             className="mr-2"
@@ -474,12 +479,14 @@ export default function LeadsInterface() {
                                 </div>
                                 <div className="flex items-center">
                                     {lastActivity.activity ? (
-                                        <TooltipProvider>
+                                        <TooltipProvider delayDuration={300}>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <span className="cursor-help">Last activity: {lastActivity.text}</span>
+                                                    <button type="button" className="cursor-help text-xs hover:underline">
+                                                        Last activity: {lastActivity.text}
+                                                    </button>
                                                 </TooltipTrigger>
-                                                <TooltipContent side="top" className="max-w-xs">
+                                                <TooltipContent side="top" className="max-w-xs z-50">
                                                     <div className="space-y-1">
                                                         <div className="font-semibold">{lastActivity.activity.subject}</div>
                                                         <div className="text-xs text-muted-foreground">
@@ -492,7 +499,9 @@ export default function LeadsInterface() {
                                                             <div className="text-xs text-muted-foreground">
                                                                 By: {'data' in lastActivity.activity.user && lastActivity.activity.user.data
                                                                     ? lastActivity.activity.user.data.name
-                                                                    : lastActivity.activity.user.name}
+                                                                    : 'name' in lastActivity.activity.user
+                                                                        ? lastActivity.activity.user.name
+                                                                        : 'Unknown'}
                                                             </div>
                                                         )}
                                                     </div>
@@ -500,7 +509,7 @@ export default function LeadsInterface() {
                                             </Tooltip>
                                         </TooltipProvider>
                                     ) : (
-                                        <span>Last activity: {lastActivity.text}</span>
+                                        <span className="text-xs">Last activity: {lastActivity.text}</span>
                                     )}
                                 </div>
                             </div>

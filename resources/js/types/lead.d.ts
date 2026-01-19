@@ -38,6 +38,7 @@ export interface Lead {
     created_at: string;
     raw_created_at: ISODateString;
     updated_at: string;
+    raw_updated_at: ISODateString;
     activities?: { data: LeadActivity[] };
     has_attachment?: boolean;
     labels?: [];
