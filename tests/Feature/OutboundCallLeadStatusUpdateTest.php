@@ -61,6 +61,20 @@ it('automatically updates lead status to contacted when outbound call is answere
     expect($statusChangeActivity->metadata['previous_status'])->toBe('new');
     expect($statusChangeActivity->metadata['new_status'])->toBe('contacted');
     expect($statusChangeActivity->metadata['reason'])->toBe('outbound_call_answered');
+
+    // Verify follow-up task was created for the assignee
+    $followUpActivity = LeadActivity::where('lead_id', $lead->id)
+        ->where('type', 'follow_up')
+        ->where('status', 'pending')
+        ->first();
+
+    expect($followUpActivity)->not->toBeNull();
+    expect($followUpActivity->subject)->toBe('Follow up on contacted lead');
+    expect($followUpActivity->user_id)->toBe($user->id);
+    expect($followUpActivity->category)->toBe('follow_up');
+    expect($followUpActivity->metadata['triggered_by'])->toBe('outbound_call_answered');
+    expect($followUpActivity->scheduled_at)->not->toBeNull();
+    expect($followUpActivity->due_at)->not->toBeNull();
 });
 
 it('does not update lead status if lead is not in new status', function () {
