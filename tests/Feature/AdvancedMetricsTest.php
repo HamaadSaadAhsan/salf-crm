@@ -169,7 +169,7 @@ describe('Advanced Metrics Endpoints', function () {
         })->with([7, 14, 30, 60, 90, 180, 365]);
 
         it('tracks program trends week-over-week', function () {
-            $service = Service::factory()->create(['code' => 'TEST']);
+            $service = Service::factory()->create(['name' => 'Test Service']);
             Lead::factory()->count(10)->create(['service_id' => $service->id]);
 
             $response = $this->getJson('/api/dashboard/program-performance?period=90');
@@ -181,8 +181,8 @@ describe('Advanced Metrics Endpoints', function () {
         });
 
         it('identifies best performing program', function () {
-            $bestProgram = Service::factory()->create(['title' => 'Best Program']);
-            $otherProgram = Service::factory()->create(['title' => 'Other Program']);
+            $bestProgram = Service::factory()->create(['name' => 'Best Program']);
+            $otherProgram = Service::factory()->create(['name' => 'Other Program']);
 
             Lead::factory()->count(10)->create([
                 'service_id' => $bestProgram->id,
@@ -497,14 +497,14 @@ describe('Advanced Metrics Endpoints', function () {
             $response = $this->getJson('/api/dashboard/lead-source-performance?period=invalid');
 
             // Should still work with default or handle gracefully
-            $response->assertStatus(fn ($status) => in_array($status, [200, 422]));
+            expect($response->status())->toBeIn([200, 422]);
         });
 
         it('validates user_id parameter for task completion analysis', function () {
             $response = $this->getJson('/api/dashboard/task-completion-analysis?period=30&user_id=invalid');
 
             // Should handle invalid user_id gracefully
-            $response->assertStatus(fn ($status) => in_array($status, [200, 422]));
+            expect($response->status())->toBeIn([200, 422]);
         });
 
         it('returns empty arrays when no data exists', function () {

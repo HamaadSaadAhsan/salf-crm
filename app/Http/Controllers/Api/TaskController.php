@@ -45,7 +45,14 @@ class TaskController extends Controller
                             ->whereBetween('due_at', [now(), now()->addDays(2)]);
                     });
             })
-            ->orderByRaw($this->getTaskPriorityOrderSql())
+            ->orderByRaw("
+                CASE
+                    WHEN due_at < NOW() THEN 1
+                    WHEN priority = 'urgent' THEN 2
+                    WHEN priority = 'high' THEN 3
+                    ELSE 4
+                END
+            ")
             ->orderBy('due_at', 'asc')
             ->limit(50)
             ->get();
@@ -93,25 +100,5 @@ class TaskController extends Controller
             'message' => 'Task marked as incomplete',
             'data' => TaskResource::make($task->load(['assignedTo', 'createdBy'])),
         ]);
-    }
-
-    /**
-     * Get the SQL for ordering tasks by priority.
-     * Uses database-specific syntax for NOW() function.
-     */
-    protected function getTaskPriorityOrderSql(): string
-    {
-        $useSqlite = config('database.default') === 'sqlite' || app()->environment('testing');
-
-        $nowFunction = $useSqlite ? "datetime('now')" : 'NOW()';
-
-        return "
-            CASE
-                WHEN due_at < {$nowFunction} THEN 1
-                WHEN priority = 'urgent' THEN 2
-                WHEN priority = 'high' THEN 3
-                ELSE 4
-            END
-        ";
     }
 }
