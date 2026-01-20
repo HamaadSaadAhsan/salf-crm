@@ -10,6 +10,22 @@ export default [
     js.configs.recommended,
     ...typescript.configs.recommended,
     {
+        rules: {
+            '@typescript-eslint/no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
+                },
+            ],
+            '@typescript-eslint/no-explicit-any': 'warn',
+            'no-case-declarations': 'warn',
+            'no-irregular-whitespace': 'warn',
+            '@typescript-eslint/no-unsafe-function-type': 'warn',
+        },
+    },
+    {
         ...react.configs.flat.recommended,
         ...react.configs.flat['jsx-runtime'], // Required for React 17+
         languageOptions: {
