@@ -32,7 +32,7 @@ interface WorkflowsListProps {
 
 export default function WorkflowsList({ workflows, onEditWorkflowAction }: WorkflowsListProps) {
     console.log(workflows)
-  const [loading, setLoading] = useState(false)
+  const [_loading, _setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [actionLoading, setActionLoading] = useState<number | null>(null)

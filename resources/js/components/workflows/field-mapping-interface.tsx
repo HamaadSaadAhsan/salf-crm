@@ -136,7 +136,7 @@ const FieldMappingInterfaceComponent = ({
     setIsDialogOpen(true)
   }, [])
 
-  const selectField = useCallback((fieldId: string, fieldLabel: string) => {
+  const selectField = useCallback((fieldId: string, _fieldLabel: string) => {
     if (selectedMappingIndex !== null) {
       if (dialogMode === 'source') {
         handleMappingChange(selectedMappingIndex, { source_field: fieldId })

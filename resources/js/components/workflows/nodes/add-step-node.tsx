@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu'

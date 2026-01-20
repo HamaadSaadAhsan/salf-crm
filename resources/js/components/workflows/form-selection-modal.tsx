@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { router } from "@inertiajs/react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -153,7 +152,7 @@ export default function FormSelectionModal({
   // Get status badge variant
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'default'
+      case 'ACTIVE': return 'primary'
       case 'ARCHIVED': return 'secondary'
       case 'DELETED': return 'destructive'
       default: return 'outline'
