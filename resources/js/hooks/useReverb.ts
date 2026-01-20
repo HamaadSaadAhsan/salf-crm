@@ -1,7 +1,7 @@
 import axios from '@/lib/axios';
 import { configureEcho } from '@laravel/echo-react';
 
-const useReverbConnection = (session: any, status: any) => {
+const useReverbConnection = (session: any, _status: any) => {
     const wsPort = process.env.NEXT_PUBLIC_REVERB_PORT ? Number(process.env.NEXT_PUBLIC_REVERB_PORT) : 80;
     const wssPort = process.env.NEXT_PUBLIC_REVERB_PORT ? Number(process.env.NEXT_PUBLIC_REVERB_PORT) : 443;
 
@@ -14,7 +14,7 @@ const useReverbConnection = (session: any, status: any) => {
         wssPort,
         forceTLS: (process.env.NEXT_PUBLIC_REVERB_SCHEME ?? 'https') === 'https',
         enabledTransports: ['ws', 'wss'],
-        authorizer: (channel, options) => {
+        authorizer: (channel, _options) => {
             if (!session?.accessToken) {
                 return {
                     authorize: (socketId, callback) => {

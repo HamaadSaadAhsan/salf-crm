@@ -45,7 +45,7 @@ export function useInfiniteUsers(filters: UserFilters = {}) {
     const apiClient = useApiClient();
 
     // Remove page from filters since infinite query handles pagination
-    const { page, ...infiniteFilters } = filters;
+    const { page: _page, ...infiniteFilters } = filters;
 
     const queryKey = useMemo(() => {
         const cleanFilters = Object.fromEntries(Object.entries(infiniteFilters).filter(([_, value]) => value !== undefined && value !== ''));

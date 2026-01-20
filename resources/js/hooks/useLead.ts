@@ -25,7 +25,7 @@ const createStableQueryKey = (filters: LeadFilters) => {
 };
 
 const createStableInfiniteQueryKey = (filters: LeadFilters) => {
-    const { page, ...infiniteFilters } = filters;
+    const { page: _page, ...infiniteFilters } = filters;
     const cleanFilters = Object.fromEntries(
         Object.entries(infiniteFilters)
             .filter(([_, value]) => value !== undefined && value !== '' && value !== null)
