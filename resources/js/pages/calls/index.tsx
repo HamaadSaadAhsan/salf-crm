@@ -62,7 +62,7 @@ function IndexContent({ callSessions, stats, filters }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'all');
     const [directionFilter, setDirectionFilter] = useState(filters?.direction || 'all');
-    const { startCall } = useCall();
+    const { startCall: _startCall } = useCall();
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -377,7 +377,7 @@ function IndexContent({ callSessions, stats, filters }: Props) {
                                     {callSessions.links.map((link: any, index: number) => (
                                         <Button
                                             key={index}
-                                            variant={link.active ? 'default' : 'outline'}
+                                            variant={link.active ? 'primary' : 'outline'}
                                             size="sm"
                                             onClick={() => link.url && router.get(link.url)}
                                             disabled={!link.url}
