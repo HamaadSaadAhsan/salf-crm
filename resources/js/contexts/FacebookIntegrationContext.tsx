@@ -180,12 +180,13 @@ function facebookIntegrationReducer(state: FacebookIntegrationState, action: Fac
                 },
             };
 
-        case 'ADD_ERROR':
+        case 'ADD_ERROR': {
             const errorList = action.payload.type === 'error' ? 'errors' : 'warnings';
             return {
                 ...state,
                 [errorList]: [...state[errorList], action.payload],
             };
+        }
 
         case 'REMOVE_ERROR':
             return {
@@ -495,7 +496,7 @@ export function FacebookIntegrationProvider({ children }: { children: React.Reac
                     },
                 });
             }
-        } catch (error) {
+        } catch (_error) {
             dispatch({
                 type: 'UPDATE_HEALTH_STATUS',
                 payload: {
