@@ -180,17 +180,18 @@ export function formatDataForExport(
   format: 'csv' | 'json' | 'table'
 ): string {
   switch (format) {
-    case 'csv':
+    case 'csv': {
       const headers = Object.keys(data[0]);
       return [
         headers.join(','),
         ...data.map(row => headers.map(h => row[h]).join(','))
       ].join('\n');
+    }
 
     case 'json':
       return JSON.stringify(data, null, 2);
 
-    case 'table':
+    case 'table': {
       // Simple ASCII table format
       const keys = Object.keys(data[0]);
       const maxLengths = keys.map(key =>
@@ -213,6 +214,7 @@ export function formatDataForExport(
       );
 
       return [header, separator, ...rows].join('\n');
+    }
 
     default:
       return JSON.stringify(data);
