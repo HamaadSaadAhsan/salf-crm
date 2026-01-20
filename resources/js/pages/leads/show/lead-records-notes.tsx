@@ -121,7 +121,7 @@ export function LeadRecordsNotes({ leadId }: LeadRecordsNotesProps) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 mb-4">
             <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold">Notes</h2>
                 <Button
