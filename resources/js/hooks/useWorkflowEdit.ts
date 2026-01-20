@@ -1,10 +1,12 @@
+import { update } from '@/actions/App/Http/Controllers/WorkflowController';
 import { WorkflowHelpers } from '@/lib/workflow-helpers';
 import { Workflow } from '@/types/workflow';
+import { router } from '@inertiajs/react';
 import { useCallback, useState, useEffect } from 'react';
 
 export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) => {
     const [workflow, setWorkflow] = useState<Workflow | null>(initialWorkflow || null);
-    const [loading, setLoading] = useState(false);
+    const [loading, _setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -54,11 +56,12 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
                 return;
             }
 
-            router.put(`/workflows/${workflowId}`, {
+            const { url, method } = update(workflowId);
+            router[method](url, {
                 name: workflow.name,
                 description: workflow.description,
                 status: workflow.status,
-                steps: workflow.steps,
+                steps: JSON.parse(JSON.stringify(workflow.steps)),
             }, {
                 onSuccess: () => {
                     setSaving(false);
@@ -71,7 +74,7 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
                     setError(Object.values(errors).join(', ') || 'Failed to save workflow');
                     resolve(false);
                 },
-                preserveScroll: true
+                preserveScroll: true,
             });
         });
     }, [workflow, workflowId]);
@@ -83,15 +86,16 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
             // First update status to active
             const updatedWorkflow = { ...workflow, status: 'active' as const };
             setWorkflow(updatedWorkflow);
-            
+
             setSaving(true);
             setError(null);
 
-            router.put(`/workflows/${workflowId}`, {
+            const { url, method } = update(workflowId);
+            router[method](url, {
                 name: updatedWorkflow.name,
                 description: updatedWorkflow.description,
                 status: updatedWorkflow.status,
-                steps: updatedWorkflow.steps,
+                steps: JSON.parse(JSON.stringify(updatedWorkflow.steps)),
             }, {
                 onSuccess: () => {
                     setSaving(false);
@@ -106,7 +110,7 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
                     setError(Object.values(errors).join(', ') || 'Failed to publish workflow');
                     resolve(false);
                 },
-                preserveScroll: true
+                preserveScroll: true,
             });
         });
     }, [workflow, workflowId]);
