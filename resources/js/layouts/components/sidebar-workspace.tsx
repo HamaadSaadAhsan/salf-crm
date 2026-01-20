@@ -123,7 +123,7 @@ interface SidebarWorkspaceProps {
 }
 
 export function SidebarWorkspace({ onSwitchToDefault }: SidebarWorkspaceProps) {
-  const { url } = usePage();
+  const { url: _url } = usePage();
 
   const getPlanBadgeVariant = (plan: string) => {
     switch (plan) {
@@ -208,7 +208,7 @@ export function SidebarWorkspace({ onSwitchToDefault }: SidebarWorkspaceProps) {
           return (
             <Link
               key={item.id}
-              to={item.href}
+              href={item.href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                 'hover:bg-accent hover:text-accent-foreground',
