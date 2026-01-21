@@ -33,7 +33,7 @@ export function LeadPage({ lead, users = [] }: Props) {
 
             {/* Desktop sidebar - hidden below 1490px */}
             {!hideLeadDetails && (
-                <div className="w-[500px] shrink-0">
+                <div className="flex h-full w-[500px] shrink-0 flex-col">
                     <LeadExtended lead={lead} />
                 </div>
             )}
@@ -58,13 +58,13 @@ export function LeadPage({ lead, users = [] }: Props) {
                     side="right"
                     className="w-full p-0 sm:max-w-md md:max-w-lg"
                 >
-                    <SheetHeader className="border-b px-5 py-4">
+                    <SheetHeader className="shrink-0 border-b px-5 py-4">
                         <SheetTitle className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
                             Lead Details
                         </SheetTitle>
                     </SheetHeader>
-                    <div className="h-[calc(100vh-5rem)]">
+                    <div className="flex min-h-0 flex-1 flex-col">
                         <LeadExtended lead={lead} />
                     </div>
                 </SheetContent>

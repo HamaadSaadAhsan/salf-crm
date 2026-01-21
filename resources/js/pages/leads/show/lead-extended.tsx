@@ -31,7 +31,7 @@ export function LeadExtended({ lead }: { lead: Lead }) {
                 </ScrollArea>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-12rem)] w-full flex-1 touch-pan-y overscroll-contain lg:h-[calc(100vh-12rem)]">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
                 <div className="px-4 py-4 sm:px-5">
                     <TabsContent value="details" className="mt-0">
                         <LeadExtendedDetails lead={lead} />
@@ -40,7 +40,7 @@ export function LeadExtended({ lead }: { lead: Lead }) {
                         <LeadExtendedComments />
                     </TabsContent>
                 </div>
-            </ScrollArea>
+            </div>
         </Tabs>
     );
 }
