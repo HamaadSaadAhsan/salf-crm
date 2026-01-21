@@ -2,8 +2,10 @@
 
 namespace App\Observers;
 
+use App\Events\LeadUpdated;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class LeadObserver
@@ -14,6 +16,30 @@ class LeadObserver
     public function updated(Lead $lead): void
     {
         $this->trackFieldChanges($lead);
+        $this->broadcastLeadUpdated($lead);
+    }
+
+    /**
+     * Broadcast lead updated event to other users
+     */
+    private function broadcastLeadUpdated(Lead $lead): void
+    {
+        $changes = $lead->getChanges();
+
+        // Skip if only timestamps changed
+        $significantChanges = array_diff_key($changes, array_flip(['updated_at', 'last_activity_at']));
+        if (empty($significantChanges)) {
+            return;
+        }
+
+        $updatedBy = Auth::user();
+
+        // Broadcast to others (excludes the user making the change)
+        broadcast(new LeadUpdated(
+            lead: $lead,
+            updatedBy: $updatedBy,
+            changedFields: $significantChanges
+        ))->toOthers();
     }
 
     /**
