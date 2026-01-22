@@ -28,6 +28,12 @@ export const MAIN_NAV: NavConfig = [
             ],
         },
         {
+            id: "tasks",
+            title: "Tasks",
+            path: "/tasks",
+            icon: Bot,
+        },
+        {
             id: 'leads',
             title: 'Leads',
             path: '/leads',

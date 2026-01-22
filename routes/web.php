@@ -14,6 +14,7 @@ use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StatusController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
 use App\Http\Resources\SourceController;
 use Illuminate\Support\Facades\Route;
@@ -95,6 +96,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/cities', [\App\Http\Controllers\CityController::class, 'store'])->name('cities.store');
     Route::put('/cities/{city}', [\App\Http\Controllers\CityController::class, 'update'])->name('cities.update');
     Route::delete('/cities/{city}', [\App\Http\Controllers\CityController::class, 'destroy'])->name('cities.destroy');
+
+    // Tasks Management
+    Route::resource('tasks', TaskController::class)->names('tasks');
+
+
+
+
+
 
     // Lead Activities
     Route::get('leads/{lead}/activities/month-summary', [LeadActivityController::class, 'monthSummary'])->name('leads.activities.month-summary');
