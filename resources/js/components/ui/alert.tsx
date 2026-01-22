@@ -9,9 +9,10 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
+        default: '!flex-col !items-start relative rounded-lg border bg-background p-4 text-foreground [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground',
         secondary: '',
         primary: '',
-        destructive: '',
+        destructive: '!flex-col !items-start relative rounded-lg border border-destructive/50 bg-background p-4 text-destructive dark:border-destructive [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-destructive',
         success: '',
         info: '',
         mono: '',
@@ -219,12 +220,19 @@ function Alert({
   children,
   ...props
 }: AlertProps) {
+  const hasAction = React.Children.toArray(children).some(
+    (child) =>
+      React.isValidElement(child) &&
+      (child.props as { 'data-slot'?: string })['data-slot'] === 'alert-action',
+  );
+
   return (
     <div
       data-slot="alert"
       role="alert"
       className={cn(
         alertVariants({ variant, size, icon, appearance }),
+        hasAction && 'relative',
         className,
       )}
       {...props}
@@ -309,8 +317,22 @@ function AlertContent({
   );
 }
 
+function AlertAction({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      data-slot="alert-action"
+      className={cn('absolute top-0 right-0', className)}
+      {...props}
+    />
+  );
+}
+
 export {
   Alert,
+  AlertAction,
   AlertContent,
   AlertDescription,
   AlertIcon,
