@@ -155,6 +155,15 @@ export function useInboundCalls() {
             isOwner: isCallOwner(data, data.event)
         });
 
+        // QUICK FIX: Skip customer leg connect events
+        if (data.event === 'connect' &&
+            data.call_direction === 'inbound' &&
+            data.caller === currentUserExtension &&
+            data.exten !== currentUserExtension) {
+            console.log('Skipping customer leg connect event', data);
+            return;
+        }
+
         // Update call history
         setCallHistory((prev) => [data, ...prev.slice(0, 49)]);
 
