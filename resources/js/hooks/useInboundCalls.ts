@@ -341,10 +341,15 @@ export function useInboundCalls() {
             budget?: { amount: number };
         },
         notes: string,
-        duration: number
+        duration: number,
+        callInfo?: { uniqueid: string; caller: string }
     ): Promise<void> => {
-        if (!activeCall) {
-            throw new Error('No active call');
+        const call = callInfo || activeCall;
+        if (!call) {
+            toast.error('The call has ended', {
+                description: 'Unable to save changes. Please try again.',
+            });
+            return;
         }
 
         try {
@@ -365,7 +370,7 @@ export function useInboundCalls() {
             await axios.post(callNotes().url, {
                 lead_id: leadId,
                 notes,
-                uniqueid: activeCall.uniqueid,
+                uniqueid: call.uniqueid,
                 duration,
             });
 
@@ -392,10 +397,15 @@ export function useInboundCalls() {
         },
         notes: string,
         duration: number,
-        sessionId: string
+        sessionId: string,
+        callInfo?: { uniqueid: string; caller: string }
     ): Promise<void> => {
-        if (!activeCall) {
-            throw new Error('No active call');
+        const call = callInfo || activeCall;
+        if (!call) {
+            toast.error('The call has ended', {
+                description: 'Unable to create lead. Please try again.',
+            });
+            return;
         }
 
         try {
@@ -405,8 +415,8 @@ export function useInboundCalls() {
 
             const response = await axios.post(storeUrl, {
                 ...leadData,
-                uniqueid: activeCall.uniqueid,
-                caller: activeCall.caller,
+                uniqueid: call.uniqueid,
+                caller: call.caller,
             }, {
                 headers: {
                     'X-Inertia': 'false',
@@ -424,7 +434,7 @@ export function useInboundCalls() {
             await axios.post(callNotes().url, {
                 lead_id: newLeadId,
                 notes,
-                uniqueid: activeCall.uniqueid,
+                uniqueid: call.uniqueid,
                 duration,
             });
 

@@ -28,7 +28,8 @@ interface NewLeadCallDialogProps {
             };
         },
         callNotes: string,
-        duration: number
+        duration: number,
+        callInfo?: { uniqueid: string; caller: string }
     ) => Promise<void>;
     onCreateLead: (
         data: {
@@ -44,7 +45,8 @@ interface NewLeadCallDialogProps {
         },
         callNotes: string,
         duration: number,
-        sessionId: string
+        sessionId: string,
+        callInfo?: { uniqueid: string; caller: string }
     ) => Promise<void>;
 }
 
@@ -122,6 +124,9 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                 return;
             }
 
+            // Pass call info to ensure it works even if activeCall is cleared
+            const callInfo = { uniqueid: call.uniqueid, caller: call.caller };
+
             if (isNewLead) {
                 // Validate required fields for new lead
                 if (!formData.name?.trim()) {
@@ -143,7 +148,8 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                     },
                     callNotes,
                     duration,
-                    call.sessionId
+                    call.sessionId,
+                    callInfo
                 );
             } else {
                 // Update existing lead
@@ -158,7 +164,8 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
                     },
                     callNotes,
-                    duration
+                    duration,
+                    callInfo
                 );
             }
             onClose();
@@ -203,7 +210,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
 
                 {/* Coverage Call Notice */}
                 {call.isCoverageCall && call.lead?.assigned_to && (
-                    <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                    <Alert variant="primary" className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                         <AlertCircle className="h-4 w-4 text-amber-600" />
                         <AlertTitle className="text-amber-800 dark:text-amber-400">Coverage Call</AlertTitle>
                         <AlertDescription className="text-amber-700 dark:text-amber-300">
