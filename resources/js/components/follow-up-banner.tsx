@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Bell, PhoneMissed, UserCheck, X } from 'lucide-react';
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertContent, AlertDescription, AlertIcon, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { LeadActivity } from '@/types/lead';
 
@@ -64,97 +64,103 @@ export function FollowUpBanner({ activities }: FollowUpBannerProps) {
         <div className="space-y-2">
             {/* Missed Calls Banner */}
             {categorizedFollowUps.missedCalls.length > 0 && (
-                <Alert className="relative rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
-                    <PhoneMissed className="h-4 w-4" />
-                    <AlertTitle>
-                        {categorizedFollowUps.missedCalls.length} Missed Call
-                        {categorizedFollowUps.missedCalls.length > 1 ? 's' : ''} Require Follow-up
-                    </AlertTitle>
-                    <AlertDescription>
-                        You have missed calls that need attention.{' '}
-                        <button
-                            onClick={() => handleViewActivity(categorizedFollowUps.missedCalls[0])}
-                            className="underline font-medium hover:no-underline"
-                        >
-                            View details
-                        </button>
-                    </AlertDescription>
-                    <AlertAction>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            mode="icon"
-                            onClick={() => handleDismiss(categorizedFollowUps.missedCalls[0].id)}
-                            aria-label="Dismiss"
-                            className="h-6 w-6"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </AlertAction>
+                <Alert variant="warning" appearance="light" size="sm">
+                    <AlertIcon>
+                        <PhoneMissed />
+                    </AlertIcon>
+                    <AlertContent>
+                        <AlertTitle>
+                            {categorizedFollowUps.missedCalls.length} Missed Call
+                            {categorizedFollowUps.missedCalls.length > 1 ? 's' : ''} Require Follow-up
+                        </AlertTitle>
+                        <AlertDescription>
+                            You have missed calls that need attention.{' '}
+                            <button
+                                onClick={() => handleViewActivity(categorizedFollowUps.missedCalls[0])}
+                                className="underline font-medium hover:no-underline"
+                            >
+                                View details
+                            </button>
+                        </AlertDescription>
+                    </AlertContent>
+                    <Button
+                        size="sm"
+                        variant="inverse"
+                        mode="icon"
+                        onClick={() => handleDismiss(categorizedFollowUps.missedCalls[0].id)}
+                        aria-label="Dismiss"
+                        className="shrink-0 size-4"
+                    >
+                        <X className="opacity-60 hover:opacity-100 size-4" />
+                    </Button>
                 </Alert>
             )}
 
             {/* Contacted Leads Banner */}
             {categorizedFollowUps.contactedLeads.length > 0 && (
-                <Alert className="relative rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-50 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400">
-                    <UserCheck className="h-4 w-4" />
-                    <AlertTitle>
-                        {categorizedFollowUps.contactedLeads.length} Contacted Lead
-                        {categorizedFollowUps.contactedLeads.length > 1 ? 's' : ''} Need Follow-up
-                    </AlertTitle>
-                    <AlertDescription>
-                        You have recently contacted leads that require follow-up.{' '}
-                        <button
-                            onClick={() => handleViewActivity(categorizedFollowUps.contactedLeads[0])}
-                            className="underline font-medium hover:no-underline"
-                        >
-                            View details
-                        </button>
-                    </AlertDescription>
-                    <AlertAction>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            mode="icon"
-                            onClick={() => handleDismiss(categorizedFollowUps.contactedLeads[0].id)}
-                            aria-label="Dismiss"
-                            className="h-6 w-6"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </AlertAction>
+                <Alert variant="info" appearance="light" size="sm">
+                    <AlertIcon>
+                        <UserCheck />
+                    </AlertIcon>
+                    <AlertContent>
+                        <AlertTitle>
+                            {categorizedFollowUps.contactedLeads.length} Contacted Lead
+                            {categorizedFollowUps.contactedLeads.length > 1 ? 's' : ''} Need Follow-up
+                        </AlertTitle>
+                        <AlertDescription>
+                            You have recently contacted leads that require follow-up.{' '}
+                            <button
+                                onClick={() => handleViewActivity(categorizedFollowUps.contactedLeads[0])}
+                                className="underline font-medium hover:no-underline"
+                            >
+                                View details
+                            </button>
+                        </AlertDescription>
+                    </AlertContent>
+                    <Button
+                        size="sm"
+                        variant="inverse"
+                        mode="icon"
+                        onClick={() => handleDismiss(categorizedFollowUps.contactedLeads[0].id)}
+                        aria-label="Dismiss"
+                        className="shrink-0 size-4"
+                    >
+                        <X className="opacity-60 hover:opacity-100 size-4" />
+                    </Button>
                 </Alert>
             )}
 
             {/* General Follow-ups Banner */}
             {categorizedFollowUps.general.length > 0 && (
-                <Alert className="relative rounded-lg border bg-background p-4 text-foreground [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
-                    <Bell className="h-4 w-4" />
-                    <AlertTitle>
-                        {categorizedFollowUps.general.length} Pending Follow-up
-                        {categorizedFollowUps.general.length > 1 ? 's' : ''}
-                    </AlertTitle>
-                    <AlertDescription>
-                        You have pending follow-up tasks that are due.{' '}
-                        <button
-                            onClick={() => handleViewActivity(categorizedFollowUps.general[0])}
-                            className="underline font-medium hover:no-underline"
-                        >
-                            View details
-                        </button>
-                    </AlertDescription>
-                    <AlertAction>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            mode="icon"
-                            onClick={() => handleDismiss(categorizedFollowUps.general[0].id)}
-                            aria-label="Dismiss"
-                            className="h-6 w-6"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </AlertAction>
+                <Alert variant="primary" appearance="light" size="sm">
+                    <AlertIcon>
+                        <Bell />
+                    </AlertIcon>
+                    <AlertContent>
+                        <AlertTitle>
+                            {categorizedFollowUps.general.length} Pending Follow-up
+                            {categorizedFollowUps.general.length > 1 ? 's' : ''}
+                        </AlertTitle>
+                        <AlertDescription>
+                            You have pending follow-up tasks that are due.{' '}
+                            <button
+                                onClick={() => handleViewActivity(categorizedFollowUps.general[0])}
+                                className="underline font-medium hover:no-underline"
+                            >
+                                View details
+                            </button>
+                        </AlertDescription>
+                    </AlertContent>
+                    <Button
+                        size="sm"
+                        variant="inverse"
+                        mode="icon"
+                        onClick={() => handleDismiss(categorizedFollowUps.general[0].id)}
+                        aria-label="Dismiss"
+                        className="shrink-0 size-4"
+                    >
+                        <X className="opacity-60 hover:opacity-100 size-4" />
+                    </Button>
                 </Alert>
             )}
         </div>
