@@ -105,6 +105,17 @@ export function useInboundCalls() {
         fetchActiveCall();
     }, []);
 
+    // // Verify if a call is still active via backend API
+    // const verifyCallStatus = useCallback(async (uniqueid: string): Promise<boolean> => {
+    //     try {
+    //         const response = await axios.get(`/api/calls/status/${uniqueid}`);
+    //         return response.data.is_active;
+    //     } catch (error) {
+    //         console.error('Failed to verify call status:', error);
+    //         return false;
+    //     }
+    // }, []);
+
     // Check if current user should own this call
     const isCallOwner = useCallback((data: InboundCallData, event: string): boolean => {
         // For inbound calls:
@@ -257,11 +268,14 @@ export function useInboundCalls() {
     };
 
     /**
-     * Handle stop_ringing event - clears the notification when a dial leg ends
-     * This happens when:
-     * - Extension 201 times out and call moves to Ring Group 299
-     * - Call is answered by another extension
-     * - Caller hangs up before anyone answers
+     * Handle stop_ringing event - conditionally clears the notification when a dial leg ends
+     * Only clears the dialog in specific cases:
+     * - timeout / NOANSWER: Call wasn't answered by anyone
+     * - caller_hangup / CANCEL: Caller hung up before anyone answered
+     * - busy / BUSY: All agents were busy
+     * - answered_elsewhere: Another CRO answered (only clears for non-owners)
+     *
+     * For other reasons, the dialog stays open if the current user is the owner.
      */
     const handleStopRingingEvent = (data: InboundCallData) => {
         const targetExtension = data.target_extension || data.exten;
@@ -276,7 +290,7 @@ export function useInboundCalls() {
             return;
         }
 
-        console.log('Stop ringing event: Clearing notification for current user', {
+        console.log('Stop ringing event: Processing for current user', {
             targetExtension,
             reason: data.reason,
             dialstatus: data.dialstatus,
@@ -292,11 +306,61 @@ export function useInboundCalls() {
             );
 
             if (isSameCall) {
-                console.log('Clearing active call notification due to stop_ringing', {
-                    reason: data.reason,
-                    dialstatus: data.dialstatus,
-                });
-                return null;
+                // Check the reason for stop_ringing
+                // We should ONLY clear the dialog in specific cases:
+                // - timeout (call wasn't answered by anyone)
+                // - caller_hangup (caller hung up before anyone answered)
+                // - busy (all agents were busy)
+                // - CANCEL, NOANSWER dialstatus
+
+                const shouldClearDialog =
+                    data.reason === 'timeout' ||
+                    data.reason === 'caller_hangup' ||
+                    data.reason === 'busy' ||
+                    data.dialstatus === 'NOANSWER' ||
+                    data.dialstatus === 'CANCEL' ||
+                    data.dialstatus === 'BUSY';
+
+                if (shouldClearDialog) {
+                    console.log('Clearing active call notification due to stop_ringing with reason:', {
+                        reason: data.reason,
+                        dialstatus: data.dialstatus,
+                    });
+
+                    // Show appropriate toast notification
+                    if (data.reason === 'timeout' || data.dialstatus === 'NOANSWER') {
+                        toast.info('Call not answered', {
+                            description: 'The call was not answered and has ended.',
+                        });
+                    } else if (data.reason === 'caller_hangup' || data.dialstatus === 'CANCEL') {
+                        toast.info('Caller hung up', {
+                            description: 'The caller hung up before the call was answered.',
+                        });
+                    } else if (data.reason === 'busy' || data.dialstatus === 'BUSY') {
+                        toast.warning('All agents busy', {
+                            description: 'All agents are currently busy.',
+                        });
+                    }
+
+                    return null;
+                } else {
+                    // For other reasons (like answered_elsewhere), we should keep the dialog open
+                    // if the current user answered the call
+                    console.log('Stop ringing event with reason that does not require clearing dialog:', {
+                        reason: data.reason,
+                        dialstatus: data.dialstatus,
+                    });
+
+                    // If the call was answered elsewhere (by another CRO), and we're not the owner,
+                    // we should clear the dialog
+                    if (data.reason === 'answered_elsewhere' && prev && !prev.isOwner) {
+                        console.log('Call answered by another CRO, clearing dialog');
+                        return null;
+                    }
+
+                    // Otherwise, keep the current call state
+                    return prev;
+                }
             }
 
             // If not the same call, keep the current state
