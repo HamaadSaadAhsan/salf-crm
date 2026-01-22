@@ -64,10 +64,7 @@ export function FollowUpBanner({ activities }: FollowUpBannerProps) {
         <div className="space-y-2">
             {/* Missed Calls Banner */}
             {categorizedFollowUps.missedCalls.length > 0 && (
-                <Alert
-                    variant="default"
-                    className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400"
-                >
+                <Alert className="relative rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                     <PhoneMissed className="h-4 w-4" />
                     <AlertTitle>
                         {categorizedFollowUps.missedCalls.length} Missed Call
@@ -99,10 +96,7 @@ export function FollowUpBanner({ activities }: FollowUpBannerProps) {
 
             {/* Contacted Leads Banner */}
             {categorizedFollowUps.contactedLeads.length > 0 && (
-                <Alert
-                    variant="default"
-                    className="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-50 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400"
-                >
+                <Alert className="relative rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-50 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400">
                     <UserCheck className="h-4 w-4" />
                     <AlertTitle>
                         {categorizedFollowUps.contactedLeads.length} Contacted Lead
@@ -134,7 +128,7 @@ export function FollowUpBanner({ activities }: FollowUpBannerProps) {
 
             {/* General Follow-ups Banner */}
             {categorizedFollowUps.general.length > 0 && (
-                <Alert variant="default">
+                <Alert className="relative rounded-lg border bg-background p-4 text-foreground [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
                     <Bell className="h-4 w-4" />
                     <AlertTitle>
                         {categorizedFollowUps.general.length} Pending Follow-up
