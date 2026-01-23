@@ -1,7 +1,7 @@
-import { inboundCall } from '@/routes/asterisk';
-import axios from 'axios';
 import React, { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
+import { inboundCall } from '@/routes/asterisk';
 
 // Types
 export interface AsteriskMessage {
@@ -213,7 +213,6 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                 toast.success('Connected to Asterisk Manager');
             };
 
-            // Update the WebSocket onmessage handler to include more context
             ws.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
@@ -227,29 +226,31 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                     console.log('Asterisk message received:', message);
 
                     // Check if this is an inbound call event and forward to Laravel
+                    // Include stop_ringing for ring group notifications (clears notification when call moves to next extension)
                     if (data.event && ['ring', 'connect', 'disconnect', 'hangup', 'stop_ringing'].includes(data.event)) {
                         try {
+                            // For inbound calls: caller = phone number, exten = extension receiving call
+                            // For outbound calls: caller = agent extension, exten = phone number being called
+                            // For stop_ringing: targetExtension = extension to clear notification from
                             await axios.post(inboundCall().url, {
                                 event: data.event,
-                                caller: data.caller,
-                                exten: data.exten,
+                                caller: data.caller, // Phone number (03334114879) or agent extension
+                                exten: data.exten || data.targetExtension, // Extension (201) or target extension for stop_ringing
                                 uniqueid: data.uniqueid,
                                 linkedid: data.linkedid,
-                                // Add more context for stop_ringing events
+                                // Additional fields for stop_ringing and ring events
                                 targetExtension: data.targetExtension,
-                                reason: data.reason,
+                                reason: data.reason, // timeout, caller_hangup, busy, answered_elsewhere
                                 dialstatus: data.dialstatus,
                                 session_id: data.session_id,
-                                // Add channel information
-                                channel: data.channel,
-                                destchannel: data.destchannel,
-                                // Add who answered the call (if applicable)
-                                connectedlinenum: data.connectedlinenum,
-                                connectedlinename: data.connectedlinename,
                             });
-                            console.log('Call event forwarded to Laravel:', data.event, data);
+                            console.log('Inbound call event forwarded to Laravel:', data.event, {
+                                targetExtension: data.targetExtension,
+                                reason: data.reason,
+                            });
                         } catch (apiError) {
                             console.error('Failed to forward call event to Laravel:', apiError);
+                            // Don't show error to user - this is background processing
                         }
                     }
                 } catch (error) {

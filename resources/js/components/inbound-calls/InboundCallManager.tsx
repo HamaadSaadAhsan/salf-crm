@@ -1,5 +1,5 @@
 import { useInboundCalls } from '@/hooks/useInboundCalls';
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { InboundCallNotification } from './InboundCallNotification';
 import { NewLeadCallDialog } from './NewLeadCallDialog';
 
@@ -7,33 +7,23 @@ export function InboundCallManager() {
     const { activeCall, updateLeadFromCall, createLeadFromCall } = useInboundCalls();
     const [showNotification, setShowNotification] = useState(true);
     const [showLeadDialog, setShowLeadDialog] = useState(false);
-    const hadActiveCall = useRef(false);
 
     React.useEffect(() => {
-        // Only log if there's an actual call or if a call just ended
-        if (activeCall || hadActiveCall.current) {
-            console.log('InboundCallManager: activeCall changed', {
-                activeCall,
-                hasLead: !!activeCall?.lead,
-                leadData: activeCall?.lead,
-                isOwner: activeCall?.isOwner,
-                event: activeCall?.event
-            });
-        }
+        console.log('InboundCallManager: activeCall changed', {
+            activeCall,
+            hasLead: !!activeCall?.lead,
+            leadData: activeCall?.lead,
+            isOwner: activeCall?.isOwner,
+            event: activeCall?.event,
+        });
 
         if (!activeCall) {
-            // Only log "ended" if there was actually a call before
-            if (hadActiveCall.current) {
-                console.log('InboundCallManager: Call ended or cleared, resetting state');
-                hadActiveCall.current = false;
-            }
+            // Call ended or cleared (picked up by another CRO) - reset everything
+            console.log('InboundCallManager: Call ended or cleared, resetting state');
             setShowLeadDialog(false);
             setShowNotification(false);
             return;
         }
-
-        // Mark that we have an active call
-        hadActiveCall.current = true;
 
         // For ring events: Show notification to all CROs
         if (activeCall.event === 'ring') {
@@ -59,7 +49,6 @@ export function InboundCallManager() {
             setShowNotification(false);
             return;
         }
-
     }, [activeCall]);
 
     // Don't render anything if no active call
@@ -92,7 +81,7 @@ export function InboundCallManager() {
     return (
         <>
             {/* Call Notification Popup - shows during ring for all, shows during connect only for owner */}
-            {showNotification && activeCall && (
+            {showNotification && (
                 <InboundCallNotification
                     call={activeCall}
                     onOpenLeadDialog={handleOpenLeadDialog}
@@ -102,7 +91,7 @@ export function InboundCallManager() {
             )}
 
             {/* Lead Dialog - shows during ring (when user clicks button) or for owner during connect */}
-            {activeCall && (activeCall.isOwner || activeCall.event === 'ring') && (
+            {(activeCall.isOwner || activeCall.event === 'ring') && (
                 <NewLeadCallDialog
                     isOpen={showLeadDialog}
                     onClose={handleCloseLeadDialog}

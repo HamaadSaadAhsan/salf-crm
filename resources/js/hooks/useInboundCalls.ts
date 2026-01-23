@@ -70,9 +70,7 @@ export function useInboundCalls() {
                     console.log('Restored active call from server:', data.active_call);
 
                     // Parse the start time from the server
-                    const startTime = data.active_call.started_at
-                        ? new Date(data.active_call.started_at)
-                        : new Date();
+                    const startTime = data.active_call.started_at ? new Date(data.active_call.started_at) : new Date();
 
                     const restoredCall: ActiveCall = {
                         event: data.active_call.event,
@@ -105,54 +103,46 @@ export function useInboundCalls() {
         fetchActiveCall();
     }, []);
 
-    // // Verify if a call is still active via backend API
-    // const verifyCallStatus = useCallback(async (uniqueid: string): Promise<boolean> => {
-    //     try {
-    //         const response = await axios.get(`/api/calls/status/${uniqueid}`);
-    //         return response.data.is_active;
-    //     } catch (error) {
-    //         console.error('Failed to verify call status:', error);
-    //         return false;
-    //     }
-    // }, []);
-
     // Check if current user should own this call
-    const isCallOwner = useCallback((data: InboundCallData, event: string): boolean => {
-        // For inbound calls:
-        // - Ring: Everyone sees it (return false for ownership, but show notification)
-        // - Connect: Only the CRO who answered (their extension matches) owns it
-        // - Hangup: Only the owner should see the dialog close
+    const isCallOwner = useCallback(
+        (data: InboundCallData, event: string): boolean => {
+            // For inbound calls:
+            // - Ring: Everyone sees it (return false for ownership, but show notification)
+            // - Connect: Only the CRO who answered (their extension matches) owns it
+            // - Hangup: Only the owner should see the dialog close
 
-        if (data.call_direction === 'outbound') {
-            // Outbound call: Only the agent who made the call owns it
-            return data.agent_extension === currentUserExtension;
-        }
-
-        // Inbound call
-        if (event === 'ring') {
-            // Everyone should see ring events, but no one "owns" it yet
-            return false;
-        }
-
-        if (event === 'connect') {
-            // The CRO who answered owns the call
-            // Check by user ID first (most reliable), then by extension
-            if (data.answered_by_user_id) {
-                return data.answered_by_user_id === currentUserId;
+            if (data.call_direction === 'outbound') {
+                // Outbound call: Only the agent who made the call owns it
+                return data.agent_extension === currentUserExtension;
             }
-            return data.exten === currentUserExtension;
-        }
 
-        // For disconnect/hangup, check if we were the owner of the active call
-        return false;
-    }, [currentUserExtension, currentUserId]);
+            // Inbound call
+            if (event === 'ring') {
+                // Everyone should see ring events, but no one "owns" it yet
+                return false;
+            }
+
+            if (event === 'connect') {
+                // The CRO who answered owns the call
+                // Check by user ID first (most reliable), then by extension
+                if (data.answered_by_user_id) {
+                    return data.answered_by_user_id === currentUserId;
+                }
+                return data.exten === currentUserExtension;
+            }
+
+            // For disconnect/hangup, check if we were the owner of the active call
+            return false;
+        },
+        [currentUserExtension, currentUserId],
+    );
 
     // Subscribe to inbound call events using useEcho hook
     useEcho('inbound-calls', '.inbound.call', (data: InboundCallData) => {
         console.log('Inbound call event received:', data, {
             currentUserExtension,
             currentUserId,
-            isOwner: isCallOwner(data, data.event)
+            isOwner: isCallOwner(data, data.event),
         });
 
         // Update call history
@@ -220,11 +210,7 @@ export function useInboundCalls() {
 
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
-            const isSameCall = prev && (
-                prev.uniqueid === data.uniqueid ||
-                prev.linkedid === data.linkedid ||
-                prev.uniqueid === data.linkedid
-            );
+            const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
 
             if (isSameCall) {
                 // If another CRO picked up the call, clear it from non-owners
@@ -268,27 +254,53 @@ export function useInboundCalls() {
     };
 
     /**
-     * Handle stop_ringing event - just logs the event, does NOT close the dialog
-     * The dialog should only close on hangup/disconnect events
+     * Handle stop_ringing event - clears the notification when a dial leg ends
+     * This happens when:
+     * - Extension 201 times out and call moves to Ring Group 299
+     * - Call is answered by another extension
+     * - Caller hangs up before anyone answers
      */
     const handleStopRingingEvent = (data: InboundCallData) => {
-        console.log('Stop ringing event received (ignoring - dialog only closes on hangup):', {
-            target_extension: data.target_extension,
+        const targetExtension = data.target_extension || data.exten;
+
+        // Only process if this stop_ringing event is for our extension
+        if (targetExtension !== currentUserExtension) {
+            console.log('Stop ringing event: Not for current user', {
+                targetExtension,
+                currentUserExtension,
+                reason: data.reason,
+            });
+            return;
+        }
+
+        console.log('Stop ringing event: Clearing notification for current user', {
+            targetExtension,
             reason: data.reason,
             dialstatus: data.dialstatus,
             linkedid: data.linkedid,
         });
-        // Do nothing - let hangup/disconnect handle closing the dialog
+
+        setActiveCall((prev) => {
+            // Only clear if this is for the same call (match by linkedid or uniqueid)
+            const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
+
+            if (isSameCall) {
+                console.log('Clearing active call notification due to stop_ringing', {
+                    reason: data.reason,
+                    dialstatus: data.dialstatus,
+                });
+                return null;
+            }
+
+            // If not the same call, keep the current state
+            return prev;
+        });
     };
 
     const handleDisconnectEvent = (data: InboundCallData) => {
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
-            const isSameCall = prev && (
-                prev.uniqueid === data.uniqueid ||
-                prev.linkedid === data.linkedid ||
-                prev.uniqueid === data.linkedid
-            );
+            const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
 
             if (isSameCall) {
                 return null;
@@ -319,14 +331,9 @@ export function useInboundCalls() {
         },
         notes: string,
         duration: number,
-        callInfo?: { uniqueid: string; caller: string }
     ): Promise<void> => {
-        const call = callInfo || activeCall;
-        if (!call) {
-            toast.error('The call has ended', {
-                description: 'Unable to save changes. Please try again.',
-            });
-            return;
+        if (!activeCall) {
+            throw new Error('No active call');
         }
 
         try {
@@ -339,7 +346,7 @@ export function useInboundCalls() {
             await axios.put(updateUrl, leadData, {
                 headers: {
                     'X-Inertia': 'false',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
             });
 
@@ -347,7 +354,7 @@ export function useInboundCalls() {
             await axios.post(callNotes().url, {
                 lead_id: leadId,
                 notes,
-                uniqueid: call.uniqueid,
+                uniqueid: activeCall.uniqueid,
                 duration,
             });
 
@@ -375,14 +382,9 @@ export function useInboundCalls() {
         notes: string,
         duration: number,
         sessionId: string,
-        callInfo?: { uniqueid: string; caller: string }
     ): Promise<void> => {
-        const call = callInfo || activeCall;
-        if (!call) {
-            toast.error('The call has ended', {
-                description: 'Unable to create lead. Please try again.',
-            });
-            return;
+        if (!activeCall) {
+            throw new Error('No active call');
         }
 
         try {
@@ -390,16 +392,20 @@ export function useInboundCalls() {
             const storeUrl = callLead().url;
             console.log('Creating lead from call:', { storeUrl, leadData });
 
-            const response = await axios.post(storeUrl, {
-                ...leadData,
-                uniqueid: call.uniqueid,
-                caller: call.caller,
-            }, {
-                headers: {
-                    'X-Inertia': 'false',
-                    'Accept': 'application/json',
+            const response = await axios.post(
+                storeUrl,
+                {
+                    ...leadData,
+                    uniqueid: activeCall.uniqueid,
+                    caller: activeCall.caller,
                 },
-            });
+                {
+                    headers: {
+                        'X-Inertia': 'false',
+                        Accept: 'application/json',
+                    },
+                },
+            );
 
             const newLeadId = response.data?.data?.lead?.id || response.data?.data?.id;
 
@@ -411,7 +417,7 @@ export function useInboundCalls() {
             await axios.post(callNotes().url, {
                 lead_id: newLeadId,
                 notes,
-                uniqueid: call.uniqueid,
+                uniqueid: activeCall.uniqueid,
                 duration,
             });
 
