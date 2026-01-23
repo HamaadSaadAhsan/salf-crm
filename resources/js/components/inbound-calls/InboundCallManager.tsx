@@ -1,5 +1,5 @@
 import { useInboundCalls } from '@/hooks/useInboundCalls';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { InboundCallNotification } from './InboundCallNotification';
 import { NewLeadCallDialog } from './NewLeadCallDialog';
 
@@ -7,23 +7,33 @@ export function InboundCallManager() {
     const { activeCall, updateLeadFromCall, createLeadFromCall } = useInboundCalls();
     const [showNotification, setShowNotification] = useState(true);
     const [showLeadDialog, setShowLeadDialog] = useState(false);
+    const hadActiveCall = useRef(false);
 
     React.useEffect(() => {
-        console.log('InboundCallManager: activeCall changed', {
-            activeCall,
-            hasLead: !!activeCall?.lead,
-            leadData: activeCall?.lead,
-            isOwner: activeCall?.isOwner,
-            event: activeCall?.event
-        });
+        // Only log if there's an actual call or if a call just ended
+        if (activeCall || hadActiveCall.current) {
+            console.log('InboundCallManager: activeCall changed', {
+                activeCall,
+                hasLead: !!activeCall?.lead,
+                leadData: activeCall?.lead,
+                isOwner: activeCall?.isOwner,
+                event: activeCall?.event
+            });
+        }
 
         if (!activeCall) {
-            // Call ended - close everything
-            console.log('InboundCallManager: Call ended or cleared, resetting state');
+            // Only log "ended" if there was actually a call before
+            if (hadActiveCall.current) {
+                console.log('InboundCallManager: Call ended or cleared, resetting state');
+                hadActiveCall.current = false;
+            }
             setShowLeadDialog(false);
             setShowNotification(false);
             return;
         }
+
+        // Mark that we have an active call
+        hadActiveCall.current = true;
 
         // For ring events: Show notification to all CROs
         if (activeCall.event === 'ring') {
