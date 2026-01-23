@@ -155,15 +155,6 @@ export function useInboundCalls() {
             isOwner: isCallOwner(data, data.event)
         });
 
-        // QUICK FIX: Skip customer leg connect events
-        if (data.event === 'connect' &&
-            data.call_direction === 'inbound' &&
-            data.caller === currentUserExtension &&
-            data.exten !== currentUserExtension) {
-            console.log('Skipping customer leg connect event', data);
-            return;
-        }
-
         // Update call history
         setCallHistory((prev) => [data, ...prev.slice(0, 49)]);
 
@@ -229,37 +220,16 @@ export function useInboundCalls() {
 
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
-            const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
+            const isSameCall = prev && (
+                prev.uniqueid === data.uniqueid ||
+                prev.linkedid === data.linkedid ||
+                prev.uniqueid === data.linkedid
+            );
 
             if (isSameCall) {
-                // CRITICAL FIX: Check if this is the CRO's leg or customer's leg
-                // For inbound calls, the CRO's leg has exten=CRO_extension and caller=customer_number
-                // The customer's leg has exten=customer_number and caller=CRO_extension
-
-                const isCrosLeg = data.exten === currentUserExtension && data.caller !== currentUserExtension;
-                const isCustomersLeg = data.caller === currentUserExtension && data.exten !== currentUserExtension;
-
-                // If this is the customer's leg event (CRO calling customer back),
-                // and we're not the owner, ignore it - it's just the other side of the same call
-                if (isCustomersLeg && !isOwner) {
-                    console.log('Ignoring customer leg connect event for inbound call', {
-                        caller: data.caller,
-                        exten: data.exten,
-                        currentUserExtension,
-                    });
-                    return prev; // Keep existing call state
-                }
-
-                // If another CRO picked up the call (different CRO's leg), clear it from non-owners
-                if (!isOwner && !isCustomersLeg) {
-                    console.log('Call picked up by another CRO, clearing from current user', {
-                        dataCaller: data.caller,
-                        dataExten: data.exten,
-                        currentUserExtension,
-                        isCrosLeg,
-                        isCustomersLeg,
-                    });
-
+                // If another CRO picked up the call, clear it from non-owners
+                if (!isOwner) {
+                    console.log('Call picked up by another CRO, clearing from current user');
                     // Notify the assigned CRO that someone else answered their lead's call
                     if (data.intended_for_user_id === currentUserId && isCoverageCall) {
                         toast.info('Coverage call', {
@@ -284,18 +254,6 @@ export function useInboundCalls() {
 
             // If we didn't have an active call but we're the owner, create it
             if (isOwner) {
-                // Only create for CRO's leg events, not customer's leg events
-                const isCrosLeg = data.exten === currentUserExtension && data.caller !== currentUserExtension;
-
-                if (!isCrosLeg) {
-                    console.log('Skipping creation of call from customer leg event', {
-                        caller: data.caller,
-                        exten: data.exten,
-                        currentUserExtension,
-                    });
-                    return prev;
-                }
-
                 return {
                     ...data,
                     startTime: new Date(),
@@ -310,104 +268,17 @@ export function useInboundCalls() {
     };
 
     /**
-     * Handle stop_ringing event - conditionally clears the notification when a dial leg ends
-     * Only clears the dialog in specific cases:
-     * - timeout / NOANSWER: Call wasn't answered by anyone
-     * - caller_hangup / CANCEL: Caller hung up before anyone answered
-     * - busy / BUSY: All agents were busy
-     * - answered_elsewhere: Another CRO answered (only clears for non-owners)
-     *
-     * For other reasons, the dialog stays open if the current user is the owner.
+     * Handle stop_ringing event - just logs the event, does NOT close the dialog
+     * The dialog should only close on hangup/disconnect events
      */
     const handleStopRingingEvent = (data: InboundCallData) => {
-        const targetExtension = data.target_extension || data.exten;
-
-        // Only process if this stop_ringing event is for our extension
-        if (targetExtension !== currentUserExtension) {
-            console.log('Stop ringing event: Not for current user', {
-                targetExtension,
-                currentUserExtension,
-                reason: data.reason,
-            });
-            return;
-        }
-
-        console.log('Stop ringing event: Processing for current user', {
-            targetExtension,
+        console.log('Stop ringing event received (ignoring - dialog only closes on hangup):', {
+            target_extension: data.target_extension,
             reason: data.reason,
             dialstatus: data.dialstatus,
             linkedid: data.linkedid,
         });
-
-        setActiveCall((prev) => {
-            // Only clear if this is for the same call (match by linkedid or uniqueid)
-            const isSameCall = prev && (
-                prev.uniqueid === data.uniqueid ||
-                prev.linkedid === data.linkedid ||
-                prev.uniqueid === data.linkedid
-            );
-
-            if (isSameCall) {
-                // Check the reason for stop_ringing
-                // We should ONLY clear the dialog in specific cases:
-                // - timeout (call wasn't answered by anyone)
-                // - caller_hangup (caller hung up before anyone answered)
-                // - busy (all agents were busy)
-                // - CANCEL, NOANSWER dialstatus
-
-                const shouldClearDialog =
-                    data.reason === 'timeout' ||
-                    data.reason === 'caller_hangup' ||
-                    data.reason === 'busy' ||
-                    data.dialstatus === 'NOANSWER' ||
-                    data.dialstatus === 'CANCEL' ||
-                    data.dialstatus === 'BUSY';
-
-                if (shouldClearDialog) {
-                    console.log('Clearing active call notification due to stop_ringing with reason:', {
-                        reason: data.reason,
-                        dialstatus: data.dialstatus,
-                    });
-
-                    // Show appropriate toast notification
-                    if (data.reason === 'timeout' || data.dialstatus === 'NOANSWER') {
-                        toast.info('Call not answered', {
-                            description: 'The call was not answered and has ended.',
-                        });
-                    } else if (data.reason === 'caller_hangup' || data.dialstatus === 'CANCEL') {
-                        toast.info('Caller hung up', {
-                            description: 'The caller hung up before the call was answered.',
-                        });
-                    } else if (data.reason === 'busy' || data.dialstatus === 'BUSY') {
-                        toast.warning('All agents busy', {
-                            description: 'All agents are currently busy.',
-                        });
-                    }
-
-                    return null;
-                } else {
-                    // For other reasons (like answered_elsewhere), we should keep the dialog open
-                    // if the current user answered the call
-                    console.log('Stop ringing event with reason that does not require clearing dialog:', {
-                        reason: data.reason,
-                        dialstatus: data.dialstatus,
-                    });
-
-                    // If the call was answered elsewhere (by another CRO), and we're not the owner,
-                    // we should clear the dialog
-                    if (data.reason === 'answered_elsewhere' && prev && !prev.isOwner) {
-                        console.log('Call answered by another CRO, clearing dialog');
-                        return null;
-                    }
-
-                    // Otherwise, keep the current call state
-                    return prev;
-                }
-            }
-
-            // If not the same call, keep the current state
-            return prev;
-        });
+        // Do nothing - let hangup/disconnect handle closing the dialog
     };
 
     const handleDisconnectEvent = (data: InboundCallData) => {
