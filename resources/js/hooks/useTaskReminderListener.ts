@@ -36,8 +36,6 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
         enabled: soundEnabled,
     });
 
-    console.log('useTaskReminderListener', { userId, enabled, soundEnabled })
-
     const getSoundType = useCallback((data: TaskReminderData, isOverdue: boolean): NotificationSoundType => {
         if (isOverdue) {
             return 'overdue';
@@ -58,8 +56,6 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
         if (!enabled) {
             return;
         }
-
-        console.log('handleTaskDueReminder called', data);
 
         // Play sound
         if (soundEnabled) {
@@ -108,8 +104,6 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
         if (!enabled) {
             return;
         }
-
-        console.log('handleTaskOverdue called', data);
 
         // Play sound
         if (soundEnabled) {
