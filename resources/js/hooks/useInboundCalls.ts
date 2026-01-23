@@ -229,16 +229,37 @@ export function useInboundCalls() {
 
         setActiveCall((prev) => {
             // Match by either uniqueid or linkedid (same call session)
-            const isSameCall = prev && (
-                prev.uniqueid === data.uniqueid ||
-                prev.linkedid === data.linkedid ||
-                prev.uniqueid === data.linkedid
-            );
+            const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
 
             if (isSameCall) {
-                // If another CRO picked up the call, clear it from non-owners
-                if (!isOwner) {
-                    console.log('Call picked up by another CRO, clearing from current user');
+                // CRITICAL FIX: Check if this is the CRO's leg or customer's leg
+                // For inbound calls, the CRO's leg has exten=CRO_extension and caller=customer_number
+                // The customer's leg has exten=customer_number and caller=CRO_extension
+
+                const isCrosLeg = data.exten === currentUserExtension && data.caller !== currentUserExtension;
+                const isCustomersLeg = data.caller === currentUserExtension && data.exten !== currentUserExtension;
+
+                // If this is the customer's leg event (CRO calling customer back),
+                // and we're not the owner, ignore it - it's just the other side of the same call
+                if (isCustomersLeg && !isOwner) {
+                    console.log('Ignoring customer leg connect event for inbound call', {
+                        caller: data.caller,
+                        exten: data.exten,
+                        currentUserExtension,
+                    });
+                    return prev; // Keep existing call state
+                }
+
+                // If another CRO picked up the call (different CRO's leg), clear it from non-owners
+                if (!isOwner && !isCustomersLeg) {
+                    console.log('Call picked up by another CRO, clearing from current user', {
+                        dataCaller: data.caller,
+                        dataExten: data.exten,
+                        currentUserExtension,
+                        isCrosLeg,
+                        isCustomersLeg,
+                    });
+
                     // Notify the assigned CRO that someone else answered their lead's call
                     if (data.intended_for_user_id === currentUserId && isCoverageCall) {
                         toast.info('Coverage call', {
@@ -263,6 +284,18 @@ export function useInboundCalls() {
 
             // If we didn't have an active call but we're the owner, create it
             if (isOwner) {
+                // Only create for CRO's leg events, not customer's leg events
+                const isCrosLeg = data.exten === currentUserExtension && data.caller !== currentUserExtension;
+
+                if (!isCrosLeg) {
+                    console.log('Skipping creation of call from customer leg event', {
+                        caller: data.caller,
+                        exten: data.exten,
+                        currentUserExtension,
+                    });
+                    return prev;
+                }
+
                 return {
                     ...data,
                     startTime: new Date(),
