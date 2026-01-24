@@ -192,11 +192,18 @@ export function useInboundCalls() {
 
         const newCall: ActiveCall = {
             ...data,
+            target_extension: targetExtension, // Ensure target_extension is always set
             startTime: new Date(),
             duration: 0,
             isOwner: false, // No one owns the call during ring
             isCoverageCall: false, // Not determined yet during ring
         };
+
+        console.log('Ring event: Creating active call', {
+            targetExtension,
+            currentUserExtension,
+            uniqueid: data.uniqueid,
+        });
 
         setActiveCall(newCall);
 
@@ -213,9 +220,23 @@ export function useInboundCalls() {
             const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
 
             if (isSameCall) {
-                // If another CRO picked up the call, clear it from non-owners
-                if (!isOwner) {
-                    console.log('Call picked up by another CRO, clearing from current user');
+                // Determine if we should be considered the owner of this call
+                // We are the owner if:
+                // 1. isCallOwner returns true (answered_by_user_id matches or exten matches)
+                // 2. OR we were the original target of the ring (target_extension matches our extension)
+                // 3. OR the answered_by_user_id in the connect event matches our user ID
+                const wasOriginalTarget = prev.target_extension === currentUserExtension;
+                const answeredByUs = data.answered_by_user_id === currentUserId;
+                const shouldBeOwner = isOwner || wasOriginalTarget || answeredByUs;
+
+                // If another CRO definitively picked up the call, clear it from non-owners
+                // Only clear if we can confirm someone ELSE answered (different user ID specified)
+                if (!shouldBeOwner && data.answered_by_user_id && data.answered_by_user_id !== currentUserId) {
+                    console.log('Call picked up by another CRO, clearing from current user', {
+                        answered_by_user_id: data.answered_by_user_id,
+                        currentUserId,
+                        wasOriginalTarget,
+                    });
                     // Notify the assigned CRO that someone else answered their lead's call
                     if (data.intended_for_user_id === currentUserId && isCoverageCall) {
                         toast.info('Coverage call', {
@@ -225,6 +246,15 @@ export function useInboundCalls() {
                     return null;
                 }
 
+                // If we should be the owner (or can't confirm someone else answered), keep the call
+                console.log('Connect event: keeping call active', {
+                    shouldBeOwner,
+                    isOwner,
+                    wasOriginalTarget,
+                    answeredByUs,
+                    answered_by_user_id: data.answered_by_user_id,
+                });
+
                 // Merge new data with existing call state for the owner
                 // IMPORTANT: Preserve lead data from prev if new data doesn't have it
                 return {
@@ -233,7 +263,7 @@ export function useInboundCalls() {
                     lead: data.lead || prev.lead, // Keep existing lead if new event doesn't have one
                     event: 'connect',
                     startTime: prev.startTime, // Keep original start time
-                    isOwner: true,
+                    isOwner: shouldBeOwner,
                     isCoverageCall,
                 };
             }

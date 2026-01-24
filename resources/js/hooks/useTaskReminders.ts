@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useNotificationSound, type NotificationSoundType } from './useNotificationSound';
 import { type Task } from '@/types/task';
 import { differenceInMinutes, isPast, parseISO } from 'date-fns';
+import { router } from '@inertiajs/react';
 
 interface TaskReminderOptions {
     enabled?: boolean;
@@ -169,7 +170,6 @@ export function useTaskReminders(options: TaskReminderOptions = {}) {
     }, [config.reminderThresholds]);
 
     const fetchPendingReminders = useCallback(async () => {
-        console.log('fetchPendingReminders called', config.enabled);
         if (!config.enabled) {
             return;
         }
