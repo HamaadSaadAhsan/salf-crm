@@ -1,7 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { usePage } from '@inertiajs/react';
 import { inboundCall } from '@/routes/asterisk';
+import type { SharedData } from '@/types';
 
 // Types
 export interface AsteriskMessage {
@@ -186,6 +188,10 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const shouldReconnectRef = useRef<boolean>(true);
 
+    // Get user's extension from auth for WebSocket registration
+    const { auth } = usePage<SharedData>().props;
+    const userExtension = auth?.user?.extension;
+
     // Connect to WebSocket
     const connect = useCallback(() => {
         // Clear any existing reconnect timeout
@@ -201,21 +207,43 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
         }
 
         try {
+            console.log('🔌 [WebSocket] Connecting to:', state.config.url);
             dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connecting' });
 
             const ws = new WebSocket(state.config.url);
 
             ws.onopen = () => {
-                console.log('Asterisk WebSocket connected');
+                console.log('✅ [WebSocket] Connected successfully');
                 dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
                 dispatch({ type: 'SET_LAST_CONNECTED', payload: new Date() });
                 dispatch({ type: 'RESET_RECONNECT_ATTEMPTS' });
-                toast.success('Connected to Asterisk Manager');
+
+                // Register extension with WebSocket server for targeted notifications
+                // This is critical for receiving inbound call events targeted to this extension
+                if (userExtension) {
+                    const registrationMessage = {
+                        exten: userExtension,
+                        login: true,
+                    };
+                    ws.send(JSON.stringify(registrationMessage));
+                    console.log('🔔 [WebSocket] Registered extension:', userExtension);
+                } else {
+                    console.warn('⚠️ [WebSocket] No user extension configured - inbound call notifications will NOT work');
+                }
             };
 
             ws.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('📨 [WebSocket] Message received:', {
+                        event: data.event,
+                        type: data.type,
+                        targetExtension: data.targetExtension,
+                        exten: data.exten,
+                        caller: data.caller,
+                        uniqueid: data.uniqueid,
+                    });
+
                     const message: AsteriskMessage = {
                         id: Date.now().toString(),
                         type: data.type || 'unknown',
@@ -223,11 +251,11 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                         timestamp: new Date(),
                     };
                     dispatch({ type: 'ADD_MESSAGE', payload: message });
-                    console.log('Asterisk message received:', message);
 
                     // Check if this is an inbound call event and forward to Laravel
                     // Include stop_ringing for ring group notifications (clears notification when call moves to next extension)
                     if (data.event && ['ring', 'connect', 'disconnect', 'hangup', 'stop_ringing'].includes(data.event)) {
+                        console.log('📞 [WebSocket] Call event detected, forwarding to Laravel:', data.event);
                         try {
                             // For inbound calls: caller = phone number, exten = extension receiving call
                             // For outbound calls: caller = agent extension, exten = phone number being called
@@ -244,44 +272,47 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                                 dialstatus: data.dialstatus,
                                 session_id: data.session_id,
                             });
-                            console.log('Inbound call event forwarded to Laravel:', data.event, {
-                                targetExtension: data.targetExtension,
-                                reason: data.reason,
-                            });
+                            console.log('✅ [WebSocket] Event forwarded to Laravel successfully:', data.event);
                         } catch (apiError) {
-                            console.error('Failed to forward call event to Laravel:', apiError);
+                            console.error('❌ [WebSocket] Failed to forward call event to Laravel:', apiError);
                             // Don't show error to user - this is background processing
                         }
+                    } else {
+                        console.log('ℹ️ [WebSocket] Non-call event received (not forwarding):', data.event || data.type);
                     }
                 } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error);
+                    console.error('❌ [WebSocket] Failed to parse message:', error);
                     dispatch({ type: 'ADD_ERROR', payload: 'Failed to parse message from server' });
                 }
             };
 
             ws.onerror = (error) => {
-                console.error('Asterisk WebSocket error:', error);
+                console.error('❌ [WebSocket] Connection error:', error);
                 dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
                 dispatch({ type: 'ADD_ERROR', payload: 'WebSocket connection error' });
             };
 
-            ws.onclose = () => {
-                console.log('Asterisk WebSocket disconnected');
+            ws.onclose = (event) => {
+                console.log('🔴 [WebSocket] Connection closed:', {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean,
+                });
                 dispatch({ type: 'SET_LAST_DISCONNECTED', payload: new Date() });
 
                 // Attempt to reconnect if enabled and within max attempts
                 if (shouldReconnectRef.current && state.reconnectAttempts < state.config.maxReconnectAttempts) {
+                    console.log('🔄 [WebSocket] Attempting reconnect...');
                     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'reconnecting' });
                     dispatch({ type: 'INCREMENT_RECONNECT_ATTEMPTS' });
 
                     reconnectTimeoutRef.current = setTimeout(() => {
-                        console.log(`Reconnecting to Asterisk... Attempt ${state.reconnectAttempts + 1}/${state.config.maxReconnectAttempts}`);
                         connect();
                     }, state.config.reconnectInterval);
                 } else {
                     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
                     if (state.reconnectAttempts >= state.config.maxReconnectAttempts) {
-                        toast.error('Max reconnection attempts reached');
+                        console.error('❌ [WebSocket] Max reconnection attempts reached');
                         dispatch({ type: 'ADD_ERROR', payload: 'Max reconnection attempts reached' });
                     }
                 }
@@ -289,13 +320,11 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
 
             wsRef.current = ws;
         } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
             dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
             const errorMessage = error instanceof Error ? error.message : 'Failed to create WebSocket connection';
             dispatch({ type: 'ADD_ERROR', payload: errorMessage });
-            toast.error('Failed to connect to Asterisk Manager');
         }
-    }, [state.config.url, state.config.reconnectInterval, state.config.maxReconnectAttempts, state.reconnectAttempts]);
+    }, [state.config.url, state.config.reconnectInterval, state.config.maxReconnectAttempts, state.reconnectAttempts, userExtension]);
 
     // Disconnect from WebSocket
     const disconnect = useCallback(() => {
@@ -313,7 +342,6 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
 
         dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
         dispatch({ type: 'RESET_RECONNECT_ATTEMPTS' });
-        toast.info('Disconnected from Asterisk Manager');
     }, []);
 
     // Send message through WebSocket
@@ -322,15 +350,11 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
             try {
                 wsRef.current.send(JSON.stringify(message));
                 dispatch({ type: 'INCREMENT_MESSAGES_SENT' });
-                console.log('Message sent to Asterisk:', message);
             } catch (error) {
-                console.error('Failed to send message:', error);
                 dispatch({ type: 'ADD_ERROR', payload: 'Failed to send message' });
-                toast.error('Failed to send message to Asterisk');
             }
         } else {
             console.warn('WebSocket is not connected. Cannot send message.');
-            toast.warning('Not connected to Asterisk Manager');
         }
     }, []);
 
@@ -367,7 +391,6 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                 wsRef.current.send(JSON.stringify(originateAction));
                 dispatch({ type: 'INCREMENT_MESSAGES_SENT' });
 
-                console.log('Originate call request sent with signature:', originateAction);
                 toast.success(`Calling ${phoneNumber}...`);
 
                 return true;
