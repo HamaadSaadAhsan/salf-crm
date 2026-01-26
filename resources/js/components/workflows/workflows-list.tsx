@@ -451,7 +451,7 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
                   </TableCell>
                 </TableRow>
               ))}
-              {loading && (
+              {_loading && (
                 <LoadingRow />
               )}
             </TableBody>
