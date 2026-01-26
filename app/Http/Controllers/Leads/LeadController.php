@@ -33,9 +33,13 @@ class LeadController extends Controller
         $filters['page'] = max(1, (int) ($filters['page'] ?? 1));
         $filters['per_page'] = max(1, min(100, (int) ($filters['per_page'] ?? 25)));
 
-        // Advisors (sales-rep) should only see leads assigned to them
+        // CROs and Advisors should only see leads assigned to them
+        // Roles that require lead filtering: support-agent, senior-support-agent, sales-rep, senior-sales-rep
         $user = auth()->user();
-        if ($user->hasRole('sales-rep') && ! $user->hasAnyRole(['super-admin', 'admin'])) {
+        $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+        $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+
+        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
         }
 
@@ -662,9 +666,12 @@ class LeadController extends Controller
      */
     public function show(Lead $lead)
     {
-        // Advisors (sales-rep) can only view leads assigned to them
+        // CROs and Advisors can only view leads assigned to them
         $user = auth()->user();
-        if ($user->hasRole('sales-rep') && ! $user->hasAnyRole(['super-admin', 'admin'])) {
+        $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+        $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+
+        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             if ($lead->assigned_to !== $user->id) {
                 abort(403, 'You are not authorized to view this lead.');
             }

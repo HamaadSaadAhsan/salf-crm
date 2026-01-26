@@ -25,6 +25,16 @@ class LeadController extends Controller
     public function index(LeadFilterRequest $request): JsonResponse
     {
         $filters = $request->validated();
+
+        // CROs and Advisors should only see leads assigned to them
+        $user = auth()->user();
+        $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+        $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+
+        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
+            $filters['assigned_to'] = $user->id;
+        }
+
         $cacheKey = Lead::getListCacheKey($filters);
         $tags = ['leads', 'leads_list'];
 
@@ -594,6 +604,17 @@ class LeadController extends Controller
      */
     public function show(Lead $lead): JsonResponse
     {
+        // CROs and Advisors can only view leads assigned to them
+        $user = auth()->user();
+        $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+        $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+
+        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
+            if ($lead->assigned_to !== $user->id) {
+                return response()->json(['message' => 'You are not authorized to view this lead.'], 403);
+            }
+        }
+
         $cacheKey = $lead->getCacheKey('full');
 
         // Use flexible caching with stale-while-revalidate pattern
