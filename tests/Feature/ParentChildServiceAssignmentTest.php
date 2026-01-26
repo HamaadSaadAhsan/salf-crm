@@ -17,7 +17,7 @@ beforeEach(function () {
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 
     $this->advisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 5,
         'total_leads_assigned' => 10,

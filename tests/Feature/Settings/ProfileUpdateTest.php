@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -50,8 +51,10 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
+test('super admin can delete their account', function () {
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
     $user = User::factory()->create();
+    $user->assignRole('super-admin');
 
     $response = $this
         ->actingAs($user)
@@ -67,8 +70,23 @@ test('user can delete their account', function () {
     expect($user->fresh())->toBeNull();
 });
 
-test('correct password must be provided to delete account', function () {
+test('non super admin cannot delete their account', function () {
     $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->delete('/settings/profile', [
+            'password' => 'password',
+        ]);
+
+    $response->assertForbidden();
+    expect($user->fresh())->not->toBeNull();
+});
+
+test('correct password must be provided to delete account', function () {
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+    $user = User::factory()->create();
+    $user->assignRole('super-admin');
 
     $response = $this
         ->actingAs($user)
@@ -82,4 +100,44 @@ test('correct password must be provided to delete account', function () {
         ->assertRedirect('/settings/profile');
 
     expect($user->fresh())->not->toBeNull();
+});
+
+test('user can update their availability status', function () {
+    $user = User::factory()->create(['availability' => false]);
+
+    $response = $this
+        ->actingAs($user)
+        ->patch('/settings/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'availability' => true,
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/settings/profile');
+
+    $user->refresh();
+
+    expect($user->availability)->toBeTrue();
+});
+
+test('user can toggle availability off', function () {
+    $user = User::factory()->create(['availability' => true]);
+
+    $response = $this
+        ->actingAs($user)
+        ->patch('/settings/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'availability' => false,
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/settings/profile');
+
+    $user->refresh();
+
+    expect($user->availability)->toBeFalse();
 });

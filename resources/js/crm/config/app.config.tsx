@@ -157,7 +157,7 @@ export const MAIN_NAV: NavConfig = [
         {
             id: 'settings',
             title: 'Settings',
-            path: '/settings/management',
+            path: '/settings/profile',
             icon: Settings2,
             items: [
                 {
@@ -167,6 +167,7 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'Management',
                     path: '/settings/management',
+                    requiredRole: 'Super Admin',
                 },
                 {
                     title: 'Security',

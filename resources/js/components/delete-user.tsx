@@ -5,11 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
+import { type SharedData } from '@/types';
 
 export default function DeleteUser() {
     const passwordInput = useRef<HTMLInputElement>(null);
+    const { auth } = usePage<SharedData>().props;
+
+    // Only super admins can delete accounts
+    if (auth.user.role !== 'Super Admin') {
+        return null;
+    }
 
     return (
         <div className="space-y-6">

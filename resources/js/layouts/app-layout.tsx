@@ -2,7 +2,7 @@ import { LayoutProvider } from '@/crm/layout/components/layout-context';
 import { MAIN_NAV } from '@/crm/config/app.config';
 import { Layout } from '@/crm/layout/components/layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import ReactQueryProvider from '@/providers/react-query-provider';
 import { CallContextComponent } from '@/providers/CallContextProvider';
@@ -14,6 +14,7 @@ import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
 import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { type NavConfig } from '@/crm/types';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -22,6 +23,27 @@ interface AppLayoutProps {
 
 export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
     const { auth } = usePage<SharedData>().props;
+    const userRole = auth.user.role;
+
+    // Filter navigation items based on user role
+    const filteredNav: NavConfig = useMemo(() => {
+        return MAIN_NAV.map(item => {
+            // Filter out items the user doesn't have access to
+            if (item.requiredRole && item.requiredRole !== userRole) {
+                return null;
+            }
+
+            // Filter sub-items based on role
+            if (item.items) {
+                const filteredItems = item.items.filter(
+                    subItem => !subItem.requiredRole || subItem.requiredRole === userRole
+                );
+                return { ...item, items: filteredItems };
+            }
+
+            return item;
+        }).filter(Boolean) as NavConfig;
+    }, [userRole]);
 
     // Enable task reminder polling (fallback)
     useTaskReminders({
@@ -44,7 +66,7 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
     });
 
     return (
-        <LayoutProvider sidebarNavItems={MAIN_NAV}>
+        <LayoutProvider sidebarNavItems={filteredNav}>
             <ReactQueryProvider>
                 <AsteriskWebSocketProvider>
                     <CallContextComponent user={auth.user}>

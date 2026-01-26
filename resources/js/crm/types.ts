@@ -17,11 +17,13 @@ export interface NavItem {
     more?: true;
     dropdown?: true;
     isActive?: boolean;
+    requiredRole?: string;
     items?: {
         title: string;
         path: string;
         icon?: LucideIcon | TablerIcon;
         isActive?: boolean;
+        requiredRole?: string;
     }[];
 }
 

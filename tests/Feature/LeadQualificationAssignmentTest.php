@@ -22,7 +22,7 @@ beforeEach(function () {
 
     // Create a CRO (Chief Revenue Officer)
     $this->cro = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 5,
         'total_leads_assigned' => 20,
@@ -34,7 +34,7 @@ beforeEach(function () {
 
     // Create an advisor (Sales Rep)
     $this->advisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 5,
         'total_leads_assigned' => 10,
@@ -128,7 +128,7 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
 
     // Create a high-performing advisor with low workload
     $bestAdvisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 2,  // Low workload
         'total_leads_assigned' => 50,
@@ -141,7 +141,7 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
 
     // Create a low-performing advisor with high workload
     $lowAdvisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 15,  // High workload
         'total_leads_assigned' => 30,
@@ -174,7 +174,7 @@ it('does not assign to unavailable advisors', function () {
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $unavailableAdvisor = User::factory()->create([
-        'available' => false,
+        'availability' => false,
         'active' => true,
     ]);
     $unavailableAdvisor->assignRole('sales-rep');
@@ -202,7 +202,7 @@ it('does not assign to inactive advisors', function () {
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $inactiveAdvisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => false,
     ]);
     $inactiveAdvisor->assignRole('sales-rep');
@@ -230,7 +230,7 @@ it('does not assign to advisors at max capacity (30 leads)', function () {
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $maxCapacityAdvisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 30,
     ]);
@@ -314,7 +314,7 @@ it('distributes leads fairly across multiple advisors', function () {
 
     // Create 3 advisors with similar stats
     $advisor1 = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 0,
         'total_leads_assigned' => 10,
@@ -324,7 +324,7 @@ it('distributes leads fairly across multiple advisors', function () {
     $advisor1->assignRole('sales-rep');
 
     $advisor2 = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 0,
         'total_leads_assigned' => 10,
@@ -334,7 +334,7 @@ it('distributes leads fairly across multiple advisors', function () {
     $advisor2->assignRole('sales-rep');
 
     $advisor3 = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 0,
         'total_leads_assigned' => 10,

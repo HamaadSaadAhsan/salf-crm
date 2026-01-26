@@ -116,7 +116,7 @@ class IntelligentAssignmentService
     private function getAvailableCROs()
     {
         return User::query()
-            ->where('available', true)
+            ->where('availability', true)
             ->where('active', true)
             ->whereHas('roles', function ($query) {
                 $query->whereIn('name', ['support-agent', 'senior-support-agent']);
@@ -132,7 +132,7 @@ class IntelligentAssignmentService
     private function getAvailableAdvisors(Lead $lead)
     {
         $query = User::query()
-            ->where('available', true)
+            ->where('availability', true)
             ->where('active', true)
             ->whereHas('roles', function ($query) {
                 $query->where('name', 'sales-rep');
@@ -518,14 +518,14 @@ class IntelligentAssignmentService
             return [
                 'cros' => [
                     'total' => $cros->count(),
-                    'available' => $cros->where('available', true)->count(),
+                    'available' => $cros->where('availability', true)->count(),
                     'current_workload' => $cros->sum('current_lead_count'),
                     'average_workload' => $cros->avg('current_lead_count'),
                     'capacity_utilization' => ($cros->sum('current_lead_count') / ($cros->count() * self::MAX_CRO_WORKLOAD)) * 100,
                 ],
                 'advisors' => [
                     'total' => $advisors->count(),
-                    'available' => $advisors->where('available', true)->count(),
+                    'available' => $advisors->where('availability', true)->count(),
                     'current_workload' => $advisors->sum('current_lead_count'),
                     'average_workload' => $advisors->avg('current_lead_count'),
                     'capacity_utilization' => ($advisors->sum('current_lead_count') / ($advisors->count() * self::MAX_ADVISOR_WORKLOAD)) * 100,

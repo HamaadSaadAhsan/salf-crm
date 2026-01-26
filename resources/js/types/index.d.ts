@@ -53,6 +53,8 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     extension?: string;
+    availability?: boolean;
+    role?: string;
     created_at: string;
     updated_at: string;
     roles?: Role[];

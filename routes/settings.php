@@ -24,5 +24,5 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/management', function () {
         return Inertia::render('settings/management/index');
-    })->name('settings.management');
+    })->middleware('role:super-admin')->name('settings.management');
 });

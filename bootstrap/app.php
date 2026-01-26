@@ -31,6 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'calendar.errors' => \App\Http\Middleware\HandleCalendarIntegrationErrors::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withSchedule(function ($schedule) {

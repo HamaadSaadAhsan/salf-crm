@@ -2,7 +2,7 @@ import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileCo
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage, router } from '@inertiajs/react';
 
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
@@ -10,9 +10,11 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -23,6 +25,27 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
+    const [availability, setAvailability] = useState(auth.user.availability ?? false);
+    const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
+    const [availabilitySaved, setAvailabilitySaved] = useState(false);
+
+    const handleAvailabilityChange = (checked: boolean) => {
+        setAvailability(checked);
+        setIsUpdatingAvailability(true);
+
+        router.patch(
+            ProfileController.update.url(),
+            { availability: checked },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setAvailabilitySaved(true);
+                    setTimeout(() => setAvailabilitySaved(false), 2000);
+                },
+                onFinish: () => setIsUpdatingAvailability(false),
+            }
+        );
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -111,6 +134,43 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                             </>
                         )}
                     </Form>
+                </div>
+
+                <div className="space-y-6">
+                    <HeadingSmall
+                        title="Availability"
+                        description="Set your availability status for receiving calls and lead assignments"
+                    />
+
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="availability" className="text-base">
+                                Available for calls
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                                {availability
+                                    ? 'You are currently available to receive incoming calls'
+                                    : 'You are currently unavailable for incoming calls'}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Transition
+                                show={availabilitySaved}
+                                enter="transition ease-in-out"
+                                enterFrom="opacity-0"
+                                leave="transition ease-in-out"
+                                leaveTo="opacity-0"
+                            >
+                                <p className="text-sm text-neutral-600">Saved</p>
+                            </Transition>
+                            <Switch
+                                id="availability"
+                                checked={availability}
+                                onCheckedChange={handleAvailabilityChange}
+                                disabled={isUpdatingAvailability}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <DeleteUser />

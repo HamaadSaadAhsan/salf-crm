@@ -17,7 +17,7 @@ beforeEach(function () {
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 
     $this->cro = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 0,
         'total_leads_assigned' => 0,
@@ -27,7 +27,7 @@ beforeEach(function () {
     $this->cro->assignRole($supportAgentRole);
 
     $this->advisor = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 0,
         'total_leads_assigned' => 0,
@@ -153,7 +153,7 @@ it('can send lead back for requalification', function () {
 
 it('calculates weighted round-robin score correctly', function () {
     $lowPerformingCRO = User::factory()->create([
-        'available' => true,
+        'availability' => true,
         'active' => true,
         'current_lead_count' => 10,
         'conversion_rate' => 5.0,
@@ -175,7 +175,7 @@ it('does not assign to unavailable CROs', function () {
     User::whereHas('roles', fn ($q) => $q->where('name', 'support-agent'))->delete();
 
     $unavailableCro = User::factory()->create([
-        'available' => false,
+        'availability' => false,
         'active' => true,
     ]);
     $unavailableCro->assignRole('support-agent');
