@@ -355,6 +355,7 @@ export function useInboundCalls() {
             name?: string;
             email?: string;
             city?: string;
+            country?: string;
             service_id?: number;
             detail?: string;
             budget?: { amount: number };
@@ -405,6 +406,7 @@ export function useInboundCalls() {
             phone: string;
             email?: string;
             city?: string;
+            country?: string;
             service_id?: number;
             detail?: string;
             budget?: { amount: number };

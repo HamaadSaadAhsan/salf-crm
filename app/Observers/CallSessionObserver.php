@@ -15,64 +15,79 @@ class CallSessionObserver
     public function updated(CallSession $callSession): void
     {
         // Check if status changed to 'answered'
-        if ($callSession->wasChanged('status') && $callSession->status === 'answered') {
-            // Only process outbound calls
-            if ($callSession->call_direction === 'outbound' && $callSession->lead_id) {
-                $lead = Lead::find($callSession->lead_id);
+        if (! $callSession->wasChanged('status') || $callSession->status !== 'answered') {
+            return;
+        }
 
-                // Only update if lead exists and status is 'new'
-                if ($lead && $lead->inquiry_status === 'new') {
-                    $previousStatus = $lead->inquiry_status;
-                    $lead->updateQuietly(['inquiry_status' => 'contacted']);
+        if (! $callSession->lead_id) {
+            return;
+        }
 
-                    // Create activity to track status change
-                    LeadActivity::create([
-                        'lead_id' => $lead->id,
-                        'user_id' => $callSession->caller_id ?? $lead->assigned_to,
-                        'type' => 'status_change',
-                        'status' => 'completed',
-                        'subject' => 'Status changed from New to Contacted',
-                        'description' => "Lead status was automatically updated from 'New' to 'Contacted' due to outbound call being answered.",
-                        'completed_at' => now(),
-                        'metadata' => [
-                            'previous_status' => $previousStatus,
-                            'new_status' => 'contacted',
-                            'reason' => 'outbound_call_answered',
-                            'call_session_id' => $callSession->id,
-                            'session_id' => $callSession->session_id,
-                        ],
-                    ]);
+        $lead = Lead::find($callSession->lead_id);
+        if (! $lead) {
+            return;
+        }
 
-                    // Create follow-up task for the assignee
-                    $assignedUserId = $lead->assigned_to ?? $callSession->caller_id;
-                    if ($assignedUserId) {
-                        LeadActivity::create([
-                            'lead_id' => $lead->id,
-                            'user_id' => $assignedUserId,
-                            'type' => 'follow_up',
-                            'status' => 'pending',
-                            'subject' => 'Follow up on contacted lead',
-                            'description' => 'Lead has been contacted via outbound call. Schedule follow-up call or meeting to continue the conversation.',
-                            'scheduled_at' => now()->addDays(2),
-                            'due_at' => now()->addDays(3),
-                            'priority' => $lead->priority === 'urgent' ? 'urgent' : 'medium',
-                            'category' => 'follow_up',
-                            'metadata' => [
-                                'triggered_by' => 'outbound_call_answered',
-                                'call_session_id' => $callSession->id,
-                                'session_id' => $callSession->session_id,
-                            ],
-                        ]);
-                    }
+        // Auto-set next follow-up to 1 day from now for any answered call (inbound or outbound)
+        $lead->updateQuietly(['next_follow_up_at' => now()->addDay()]);
 
-                    Log::info('Lead status automatically updated to contacted (outbound call)', [
-                        'lead_id' => $lead->id,
-                        'previous_status' => $previousStatus,
+        Log::info('Lead follow-up automatically set to 1 day from now', [
+            'lead_id' => $lead->id,
+            'call_session_id' => $callSession->id,
+            'call_direction' => $callSession->call_direction,
+            'next_follow_up_at' => now()->addDay()->toDateTimeString(),
+        ]);
+
+        // Outbound-specific: update status from 'new' to 'contacted'
+        if ($callSession->call_direction === 'outbound' && $lead->inquiry_status === 'new') {
+            $previousStatus = $lead->inquiry_status;
+            $lead->updateQuietly(['inquiry_status' => 'contacted']);
+
+            LeadActivity::create([
+                'lead_id' => $lead->id,
+                'user_id' => $callSession->caller_id ?? $lead->assigned_to,
+                'type' => 'status_change',
+                'status' => 'completed',
+                'subject' => 'Status changed from New to Contacted',
+                'description' => "Lead status was automatically updated from 'New' to 'Contacted' due to outbound call being answered.",
+                'completed_at' => now(),
+                'metadata' => [
+                    'previous_status' => $previousStatus,
+                    'new_status' => 'contacted',
+                    'reason' => 'outbound_call_answered',
+                    'call_session_id' => $callSession->id,
+                    'session_id' => $callSession->session_id,
+                ],
+            ]);
+
+            // Create follow-up task for the assignee
+            $assignedUserId = $lead->assigned_to ?? $callSession->caller_id;
+            if ($assignedUserId) {
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $assignedUserId,
+                    'type' => 'follow_up',
+                    'status' => 'pending',
+                    'subject' => 'Follow up on contacted lead',
+                    'description' => 'Lead has been contacted via outbound call. Schedule follow-up call or meeting to continue the conversation.',
+                    'scheduled_at' => now()->addDays(2),
+                    'due_at' => now()->addDays(3),
+                    'priority' => $lead->priority === 'urgent' ? 'urgent' : 'medium',
+                    'category' => 'follow_up',
+                    'metadata' => [
+                        'triggered_by' => 'outbound_call_answered',
                         'call_session_id' => $callSession->id,
-                        'call_direction' => 'outbound',
-                    ]);
-                }
+                        'session_id' => $callSession->session_id,
+                    ],
+                ]);
             }
+
+            Log::info('Lead status automatically updated to contacted (outbound call)', [
+                'lead_id' => $lead->id,
+                'previous_status' => $previousStatus,
+                'call_session_id' => $callSession->id,
+                'call_direction' => 'outbound',
+            ]);
         }
     }
 }

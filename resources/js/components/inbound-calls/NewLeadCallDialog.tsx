@@ -1,14 +1,17 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import type { ActiveCall } from '@/hooks/useInboundCalls';
+import { useCountryOptions, useCityOptions } from '@/hooks/useLocation';
+import { cn } from '@/lib/utils';
 import { useServices } from '@/lib/useServices';
 import type { Service } from '@/types/lead';
-import { AlertCircle, Clock, Loader2, User } from 'lucide-react';
+import { AlertCircle, Check, ChevronsUpDown, Clock, Loader2, User } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface NewLeadCallDialogProps {
@@ -21,6 +24,7 @@ interface NewLeadCallDialogProps {
             name?: string;
             email?: string;
             city?: string;
+            country?: string;
             service_id?: number;
             detail?: string;
             budget?: {
@@ -37,6 +41,7 @@ interface NewLeadCallDialogProps {
             phone: string;
             email?: string;
             city?: string;
+            country?: string;
             service_id?: number;
             detail?: string;
             budget?: {
@@ -52,11 +57,13 @@ interface NewLeadCallDialogProps {
 
 export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreateLead }: NewLeadCallDialogProps) {
     const isNewLead = !call.lead;
-    console.log('NewLeadCallDialog render:', { isOpen, call, hasLead: !!call.lead, isNewLead });
-
     const { services, loading: servicesLoading } = useServices();
+    const { options: countryOptions, isLoading: isLoadingCountries } = useCountryOptions();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [duration, setDuration] = useState(0);
+    const [countryOpen, setCountryOpen] = useState(false);
+    const [cityOpen, setCityOpen] = useState(false);
+    const [serviceOpen, setServiceOpen] = useState(false);
 
     // Initialize form data with existing lead data if available
     const getInitialFormData = React.useCallback(() => {
@@ -66,6 +73,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                 phone: call.lead.phone || call.caller,
                 email: call.lead.email || '',
                 city: call.lead.city || '',
+                country: call.lead.country || '',
                 service_id: call.lead.service?.id,
                 detail: call.lead.detail || '',
                 budget: call.lead.budget?.amount || '',
@@ -76,6 +84,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
             phone: call.caller,
             email: '',
             city: '',
+            country: '',
             service_id: undefined as number | undefined,
             detail: '',
             budget: '',
@@ -85,6 +94,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
     const [formData, setFormData] = useState(getInitialFormData);
     const [callNotes, setCallNotes] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const { options: cityOptions, isLoading: isLoadingCities } = useCityOptions(formData.country || null);
 
     // Reset form data when uniqueid changes (new call)
     const previousUniqueid = React.useRef(call.uniqueid);
@@ -142,6 +152,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         phone: formData.phone,
                         email: formData.email || undefined,
                         city: formData.city || undefined,
+                        country: formData.country || undefined,
                         service_id: formData.service_id,
                         detail: formData.detail || undefined,
                         budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
@@ -159,6 +170,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         name: formData.name,
                         email: formData.email || undefined,
                         city: formData.city || undefined,
+                        country: formData.country || undefined,
                         service_id: formData.service_id,
                         detail: formData.detail || undefined,
                         budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
@@ -257,45 +269,145 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                                 {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                             </div>
 
-                            {/* City */}
+                            {/* Country */}
                             <div className="space-y-2">
-                                <Label htmlFor="city">City</Label>
-                                <Input
-                                    id="city"
-                                    value={formData.city}
-                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                    placeholder="City"
-                                />
+                                <Label>Country</Label>
+                                <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={countryOpen}
+                                            className="w-full justify-between font-normal"
+                                            disabled={isLoadingCountries}
+                                        >
+                                            {isLoadingCountries
+                                                ? 'Loading...'
+                                                : formData.country
+                                                    ? countryOptions.find((c) => c.value === formData.country)?.label || formData.country
+                                                    : 'Select country'}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Search country..." />
+                                            <CommandList>
+                                                <CommandEmpty>No country found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {countryOptions.map((option) => (
+                                                        <CommandItem
+                                                            key={option.value}
+                                                            value={option.label}
+                                                            onSelect={() => {
+                                                                const newCountry = option.value === formData.country ? '' : option.value;
+                                                                setFormData({ ...formData, country: newCountry, city: newCountry !== formData.country ? '' : formData.city });
+                                                                setCountryOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn('mr-2 h-4 w-4', formData.country === option.value ? 'opacity-100' : 'opacity-0')} />
+                                                            {option.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
-                            {/* Service */}
+                            {/* City */}
                             <div className="space-y-2">
-                                <Label htmlFor="service">Service</Label>
-                                <Select
-                                    value={formData.service_id?.toString()}
-                                    onValueChange={(value) => setFormData({ ...formData, service_id: parseInt(value) })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a service" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {servicesLoading ? (
-                                            <SelectItem value="loading" disabled>
-                                                Loading services...
-                                            </SelectItem>
-                                        ) : services.length === 0 ? (
-                                            <SelectItem value="empty" disabled>
-                                                No services available
-                                            </SelectItem>
-                                        ) : (
-                                            services.map((service: Service) => (
-                                                <SelectItem key={service.id} value={service.id.toString()}>
-                                                    {service.name}
-                                                </SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                <Label>City</Label>
+                                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={cityOpen}
+                                            className="w-full justify-between font-normal"
+                                            disabled={!formData.country || isLoadingCities}
+                                        >
+                                            {!formData.country
+                                                ? 'Select country first'
+                                                : isLoadingCities
+                                                    ? 'Loading...'
+                                                    : formData.city
+                                                        ? cityOptions.find((c) => c.value === formData.city)?.label || formData.city
+                                                        : 'Select city'}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Search city..." />
+                                            <CommandList>
+                                                <CommandEmpty>No city found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {cityOptions.map((option) => (
+                                                        <CommandItem
+                                                            key={option.value}
+                                                            value={option.label}
+                                                            onSelect={() => {
+                                                                setFormData({ ...formData, city: option.value === formData.city ? '' : option.value });
+                                                                setCityOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn('mr-2 h-4 w-4', formData.city === option.value ? 'opacity-100' : 'opacity-0')} />
+                                                            {option.label}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            {/* Service (Program) */}
+                            <div className="space-y-2">
+                                <Label>Program</Label>
+                                <Popover open={serviceOpen} onOpenChange={setServiceOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={serviceOpen}
+                                            className="w-full justify-between font-normal"
+                                            disabled={servicesLoading}
+                                        >
+                                            {servicesLoading
+                                                ? 'Loading...'
+                                                : formData.service_id
+                                                    ? services.find((s: Service) => s.id === formData.service_id)?.name || 'Select program'
+                                                    : 'Select program'}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Search program..." />
+                                            <CommandList>
+                                                <CommandEmpty>No program found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {services.map((service: Service) => (
+                                                        <CommandItem
+                                                            key={service.id}
+                                                            value={service.name}
+                                                            onSelect={() => {
+                                                                setFormData({ ...formData, service_id: service.id === formData.service_id ? undefined : service.id });
+                                                                setServiceOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn('mr-2 h-4 w-4', formData.service_id === service.id ? 'opacity-100' : 'opacity-0')} />
+                                                            {service.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
                             {/* Budget */}

@@ -47,9 +47,11 @@ it('automatically updates lead status to contacted when outbound call is answere
         'answered_at' => now(),
     ]);
 
-    // Verify lead status was updated to 'contacted'
+    // Verify lead status was updated to 'contacted' and follow-up was set
     $lead->refresh();
     expect($lead->inquiry_status)->toBe('contacted');
+    expect($lead->next_follow_up_at)->not->toBeNull();
+    expect($lead->next_follow_up_at->diffInHours(now()->addDay()))->toBeLessThanOrEqual(1);
 
     // Verify status change activity was created
     $statusChangeActivity = LeadActivity::where('lead_id', $lead->id)
@@ -116,6 +118,10 @@ it('does not update lead status if lead is not in new status', function () {
     $lead->refresh();
     expect($lead->inquiry_status)->toBe('qualified');
 
+    // Verify follow-up was still set (applies regardless of lead status)
+    expect($lead->next_follow_up_at)->not->toBeNull();
+    expect($lead->next_follow_up_at->diffInHours(now()->addDay()))->toBeLessThanOrEqual(1);
+
     // Verify no status change activity was created
     $statusChangeActivity = LeadActivity::where('lead_id', $lead->id)
         ->where('type', 'status_change')
@@ -163,6 +169,10 @@ it('does not update lead status for inbound calls', function () {
     // Verify lead status remains 'new' (NOT updated for inbound calls)
     $lead->refresh();
     expect($lead->inquiry_status)->toBe('new');
+
+    // Verify follow-up was set (applies to both inbound and outbound)
+    expect($lead->next_follow_up_at)->not->toBeNull();
+    expect($lead->next_follow_up_at->diffInHours(now()->addDay()))->toBeLessThanOrEqual(1);
 
     // Verify no status change activity was created
     $statusChangeActivity = LeadActivity::where('lead_id', $lead->id)
