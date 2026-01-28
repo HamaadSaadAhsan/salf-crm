@@ -10,7 +10,7 @@ class CallRecordingService
 {
     private string $recordingDisk = 'local';
 
-    private string $recordingPath = 'private/recordings';
+    private string $recordingPath = 'recordings';
 
     /**
      * Get recording URL for a call session (API endpoint for streaming)
