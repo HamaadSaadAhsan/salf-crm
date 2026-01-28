@@ -64,11 +64,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
-
-            // Location Hierarchy API
-            Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
-            Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
-            Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
         });
 
         // Zones Management
@@ -100,6 +95,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/cities', [\App\Http\Controllers\CityController::class, 'store'])->name('cities.store');
         Route::put('/cities/{city}', [\App\Http\Controllers\CityController::class, 'update'])->name('cities.update');
         Route::delete('/cities/{city}', [\App\Http\Controllers\CityController::class, 'destroy'])->name('cities.destroy');
+    });
+
+    Route::middleware('role:super-admin|support-agent|senior-support-agent|sales-rep')->group(function () {
+        // Location Hierarchy API
+        Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
+        Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
+        Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
     });
 
     // Tasks Management
