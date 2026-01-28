@@ -98,10 +98,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::middleware('role:super-admin|support-agent|senior-support-agent|sales-rep')->group(function () {
-        // Location Hierarchy API
-        Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
-        Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
-        Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
+        Route::prefix('api')->group(function () {
+            // Location Hierarchy API
+            Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
+            Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
+            Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
+        });
     });
 
     // Tasks Management
@@ -305,5 +307,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';
