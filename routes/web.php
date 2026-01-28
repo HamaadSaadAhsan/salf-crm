@@ -50,10 +50,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])->name('impersonate.leave');
     Route::post('/impersonate/{user}', [ImpersonationController::class, 'impersonate'])->name('impersonate');
 
+    // Services - viewable by all authenticated users
+    Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
+    Route::get('/services/{service}', [ServiceController::class, 'show'])->name('services.show');
+
     // Management Routes (Super Admin only)
     Route::middleware('role:super-admin')->group(function () {
-        // Services/Programs Management
-        Route::apiResource('services', ServiceController::class)->names('services');
+        // Services/Programs Management (create, update, delete)
+        Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
+        Route::put('/services/{service}', [ServiceController::class, 'update'])->name('services.update');
+        Route::patch('/services/{service}', [ServiceController::class, 'update']);
+        Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
 
         // Users Management Page
         Route::get('/users', [UserController::class, 'page'])->name('users.page');
