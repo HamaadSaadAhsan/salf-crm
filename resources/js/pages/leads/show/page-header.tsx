@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -41,8 +42,6 @@ export function PageHeader({ lead }: { lead: Lead }) {
     const { state, actions } = useAsteriskWebSocket();
     const { startOutboundCall } = useOutboundCalls();
     const { auth } = usePage<SharedData>().props;
-
-    console.log(auth.user.extension);
 
     const handleCall = async () => {
         if (!lead.phone) {
@@ -98,9 +97,16 @@ export function PageHeader({ lead }: { lead: Lead }) {
                     </AvatarFallback>
                 </Avatar>
                 <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-base font-semibold sm:text-xl">
-                        {lead.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="truncate text-base font-semibold sm:text-xl">
+                            {lead.name}
+                        </span>
+                        {lead.inquiry_status === 'assigned_to_advisor' && (
+                            <Badge variant="secondary" className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                Assigned to Advisor
+                            </Badge>
+                        )}
+                    </div>
                     <span className="truncate text-xs capitalize text-muted-foreground">
                         {lead.inquiry_status?.replace(/_/g, ' ')}
                     </span>

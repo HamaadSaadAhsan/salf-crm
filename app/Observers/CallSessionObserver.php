@@ -38,6 +38,37 @@ class CallSessionObserver
             'next_follow_up_at' => now()->addDay()->toDateTimeString(),
         ]);
 
+        // Inbound-specific: assign unassigned leads to whoever answered the call
+        if ($callSession->call_direction === 'inbound' && ! $lead->assigned_to && $callSession->caller_id) {
+            $lead->updateQuietly([
+                'assigned_to' => $callSession->caller_id,
+                'assigned_date' => now(),
+                'inquiry_status' => 'assigned_to_cro',
+                'next_follow_up_at' => now()->addDay(),
+            ]);
+
+            LeadActivity::create([
+                'lead_id' => $lead->id,
+                'user_id' => $callSession->caller_id,
+                'type' => 'assignment_change',
+                'status' => 'completed',
+                'subject' => 'Lead assigned via inbound call',
+                'description' => 'Lead was automatically assigned to the user who answered the inbound call.',
+                'completed_at' => now(),
+                'metadata' => [
+                    'reason' => 'inbound_call_answered',
+                    'call_session_id' => $callSession->id,
+                    'session_id' => $callSession->session_id,
+                ],
+            ]);
+
+            Log::info('Lead automatically assigned to user who answered inbound call', [
+                'lead_id' => $lead->id,
+                'assigned_to' => $callSession->caller_id,
+                'call_session_id' => $callSession->id,
+            ]);
+        }
+
         // Outbound-specific: update status from 'new' to 'contacted'
         if ($callSession->call_direction === 'outbound' && $lead->inquiry_status === 'new') {
             $previousStatus = $lead->inquiry_status;

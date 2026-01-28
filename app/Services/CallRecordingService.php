@@ -3,20 +3,17 @@
 namespace App\Services;
 
 use App\Models\CallSession;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class CallRecordingService
 {
-    private string $recordingBaseUrl;
+    private string $recordingDisk = 'local';
 
-    public function __construct()
-    {
-        $this->recordingBaseUrl = config('services.asterisk.recording_url', 'http://192.168.100.232/recordz/');
-    }
+    private string $recordingPath = 'private/recordings';
 
     /**
-     * Get recording URL for a call session
+     * Get recording URL for a call session (API endpoint for streaming)
      */
     public function getRecordingUrl(CallSession $callSession): ?string
     {
@@ -24,22 +21,33 @@ class CallRecordingService
             return null;
         }
 
+        // Check if recording exists
+        if (! $this->recordingExists($callSession)) {
+            return null;
+        }
+
+        // Return API endpoint for streaming
+        return route('api.calls.recording', $callSession);
+    }
+
+    /**
+     * Get the local file path for a recording
+     */
+    public function getRecordingPath(CallSession $callSession): ?string
+    {
+        if (! $callSession->call_signature) {
+            return null;
+        }
+
         // Check if recording_path is already stored in database
         if ($callSession->recording_path) {
-            return $this->buildRecordingUrl($callSession->recording_path);
+            $filename = basename($callSession->recording_path);
+
+            return $this->recordingPath.'/'.$filename;
         }
 
         // Try to find recording by signature
-        $filename = $this->findRecordingBySignature($callSession->call_signature);
-
-        if ($filename) {
-            // Update the call session with the found recording path
-            $callSession->update(['recording_path' => $filename]);
-
-            return $this->buildRecordingUrl($filename);
-        }
-
-        return null;
+        return $this->findRecordingBySignature($callSession->call_signature);
     }
 
     /**
@@ -47,41 +55,25 @@ class CallRecordingService
      */
     private function findRecordingBySignature(string $signature): ?string
     {
-        // Expected format: LEAD-{lead_id}-USER-{user_id}-{timestamp}-{random}.wav
-        $pattern = "{$signature}.wav";
+        // Check for .wav file
+        $wavPath = $this->recordingPath.'/'.$signature.'.wav';
+        if (Storage::disk($this->recordingDisk)->exists($wavPath)) {
+            return $wavPath;
+        }
 
-        // Check if file exists at the recording server
-        $url = $this->buildRecordingUrl($pattern);
-
-        try {
-            $response = Http::timeout(5)->head($url);
-
-            if ($response->successful()) {
-                return $pattern;
-            }
-        } catch (\Exception $e) {
-            Log::debug('Recording not found', [
-                'signature' => $signature,
-                'url' => $url,
-                'error' => $e->getMessage(),
-            ]);
+        // Check for .mp3 file
+        $mp3Path = $this->recordingPath.'/'.$signature.'.mp3';
+        if (Storage::disk($this->recordingDisk)->exists($mp3Path)) {
+            return $mp3Path;
         }
 
         return null;
     }
 
     /**
-     * Build full recording URL
-     */
-    private function buildRecordingUrl(string $filename): string
-    {
-        return rtrim($this->recordingBaseUrl, '/').'/'.$filename;
-    }
-
-    /**
      * Get all recordings for a lead
      */
-    public function getLeadRecordings($lead)
+    public function getLeadRecordings($lead): array
     {
         $callSessions = CallSession::where('lead_id', $lead->id)
             ->whereNotNull('call_signature')
@@ -91,14 +83,12 @@ class CallRecordingService
         $recordings = [];
 
         foreach ($callSessions as $callSession) {
-            $url = $this->getRecordingUrl($callSession);
-
-            if ($url) {
+            if ($this->recordingExists($callSession)) {
                 $recordings[] = [
                     'call_session_id' => $callSession->id,
                     'session_id' => $callSession->session_id,
                     'call_signature' => $callSession->call_signature,
-                    'recording_url' => $url,
+                    'recording_url' => $this->getRecordingUrl($callSession),
                     'started_at' => $callSession->started_at,
                     'duration' => $callSession->duration,
                     'caller' => [
@@ -117,38 +107,71 @@ class CallRecordingService
      */
     public function recordingExists(CallSession $callSession): bool
     {
-        return $this->getRecordingUrl($callSession) !== null;
+        $path = $this->getRecordingPath($callSession);
+
+        return $path !== null && Storage::disk($this->recordingDisk)->exists($path);
     }
 
     /**
      * Get recording file content for streaming
      */
-    public function streamRecording(CallSession $callSession)
+    public function streamRecording(CallSession $callSession): ?array
     {
-        $url = $this->getRecordingUrl($callSession);
+        $path = $this->getRecordingPath($callSession);
 
-        if (! $url) {
+        if (! $path || ! Storage::disk($this->recordingDisk)->exists($path)) {
+            Log::debug('Recording file not found', [
+                'call_session_id' => $callSession->id,
+                'path' => $path,
+            ]);
+
             return null;
         }
 
         try {
-            $response = Http::timeout(30)->get($url);
+            $content = Storage::disk($this->recordingDisk)->get($path);
+            $filename = basename($path);
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
 
-            if ($response->successful()) {
-                return [
-                    'content' => $response->body(),
-                    'content_type' => $response->header('Content-Type') ?? 'audio/wav',
-                    'filename' => basename($callSession->recording_path ?? $callSession->call_signature.'.wav'),
-                ];
+            $contentType = match ($extension) {
+                'wav' => 'audio/wav',
+                'mp3' => 'audio/mpeg',
+                'ogg' => 'audio/ogg',
+                default => 'audio/wav',
+            };
+
+            // Update recording_path in database if not set
+            if (! $callSession->recording_path) {
+                $callSession->updateQuietly(['recording_path' => $filename]);
             }
+
+            return [
+                'content' => $content,
+                'content_type' => $contentType,
+                'filename' => $filename,
+            ];
         } catch (\Exception $e) {
             Log::error('Failed to stream recording', [
                 'call_session_id' => $callSession->id,
-                'url' => $url,
+                'path' => $path,
                 'error' => $e->getMessage(),
             ]);
         }
 
         return null;
+    }
+
+    /**
+     * Get the full filesystem path for a recording (for external tools like ffmpeg)
+     */
+    public function getFullPath(CallSession $callSession): ?string
+    {
+        $path = $this->getRecordingPath($callSession);
+
+        if (! $path) {
+            return null;
+        }
+
+        return Storage::disk($this->recordingDisk)->path($path);
     }
 }

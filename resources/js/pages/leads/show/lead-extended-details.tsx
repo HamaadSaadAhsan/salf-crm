@@ -1,7 +1,8 @@
 import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X, ChevronsUpDown, Check, Globe } from 'lucide-react';
 import { InlineEdit } from '@/components/inline-edit';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
 import TagInput from '@/components/tag-input';
 import axios from 'axios';
 import { formatDate } from '@/lib/helpers';
@@ -172,6 +173,9 @@ function CitySelect({
     );
 }
 
+// Statuses allowed when lead is assigned to an advisor
+const ADVISOR_ALLOWED_STATUSES = ['requalify', 'won', 'lost'];
+
 export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLeadUpdated?: () => void }) {
     const [model, setModel] = useState<Lead>(lead);
     const [tags, setTags] = useState<TagValue[]>(lead.tags ?? []);
@@ -190,6 +194,18 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const isQualified = useMemo(() => {
         return model.inquiry_status ? QUALIFIED_STATUSES.includes(model.inquiry_status) : false;
     }, [model.inquiry_status]);
+
+    // Check if lead is assigned to an advisor (CROs cannot edit details)
+    const isAssignedToAdvisor = model.inquiry_status === 'assigned_to_advisor';
+
+    // Check if current user is a CRO (restricted role)
+    const { auth } = usePage<SharedData>().props;
+    const currentUserRoles = auth.user.roles?.map((r) => r.name) ?? [];
+    const isCRO = currentUserRoles.some((r) => ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'].includes(r))
+        && !currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
+
+    // CROs cannot edit lead details when assigned to advisor
+    const isReadOnly = isCRO && isAssignedToAdvisor;
 
     // Sync local state when lead prop changes (e.g., after Inertia reload)
     useEffect(() => {
@@ -449,18 +465,16 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
         });
     };
 
-    // Get status options - includes current status if it's system-managed (so it displays correctly)
+    // Get status options - filter based on current state
     const getStatusOptions = () => {
-        // If current status is 'assigned_to_advisor', add it to options for display
-        // but note: 'assigned_to_advisor' is NOT in the database statuses table,
-        // so users can change FROM it but can't change back TO it
-        if (model.inquiry_status === 'assigned_to_advisor') {
-            return [
-                { value: 'assigned_to_advisor', label: 'Assigned to Advisor', color: '' },
-                ...statuses
-            ];
+        let filtered = statuses.filter((s) => s.value !== 'assigned_to_advisor');
+
+        // When assigned to advisor, only allow requalify, won, lost
+        if (isAssignedToAdvisor) {
+            filtered = filtered.filter((s) => ADVISOR_ALLOWED_STATUSES.includes(s.value));
         }
-        return statuses;
+
+        return filtered;
     };
 
     return (
@@ -493,7 +507,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Tag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Status</span>
-                                {statuses.length > 0 || model.inquiry_status === 'assigned_to_advisor' ? (
+                                {statuses.length > 0 ? (
                                     <InlineEdit
                                         type="select"
                                         options={getStatusOptions()}
@@ -511,7 +525,9 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Service</span>
-                                {services.length > 0 ? (
+                                {isReadOnly ? (
+                                    <span className="text-sm">{model.service?.data?.name || '—'}</span>
+                                ) : services.length > 0 ? (
                                     <InlineEdit
                                         type="select"
                                         options={services}
@@ -530,7 +546,9 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Source</span>
-                                {sources.length > 0 ? (
+                                {isReadOnly ? (
+                                    <span className="text-sm">{model.source?.data?.name || '—'}</span>
+                                ) : sources.length > 0 ? (
                                     <InlineEdit
                                         type="select"
                                         options={sources}
@@ -558,17 +576,21 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Flag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Priority</span>
-                                <InlineEdit
-                                    type="select"
-                                    options={[
-                                        { value: 'high', label: 'High' },
-                                        { value: 'medium', label: 'Medium' },
-                                        { value: 'low', label: 'Low' },
-                                    ]}
-                                    value={model.priority ?? ''}
-                                    placeholder="Set priority"
-                                    onSave={(v) => saveField('priority', v || null)}
-                                />
+                                {isReadOnly ? (
+                                    <span className="text-sm capitalize">{model.priority || '—'}</span>
+                                ) : (
+                                    <InlineEdit
+                                        type="select"
+                                        options={[
+                                            { value: 'high', label: 'High' },
+                                            { value: 'medium', label: 'Medium' },
+                                            { value: 'low', label: 'Low' },
+                                        ]}
+                                        value={model.priority ?? ''}
+                                        placeholder="Set priority"
+                                        onSave={(v) => saveField('priority', v || null)}
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -577,7 +599,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Country</span>
-                                {isQualified ? (
+                                {isQualified || isReadOnly ? (
                                     <span className="text-sm">{countryOptions.find(c => c.value === model.country)?.label || model.country || '—'}</span>
                                 ) : (
                                     <CountrySelect
@@ -601,7 +623,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">City</span>
-                                {isQualified ? (
+                                {isQualified || isReadOnly ? (
                                     <span className="text-sm">{model.city || '—'}</span>
                                 ) : (
                                     <CitySelect

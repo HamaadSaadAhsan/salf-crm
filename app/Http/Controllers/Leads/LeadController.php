@@ -872,6 +872,32 @@ class LeadController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $user = $request->user();
+        $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+        $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+        $isCRO = $user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles);
+
+        // CROs cannot edit lead details when lead is assigned to an advisor
+        if ($isCRO && $lead->inquiry_status === 'assigned_to_advisor') {
+            // Only allow status changes (requalify, won, lost)
+            $allowedFields = ['inquiry_status', '_method', '_token'];
+            $requestFields = array_keys($request->all());
+            $disallowedFields = array_diff($requestFields, $allowedFields);
+
+            // Reject if any non-status fields are being updated
+            if (! empty($disallowedFields)) {
+                abort(403, 'You cannot edit lead details while it is assigned to an advisor. Only status changes (requalify, won, lost) are allowed.');
+            }
+
+            // Validate status transition - only allow requalify, won, lost
+            if ($request->has('inquiry_status')) {
+                $allowedStatusTransitions = ['requalify', 'won', 'lost'];
+                if (! in_array($request->input('inquiry_status'), $allowedStatusTransitions)) {
+                    abort(403, 'You can only change status to requalify, won, or lost for a lead assigned to an advisor.');
+                }
+            }
+        }
+
         try {
             // Build allowed inquiry statuses - include assigned_to_advisor only if lead already has it
             $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
