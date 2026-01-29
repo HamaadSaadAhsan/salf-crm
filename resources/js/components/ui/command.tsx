@@ -67,13 +67,21 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const handleWheel = React.useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+    },
+    [],
+  );
+
   return (
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        'max-h-[300px] overflow-y-auto overflow-x-hidden',
+        'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain',
         className,
       )}
+      onWheel={handleWheel}
       {...props}
     />
   );
