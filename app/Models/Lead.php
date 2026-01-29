@@ -494,9 +494,20 @@ class Lead extends Model
             $score += 20;
         }
 
-        // Source scoring
-        if ($lead->lead_source_id) {
-            $score += 5;
+        // Source scoring: Website 5, Google 5, Facebook 2.5, WhatsApp 2.0, all other 0
+        if ($lead->lead_source_id && $lead->leadSource) {
+            $sourceSlug = strtolower($lead->leadSource->slug ?? '');
+            $sourceIdentifier = strtolower($lead->leadSource->identifier ?? '');
+
+            if (str_contains($sourceSlug, 'website') || str_contains($sourceIdentifier, 'website')) {
+                $score += 5;
+            } elseif (str_contains($sourceSlug, 'google') || str_contains($sourceIdentifier, 'google')) {
+                $score += 5;
+            } elseif (str_contains($sourceSlug, 'facebook') || str_contains($sourceIdentifier, 'facebook')) {
+                $score += 2.5;
+            } elseif (str_contains($sourceSlug, 'whatsapp') || str_contains($sourceIdentifier, 'whatsapp')) {
+                $score += 2;
+            }
         }
 
         // Budget presence
