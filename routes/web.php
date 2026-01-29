@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
             Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
+            Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
         });
 
         // Zones Management

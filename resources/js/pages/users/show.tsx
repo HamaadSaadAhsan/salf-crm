@@ -13,6 +13,7 @@ import { UserProfileSection } from './show/user-profile-section';
 import { UserServicesSection } from './show/user-services-section';
 import { UserStatsSection } from './show/user-stats-section';
 import { UserActionsSection } from './show/user-actions-section';
+import { UserActivityHeatmap } from './show/user-activity-heatmap';
 
 interface Role {
   id: number;
@@ -201,6 +202,9 @@ export default function UserShow({ user, roles, zones, offices, services }: Prop
               user={user}
               availableServices={services}
             />
+
+            {/* User Activity Heatmap */}
+            <UserActivityHeatmap userId={user.id} />
           </div>
 
           {/* Right column - Stats and Actions */}

@@ -6,9 +6,11 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserFilterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\LeadActivity;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\CacheService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -750,5 +752,78 @@ class UserController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get user's activity heatmap data
+     */
+    public function activityHeatmap(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'period' => 'nullable|integer|in:7,14,30',
+        ]);
+
+        $period = $validated['period'] ?? 30;
+        $cacheKey = "user:{$user->id}:activity_heatmap:{$period}:".now()->format('Y-m-d');
+
+        $data = $this->cacheService->remember($cacheKey, function () use ($user, $period) {
+            return $this->getUserActivityHeatmapData($user, $period);
+        }, 300, ['users', "user:{$user->id}"]);
+
+        return response()->json($data);
+    }
+
+    protected function getUserActivityHeatmapData(User $user, int $days): array
+    {
+        $startDate = Carbon::now()->subDays($days);
+
+        // Get all activities for leads assigned to this user within the period
+        $activities = LeadActivity::whereHas('lead', function ($query) use ($user) {
+            $query->where('assigned_to', $user->id);
+        })
+            ->where('created_at', '>=', $startDate)
+            ->get();
+
+        // Initialize heatmap data structure (7 days x 24 hours)
+        $heatmap = [];
+        $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        foreach ($dayNames as $dayIndex => $dayName) {
+            for ($hour = 0; $hour < 24; $hour++) {
+                $heatmap[] = [
+                    'day' => $dayName,
+                    'hour' => $hour,
+                    'count' => 0,
+                ];
+            }
+        }
+
+        // Count activities by day and hour
+        foreach ($activities as $activity) {
+            $dayOfWeek = $activity->created_at->dayOfWeek;
+            $hour = $activity->created_at->hour;
+
+            $index = ($dayOfWeek * 24) + $hour;
+            if (isset($heatmap[$index])) {
+                $heatmap[$index]['count']++;
+            }
+        }
+
+        // Find max count for normalization
+        $maxCount = max(array_column($heatmap, 'count'));
+
+        // Calculate intensity (0-1)
+        $heatmap = array_map(function ($item) use ($maxCount) {
+            $item['intensity'] = $maxCount > 0 ? $item['count'] / $maxCount : 0;
+
+            return $item;
+        }, $heatmap);
+
+        return [
+            'heatmap_data' => $heatmap,
+            'period_days' => $days,
+            'total_activities' => $activities->count(),
+            'max_count' => $maxCount,
+        ];
     }
 }
