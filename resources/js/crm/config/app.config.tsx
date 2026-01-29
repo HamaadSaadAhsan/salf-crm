@@ -4,6 +4,7 @@ import { Bot, LayoutGrid, PieChart, Settings2, Users, Phone, PhoneCall, Workflow
 import { NavConfig } from '../types';
 import { dashboard } from '@/routes';
 import { IconTools } from '@tabler/icons-react';
+import { management } from '@/routes/settings';
 
 export const MAIN_NAV: NavConfig = [
         {
@@ -80,7 +81,7 @@ export const MAIN_NAV: NavConfig = [
         {
             id: 'management',
             title: 'Management',
-            path: '#',
+            path: management.url(),
             icon: Bot,
             items: [
                 {

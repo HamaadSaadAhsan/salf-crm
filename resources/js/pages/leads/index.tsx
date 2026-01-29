@@ -1,5 +1,6 @@
 import {
     Archive,
+    CheckCheck,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -20,6 +21,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
@@ -105,7 +112,7 @@ const useSelection = () => {
 };
 
 // Memoized action buttons to prevent re-renders
-const ActionButtons = React.memo(({ selectedCount, onRefresh }: { selectedCount: number; onRefresh: () => void }) => {
+const ActionButtons = React.memo(({ selectedCount, onRefresh, onMarkAllAsRead }: { selectedCount: number; onRefresh: () => void; onMarkAllAsRead: () => void }) => {
     const handleRefreshClick = useCallback(
         (e: React.MouseEvent) => {
             e.preventDefault();
@@ -131,27 +138,65 @@ const ActionButtons = React.memo(({ selectedCount, onRefresh }: { selectedCount:
             <Button variant="ghost" size="icon" onClick={handleRefreshClick} className="rounded transition-colors duration-75">
                 <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={onMarkAllAsRead}>
+                        <CheckCheck className="h-4 w-4 mr-2" />
+                        Mark all as read
+                    </DropdownMenuItem>
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground select-none">
+                        Select leads to see more actions
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 });
 ActionButtons.displayName = 'ActionButtons';
 
 // Memoized pagination controls
-const PaginationControls = React.memo(({ meta, onPagination }: { meta: LeadsPageProps['meta']; onPagination: (direction: string) => void }) => {
+const PaginationControls = React.memo(({ meta, onPagination, onPageSizeChange }: { meta: LeadsPageProps['meta']; onPagination: (direction: string) => void; onPageSizeChange: (size: number) => void }) => {
     const handlePrev = useCallback(() => onPagination('prev'), [onPagination]);
     const handleNext = useCallback(() => onPagination('next'), [onPagination]);
 
+    const formatNumber = (num: number) => num.toLocaleString();
+
     return (
-        <div className="ml-4 flex">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handlePrev} disabled={meta.current_page === 1}>
-                <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleNext} disabled={!meta.has_more}>
-                <ChevronRight className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button className="text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1">
+                        <span>{formatNumber(meta.from || 0)}</span>–<span>{formatNumber(meta.to || 0)}</span>
+                        <span className="mx-0.5">of</span>
+                        <span>{formatNumber(meta.total || 0)}</span>
+                        <ChevronDown className="h-3 w-3 ml-0.5" />
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {[25, 50, 100, 200].map((size) => (
+                        <DropdownMenuItem
+                            key={size}
+                            onSelect={() => onPageSizeChange(size)}
+                            className={meta.per_page === size ? 'bg-accent' : ''}
+                        >
+                            {size} per page
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="ml-2 flex">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handlePrev} disabled={meta.current_page === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleNext} disabled={!meta.has_more}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
         </div>
     );
 });
@@ -366,6 +411,29 @@ export default function LeadsInterface() {
         clearSelection();
     }, [clearSelection]);
 
+    const handleMarkAllAsRead = useCallback(() => {
+        // TODO: Implement mark all as read functionality
+        console.log('Mark all as read');
+    }, []);
+
+    const handlePageSizeChange = useCallback(
+        (size: number) => {
+            router.get(
+                '/leads',
+                {
+                    ...filters,
+                    per_page: size,
+                    page: 1,
+                },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                },
+            );
+        },
+        [filters],
+    );
+
     const handleSearchChange = useCallback(
         (value: string) => {
             setSearchInput(value);
@@ -457,15 +525,10 @@ export default function LeadsInterface() {
                                         {selectedCount > 0 && <span className="ml-2 text-sm">{selectedCount} selected</span>}
                                     </div>
 
-                                    <ActionButtons selectedCount={selectedCount} onRefresh={handleRefresh} />
+                                    <ActionButtons selectedCount={selectedCount} onRefresh={handleRefresh} onMarkAllAsRead={handleMarkAllAsRead} />
                                 </div>
 
-                                <div className="flex items-center text-xs text-gray-500">
-                                    <span>
-                                        {meta.from || 0}–{meta.to || 0} of {meta.total || 0}
-                                    </span>
-                                    <PaginationControls meta={meta} onPagination={handlePagination} />
-                                </div>
+                                <PaginationControls meta={meta} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
                             </div>
 
                             {/* Leads List */}

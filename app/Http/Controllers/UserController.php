@@ -431,6 +431,72 @@ class UserController extends Controller
     }
 
     /**
+     * Display the user detail page
+     */
+    public function showPage(User $user): Response
+    {
+        $user->load([
+            'roles',
+            'activeServices',
+            'activeServices.parent',
+            'services' => function ($q) {
+                $q->withPivot(['assigned_at', 'status', 'notes', 'metadata']);
+            },
+            'leads' => function ($q) {
+                $q->latest()->limit(10);
+            },
+            'leads.service',
+            'zone',
+            'office',
+            'office.zone',
+        ]);
+
+        $user->loadCount([
+            'leads',
+            'leads as active_leads_count' => function ($q) {
+                $q->whereNotIn('inquiry_status', ['won', 'lost', 'closed']);
+            },
+            'activeServices',
+        ]);
+
+        // Get available roles for editing
+        $roles = \Spatie\Permission\Models\Role::query()
+            ->select(['id', 'name', 'guard_name'])
+            ->orderBy('name')
+            ->get();
+
+        // Get zones and offices for editing
+        $zones = \App\Models\Zone::query()
+            ->select(['id', 'name', 'code', 'is_active'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $offices = \App\Models\Office::query()
+            ->with('zone:id,name,code')
+            ->select(['id', 'name', 'code', 'zone_id', 'is_active'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $services = Service::query()
+            ->with('children:id,name,detail,country_code,country_name,parent_id')
+            ->whereNull('parent_id')
+            ->select(['id', 'name', 'detail', 'country_code', 'country_name', 'parent_id'])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('users/show', [
+            'user' => (new UserResource($user))->resolve(),
+            'roles' => $roles,
+            'zones' => $zones,
+            'offices' => $offices,
+            'services' => $services,
+        ]);
+    }
+
+    /**
      * Display the specified user
      */
     public function show(User $user): JsonResponse
@@ -612,6 +678,35 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to update zone.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user's availability
+     */
+    public function updateAvailability(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'availability' => 'required|boolean',
+            ]);
+
+            $user->update([
+                'availability' => $validated['availability'],
+            ]);
+
+            // Clear cache
+            CacheService::flush('users');
+
+            return response()->json([
+                'message' => 'Availability updated successfully.',
+                'data' => new UserResource($user),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update availability.',
                 'error' => $e->getMessage(),
             ], 500);
         }

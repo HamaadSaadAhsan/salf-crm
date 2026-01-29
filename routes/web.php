@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Users Management Page
         Route::get('/users', [UserController::class, 'page'])->name('users.page');
+        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.show');
 
         // Users API Resource
         Route::prefix('api')->group(function () {
@@ -72,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
+            Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
         });
 
         // Zones Management
