@@ -928,8 +928,9 @@ class LeadController extends Controller
                 'lead_source' => 'sometimes|nullable|array',
                 'lead_source.id' => 'required_with:lead_source|exists:lead_sources,id',
 
-                'assigned_to' => 'sometimes|nullable|array',
-                'assigned_to.id' => 'required_with:assigned_to|exists:users,id',
+                // assigned_to can be: integer ID, object {id: X}, or null
+                'assigned_to' => 'sometimes|nullable',
+                'assigned_to.id' => 'sometimes|exists:users,id',
                 'next_follow_up_at' => 'sometimes|nullable|date',
 
                 'custom_fields' => 'sometimes|nullable|array',
@@ -972,8 +973,19 @@ class LeadController extends Controller
             if (isset($validated['lead_source']['id'])) {
                 $lead->lead_source_id = $validated['lead_source']['id'];
             }
-            if (isset($validated['assigned_to']['id'])) {
-                $lead->assigned_to = $validated['assigned_to']['id'];
+            // Handle assigned_to - can be: integer ID, object {id: X}, or null
+            if (array_key_exists('assigned_to', $validated)) {
+                $assignedTo = $validated['assigned_to'];
+                if (is_array($assignedTo) && isset($assignedTo['id'])) {
+                    $lead->assigned_to = $assignedTo['id'];
+                    $lead->assigned_date = now();
+                } elseif (is_numeric($assignedTo)) {
+                    $lead->assigned_to = (int) $assignedTo;
+                    $lead->assigned_date = now();
+                } elseif ($assignedTo === null) {
+                    $lead->assigned_to = null;
+                    $lead->assigned_date = null;
+                }
             }
             $lead->save();
 

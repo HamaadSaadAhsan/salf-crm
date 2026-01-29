@@ -182,6 +182,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const [sources, setSources] = useState<Array<{ value: string; label: string }>>([]);
     const [services, setServices] = useState<Array<{ value: string; label: string }>>([]);
     const [statuses, setStatuses] = useState<Array<{ value: string; label: string; color: string }>>([]);
+    const [users, setUsers] = useState<Array<{ value: string; label: string }>>([]);
     const [isLeadInfoOpen, setIsLeadInfoOpen] = useState(true);
     const [isAdditionalOpen, setIsAdditionalOpen] = useState(false);
     const [newCustomFieldKey, setNewCustomFieldKey] = useState('');
@@ -206,6 +207,9 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
 
     // CROs cannot edit lead details when assigned to advisor
     const isReadOnly = isCRO && isAssignedToAdvisor;
+
+    // Check if current user can change assignments (admin roles only)
+    const canChangeAssignment = currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
 
     // Sync local state when lead prop changes (e.g., after Inertia reload)
     useEffect(() => {
@@ -285,7 +289,19 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                 })));
             }
         }).catch(console.error);
-    }, []);
+
+        // Fetch users for assignment (only if user can change assignments)
+        if (canChangeAssignment) {
+            axios.get('/api/users', { params: { per_page: 100 } }).then(response => {
+                if (response.data?.data) {
+                    setUsers(response.data.data.map((user: { id: number; name: string; email: string }) => ({
+                        value: String(user.id),
+                        label: user.name
+                    })));
+                }
+            }).catch(console.error);
+        }
+    }, [canChangeAssignment]);
 
     const save = (patch: Partial<Lead>) => {
         const payload = {
@@ -323,6 +339,22 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const saveSource = (sourceId: string) => {
         router.put(`/leads/${model.id}`, {
             lead_source_id: sourceId ? Number(sourceId) : null,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['lead'],
+            onSuccess: (page) => {
+                const leadData = (page.props as { lead?: Lead }).lead;
+                if (leadData) {
+                    setModel(leadData);
+                }
+            },
+        });
+    };
+
+    const saveAssignedTo = (userId: string) => {
+        router.put(`/leads/${model.id}`, {
+            assigned_to: userId ? Number(userId) : null,
         }, {
             preserveScroll: true,
             preserveState: true,
@@ -638,11 +670,30 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                         </div>
 
                         {/* Assigned To */}
-                        {model.assigned_to?.data && (
-                            <div className="flex items-start gap-2 text-sm">
-                                <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                <div className="flex flex-col gap-1.5">
-                                    <span className="text-xs text-muted-foreground">Assigned To</span>
+                        <div className="flex items-start gap-2 text-sm">
+                            <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="flex flex-col gap-1.5">
+                                <span className="text-xs text-muted-foreground">Assigned To</span>
+                                {canChangeAssignment && users.length > 0 ? (
+                                    <div className="flex flex-col gap-1">
+                                        <InlineEdit
+                                            type="select"
+                                            options={[{ value: '', label: 'Unassigned' }, ...users]}
+                                            value={model.assigned_to?.data?.id ? String(model.assigned_to.data.id) : ''}
+                                            placeholder="Select user"
+                                            onSave={saveAssignedTo}
+                                        />
+                                        {model.assigned_to?.data?.roles && model.assigned_to.data.roles.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                {model.assigned_to.data.roles.map((role) => (
+                                                    <Badge key={role.id} variant="secondary" className="text-xs capitalize">
+                                                        {role.name.replace(/-/g, ' ')}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : model.assigned_to?.data ? (
                                     <div className="flex flex-col gap-1">
                                         <span className="font-medium">{model.assigned_to.data.name}</span>
                                         {model.assigned_to.data.roles && model.assigned_to.data.roles.length > 0 && (
@@ -655,9 +706,11 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                ) : (
+                                    <span className="text-muted-foreground">Unassigned</span>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         {/* Owner */}
                         {model.owner && (
