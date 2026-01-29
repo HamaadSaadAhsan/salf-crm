@@ -132,7 +132,7 @@ class AsteriskCallController extends Controller
                             'user_name' => $ringUser?->name,
                             'uniqueid' => $validated['uniqueid'],
                             'linkedid' => $validated['linkedid'] ?? null,
-                            'caller_number' => $validated['caller'],
+                            'caller_number' => $validated['caller'] ?? null,
                             'lead_id' => $lead?->id,
                         ],
                         'asterisk'
@@ -170,7 +170,7 @@ class AsteriskCallController extends Controller
                             'user_name' => $answeredByUser?->name,
                             'uniqueid' => $validated['uniqueid'],
                             'linkedid' => $validated['linkedid'] ?? null,
-                            'caller_number' => $validated['caller'],
+                            'caller_number' => $validated['caller'] ?? null,
                             'lead_id' => $lead?->id,
                             'is_coverage_call' => $isCoverageCall,
                             'intended_for_user_id' => $callSession->intended_for_user_id,
@@ -227,7 +227,7 @@ class AsteriskCallController extends Controller
                             'extension' => $exten,
                             'uniqueid' => $validated['uniqueid'],
                             'linkedid' => $validated['linkedid'] ?? null,
-                            'caller_number' => $validated['caller'],
+                            'caller_number' => $validated['caller'] ?? null,
                             'lead_id' => $lead?->id,
                             'duration' => $duration,
                             'end_reason' => $endReason,
@@ -269,7 +269,7 @@ class AsteriskCallController extends Controller
             // Broadcast the event to connected users
             broadcast(new InboundCallReceived(
                 event: $validated['event'],
-                caller: $validated['caller'],
+                caller: $validated['caller'] ?? '',
                 exten: $exten,
                 uniqueid: $validated['uniqueid'],
                 linkedid: $validated['linkedid'] ?? null,
@@ -857,6 +857,274 @@ class AsteriskCallController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error processing notification',
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Handle outbound call event from WebSocket/Asterisk.
+     * This endpoint processes outbound call state changes and logs them.
+     */
+    public function handleOutboundCall(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'event' => ['required', 'string', 'in:outbound_agent_dial,outbound_client_dial,outbound_agent_answer,outbound_client_answer,outbound_connect,outbound_hangup'],
+            'session_id' => ['required', 'string'],
+            'uniqueid' => ['nullable', 'string'],
+            'linkedid' => ['nullable', 'string'],
+            'agent' => ['nullable', 'string'],
+            'client' => ['nullable', 'string'],
+            'phase' => ['nullable', 'string'],
+            'dialstatus' => ['nullable', 'string'],
+            'cause' => ['nullable', 'string'],
+            'duration' => ['nullable', 'integer'],
+        ]);
+
+        try {
+            // Find call session by session_id
+            $callSession = \App\Models\CallSession::where('session_id', $validated['session_id'])->first();
+
+            if (! $callSession) {
+                Log::warning('Outbound call event: Session not found', [
+                    'session_id' => $validated['session_id'],
+                    'event' => $validated['event'],
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Call session not found',
+                ], 404);
+            }
+
+            // Get lead from call session
+            $lead = null;
+            if ($callSession->lead_id) {
+                $lead = Lead::where('id', $callSession->lead_id)
+                    ->with(['service', 'assignedTo', 'source'])
+                    ->first();
+            }
+
+            // Handle different outbound call events
+            switch ($validated['event']) {
+                case 'outbound_agent_dial':
+                    // System is dialing the agent's phone (first leg)
+                    $callSession->update(['status' => 'ringing']);
+
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'outbound_agent_dial',
+                        "Dialing agent extension {$validated['agent']}",
+                        [
+                            'agent' => $validated['agent'],
+                            'client' => $validated['client'],
+                            'phase' => $validated['phase'] ?? 'agent_dial',
+                            'uniqueid' => $validated['uniqueid'] ?? null,
+                            'linkedid' => $validated['linkedid'] ?? null,
+                        ],
+                        'websocket'
+                    );
+
+                    Log::info('Outbound call: Agent dial', [
+                        'session_id' => $callSession->session_id,
+                        'agent' => $validated['agent'],
+                        'client' => $validated['client'],
+                    ]);
+                    break;
+
+                case 'outbound_agent_answer':
+                    // Agent answered their phone
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'outbound_agent_answer',
+                        "Agent {$validated['agent']} answered",
+                        [
+                            'agent' => $validated['agent'],
+                            'client' => $validated['client'],
+                            'uniqueid' => $validated['uniqueid'] ?? null,
+                            'linkedid' => $validated['linkedid'] ?? null,
+                        ],
+                        'websocket'
+                    );
+
+                    Log::info('Outbound call: Agent answered', [
+                        'session_id' => $callSession->session_id,
+                        'agent' => $validated['agent'],
+                    ]);
+                    break;
+
+                case 'outbound_client_dial':
+                    // Agent's phone is now dialing the client (second leg)
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'outbound_client_dial',
+                        "Dialing client {$validated['client']}",
+                        [
+                            'agent' => $validated['agent'],
+                            'client' => $validated['client'],
+                            'phase' => $validated['phase'] ?? 'client_dial',
+                            'uniqueid' => $validated['uniqueid'] ?? null,
+                            'linkedid' => $validated['linkedid'] ?? null,
+                        ],
+                        'websocket'
+                    );
+
+                    Log::info('Outbound call: Client dial', [
+                        'session_id' => $callSession->session_id,
+                        'agent' => $validated['agent'],
+                        'client' => $validated['client'],
+                    ]);
+                    break;
+
+                case 'outbound_client_answer':
+                case 'outbound_connect':
+                    // Client answered - call is now connected
+                    $callSession->update([
+                        'status' => 'answered',
+                        'answered_at' => now(),
+                    ]);
+
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'outbound_connected',
+                        "Call connected - client {$validated['client']} answered",
+                        [
+                            'agent' => $validated['agent'],
+                            'client' => $validated['client'],
+                            'uniqueid' => $validated['uniqueid'] ?? null,
+                            'linkedid' => $validated['linkedid'] ?? null,
+                            'lead_id' => $lead?->id,
+                        ],
+                        'websocket'
+                    );
+
+                    // Create call activity for the lead
+                    if ($lead) {
+                        LeadActivity::updateOrCreate(
+                            [
+                                'external_id' => $callSession->session_id,
+                                'source_system' => 'asterisk',
+                            ],
+                            [
+                                'lead_id' => $lead->id,
+                                'user_id' => $callSession->caller_id ?? auth()->id(),
+                                'type' => 'call',
+                                'subject' => 'Outbound call connected',
+                                'description' => "Called {$validated['client']}",
+                                'status' => 'pending',
+                                'scheduled_at' => now(),
+                                'metadata' => [
+                                    'call_session_id' => $callSession->id,
+                                    'session_id' => $callSession->session_id,
+                                    'agent' => $validated['agent'],
+                                    'client' => $validated['client'],
+                                    'direction' => 'outbound',
+                                ],
+                            ]
+                        );
+                    }
+
+                    Log::info('Outbound call: Connected', [
+                        'session_id' => $callSession->session_id,
+                        'agent' => $validated['agent'],
+                        'client' => $validated['client'],
+                        'lead_id' => $lead?->id,
+                    ]);
+                    break;
+
+                case 'outbound_hangup':
+                    // Call ended
+                    $duration = $validated['duration'] ?? null;
+                    if (! $duration && $callSession->answered_at) {
+                        $duration = (int) abs($callSession->answered_at->diffInSeconds(now()));
+                    }
+
+                    $endReason = $callSession->answered_at ? 'hangup' : 'no_answer';
+                    if ($validated['dialstatus'] === 'BUSY') {
+                        $endReason = 'busy';
+                    } elseif ($validated['dialstatus'] === 'CANCEL') {
+                        $endReason = 'cancelled';
+                    } elseif ($validated['dialstatus'] === 'NOANSWER') {
+                        $endReason = 'no_answer';
+                    }
+
+                    $recordingFilename = $callSession->call_signature
+                        ? "{$callSession->call_signature}.wav"
+                        : null;
+
+                    $callSession->update([
+                        'status' => 'ended',
+                        'ended_at' => now(),
+                        'duration' => $duration,
+                        'end_reason' => $endReason,
+                        'recording_path' => $recordingFilename,
+                    ]);
+
+                    \App\Models\CallLog::createForSession(
+                        $callSession,
+                        'info',
+                        'outbound_hangup',
+                        "Call ended - {$endReason}",
+                        [
+                            'agent' => $validated['agent'],
+                            'client' => $validated['client'],
+                            'duration' => $duration,
+                            'end_reason' => $endReason,
+                            'dialstatus' => $validated['dialstatus'] ?? null,
+                            'cause' => $validated['cause'] ?? null,
+                            'recording_path' => $recordingFilename,
+                            'lead_id' => $lead?->id,
+                        ],
+                        'websocket'
+                    );
+
+                    // Update lead activity if exists
+                    if ($lead) {
+                        $activity = LeadActivity::where('external_id', $callSession->session_id)
+                            ->where('source_system', 'asterisk')
+                            ->first();
+
+                        if ($activity) {
+                            $activity->update([
+                                'status' => 'completed',
+                                'completed_at' => now(),
+                                'duration_minutes' => $duration ? ceil($duration / 60) : null,
+                            ]);
+                        }
+                    }
+
+                    Log::info('Outbound call: Ended', [
+                        'session_id' => $callSession->session_id,
+                        'duration' => $duration,
+                        'end_reason' => $endReason,
+                        'lead_id' => $lead?->id,
+                    ]);
+                    break;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Outbound call event processed',
+                'data' => [
+                    'event' => $validated['event'],
+                    'session_id' => $callSession->session_id,
+                    'lead_id' => $lead?->id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error processing outbound call event', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $validated,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing outbound call event',
                 'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
