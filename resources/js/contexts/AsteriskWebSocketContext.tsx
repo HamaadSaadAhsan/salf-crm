@@ -24,7 +24,7 @@ export interface AsteriskConnectionConfig {
 
 export interface OriginateCallParams {
     extension: string;
-    phoneNumber: string;
+    phoneNumber?: string; // Optional - backend can derive from lead
     leadId: string | number;
     callerId?: string;
     context?: string;
@@ -260,6 +260,8 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                     // as the first step of an outbound call origination
                     const isOutboundAgentEvent = data.event === 'outbound_agent_dial' ||
                         data.event === 'outbound_client_dial' ||
+                        data.event === 'outbound_connect' ||
+                        data.event === 'outbound_hangup' ||
                         (data.routing_info && data.routing_info.call_direction === 'outbound');
 
                     const isInboundCallEvent = data.event && ['ring', 'connect', 'disconnect', 'hangup', 'stop_ringing'].includes(data.event);
@@ -283,9 +285,9 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                                 agent: data.routing_info?.agent,
                                 client: data.routing_info?.client,
                                 phase: data.routing_info?.phase,
-                                dialstatus: data.dialstatus,
+                                dialstatus: data.dialstatus || data.routing_info?.dialstatus,
                                 cause: data.cause,
-                                duration: data.duration,
+                                duration: data.duration || data.routing_info?.duration,
                             });
                             console.log('✅ [WebSocket] Outbound event forwarded to Laravel successfully:', data.event);
                         } catch (apiError) {
@@ -450,11 +452,10 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                 }
 
                 const callSignature = data.signature_data.call_signature;
-                const callSession = data.call_session;
 
                 // Step 2: Send originate action to Asterisk with signature
-                // Use phone number from call session if not provided in params
-                const phoneNumber = params.phoneNumber || callSession.callee_number;
+                // Use phone number from backend response (callee_number) - backend derives from lead if not provided
+                const phoneNumber = data.signature_data.callee_number;
 
                 const originateAction = {
                     agent: params.extension,

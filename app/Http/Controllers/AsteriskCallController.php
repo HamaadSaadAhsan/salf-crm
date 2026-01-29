@@ -882,12 +882,65 @@ class AsteriskCallController extends Controller
         ]);
 
         try {
-            // Find call session by session_id
-            $callSession = \App\Models\CallSession::where('session_id', $validated['session_id'])->first();
+            // Find call session by session_id, linkedid, or uniqueid
+            // Try multiple lookup strategies since timing can cause session to not be found immediately
+            $callSession = null;
+            $lookupStrategy = null;
+
+            Log::debug('Outbound call event lookup starting', [
+                'event' => $validated['event'],
+                'session_id' => $validated['session_id'],
+                'linkedid' => $validated['linkedid'] ?? null,
+                'uniqueid' => $validated['uniqueid'] ?? null,
+                'agent' => $validated['agent'] ?? null,
+                'client' => $validated['client'] ?? null,
+            ]);
+
+            // Strategy 1: By session_id (primary lookup)
+            if (! empty($validated['session_id'])) {
+                $callSession = \App\Models\CallSession::where('session_id', $validated['session_id'])->first();
+                if ($callSession) {
+                    $lookupStrategy = 'session_id';
+                }
+            }
+
+            // Strategy 2: By linkedid (Asterisk's call chain identifier)
+            if (! $callSession && ! empty($validated['linkedid'])) {
+                $callSession = \App\Models\CallSession::where('linkedid', $validated['linkedid'])->first();
+                if ($callSession) {
+                    $lookupStrategy = 'linkedid';
+                }
+            }
+
+            // Strategy 3: By uniqueid
+            if (! $callSession && ! empty($validated['uniqueid'])) {
+                $callSession = \App\Models\CallSession::where('uniqueid', $validated['uniqueid'])->first();
+                if ($callSession) {
+                    $lookupStrategy = 'uniqueid';
+                }
+            }
+
+            // Strategy 4: By caller_number (agent extension) + callee_number (client) for recent calls
+            if (! $callSession && ! empty($validated['agent']) && ! empty($validated['client'])) {
+                $callSession = \App\Models\CallSession::where('caller_number', $validated['agent'])
+                    ->where('callee_number', $validated['client'])
+                    ->where('call_direction', 'outbound')
+                    ->where('created_at', '>=', now()->subMinutes(2))
+                    ->whereIn('status', ['initiated', 'ringing', 'answered'])
+                    ->orderByDesc('created_at')
+                    ->first();
+                if ($callSession) {
+                    $lookupStrategy = 'agent_client';
+                }
+            }
 
             if (! $callSession) {
-                Log::warning('Outbound call event: Session not found', [
+                Log::warning('Outbound call event: Session not found after all strategies', [
                     'session_id' => $validated['session_id'],
+                    'linkedid' => $validated['linkedid'] ?? null,
+                    'uniqueid' => $validated['uniqueid'] ?? null,
+                    'agent' => $validated['agent'] ?? null,
+                    'client' => $validated['client'] ?? null,
                     'event' => $validated['event'],
                 ]);
 
@@ -895,6 +948,22 @@ class AsteriskCallController extends Controller
                     'success' => false,
                     'message' => 'Call session not found',
                 ], 404);
+            }
+
+            Log::info('Outbound call event: Session found', [
+                'strategy' => $lookupStrategy,
+                'db_session_id' => $callSession->session_id,
+                'event' => $validated['event'],
+            ]);
+
+            // Update linkedid if we found session but it doesn't have one yet
+            if (! empty($validated['linkedid']) && empty($callSession->linkedid)) {
+                $callSession->update(['linkedid' => $validated['linkedid']]);
+            }
+
+            // Update uniqueid if we found session but it doesn't have one yet
+            if (! empty($validated['uniqueid']) && empty($callSession->uniqueid)) {
+                $callSession->update(['uniqueid' => $validated['uniqueid']]);
             }
 
             // Get lead from call session
