@@ -74,16 +74,20 @@ export function useOutboundCalls() {
                 handleRingEvent(data);
                 break;
             case 'connect':
+            case 'outbound_connect':
                 handleConnectEvent(data);
                 break;
             case 'disconnect':
             case 'hangup':
+            case 'outbound_hangup':
                 handleEndEvent(data);
                 break;
             case 'busy':
                 handleBusyEvent(data);
                 break;
             case 'dialbegin':
+            case 'outbound_agent_dial':
+            case 'outbound_client_dial':
                 handleDialBeginEvent(data);
                 break;
             case 'dialend':
