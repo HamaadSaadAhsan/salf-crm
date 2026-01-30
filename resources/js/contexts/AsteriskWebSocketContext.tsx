@@ -4,6 +4,56 @@ import axios from 'axios';
 import { usePage } from '@inertiajs/react';
 import { inboundCall, outboundCall } from '@/routes/asterisk';
 import type { SharedData } from '@/types';
+import type { CallRoutingInfo } from '@/types/asterisk';
+
+/**
+ * Helper to check if a WebSocket message is an outbound call event
+ */
+function isOutboundEvent(data: Record<string, unknown>): boolean {
+    const outboundEvents = [
+        'outbound_agent_dial',
+        'outbound_client_dial',
+        'outbound_connect',
+        'outbound_hangup',
+    ];
+
+    // Check explicit outbound events
+    if (outboundEvents.includes(data.event as string)) {
+        return true;
+    }
+
+    // Check direction fields (new format)
+    if (data.direction === 'outbound') {
+        return true;
+    }
+
+    // Check call_direction fields (legacy format)
+    if (data.call_direction === 'outbound') {
+        return true;
+    }
+
+    // Check routing_info
+    const routingInfo = data.routing_info as CallRoutingInfo | undefined;
+    if (routingInfo?.call_direction === 'outbound') {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Helper to get session ID from message (handles both formats)
+ */
+function getSessionId(data: Record<string, unknown>): string | undefined {
+    return (data.sessionId as string) || (data.session_id as string);
+}
+
+/**
+ * Helper to get lead ID from message (handles both formats)
+ */
+function getLeadId(data: Record<string, unknown>): string | undefined {
+    return (data.leadId as string) || (data.lead_id as string);
+}
 
 // Types
 export interface AsteriskMessage {
@@ -234,10 +284,17 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
 
             ws.onmessage = async (event) => {
                 try {
-                    const data = JSON.parse(event.data);
+                    const data = JSON.parse(event.data) as Record<string, unknown>;
+                    const sessionId = getSessionId(data);
+                    const leadId = getLeadId(data);
+                    const routingInfo = data.routing_info as CallRoutingInfo | undefined;
+
                     console.log('📨 [WebSocket] Message received:', {
                         event: data.event,
                         type: data.type,
+                        sessionId,
+                        leadId,
+                        direction: data.direction || data.call_direction || routingInfo?.call_direction,
                         targetExtension: data.targetExtension,
                         exten: data.exten,
                         caller: data.caller,
@@ -246,113 +303,88 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
 
                     const message: AsteriskMessage = {
                         id: Date.now().toString(),
-                        type: data.type || 'unknown',
+                        type: (data.type as string) || 'unknown',
                         data: data,
                         timestamp: new Date(),
                     };
                     dispatch({ type: 'ADD_MESSAGE', payload: message });
 
-                    // Check if this is an inbound call event and forward to Laravel
-                    // Include stop_ringing for ring group notifications (clears notification when call moves to next extension)
-                    //
-                    // IMPORTANT: Skip forwarding for outbound call agent leg events
-                    // These are NOT inbound calls - they are the system calling the agent's phone
-                    // as the first step of an outbound call origination
-                    const isOutboundAgentEvent = data.event === 'outbound_agent_dial' ||
-                        data.event === 'outbound_client_dial' ||
-                        data.event === 'outbound_connect' ||
-                        data.event === 'outbound_hangup' ||
-                        (data.routing_info && data.routing_info.call_direction === 'outbound');
+                    // Determine if this is an outbound or inbound call event
+                    const isOutbound = isOutboundEvent(data);
+                    const isCallEvent = data.event && ['ring', 'connect', 'disconnect', 'hangup', 'stop_ringing',
+                        'outbound_agent_dial', 'outbound_client_dial', 'outbound_connect', 'outbound_hangup'].includes(data.event as string);
 
-                    const isInboundCallEvent = data.event && ['ring', 'connect', 'disconnect', 'hangup', 'stop_ringing'].includes(data.event);
-
-                    if (isOutboundAgentEvent) {
+                    if (isOutbound && isCallEvent) {
                         // Outbound call events - forward to outbound-specific endpoint
+                        // Map generic events to outbound-specific events if needed
+                        const outboundEvent = data.event === 'connect' ? 'outbound_connect' :
+                                              data.event === 'hangup' ? 'outbound_hangup' :
+                                              data.event;
+
                         console.log('📤 [WebSocket] Outbound call event, forwarding to Laravel:', {
-                            event: data.event,
-                            phase: data.routing_info?.phase,
-                            agent: data.routing_info?.agent,
-                            client: data.routing_info?.client,
-                            session_id: data.session_id,
+                            event: outboundEvent,
+                            sessionId,
+                            leadId,
+                            phase: routingInfo?.phase,
+                            agent: data.agent || routingInfo?.agent,
+                            client: data.client || routingInfo?.client,
                         });
 
                         try {
                             await axios.post(outboundCall().url, {
-                                event: data.event,
-                                session_id: data.session_id,
+                                event: outboundEvent,
+                                // Use consistent sessionId naming
+                                session_id: sessionId,
+                                sessionId: sessionId,
+                                lead_id: leadId,
+                                leadId: leadId,
                                 uniqueid: data.uniqueid,
                                 linkedid: data.linkedid,
-                                agent: data.routing_info?.agent,
-                                client: data.routing_info?.client,
-                                phase: data.routing_info?.phase,
-                                dialstatus: data.dialstatus || data.routing_info?.dialstatus,
+                                agent: data.agent || data.agent_extension || routingInfo?.agent,
+                                client: data.client || routingInfo?.client,
+                                phase: routingInfo?.phase,
+                                dialstatus: data.dialstatus || routingInfo?.dialstatus,
                                 cause: data.cause,
-                                duration: data.duration || data.routing_info?.duration,
+                                duration: data.duration || routingInfo?.duration,
+                                direction: 'outbound',
                             });
-                            console.log('✅ [WebSocket] Outbound event forwarded to Laravel successfully:', data.event);
+                            console.log('✅ [WebSocket] Outbound event forwarded to Laravel successfully:', outboundEvent);
                         } catch (apiError) {
                             console.error('❌ [WebSocket] Failed to forward outbound call event to Laravel:', apiError);
                         }
-                    } else if (isInboundCallEvent) {
-                        // Check call direction from routing_info - handle outbound differently
-                        const callDirection = data.routing_info?.call_direction || data.call_direction;
-                        if (callDirection === 'outbound') {
-                            // Map generic events to outbound-specific events for logging
-                            const outboundEvent = data.event === 'connect' ? 'outbound_connect' :
-                                                  data.event === 'hangup' ? 'outbound_hangup' :
-                                                  data.event;
-
-                            console.log('📤 [WebSocket] Outbound call event detected via routing_info, forwarding:', {
-                                event: outboundEvent,
-                                call_direction: callDirection,
-                                session_id: data.session_id,
+                    } else if (isCallEvent && !isOutbound) {
+                        // Inbound call events
+                        // Skip forwarding if caller is undefined (incomplete event data)
+                        if (!data.caller && !data.calleridnum) {
+                            console.log('ℹ️ [WebSocket] Skipping inbound event with undefined caller:', data.event);
+                        } else {
+                            console.log('📞 [WebSocket] Inbound call event, forwarding to Laravel:', {
+                                event: data.event,
+                                sessionId,
+                                caller: data.caller || data.calleridnum,
                             });
 
                             try {
-                                await axios.post(outboundCall().url, {
-                                    event: outboundEvent,
-                                    session_id: data.session_id,
+                                await axios.post(inboundCall().url, {
+                                    event: data.event,
+                                    caller: data.caller || data.calleridnum,
+                                    exten: data.exten || data.targetExtension,
                                     uniqueid: data.uniqueid,
                                     linkedid: data.linkedid,
-                                    agent: data.routing_info?.agent || data.routing_info?.answered_by,
-                                    client: data.calleridnum || data.caller,
+                                    targetExtension: data.targetExtension,
+                                    reason: data.reason,
                                     dialstatus: data.dialstatus,
-                                    cause: data.cause || data.causeTxt,
-                                    duration: data.duration,
+                                    // Use consistent sessionId naming
+                                    session_id: sessionId,
+                                    sessionId: sessionId,
+                                    lead_id: leadId,
+                                    leadId: leadId,
+                                    direction: 'inbound',
+                                    call_direction: 'inbound',
                                 });
-                                console.log('✅ [WebSocket] Outbound event forwarded to Laravel successfully:', outboundEvent);
+                                console.log('✅ [WebSocket] Inbound event forwarded to Laravel successfully:', data.event);
                             } catch (apiError) {
-                                console.error('❌ [WebSocket] Failed to forward outbound call event to Laravel:', apiError);
-                            }
-                        } else {
-                            // Skip forwarding if caller is undefined (incomplete event data)
-                            if (!data.caller && !data.calleridnum) {
-                                console.log('ℹ️ [WebSocket] Skipping inbound event with undefined caller:', data.event);
-                            } else {
-                                console.log('📞 [WebSocket] Inbound call event detected, forwarding to Laravel:', data.event);
-                                try {
-                                    // For inbound calls: caller = phone number, exten = extension receiving call
-                                    // For outbound calls: caller = agent extension, exten = phone number being called
-                                    // For stop_ringing: targetExtension = extension to clear notification from
-                                    await axios.post(inboundCall().url, {
-                                        event: data.event,
-                                        caller: data.caller || data.calleridnum, // Phone number (03334114879) or agent extension
-                                        exten: data.exten || data.targetExtension, // Extension (201) or target extension for stop_ringing
-                                        uniqueid: data.uniqueid,
-                                        linkedid: data.linkedid,
-                                        // Additional fields for stop_ringing and ring events
-                                        targetExtension: data.targetExtension,
-                                        reason: data.reason, // timeout, caller_hangup, busy, answered_elsewhere
-                                        dialstatus: data.dialstatus,
-                                        session_id: data.session_id,
-                                        // Include call direction for backend processing
-                                        call_direction: callDirection || 'inbound',
-                                    });
-                                    console.log('✅ [WebSocket] Event forwarded to Laravel successfully:', data.event);
-                                } catch (apiError) {
-                                    console.error('❌ [WebSocket] Failed to forward call event to Laravel:', apiError);
-                                    // Don't show error to user - this is background processing
-                                }
+                                console.error('❌ [WebSocket] Failed to forward inbound call event to Laravel:', apiError);
                             }
                         }
                     } else {

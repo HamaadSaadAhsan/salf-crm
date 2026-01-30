@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { callNotes, callLead } from '@/routes/api/asterisk';
 import { update as updateLead } from '@/routes/leads';
 import type { SharedData } from '@/types';
+import type { CallRoutingInfo } from '@/types/asterisk';
 
 export interface InboundCallData {
     event: 'ring' | 'connect' | 'disconnect' | 'hangup' | 'stop_ringing';
@@ -14,6 +15,9 @@ export interface InboundCallData {
     uniqueid: string;
     linkedid?: string;
     sessionId: string;
+    /** New direction field */
+    direction?: 'inbound' | 'outbound';
+    /** Legacy call_direction field */
     call_direction?: 'inbound' | 'outbound';
     target_extension?: string;
     agent_extension?: string;
@@ -22,6 +26,8 @@ export interface InboundCallData {
     is_coverage_call?: boolean;
     reason?: string; // For stop_ringing: timeout, caller_hangup, busy, answered_elsewhere
     dialstatus?: string; // For stop_ringing: NOANSWER, CANCEL, BUSY, etc.
+    /** Routing info from server */
+    routing_info?: CallRoutingInfo;
     lead?: {
         id: string;
         name: string;
@@ -42,6 +48,41 @@ export interface InboundCallData {
         last_activity_at?: string;
     };
     timestamp: string;
+}
+
+/**
+ * Helper to check if an event is an outbound call event
+ * These should be ignored by the inbound calls hook
+ */
+function isOutboundEvent(data: InboundCallData): boolean {
+    const outboundEvents = [
+        'outbound_agent_dial',
+        'outbound_client_dial',
+        'outbound_connect',
+        'outbound_hangup',
+    ];
+
+    // Check explicit outbound events
+    if (outboundEvents.includes(data.event)) {
+        return true;
+    }
+
+    // Check direction fields (new format)
+    if (data.direction === 'outbound') {
+        return true;
+    }
+
+    // Check call_direction fields (legacy format)
+    if (data.call_direction === 'outbound') {
+        return true;
+    }
+
+    // Check routing_info
+    if (data.routing_info?.call_direction === 'outbound') {
+        return true;
+    }
+
+    return false;
 }
 
 export interface ActiveCall extends InboundCallData {
@@ -139,7 +180,21 @@ export function useInboundCalls() {
 
     // Subscribe to inbound call events using useEcho hook
     useEcho('inbound-calls', '.inbound.call', (data: InboundCallData) => {
-        console.log('Inbound call event received:', data, {
+        // CRITICAL: Filter out outbound call events
+        // Outbound calls should be handled by useOutboundCalls hook, not this one
+        if (isOutboundEvent(data)) {
+            console.log('📞 useInboundCalls: Ignoring outbound event', {
+                event: data.event,
+                direction: data.direction || data.call_direction,
+                routing_info: data.routing_info,
+            });
+            return;
+        }
+
+        console.log('📞 useInboundCalls: Processing inbound event', {
+            event: data.event,
+            caller: data.caller,
+            targetExtension: data.target_extension || data.exten,
             currentUserExtension,
             currentUserId,
             isOwner: isCallOwner(data, data.event),
