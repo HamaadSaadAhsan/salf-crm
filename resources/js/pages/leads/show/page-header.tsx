@@ -62,11 +62,17 @@ export function PageHeader({ lead }: { lead: Lead }) {
         setIsCalling(true);
 
         try {
-            // Trigger outbound call notification immediately
+            // Trigger outbound call notification immediately with full lead data
             startOutboundCall(lead.phone, lead.id, {
                 id: String(lead.id),
                 name: lead.name,
                 phone: lead.phone,
+                email: lead.email,
+                city: lead.city,
+                country: lead.country,
+                service: lead.service,
+                inquiry_status: lead.inquiry_status,
+                priority: lead.priority,
             });
 
             const success = await actions.makeCall({

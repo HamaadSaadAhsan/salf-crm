@@ -85,7 +85,9 @@ export function OutboundCallNotification({
                                     {call.lead ? (call.lead.name || 'Unknown Lead') : 'Outgoing Call'}
                                 </p>
                             </div>
-                            <p className="text-xs text-muted-foreground">To: {call.phoneNumber}</p>
+                            {!call.lead?.name && (
+                                <p className="text-xs text-muted-foreground">To: {call.phoneNumber}</p>
+                            )}
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onDismiss}>
@@ -141,19 +143,13 @@ export function OutboundCallNotification({
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
-                    {call.lead && call.status === 'connected' && (
+                {call.lead && call.status === 'connected' && (
+                    <div className="flex gap-2">
                         <Button variant="outline" className="flex-1" onClick={onOpenLeadDialog}>
                             View Lead
                         </Button>
-                    )}
-                    {(call.status === 'initiating' || call.status === 'ringing' || call.status === 'connected') && (
-                        <Button variant="destructive" className="flex-1" onClick={onHangup}>
-                            <Phone className="mr-2 h-4 w-4 rotate-135" />
-                            End Call
-                        </Button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </Card>
     );

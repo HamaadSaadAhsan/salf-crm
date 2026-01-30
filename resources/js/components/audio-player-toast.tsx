@@ -70,6 +70,8 @@ export function AudioPlayerToast({ audioUrl, title = 'Recording', className }: A
     const handleSeek = (value: number[]) => {
         if (!audioRef.current) return;
         const newTime = value[0];
+        // Guard against non-finite values (NaN, Infinity)
+        if (!isFinite(newTime) || newTime < 0) return;
         audioRef.current.currentTime = newTime;
         setCurrentTime(newTime);
     };
@@ -125,11 +127,11 @@ export function AudioPlayerToast({ audioUrl, title = 'Recording', className }: A
                         {formatTime(currentTime)}
                     </span>
                     <Slider
-                        value={[currentTime]}
-                        max={duration || 100}
+                        value={[isFinite(currentTime) ? currentTime : 0]}
+                        max={isFinite(duration) && duration > 0 ? duration : 100}
                         step={0.1}
                         onValueChange={handleSeek}
-                        disabled={isLoading}
+                        disabled={isLoading || !isFinite(duration) || duration <= 0}
                         className="flex-1"
                     >
                         <SliderThumb />

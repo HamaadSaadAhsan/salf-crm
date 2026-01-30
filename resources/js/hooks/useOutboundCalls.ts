@@ -188,7 +188,7 @@ export function useOutboundCalls() {
         setActiveOutboundCall(newCall);
 
         toast.info('Initiating call...', {
-            description: `Calling ${newCall.phoneNumber}`,
+            description: newCall.lead?.name || newCall.phoneNumber,
         });
     };
 
