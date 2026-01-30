@@ -11,7 +11,7 @@ import { useCountryOptions, useCityOptions } from '@/hooks/useLocation';
 import { cn } from '@/lib/utils';
 import { useServices } from '@/lib/useServices';
 import type { Service } from '@/types/lead';
-import { AlertCircle, Check, ChevronsUpDown, Clock, Loader2, User } from 'lucide-react';
+import { AlertCircle, Check, ChevronsUpDown, Clock, Loader2, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface NewLeadCallDialogProps {
@@ -58,6 +58,10 @@ interface NewLeadCallDialogProps {
 export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreateLead }: NewLeadCallDialogProps) {
     const isNewLead = !call.lead;
     const { services, loading: servicesLoading } = useServices();
+
+    // Determine call direction - check both new and legacy fields
+    const isOutboundCall = call.direction === 'outbound' || call.call_direction === 'outbound';
+    const callDirectionLabel = isOutboundCall ? 'Outbound Call' : 'Incoming Call';
     const { options: countryOptions, isLoading: isLoadingCountries } = useCountryOptions();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [duration, setDuration] = useState(0);
@@ -210,13 +214,21 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
             >
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        {isNewLead ? 'New Incoming Call' : `Call with ${call.lead?.name || 'Lead'}`}
+                        {isOutboundCall ? (
+                            <PhoneOutgoing className="h-5 w-5 text-blue-600" />
+                        ) : (
+                            <PhoneIncoming className="h-5 w-5 text-green-600" />
+                        )}
+                        {call.lead?.name
+                            ? `${callDirectionLabel} - ${call.lead.name}`
+                            : `${callDirectionLabel}`}
                     </DialogTitle>
                     <DialogDescription className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
                         <span>{formatDuration(duration)}</span>
-                        {isNewLead && <span className="ml-2 text-amber-600">• New caller - please create lead</span>}
+                        {isNewLead && !isOutboundCall && (
+                            <span className="ml-2 text-amber-600">• New caller - please create lead</span>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -236,7 +248,11 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                     {/* Lead Information Fields */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-semibold">
-                            {isNewLead ? 'Create New Lead' : 'Update Lead Information'}
+                            {isNewLead
+                                ? 'Create New Lead'
+                                : isOutboundCall
+                                    ? 'Lead Information'
+                                    : 'Update Lead Information'}
                         </h3>
                         <div className="grid gap-4 md:grid-cols-2">
                             {/* Name */}
@@ -464,7 +480,7 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         </Button>
                         <Button type="submit" disabled={isSubmitting || !callNotes.trim() || (isNewLead && !formData.name?.trim())}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isNewLead ? 'Create Lead & Save' : 'Save & Update Lead'}
+                            {isNewLead ? 'Create Lead & Save' : isOutboundCall ? 'Save Call Notes' : 'Save & Update Lead'}
                         </Button>
                     </div>
                 </form>

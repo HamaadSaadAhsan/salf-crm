@@ -100,55 +100,70 @@ export function useOutboundCalls() {
         const message = state.lastMessage;
         const data = message.data as Record<string, unknown>;
 
-        // IMPORTANT: Only process outbound calls, skip inbound calls
-        // Inbound calls are handled by useInboundCalls hook
-        if (!isOutboundEvent(data)) {
-            // Skip non-outbound events silently (they're handled by useInboundCalls)
+        // Check if this is an explicitly outbound event
+        const isExplicitOutbound = isOutboundEvent(data);
+
+        // Check if this event matches our active outbound call by uniqueid/linkedid
+        // This handles events that don't have direction: 'outbound' but belong to our call
+        const matchesActiveCall = activeOutboundCall && (
+            (data.uniqueid && (
+                data.uniqueid === activeOutboundCall.uniqueid ||
+                data.uniqueid === activeOutboundCall.linkedid
+            )) ||
+            (data.linkedid && (
+                data.linkedid === activeOutboundCall.linkedid ||
+                data.linkedid === activeOutboundCall.uniqueid
+            ))
+        );
+
+        // Process if it's an explicit outbound event OR matches our active call
+        if (!isExplicitOutbound && !matchesActiveCall) {
             return;
         }
 
-        // Check if this is an outbound call event for the current user
-        // For outbound calls, check agent_extension, agent, exten, or calleridnum
-        const routingInfo = data.routing_info as CallRoutingInfo | undefined;
-        const isMyOutboundCall =
-            data.agent_extension === currentUserExtension ||
-            data.agent === currentUserExtension ||
-            routingInfo?.agent === currentUserExtension ||
-            data.exten === currentUserExtension ||
-            data.calleridnum === currentUserExtension;
+        // For explicit outbound events, verify it's for the current user
+        if (isExplicitOutbound && !matchesActiveCall) {
+            const routingInfo = data.routing_info as CallRoutingInfo | undefined;
+            const isMyOutboundCall =
+                data.agent_extension === currentUserExtension ||
+                data.agent === currentUserExtension ||
+                routingInfo?.agent === currentUserExtension ||
+                data.exten === currentUserExtension;
 
-        if (!isMyOutboundCall) {
-            console.log('useOutboundCalls: Skipping outbound event for different agent', {
-                event: data.event,
-                agent_extension: data.agent_extension,
-                agent: data.agent,
-                currentUserExtension,
-            });
-            return;
+            if (!isMyOutboundCall) {
+                console.log('useOutboundCalls: Skipping outbound event for different agent', {
+                    event: data.event,
+                    agent_extension: data.agent_extension,
+                    currentUserExtension,
+                });
+                return;
+            }
         }
 
-        console.log('📤 useOutboundCalls: Processing outbound event for current user:', {
+        console.log('📤 useOutboundCalls: Processing outbound event:', {
             event: data.event,
             sessionId: getSessionId(data),
-            leadId: getLeadId(data),
-            direction: data.direction || data.call_direction,
+            uniqueid: data.uniqueid,
+            linkedid: data.linkedid,
+            matchesActiveCall,
+            isExplicitOutbound,
         });
 
         switch (data.event) {
             case 'ring':
-                handleRingEvent(data);
+                if (matchesActiveCall) handleRingEvent(data);
                 break;
             case 'connect':
             case 'outbound_connect':
-                handleConnectEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) handleConnectEvent(data);
                 break;
             case 'disconnect':
             case 'hangup':
             case 'outbound_hangup':
-                handleEndEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) handleEndEvent(data);
                 break;
             case 'busy':
-                handleBusyEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) handleBusyEvent(data);
                 break;
             case 'dialbegin':
             case 'outbound_agent_dial':
@@ -156,10 +171,10 @@ export function useOutboundCalls() {
                 handleDialBeginEvent(data);
                 break;
             case 'dialend':
-                handleDialEndEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) handleDialEndEvent(data);
                 break;
         }
-    }, [state.lastMessage, currentUserExtension]);
+    }, [state.lastMessage, currentUserExtension, activeOutboundCall]);
 
     const handleDialBeginEvent = (data: Record<string, unknown>) => {
         // Outbound call initiated - extract session and lead IDs
@@ -167,58 +182,55 @@ export function useOutboundCalls() {
         const leadId = getLeadId(data);
         const routingInfo = data.routing_info as CallRoutingInfo | undefined;
 
-        const newCall: OutboundCall = {
-            uniqueid: data.uniqueid as string,
-            linkedid: data.linkedid as string | undefined,
-            phoneNumber: (data.destcalleridnum || data.client || routingInfo?.client || data.destination || 'Unknown') as string,
-            leadId: leadId,
-            sessionId: sessionId,
-            status: 'initiating',
-            startTime: new Date(),
-            duration: 0,
-            direction: 'outbound',
-        };
+        setActiveOutboundCall((prev) => {
+            // Preserve existing lead data from startOutboundCall
+            const newCall: OutboundCall = {
+                uniqueid: (data.uniqueid as string) || prev?.uniqueid || `pending-${Date.now()}`,
+                linkedid: (data.linkedid as string) || prev?.linkedid,
+                phoneNumber: (data.destcalleridnum || data.client || routingInfo?.client || data.destination || prev?.phoneNumber || 'Unknown') as string,
+                leadId: leadId || prev?.leadId,
+                lead: prev?.lead, // Preserve lead data from startOutboundCall
+                sessionId: sessionId || prev?.sessionId,
+                status: 'initiating',
+                startTime: prev?.startTime || new Date(),
+                duration: 0,
+                direction: 'outbound',
+            };
 
-        console.log('📤 useOutboundCalls: Creating outbound call', {
-            sessionId,
-            leadId,
-            phoneNumber: newCall.phoneNumber,
-        });
+            console.log('📤 useOutboundCalls: Creating outbound call', {
+                sessionId: newCall.sessionId,
+                leadId: newCall.leadId,
+                phoneNumber: newCall.phoneNumber,
+                hasLead: !!newCall.lead,
+            });
 
-        setActiveOutboundCall(newCall);
-
-        toast.info('Initiating call...', {
-            description: newCall.lead?.name || newCall.phoneNumber,
+            return newCall;
         });
     };
 
     const handleRingEvent = (data: Record<string, unknown>) => {
         const sessionId = getSessionId(data);
-        const leadId = getLeadId(data);
-        const routingInfo = data.routing_info as CallRoutingInfo | undefined;
 
         setActiveOutboundCall((prev) => {
-            if (prev) {
-                return {
-                    ...prev,
-                    uniqueid: (data.uniqueid as string) || prev.uniqueid,
-                    linkedid: (data.linkedid as string) || prev.linkedid,
-                    sessionId: sessionId || prev.sessionId,
-                    status: 'ringing',
-                };
-            }
+            if (!prev) return prev;
 
-            // Create new call if we don't have one
+            // Update uniqueid/linkedid when they become available
+            // First ring event (agent leg) will have the linkedid we need to track
+            const newUniqueid = (data.uniqueid as string) || prev.uniqueid;
+            const newLinkedid = (data.linkedid as string) || (data.uniqueid as string) || prev.linkedid;
+
+            console.log('📤 useOutboundCalls: Ring event, updating call IDs', {
+                prevUniqueid: prev.uniqueid,
+                newUniqueid,
+                newLinkedid,
+            });
+
             return {
-                uniqueid: data.uniqueid as string,
-                linkedid: data.linkedid as string | undefined,
-                phoneNumber: (data.caller || data.connectedlinenum || routingInfo?.client || 'Unknown') as string,
-                sessionId: sessionId,
-                leadId: leadId,
+                ...prev,
+                uniqueid: newUniqueid,
+                linkedid: newLinkedid,
+                sessionId: sessionId || prev.sessionId,
                 status: 'ringing',
-                startTime: new Date(),
-                duration: 0,
-                direction: 'outbound',
             };
         });
 
@@ -231,18 +243,28 @@ export function useOutboundCalls() {
         const sessionId = getSessionId(data);
 
         setActiveOutboundCall((prev) => {
+            if (!prev) return prev;
+
             // Match by uniqueid, linkedid, or sessionId
-            const isSameCall = prev && (
+            const isSameCall =
                 prev.uniqueid === data.uniqueid ||
                 prev.linkedid === data.linkedid ||
                 prev.uniqueid === data.linkedid ||
-                (sessionId && prev.sessionId === sessionId)
-            );
+                prev.linkedid === data.uniqueid ||
+                (sessionId && prev.sessionId === sessionId) ||
+                // Also match if we have a pending call (uniqueid starts with 'pending-')
+                prev.uniqueid?.startsWith('pending-');
 
             if (isSameCall) {
-                console.log('📤 useOutboundCalls: Call connected', { sessionId });
+                console.log('📤 useOutboundCalls: Call connected', {
+                    sessionId,
+                    uniqueid: data.uniqueid,
+                    linkedid: data.linkedid,
+                });
                 const connectedCall: OutboundCall = {
                     ...prev,
+                    uniqueid: (data.uniqueid as string) || prev.uniqueid,
+                    linkedid: (data.linkedid as string) || prev.linkedid,
                     sessionId: sessionId || prev.sessionId,
                     status: 'connected',
                     connectedAt: new Date(),
@@ -263,13 +285,16 @@ export function useOutboundCalls() {
         const serverDuration = data.duration as number | undefined;
 
         setActiveOutboundCall((prev) => {
+            if (!prev) return prev;
+
             // Match by uniqueid, linkedid, or sessionId
-            const isSameCall = prev && (
+            const isSameCall =
                 prev.uniqueid === data.uniqueid ||
                 prev.linkedid === data.linkedid ||
                 prev.uniqueid === data.linkedid ||
-                (sessionId && prev.sessionId === sessionId)
-            );
+                prev.linkedid === data.uniqueid ||
+                (sessionId && prev.sessionId === sessionId) ||
+                prev.uniqueid?.startsWith('pending-');
 
             if (isSameCall) {
                 // Use server-provided duration if available, otherwise calculate
@@ -286,14 +311,14 @@ export function useOutboundCalls() {
 
                 console.log('📤 useOutboundCalls: Call ended', {
                     sessionId,
+                    uniqueid: data.uniqueid,
+                    linkedid: data.linkedid,
                     duration: endedCall.duration,
                 });
 
                 setCallHistory((history) => [endedCall, ...history.slice(0, 49)]);
 
-                toast.info('Call ended', {
-                    description: `Duration: ${formatDuration(endedCall.duration)}`,
-                });
+                toast.info('Call ended');
 
                 return null;
             }

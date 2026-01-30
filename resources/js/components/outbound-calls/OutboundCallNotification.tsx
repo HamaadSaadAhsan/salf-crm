@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { OutboundCall } from '@/hooks/useOutboundCalls';
 import { Building, MapPin, Phone, PhoneOutgoing, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface OutboundCallNotificationProps {
     call: OutboundCall;
@@ -19,23 +19,6 @@ export function OutboundCallNotification({
     onDismiss,
     onHangup,
 }: OutboundCallNotificationProps) {
-    const [duration, setDuration] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - call.startTime.getTime()) / 1000);
-            setDuration(elapsed);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [call.startTime]);
-
-    const formatDuration = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
     const getInitials = (name: string | null | undefined) => {
         if (!name) {
             return '??';
@@ -82,12 +65,9 @@ export function OutboundCallNotification({
                             <div className="flex items-center gap-2">
                                 <PhoneOutgoing className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-medium">
-                                    {call.lead ? (call.lead.name || 'Unknown Lead') : 'Outgoing Call'}
+                                    {call.lead?.name || 'Outgoing Call'}
                                 </p>
                             </div>
-                            {!call.lead?.name && (
-                                <p className="text-xs text-muted-foreground">To: {call.lead?.name}</p>
-                            )}
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onDismiss}>
@@ -134,12 +114,11 @@ export function OutboundCallNotification({
                 )}
 
                 {/* Call Status */}
-                <div className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2">
+                <div className="flex items-center justify-center rounded-lg bg-muted/20 px-3 py-2">
                     <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 animate-pulse rounded-full ${statusColors[call.status]}`} />
                         <span className="text-xs font-medium">{statusLabels[call.status]}</span>
                     </div>
-                    <span className="font-mono text-sm font-semibold tabular-nums">{formatDuration(duration)}</span>
                 </div>
 
                 {/* Actions */}
