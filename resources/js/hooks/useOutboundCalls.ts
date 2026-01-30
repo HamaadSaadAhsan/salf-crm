@@ -1,6 +1,6 @@
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { SharedData } from '@/types';
 import type { AsteriskWebSocketMessage, CallRoutingInfo } from '@/types/asterisk';
@@ -91,6 +91,13 @@ export function useOutboundCalls() {
     const [activeOutboundCall, setActiveOutboundCall] = useState<OutboundCall | null>(null);
     const [callHistory, setCallHistory] = useState<OutboundCall[]>([]);
 
+    // Use a ref to track activeOutboundCall without triggering re-renders in useEffect
+    // This prevents infinite loops when setActiveOutboundCall is called inside the effect
+    const activeOutboundCallRef = useRef<OutboundCall | null>(null);
+    useEffect(() => {
+        activeOutboundCallRef.current = activeOutboundCall;
+    }, [activeOutboundCall]);
+
     // Process incoming WebSocket messages for outbound call events
     useEffect(() => {
         if (!state.lastMessage) {
@@ -103,16 +110,19 @@ export function useOutboundCalls() {
         // Check if this is an explicitly outbound event
         const isExplicitOutbound = isOutboundEvent(data);
 
+        // Use ref to check current active call without triggering infinite loops
+        const currentActiveCall = activeOutboundCallRef.current;
+
         // Check if this event matches our active outbound call by uniqueid/linkedid
         // This handles events that don't have direction: 'outbound' but belong to our call
-        const matchesActiveCall = activeOutboundCall && (
+        const matchesActiveCall = currentActiveCall && (
             (data.uniqueid && (
-                data.uniqueid === activeOutboundCall.uniqueid ||
-                data.uniqueid === activeOutboundCall.linkedid
+                data.uniqueid === currentActiveCall.uniqueid ||
+                data.uniqueid === currentActiveCall.linkedid
             )) ||
             (data.linkedid && (
-                data.linkedid === activeOutboundCall.linkedid ||
-                data.linkedid === activeOutboundCall.uniqueid
+                data.linkedid === currentActiveCall.linkedid ||
+                data.linkedid === currentActiveCall.uniqueid
             ))
         );
 
@@ -174,7 +184,7 @@ export function useOutboundCalls() {
                 if (matchesActiveCall || isExplicitOutbound) handleDialEndEvent(data);
                 break;
         }
-    }, [state.lastMessage, currentUserExtension, activeOutboundCall]);
+    }, [state.lastMessage, currentUserExtension]);
 
     const handleDialBeginEvent = (data: Record<string, unknown>) => {
         // Outbound call initiated - extract session and lead IDs
