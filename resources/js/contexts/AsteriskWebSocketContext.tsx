@@ -484,6 +484,7 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                 }
 
                 const callSignature = data.signature_data.call_signature;
+                const callerId = data.signature_data.caller_id; // User ID from backend
 
                 // Step 2: Send originate action to Asterisk with signature
                 // Use phone number from backend response (callee_number) - backend derives from lead if not provided
@@ -494,7 +495,7 @@ export function AsteriskWebSocketProvider({ children }: { children: React.ReactN
                     client: phoneNumber,
                     call_signature: callSignature,
                     lead_id: params.leadId,
-                    caller_id: params.callerId || state.config.callerId,
+                    caller_id: callerId, // Use the user ID from API response
                 };
 
                 wsRef.current.send(JSON.stringify(originateAction));
