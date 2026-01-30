@@ -107,9 +107,11 @@ export function PageHeader({ lead }: { lead: Lead }) {
                             </Badge>
                         )}
                     </div>
-                    <span className="truncate text-xs capitalize text-muted-foreground">
-                        {lead.inquiry_status?.replace(/_/g, ' ')}
-                    </span>
+                    {lead.inquiry_status !== 'assigned_to_advisor' && (
+                        <span className="truncate text-xs capitalize text-muted-foreground">
+                            {lead.inquiry_status?.replace(/_/g, ' ')}
+                        </span>
+                    )}
                 </div>
                 <TooltipProvider>
                     <Tooltip>
