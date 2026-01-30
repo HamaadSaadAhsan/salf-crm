@@ -86,7 +86,7 @@ export function OutboundCallNotification({
                                 </p>
                             </div>
                             {!call.lead?.name && (
-                                <p className="text-xs text-muted-foreground">To: {call.phoneNumber}</p>
+                                <p className="text-xs text-muted-foreground">To: {call.lead?.name}</p>
                             )}
                         </div>
                     </div>
