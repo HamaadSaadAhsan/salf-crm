@@ -19,6 +19,10 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+/.ai
+/.claude
+/.cursor
+/.junie
 /auth.json
 /.fleet
 /.idea
@@ -26,7 +30,6 @@ yarn-error.log
 /.vscode
 /.zed
 /server.js
-CLAUDE.md
 --display-warnings
 PHONE_DIALER_TODO.md
 INBOUND_CALL_SETUP.md
@@ -37,4 +40,17 @@ DASHBOARD_TODO.md
 COMPLETED_TASKS.md
 ASTERISK_COMPLETED_TASKS.md
 ASTERISK_INTEGRATION.md
-/DEPLOYMENT.md
+DEPLOYMENT.md
+incoming.php
+TICKET_DISTRIBUTION_SYSTEM_REPORT.md
+docs
+*.md
+tests/Browser/*
+/asterisk-scripts/ring_group_notify.php
+/incoming.php.bak
+/boost.json
+.mcp.json
+CLAUDE.md
+
+server/node_modules
+server/.env
