@@ -163,6 +163,11 @@ log_success "Created: $RELEASE_PATH"
 # Step 2: Clone Repository
 # ============================================
 log_info "[2/9] Cloning repository..."
+
+# Add GitHub to known_hosts to avoid host key verification failure
+mkdir -p ~/.ssh
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$RELEASE_PATH"
 cd "$RELEASE_PATH"
 log_success "Cloned commit: $(git rev-parse --short HEAD)"
