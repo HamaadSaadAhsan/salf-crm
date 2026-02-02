@@ -69,11 +69,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Users Management Page
         Route::get('/users', [UserController::class, 'page'])->name('users.page');
-        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.show');
+        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.detail');
 
         // Users API Resource
         Route::prefix('api')->group(function () {
-            Route::apiResource('users', UserController::class)->except(['create', 'edit'])->names('users');
+            Route::apiResource('users', UserController::class)->except(['create', 'edit'])->names('api.users');
             Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
@@ -115,9 +115,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super-admin|support-agent|senior-support-agent|sales-rep')->group(function () {
         Route::prefix('api')->group(function () {
             // Location Hierarchy API
-            Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('countries');
-            Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('provinces');
-            Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('cities');
+            Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('api.countries');
+            Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('api.provinces');
+            Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('api.cities');
         });
     });
 
@@ -269,8 +269,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
     Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
 
-    // Task management
-    Route::resource('tasks', \App\Http\Controllers\TaskController::class)->names('tasks');
+    // Note: Task routes are defined above
     Route::post('tasks/{task}/complete', [\App\Http\Controllers\TaskController::class, 'complete'])->name('tasks.complete');
 
     // Task API endpoints
@@ -300,8 +299,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('{id}/resume', [\App\Http\Controllers\Api\CallController::class, 'resume'])->name('api.calls.resume');
         Route::post('{id}/transfer', [\App\Http\Controllers\Api\CallController::class, 'transfer'])->name('api.calls.transfer');
         Route::get('recent', [\App\Http\Controllers\Api\CallController::class, 'getRecent'])->name('api.calls.recent');
-        Route::get('active', [\App\Http\Controllers\Api\CallController::class, 'getActive'])->name('api.calls.active');
-        Route::get('{id}', [\App\Http\Controllers\Api\CallController::class, 'show'])->name('api.calls.show');
+        Route::get('active', [\App\Http\Controllers\Api\CallController::class, 'getActive'])->name('api.calls.active-list');
+        Route::get('{id}', [\App\Http\Controllers\Api\CallController::class, 'show'])->name('api.calls.detail');
     });
 
     // Legacy call control endpoints (AJAX) - kept for backward compatibility
