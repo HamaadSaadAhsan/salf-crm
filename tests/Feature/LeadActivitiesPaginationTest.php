@@ -4,26 +4,36 @@ use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
 
+beforeEach(function () {
+    // Disable broadcasting for tests
+    config(['broadcasting.default' => 'log']);
+});
+
 it('can paginate comments and all activities independently', function () {
     // Create a user and lead
     $user = User::factory()->create();
     $lead = Lead::factory()->create();
 
-    // Create several comment activities (type: note)
-    $comments = LeadActivity::factory()->count(15)->create([
-        'lead_id' => $lead->id,
-        'user_id' => $user->id,
-        'type' => 'note',
-        'description' => 'Test comment',
-    ]);
+    // Create activities in interleaved manner so both types appear on first page
+    for ($i = 0; $i < 15; $i++) {
+        LeadActivity::factory()->create([
+            'lead_id' => $lead->id,
+            'user_id' => $user->id,
+            'type' => 'note',
+            'description' => 'Test comment',
+            'created_at' => now()->subMinutes(30 - $i),
+        ]);
 
-    // Create several non-comment activities
-    $otherActivities = LeadActivity::factory()->count(10)->create([
-        'lead_id' => $lead->id,
-        'user_id' => $user->id,
-        'type' => 'call',
-        'description' => 'Test call activity',
-    ]);
+        if ($i < 10) {
+            LeadActivity::factory()->create([
+                'lead_id' => $lead->id,
+                'user_id' => $user->id,
+                'type' => 'call',
+                'description' => 'Test call activity',
+                'created_at' => now()->subMinutes(29 - $i),
+            ]);
+        }
+    }
 
     // Test comments pagination (should only return note type)
     $commentsResponse = $this->actingAs($user)
