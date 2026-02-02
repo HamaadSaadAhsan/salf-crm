@@ -183,12 +183,20 @@ describe('Advanced Metrics Endpoints', function () {
         });
 
         it('identifies best performing program', function () {
-            $bestProgram = Service::factory()->create(['name' => 'Best Program']);
-            $otherProgram = Service::factory()->create(['name' => 'Other Program']);
+            $bestProgram = Service::factory()->create([
+                'name' => 'Best Program',
+                'country_code' => 'DM',
+                'country_name' => 'Dominica',
+            ]);
+            $otherProgram = Service::factory()->create([
+                'name' => 'Other Program',
+                'country_code' => 'VC',
+                'country_name' => 'St Vincent',
+            ]);
 
             Lead::factory()->count(10)->create([
                 'service_id' => $bestProgram->id,
-                'inquiry_status' => 'converted',
+                'inquiry_status' => 'won',
             ]);
             Lead::factory()->count(5)->create([
                 'service_id' => $otherProgram->id,
