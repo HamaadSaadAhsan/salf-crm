@@ -272,6 +272,54 @@ jobs:
             npm run build:ssr
 
             # ================================================
+            # Step 5.1: Deploy Backloop Server (Release Pattern)
+            # ================================================
+            echo ""
+            echo "[5.1/9] Deploying backloop server..."
+            BACKLOOP_BASE="/opt/backloop"
+            BACKLOOP_RELEASES="$BACKLOOP_BASE/releases"
+            BACKLOOP_SHARED="$BACKLOOP_BASE/shared"
+            BACKLOOP_RELEASE="$BACKLOOP_RELEASES/$RELEASE_ID"
+            BACKLOOP_CURRENT="$BACKLOOP_BASE/current"
+
+            # Create directory structure
+            sudo mkdir -p "$BACKLOOP_RELEASES"
+            sudo mkdir -p "$BACKLOOP_SHARED"
+            sudo mkdir -p "$BACKLOOP_RELEASE"
+
+            # Copy server files to release directory
+            sudo cp -r "$RELEASE_PATH/server/." "$BACKLOOP_RELEASE/"
+
+            # Link .env from shared
+            if [ -f "$BACKLOOP_SHARED/.env" ]; then
+              sudo ln -sf "$BACKLOOP_SHARED/.env" "$BACKLOOP_RELEASE/.env"
+              echo "Server .env linked from shared"
+            else
+              echo "WARNING: No server .env found! Create $BACKLOOP_SHARED/.env"
+            fi
+
+            # Install dependencies
+            cd "$BACKLOOP_RELEASE"
+            sudo npm ci --silent --omit=dev
+
+            # Atomic switch: update current symlink
+            sudo ln -sfn "$BACKLOOP_RELEASE" "$BACKLOOP_CURRENT"
+            echo "Server release activated: $BACKLOOP_CURRENT -> $BACKLOOP_RELEASE"
+
+            # Purge old server releases (keep same number as CRM)
+            cd "$BACKLOOP_RELEASES"
+            SERVER_RELEASES_COUNT=$(ls -1d */ 2>/dev/null | wc -l)
+            if [ "$SERVER_RELEASES_COUNT" -gt "$RELEASES_TO_KEEP" ]; then
+              ls -1d */ | head -n -$RELEASES_TO_KEEP | while read dir; do
+                echo "Removing old server release: $dir"
+                sudo rm -rf "$BACKLOOP_RELEASES/$dir"
+              done
+            fi
+
+            cd "$RELEASE_PATH"
+            echo "Backloop server deployed with release pattern"
+
+            # ================================================
             # Step 6: Run Migrations
             # ================================================
             echo ""
@@ -340,6 +388,9 @@ jobs:
 
             # Stop Inertia SSR (supervisor will restart)
             php artisan inertia:stop-ssr || true
+
+            # Restart backloop-server (Asterisk Call Notifier)
+            sudo supervisorctl restart backloop-server || true
 
             echo "Services restarted"
 

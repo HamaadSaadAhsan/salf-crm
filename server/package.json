@@ -1,0 +1,24 @@
+{
+    "name": "salf-crm-call-notifier-server",
+    "version": "2.0.0",
+    "description": "Asterisk Call Notifier WebSocket Server",
+    "type": "commonjs",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "test": "node --test tests/ 2>/dev/null || echo 'No tests found'"
+    },
+    "dependencies": {
+        "asterisk-manager": "*",
+        "dotenv": "*",
+        "pg": "*",
+        "websocket": "*"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.0.0",
+        "eslint": "^9.0.0"
+    }
+}
