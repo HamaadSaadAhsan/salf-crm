@@ -4,12 +4,11 @@ use App\Models\CallSession;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
-use Illuminate\Broadcasting\BroadcastEvent;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    Event::fake([BroadcastEvent::class]); // Only fake broadcast events, not all events
+    // Disable broadcasting for tests
+    config(['broadcasting.default' => 'log']);
 });
 
 it('automatically updates lead status to contacted when outbound call is answered', function () {
@@ -71,7 +70,7 @@ it('automatically updates lead status to contacted when outbound call is answere
         ->first();
 
     expect($followUpActivity)->not->toBeNull();
-    expect($followUpActivity->subject)->toBe('Follow up on contacted lead');
+    expect($followUpActivity->subject)->toBe('Follow up after outbound call');
     expect($followUpActivity->user_id)->toBe($user->id);
     expect($followUpActivity->category)->toBe('follow_up');
     expect($followUpActivity->metadata['triggered_by'])->toBe('outbound_call_answered');

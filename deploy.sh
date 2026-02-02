@@ -29,7 +29,7 @@ SHARED_PATH="$DEPLOY_PATH/shared"
 CURRENT_PATH="$DEPLOY_PATH/current"
 RELEASES_TO_KEEP=3
 BRANCH="main"
-REPO_URL="git@github.com:YOUR_USERNAME/salf-crm-v2.git"
+REPO_URL="git@github.com:HamaadSaadAhsan/salf-crm.git"
 
 # Generate release ID
 RELEASE_ID=$(date +%Y%m%d%H%M%S)
@@ -87,18 +87,18 @@ setup_php() {
 # ============================================
 rollback() {
     log_info "Initiating rollback..."
-    
+
     cd "$RELEASES_PATH"
     RELEASES=($(ls -1d */ 2>/dev/null | sort -r))
-    
+
     if [ ${#RELEASES[@]} -lt 2 ]; then
         log_error "No previous release to rollback to!"
         exit 1
     fi
-    
+
     CURRENT_RELEASE=$(readlink -f "$CURRENT_PATH" | xargs basename)
     log_info "Current release: $CURRENT_RELEASE"
-    
+
     # Find previous release
     PREVIOUS_RELEASE=""
     for release in "${RELEASES[@]}"; do
@@ -108,24 +108,24 @@ rollback() {
             break
         fi
     done
-    
+
     if [ -z "$PREVIOUS_RELEASE" ]; then
         log_error "No previous release found!"
         exit 1
     fi
-    
+
     log_info "Rolling back to: $PREVIOUS_RELEASE"
-    
+
     # Switch symlink
     ln -sfn "$RELEASES_PATH/$PREVIOUS_RELEASE" "$CURRENT_PATH"
-    
+
     # Restart services
     cd "$CURRENT_PATH"
     setup_php
     php artisan horizon:terminate || true
     php artisan reverb:restart || true
     php artisan inertia:stop-ssr || true
-    
+
     log_success "Rolled back to release: $PREVIOUS_RELEASE"
 }
 

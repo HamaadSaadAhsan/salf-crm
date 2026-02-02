@@ -3,13 +3,18 @@
 use App\Models\Country;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class)->beforeEach(function () {
     $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+    // Create role for API access
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
 });
 
 it('can list all countries', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     Country::factory()->count(3)->create();
 
     $response = $this->actingAs($user)->getJson('/api/countries');
@@ -37,6 +42,7 @@ it('can list all countries', function () {
 
 it('can create a country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/countries', [
         'name' => 'Test Country',
@@ -57,6 +63,7 @@ it('can create a country', function () {
 
 it('validates required fields when creating a country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/countries', []);
 
@@ -66,6 +73,7 @@ it('validates required fields when creating a country', function () {
 
 it('validates unique fields when creating a country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     Country::factory()->create([
         'name' => 'Existing Country',
         'code' => 'EXC',
@@ -84,6 +92,7 @@ it('validates unique fields when creating a country', function () {
 
 it('can show a single country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create(['name' => 'Test Country']);
 
     $response = $this->actingAs($user)->getJson("/api/countries/{$country->id}");
@@ -94,6 +103,7 @@ it('can show a single country', function () {
 
 it('can update a country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create(['name' => 'Original Name']);
 
     $response = $this->actingAs($user)->putJson("/api/countries/{$country->id}", [
@@ -112,6 +122,7 @@ it('can update a country', function () {
 
 it('can delete a country without provinces', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
 
     $response = $this->actingAs($user)->deleteJson("/api/countries/{$country->id}");
@@ -122,6 +133,7 @@ it('can delete a country without provinces', function () {
 
 it('cannot delete a country with provinces', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->hasProvinces(2)->create();
 
     $response = $this->actingAs($user)->deleteJson("/api/countries/{$country->id}");

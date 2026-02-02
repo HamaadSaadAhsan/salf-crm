@@ -4,13 +4,18 @@ use App\Models\Country;
 use App\Models\Province;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class)->beforeEach(function () {
     $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+    // Create role for API access
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
 });
 
 it('can list all provinces', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     Province::factory()->count(3)->for($country)->create();
 
@@ -37,6 +42,7 @@ it('can list all provinces', function () {
 
 it('can filter provinces by country', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country1 = Country::factory()->create();
     $country2 = Country::factory()->create();
 
@@ -51,6 +57,7 @@ it('can filter provinces by country', function () {
 
 it('can create a province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
 
     $response = $this->actingAs($user)->postJson('/api/provinces', [
@@ -69,6 +76,7 @@ it('can create a province', function () {
 
 it('validates required fields when creating a province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/provinces', []);
 
@@ -78,6 +86,7 @@ it('validates required fields when creating a province', function () {
 
 it('validates country exists when creating a province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/provinces', [
         'country_id' => 99999,
@@ -91,6 +100,7 @@ it('validates country exists when creating a province', function () {
 
 it('can show a single province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create(['name' => 'Test Province']);
 
@@ -102,6 +112,7 @@ it('can show a single province', function () {
 
 it('can update a province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create(['name' => 'Original Name']);
 
@@ -121,6 +132,7 @@ it('can update a province', function () {
 
 it('can delete a province without cities', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
 
@@ -132,6 +144,7 @@ it('can delete a province without cities', function () {
 
 it('cannot delete a province with cities', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->hasCities(2)->create();
 

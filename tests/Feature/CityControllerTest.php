@@ -6,13 +6,18 @@ use App\Models\Province;
 use App\Models\User;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class)->beforeEach(function () {
     $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+    // Create role for API access
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
 });
 
 it('can list all cities', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
     City::factory()->count(3)->for($province)->create();
@@ -42,6 +47,7 @@ it('can list all cities', function () {
 
 it('can filter cities by province', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province1 = Province::factory()->for($country)->create();
     $province2 = Province::factory()->for($country)->create();
@@ -57,6 +63,7 @@ it('can filter cities by province', function () {
 
 it('can create a city', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
 
@@ -78,6 +85,7 @@ it('can create a city', function () {
 
 it('validates required fields when creating a city', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/cities', []);
 
@@ -87,6 +95,7 @@ it('validates required fields when creating a city', function () {
 
 it('validates province exists when creating a city', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
 
     $response = $this->actingAs($user)->postJson('/api/cities', [
         'province_id' => 99999,
@@ -99,6 +108,7 @@ it('validates province exists when creating a city', function () {
 
 it('validates latitude and longitude ranges', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
 
@@ -115,6 +125,7 @@ it('validates latitude and longitude ranges', function () {
 
 it('can show a single city', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
     $city = City::factory()->for($province)->create(['name' => 'Test City']);
@@ -127,6 +138,7 @@ it('can show a single city', function () {
 
 it('can update a city', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
     $city = City::factory()->for($province)->create(['name' => 'Original Name']);
@@ -146,6 +158,7 @@ it('can update a city', function () {
 
 it('can delete a city without zones', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
     $city = City::factory()->for($province)->create();
@@ -158,6 +171,7 @@ it('can delete a city without zones', function () {
 
 it('cannot delete a city with zones', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->assignRole('super-admin');
     $country = Country::factory()->create();
     $province = Province::factory()->for($country)->create();
     $city = City::factory()->for($province)->create();

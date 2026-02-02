@@ -2,11 +2,16 @@
 
 use App\Models\Service;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\actingAs;
 
 beforeEach(function () {
+    // Create role for management access
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+
     $this->user = User::factory()->create();
+    $this->user->assignRole('super-admin');
     actingAs($this->user);
 });
 
