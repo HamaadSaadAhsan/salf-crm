@@ -68,6 +68,11 @@ const CONFIG = {
         cleanupIntervalMs: 300000,
         maxSessionAgeMs: 3600000,
     },
+
+    storage: {
+        basePath: process.env.STORAGE_PATH || '/var/www/salf-crm/shared/storage',
+        recordingsDir: 'app/private/recordings',
+    },
 };
 
 module.exports = CONFIG;

@@ -1,5 +1,6 @@
 'use strict';
 
+const CONFIG = require('../config');
 const Logger = require('../logger');
 const Broadcaster = require('../broadcaster');
 const SessionManager = require('../session-manager');
@@ -88,7 +89,9 @@ const AMIActions = {
         }
 
         // Build channel variables
-        const recordingPath = callSignature ? `/var/www/salf-crm/storage/app/private/recordings/${callSignature}` : '';
+        const recordingPath = callSignature
+            ? `${CONFIG.storage.basePath}/${CONFIG.storage.recordingsDir}/${callSignature}`
+            : '';
         const variables = [
             `__CRM_SESSION_ID=${sessionId}`,
             `__CRM_CALL_SIGNATURE=${callSignature || ''}`,
