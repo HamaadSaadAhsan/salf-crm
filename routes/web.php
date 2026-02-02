@@ -10,6 +10,7 @@ use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\GoogleCalendarController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\ServiceController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Resources\SourceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// Health check endpoint for deployment verification
+Route::get('/health', HealthController::class)->name('health');
 
 Route::get('/', function () {
     return Inertia::render('welcome');

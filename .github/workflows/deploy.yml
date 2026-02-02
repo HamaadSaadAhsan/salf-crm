@@ -1,110 +1,472 @@
-name: Deploy to Server
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  PHP_VERSION: '8.4'
+  NODE_VERSION: '24'
+  RELEASES_TO_KEEP: 3
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  # ============================================
+  # Quality Checks - Must pass before deployment
+  # ============================================
+  lint:
+    name: Code Quality
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Test SSH Connection
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install PHP Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Run PHP Linter (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Run Frontend Formatter Check
+        run: npm run format -- --check
+
+      - name: Run Frontend Linter
+        run: npm run lint
+
+  # ============================================
+  # Test Suite - Must pass before deployment
+  # ============================================
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis
+          tools: composer:v2
+          coverage: xdebug
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Build Assets
+        run: npm run build
+
+      - name: Prepare Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run Migrations
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+      - name: Run Tests
+        run: ./vendor/bin/pest --parallel
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: testing
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          BROADCAST_CONNECTION: log
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          SESSION_DRIVER: array
+
+  # ============================================
+  # Deploy to Production - Only on main branch
+  # ============================================
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Release ID
+        id: release
+        run: echo "id=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Deploy Release
+        id: deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          debug: true
+          command_timeout: 30m
           script: |
-            echo "✅ SSH connection successful!"
-            echo "Current user: $(whoami)"
-            echo "Current directory: $(pwd)"
-            echo "Server hostname: $(hostname)"
-            echo "PHP version: $(php8.4 -v | head -n 1)"
-            echo "Node version: $(node -v)"
-            echo "NPM version: $(npm -v)"
-            echo "Composer version: $(php8.4 $(which composer) --version)"
+            set -e
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          debug: true
-          script: |
-            echo "📂 Navigating to project directory..."
-            cd ${{ secrets.SERVER_PATH }}
-            echo "✅ Current directory: $(pwd)"
+            # ================================================
+            # Configuration
+            # ================================================
+            DEPLOY_PATH="${{ secrets.SERVER_PATH }}"
+            RELEASE_ID="${{ steps.release.outputs.id }}"
+            RELEASES_PATH="$DEPLOY_PATH/releases"
+            SHARED_PATH="$DEPLOY_PATH/shared"
+            RELEASE_PATH="$RELEASES_PATH/$RELEASE_ID"
+            CURRENT_PATH="$DEPLOY_PATH/current"
+            REPO_URL="git@github.com:${{ github.repository }}.git"
+            BRANCH="${{ github.ref_name }}"
+            RELEASES_TO_KEEP=${{ env.RELEASES_TO_KEEP }}
 
+            # Setup PHP 8.4 wrapper
+            mkdir -p "$DEPLOY_PATH/bin"
+            ln -sf $(which php8.4) "$DEPLOY_PATH/bin/php"
+            export PATH="$DEPLOY_PATH/bin:$PATH"
+
+            echo "================================================"
+            echo "RELEASE DEPLOYMENT"
+            echo "================================================"
+            echo "Release ID: $RELEASE_ID"
+            echo "Deploy Path: $DEPLOY_PATH"
+            echo "PHP Version: $(php -v | head -n 1)"
+            echo "Node Version: $(node -v)"
+            echo "================================================"
+
+            # ================================================
+            # Step 1: Create Release Directory
+            # ================================================
             echo ""
-            echo "🔧 Setting up PHP wrapper..."
-            # Create a temporary directory in PATH that contains a 'php' symlink to php8.4
-            mkdir -p ${{ secrets.SERVER_PATH }}/tmp-php-bin
-            ln -sf $(which php8.4) ${{ secrets.SERVER_PATH }}/tmp-php-bin/php
-            export PATH=${{ secrets.SERVER_PATH }}/tmp-php-bin:$PATH
-            echo "PHP version in PATH: $(php -v | head -n 1)"
-            echo "✅ PHP wrapper configured"
+            echo "[1/9] Creating release directory..."
+            mkdir -p "$RELEASE_PATH"
 
+            # ================================================
+            # Step 2: Clone Repository
+            # ================================================
             echo ""
-            echo "🔄 Pulling latest changes from main..."
-            git pull origin main
-            echo "✅ Git pull from main completed"
+            echo "[2/9] Cloning repository..."
+            git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$RELEASE_PATH"
+            cd "$RELEASE_PATH"
+            echo "Commit: $(git rev-parse HEAD)"
 
+            # ================================================
+            # Step 3: Link Shared Files
+            # ================================================
             echo ""
-            echo "📦 Installing PHP dependencies..."
+            echo "[3/9] Linking shared files..."
+
+            # Ensure shared directories exist
+            mkdir -p "$SHARED_PATH/storage/app/public"
+            mkdir -p "$SHARED_PATH/storage/framework/cache"
+            mkdir -p "$SHARED_PATH/storage/framework/sessions"
+            mkdir -p "$SHARED_PATH/storage/framework/views"
+            mkdir -p "$SHARED_PATH/storage/logs"
+
+            # Remove release storage and link to shared
+            rm -rf "$RELEASE_PATH/storage"
+            ln -s "$SHARED_PATH/storage" "$RELEASE_PATH/storage"
+
+            # Link .env file
+            if [ -f "$SHARED_PATH/.env" ]; then
+              ln -s "$SHARED_PATH/.env" "$RELEASE_PATH/.env"
+            else
+              echo "WARNING: No .env file found in shared directory!"
+              exit 1
+            fi
+
+            # Link Meilisearch data if exists
+            if [ -d "$SHARED_PATH/data.ms" ]; then
+              ln -s "$SHARED_PATH/data.ms" "$RELEASE_PATH/data.ms"
+            fi
+
+            echo "Shared files linked successfully"
+
+            # ================================================
+            # Step 4: Install PHP Dependencies
+            # ================================================
+            echo ""
+            echo "[4/9] Installing PHP dependencies..."
+            cd "$RELEASE_PATH"
             php $(which composer) install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-            echo "✅ Composer install completed"
 
+            # ================================================
+            # Step 5: Install Node Dependencies & Build
+            # ================================================
             echo ""
-            echo "📦 Installing Node dependencies and building assets..."
-            npm ci
-            echo "✅ NPM install completed"
+            echo "[5/9] Installing Node dependencies and building assets..."
+            npm ci --silent
             npm run build:ssr
-            echo "✅ NPM build completed"
 
+            # ================================================
+            # Step 6: Run Migrations
+            # ================================================
             echo ""
-            echo "🔗 Creating storage symlink..."
-            php artisan storage:link
-            echo "✅ Storage link created"
-
-            echo ""
-            echo "🗄️ Running database migrations..."
+            echo "[6/9] Running database migrations..."
             php artisan migrate --force
-            echo "✅ Migrations completed"
+
+            # ================================================
+            # Step 7: Optimize Application
+            # ================================================
+            echo ""
+            echo "[7/9] Optimizing application..."
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan storage:link
+
+            # ================================================
+            # Step 8: Health Check (Before Activation)
+            # ================================================
+            echo ""
+            echo "[8/9] Running health check..."
+
+            # Test artisan commands work
+            php artisan about --json > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+              echo "HEALTH CHECK FAILED: Artisan commands not working"
+              rm -rf "$RELEASE_PATH"
+              exit 1
+            fi
+
+            # Test database connection
+            php artisan tinker --execute="DB::connection()->getPdo();" > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+              echo "HEALTH CHECK FAILED: Database connection failed"
+              rm -rf "$RELEASE_PATH"
+              exit 1
+            fi
+
+            echo "Health check passed!"
+
+            # ================================================
+            # Step 9: Activate Release (Atomic Switch)
+            # ================================================
+            echo ""
+            echo "[9/9] Activating release..."
+
+            # Atomic symlink switch
+            ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
+
+            echo "Release $RELEASE_ID is now active!"
+
+            # ================================================
+            # Post-Activation: Restart Services
+            # ================================================
+            echo ""
+            echo "Restarting services..."
+
+            cd "$CURRENT_PATH"
+
+            # Terminate Horizon (supervisor will restart)
+            php artisan horizon:terminate || true
+
+            # Restart Reverb
+            php artisan reverb:restart || true
+
+            # Stop Inertia SSR (supervisor will restart)
+            php artisan inertia:stop-ssr || true
+
+            echo "Services restarted"
+
+            # ================================================
+            # Cleanup: Purge Old Releases
+            # ================================================
+            echo ""
+            echo "Purging old releases (keeping $RELEASES_TO_KEEP)..."
+
+            cd "$RELEASES_PATH"
+            RELEASES_COUNT=$(ls -1d */ 2>/dev/null | wc -l)
+
+            if [ "$RELEASES_COUNT" -gt "$RELEASES_TO_KEEP" ]; then
+              ls -1d */ | head -n -$RELEASES_TO_KEEP | while read dir; do
+                echo "Removing old release: $dir"
+                rm -rf "$RELEASES_PATH/$dir"
+              done
+            fi
 
             echo ""
-            echo "⚡ Optimizing application..."
-            php artisan optimize:clear
-            echo "✅ Optimization completed"
+            echo "================================================"
+            echo "DEPLOYMENT SUCCESSFUL"
+            echo "================================================"
+            echo "Release: $RELEASE_ID"
+            echo "Active: $CURRENT_PATH -> $RELEASE_PATH"
+            echo "================================================"
 
-            echo ""
-            echo "🔄 Gracefully restarting Laravel Horizon..."
-            php artisan horizon:terminate
-            echo "✅ Horizon terminated (supervisor will auto-restart)"
+      - name: Notify Slack - Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Deployment Successful",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Release:*\n${{ steps.release.outputs.id }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered by:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
-            echo ""
-            echo "🔄 Gracefully restarting Laravel Reverb..."
-            php artisan reverb:restart
-            echo "✅ Reverb restarted"
-
-            echo ""
-            echo "🔄 Gracefully stopping Inertia SSR..."
-            php artisan inertia:stop-ssr
-            echo "✅ Inertia SSR stopped (supervisor will auto-restart)"
-
-            echo ""
-            echo "🧹 Cleaning up temporary files..."
-            rm -rf ${{ secrets.SERVER_PATH }}/tmp-php-bin
-            echo "✅ Cleanup completed"
-
-            echo ""
-            echo "🎉 Deployment completed successfully!"
+      - name: Notify Slack - Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Deployment Failed",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Release:*\n${{ steps.release.outputs.id }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered by:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *The release was NOT activated. Production remains on the previous release.*"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

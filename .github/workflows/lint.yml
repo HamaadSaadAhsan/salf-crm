@@ -1,45 +1,50 @@
-name: linter
+name: Code Quality
 
 on:
   push:
     branches:
       - develop
-      - main
   pull_request:
     branches:
       - develop
       - main
 
-permissions:
-  contents: write
+env:
+  PHP_VERSION: '8.4'
+  NODE_VERSION: '24'
 
 jobs:
-  quality:
+  lint:
+    name: Lint & Format
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:v2
 
-      - name: Install Dependencies
-        run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Run Pint
-        run: vendor/bin/pint
+      - name: Install PHP Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      - name: Format Frontend
-        run: npm run format
+      - name: Install Node Dependencies
+        run: npm ci
 
-      - name: Lint Frontend
+      - name: Run PHP Linter (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Check Frontend Formatting
+        run: npm run format -- --check
+
+      - name: Run Frontend Linter
         run: npm run lint
-
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
