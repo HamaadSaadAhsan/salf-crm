@@ -18,6 +18,10 @@ export interface OutboundCallLead {
     service?: { id: number; name: string };
     inquiry_status?: string;
     priority?: string;
+    detail?: string;
+    budget?: {
+        amount: number;
+    };
 }
 
 export interface OutboundCall {
@@ -121,8 +125,9 @@ export function useOutboundCalls() {
         // Use ref to check current active call without triggering infinite loops
         const currentActiveCall = activeOutboundCallRef.current;
 
-        // Check if this event matches our active outbound call by uniqueid/linkedid
+        // Check if this event matches our active outbound call by uniqueid/linkedid/sessionId
         // This handles events that don't have direction: 'outbound' but belong to our call
+        const eventSessionId = getSessionId(data);
         const matchesActiveCall = currentActiveCall && (
             (data.uniqueid && (
                 data.uniqueid === currentActiveCall.uniqueid ||
@@ -131,7 +136,10 @@ export function useOutboundCalls() {
             (data.linkedid && (
                 data.linkedid === currentActiveCall.linkedid ||
                 data.linkedid === currentActiveCall.uniqueid
-            ))
+            )) ||
+            (eventSessionId && eventSessionId === currentActiveCall.sessionId) ||
+            // Also match if active call has pending uniqueid (before real uniqueid arrives)
+            currentActiveCall.uniqueid?.startsWith('pending-')
         );
 
         // Process if it's an explicit outbound event OR matches our active call
@@ -163,33 +171,55 @@ export function useOutboundCalls() {
             sessionId: getSessionId(data),
             uniqueid: data.uniqueid,
             linkedid: data.linkedid,
-            matchesActiveCall,
+            matchesActiveCall: !!matchesActiveCall,
             isExplicitOutbound,
+            currentActiveCall: currentActiveCall ? {
+                uniqueid: currentActiveCall.uniqueid,
+                linkedid: currentActiveCall.linkedid,
+                sessionId: currentActiveCall.sessionId,
+                hasLead: !!currentActiveCall.lead,
+            } : null,
         });
 
         switch (data.event) {
             case 'ring':
-                if (matchesActiveCall) handleRingEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) {
+                    handleRingEvent(data);
+                }
                 break;
             case 'connect':
             case 'outbound_connect':
-                if (matchesActiveCall || isExplicitOutbound) handleConnectEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) {
+                    handleConnectEvent(data);
+                }
                 break;
             case 'disconnect':
             case 'hangup':
             case 'outbound_hangup':
-                if (matchesActiveCall || isExplicitOutbound) handleEndEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) {
+                    handleEndEvent(data);
+                } else {
+                    console.log('📤 useOutboundCalls: Hangup event not matched, checking sessionId', {
+                        eventSessionId: eventSessionId,
+                        currentActiveCallSessionId: currentActiveCall?.sessionId,
+                    });
+                }
                 break;
             case 'busy':
-                if (matchesActiveCall || isExplicitOutbound) handleBusyEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) {
+                    handleBusyEvent(data);
+                }
                 break;
             case 'dialbegin':
             case 'outbound_agent_dial':
             case 'outbound_client_dial':
+                // Always handle dial begin events - they create/update the call
                 handleDialBeginEvent(data);
                 break;
             case 'dialend':
-                if (matchesActiveCall || isExplicitOutbound) handleDialEndEvent(data);
+                if (matchesActiveCall || isExplicitOutbound) {
+                    handleDialEndEvent(data);
+                }
                 break;
         }
     }, [state.lastMessage, currentUserExtension]);
@@ -200,14 +230,24 @@ export function useOutboundCalls() {
         const leadId = getLeadId(data);
         const routingInfo = data.routing_info as CallRoutingInfo | undefined;
 
+        console.log('📤 useOutboundCalls: handleDialBeginEvent called', {
+            sessionId,
+            leadId,
+            uniqueid: data.uniqueid,
+            linkedid: data.linkedid,
+            prevHasLead: !!activeOutboundCallRef.current?.lead,
+            initialLeadRefHasLead: !!initialLeadRef.current,
+        });
+
         setActiveOutboundCall((prev) => {
             // Preserve existing lead data from startOutboundCall, falling back to initialLeadRef
+            const preservedLead = prev?.lead || initialLeadRef.current || undefined;
             const newCall: OutboundCall = {
                 uniqueid: (data.uniqueid as string) || prev?.uniqueid || `pending-${Date.now()}`,
                 linkedid: (data.linkedid as string) || prev?.linkedid,
                 phoneNumber: (data.destcalleridnum || data.client || routingInfo?.client || data.destination || prev?.phoneNumber || 'Unknown') as string,
                 leadId: leadId || prev?.leadId,
-                lead: prev?.lead || initialLeadRef.current || undefined, // Preserve lead data from startOutboundCall
+                lead: preservedLead, // Preserve lead data from startOutboundCall
                 sessionId: sessionId || prev?.sessionId,
                 status: 'initiating',
                 startTime: prev?.startTime || new Date(),
@@ -215,11 +255,12 @@ export function useOutboundCalls() {
                 direction: 'outbound',
             };
 
-            console.log('📤 useOutboundCalls: Creating outbound call', {
+            console.log('📤 useOutboundCalls: Creating/updating outbound call', {
                 sessionId: newCall.sessionId,
                 leadId: newCall.leadId,
                 phoneNumber: newCall.phoneNumber,
                 hasLead: !!newCall.lead,
+                leadData: newCall.lead,
             });
 
             return newCall;
@@ -241,6 +282,7 @@ export function useOutboundCalls() {
                 prevUniqueid: prev.uniqueid,
                 newUniqueid,
                 newLinkedid,
+                hasLead: !!prev.lead,
             });
 
             return {
@@ -249,6 +291,9 @@ export function useOutboundCalls() {
                 linkedid: newLinkedid,
                 sessionId: sessionId || prev.sessionId,
                 status: 'ringing',
+                // Explicitly preserve lead data
+                lead: prev.lead || initialLeadRef.current || undefined,
+                leadId: prev.leadId,
             };
         });
 
@@ -278,6 +323,8 @@ export function useOutboundCalls() {
                     sessionId,
                     uniqueid: data.uniqueid,
                     linkedid: data.linkedid,
+                    hasLead: !!prev.lead,
+                    leadId: prev.leadId,
                 });
                 const connectedCall: OutboundCall = {
                     ...prev,
@@ -286,6 +333,9 @@ export function useOutboundCalls() {
                     sessionId: sessionId || prev.sessionId,
                     status: 'connected',
                     connectedAt: new Date(),
+                    // Explicitly preserve lead data - don't let it get lost
+                    lead: prev.lead || initialLeadRef.current || undefined,
+                    leadId: prev.leadId,
                 };
                 return connectedCall;
             }
@@ -451,6 +501,8 @@ export function useOutboundCalls() {
             phoneNumber,
             leadId,
             sessionId,
+            hasLead: !!lead,
+            leadData: lead,
         });
 
         setActiveOutboundCall(newCall);

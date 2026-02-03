@@ -1,6 +1,5 @@
 import { useOutboundCalls, type OutboundCall } from '@/hooks/useOutboundCalls';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
-import axios from 'axios';
 import React, { useState, useEffect, useMemo } from 'react';
 import { OutboundCallNotification } from './OutboundCallNotification';
 import { NewLeadCallDialog } from '../inbound-calls/NewLeadCallDialog';
@@ -32,6 +31,8 @@ function toActiveCall(outboundCall: OutboundCall): ActiveCall {
             service: outboundCall.lead.service,
             inquiry_status: outboundCall.lead.inquiry_status || 'new',
             priority: outboundCall.lead.priority || 'medium',
+            detail: outboundCall.lead.detail,
+            budget: outboundCall.lead.budget,
         } : undefined,
         // ActiveCall specific fields
         startTime: outboundCall.startTime,
@@ -46,8 +47,6 @@ export function OutboundCallManager() {
     const { actions } = useAsteriskWebSocket();
     const [showNotification, setShowNotification] = useState(true);
     const [showLeadDialog, setShowLeadDialog] = useState(false);
-    const [resolvedLead, setResolvedLead] = useState<OutboundCall['lead'] | null>(null);
-    const [isFetchingLead, setIsFetchingLead] = useState(false);
 
     // Convert outbound call to ActiveCall format for the dialog
     const activeCallForDialog = useMemo(() => {
@@ -55,20 +54,22 @@ export function OutboundCallManager() {
             return null;
         }
 
-        // Prefer the lead we resolved/fetched, fall back to the one on the call
-        const callWithLead: OutboundCall = {
-            ...activeOutboundCall,
-            lead: resolvedLead || activeOutboundCall.lead,
-        };
-
-        return toActiveCall(callWithLead);
-    }, [activeOutboundCall, resolvedLead]);
+        const activeCall = toActiveCall(activeOutboundCall);
+        console.log('OutboundCallManager: Converting to ActiveCall', {
+            originalLead: activeOutboundCall.lead,
+            convertedLead: activeCall.lead,
+            hasLead: !!activeCall.lead,
+        });
+        return activeCall;
+    }, [activeOutboundCall]);
 
     useEffect(() => {
         console.log('OutboundCallManager: activeOutboundCall changed', {
             activeOutboundCall,
             status: activeOutboundCall?.status,
             hasLead: !!activeOutboundCall?.lead,
+            leadData: activeOutboundCall?.lead,
+            leadId: activeOutboundCall?.leadId,
         });
 
         if (!activeOutboundCall) {
@@ -76,7 +77,6 @@ export function OutboundCallManager() {
             console.log('OutboundCallManager: Call ended, resetting state');
             setShowNotification(false);
             setShowLeadDialog(false);
-            setResolvedLead(null);
             return;
         }
 
@@ -89,42 +89,13 @@ export function OutboundCallManager() {
                 setShowLeadDialog(false);
                 break;
             case 'connected':
-                // Auto-open lead dialog when call connects.
-                // If we only have leadId, fetch full lead details before showing.
-                console.log('OutboundCallManager: Call connected, preparing lead dialog');
-
-                if (!activeOutboundCall.lead && activeOutboundCall.leadId && !resolvedLead && !isFetchingLead) {
-                    setIsFetchingLead(true);
-                    axios
-                        .get(`/api/leads/${activeOutboundCall.leadId}`)
-                        .then((response) => {
-                            const leadData = response.data?.data;
-                            if (leadData) {
-                                setResolvedLead({
-                                    id: String(leadData.id),
-                                    name: leadData.name,
-                                    phone: leadData.phone,
-                                    email: leadData.email ?? undefined,
-                                    city: leadData.city ?? undefined,
-                                    country: leadData.country ?? undefined,
-                                    service: leadData.service ? { id: leadData.service.id, name: leadData.service.name } : undefined,
-                                    inquiry_status: leadData.inquiry_status ?? undefined,
-                                    priority: leadData.priority ?? undefined,
-                                });
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('Failed to fetch lead details for outbound call', error);
-                        })
-                        .finally(() => {
-                            setIsFetchingLead(false);
-                            setShowLeadDialog(true);
-                            setShowNotification(false);
-                        });
-                } else {
-                    setShowLeadDialog(true);
-                    setShowNotification(false);
-                }
+                // Auto-open lead dialog when call connects
+                console.log('OutboundCallManager: Call connected, opening lead dialog', {
+                    hasLead: !!activeOutboundCall.lead,
+                    leadId: activeOutboundCall.leadId,
+                });
+                setShowLeadDialog(true);
+                setShowNotification(false);
                 break;
             case 'failed':
             case 'ended':

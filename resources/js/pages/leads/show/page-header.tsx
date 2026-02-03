@@ -73,6 +73,8 @@ export function PageHeader({ lead }: { lead: Lead }) {
                 service: lead.service,
                 inquiry_status: lead.inquiry_status,
                 priority: lead.priority,
+                detail: lead.detail,
+                budget: lead.budget,
             });
 
             const success = await actions.makeCall({
