@@ -94,6 +94,11 @@ export function useOutboundCalls() {
     const [activeOutboundCall, setActiveOutboundCall] = useState<OutboundCall | null>(null);
     const [callHistory, setCallHistory] = useState<OutboundCall[]>([]);
 
+    // Keep track of the initial lead passed when starting an outbound call.
+    // This is used to repopulate lead data in case the first AMI/Dial event
+    // arrives before React has committed the state update from startOutboundCall.
+    const initialLeadRef = useRef<OutboundCallLead | null>(null);
+
     // Use a ref to track activeOutboundCall without triggering re-renders in useEffect
     // This prevents infinite loops when setActiveOutboundCall is called inside the effect
     const activeOutboundCallRef = useRef<OutboundCall | null>(null);
@@ -196,13 +201,13 @@ export function useOutboundCalls() {
         const routingInfo = data.routing_info as CallRoutingInfo | undefined;
 
         setActiveOutboundCall((prev) => {
-            // Preserve existing lead data from startOutboundCall
+            // Preserve existing lead data from startOutboundCall, falling back to initialLeadRef
             const newCall: OutboundCall = {
                 uniqueid: (data.uniqueid as string) || prev?.uniqueid || `pending-${Date.now()}`,
                 linkedid: (data.linkedid as string) || prev?.linkedid,
                 phoneNumber: (data.destcalleridnum || data.client || routingInfo?.client || data.destination || prev?.phoneNumber || 'Unknown') as string,
                 leadId: leadId || prev?.leadId,
-                lead: prev?.lead, // Preserve lead data from startOutboundCall
+                lead: prev?.lead || initialLeadRef.current || undefined, // Preserve lead data from startOutboundCall
                 sessionId: sessionId || prev?.sessionId,
                 status: 'initiating',
                 startTime: prev?.startTime || new Date(),
@@ -427,6 +432,9 @@ export function useOutboundCalls() {
         lead?: OutboundCallLead,
         sessionId?: string
     ) => {
+        // Remember the initial lead so we can restore it when AMI events arrive
+        initialLeadRef.current = lead || null;
+
         const newCall: OutboundCall = {
             uniqueid: `pending-${Date.now()}`,
             phoneNumber,

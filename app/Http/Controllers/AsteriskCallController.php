@@ -1112,12 +1112,15 @@ class AsteriskCallController extends Controller
                         $duration = (int) abs($callSession->answered_at->diffInSeconds(now()));
                     }
 
+                    // dialstatus may not always be present in outbound events
+                    $dialStatus = $validated['dialstatus'] ?? null;
+
                     $endReason = $callSession->answered_at ? 'hangup' : 'no_answer';
-                    if ($validated['dialstatus'] === 'BUSY') {
+                    if ($dialStatus === 'BUSY') {
                         $endReason = 'busy';
-                    } elseif ($validated['dialstatus'] === 'CANCEL') {
+                    } elseif ($dialStatus === 'CANCEL') {
                         $endReason = 'cancelled';
-                    } elseif ($validated['dialstatus'] === 'NOANSWER') {
+                    } elseif ($dialStatus === 'NOANSWER') {
                         $endReason = 'no_answer';
                     }
 
@@ -1143,7 +1146,7 @@ class AsteriskCallController extends Controller
                             'client' => $validated['client'],
                             'duration' => $duration,
                             'end_reason' => $endReason,
-                            'dialstatus' => $validated['dialstatus'] ?? null,
+                            'dialstatus' => $dialStatus,
                             'cause' => $validated['cause'] ?? null,
                             'recording_path' => $recordingFilename,
                             'lead_id' => $lead?->id,

@@ -1,5 +1,6 @@
 import { useOutboundCalls, type OutboundCall } from '@/hooks/useOutboundCalls';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
+import axios from 'axios';
 import React, { useState, useEffect, useMemo } from 'react';
 import { OutboundCallNotification } from './OutboundCallNotification';
 import { NewLeadCallDialog } from '../inbound-calls/NewLeadCallDialog';
@@ -45,11 +46,23 @@ export function OutboundCallManager() {
     const { actions } = useAsteriskWebSocket();
     const [showNotification, setShowNotification] = useState(true);
     const [showLeadDialog, setShowLeadDialog] = useState(false);
+    const [resolvedLead, setResolvedLead] = useState<OutboundCall['lead'] | null>(null);
+    const [isFetchingLead, setIsFetchingLead] = useState(false);
 
     // Convert outbound call to ActiveCall format for the dialog
     const activeCallForDialog = useMemo(() => {
-        return activeOutboundCall ? toActiveCall(activeOutboundCall) : null;
-    }, [activeOutboundCall]);
+        if (!activeOutboundCall) {
+            return null;
+        }
+
+        // Prefer the lead we resolved/fetched, fall back to the one on the call
+        const callWithLead: OutboundCall = {
+            ...activeOutboundCall,
+            lead: resolvedLead || activeOutboundCall.lead,
+        };
+
+        return toActiveCall(callWithLead);
+    }, [activeOutboundCall, resolvedLead]);
 
     useEffect(() => {
         console.log('OutboundCallManager: activeOutboundCall changed', {
@@ -63,6 +76,7 @@ export function OutboundCallManager() {
             console.log('OutboundCallManager: Call ended, resetting state');
             setShowNotification(false);
             setShowLeadDialog(false);
+            setResolvedLead(null);
             return;
         }
 
@@ -75,10 +89,42 @@ export function OutboundCallManager() {
                 setShowLeadDialog(false);
                 break;
             case 'connected':
-                // Auto-open lead dialog when call connects (if there's a lead)
-                console.log('OutboundCallManager: Call connected, opening lead dialog');
-                setShowLeadDialog(true);
-                setShowNotification(false);
+                // Auto-open lead dialog when call connects.
+                // If we only have leadId, fetch full lead details before showing.
+                console.log('OutboundCallManager: Call connected, preparing lead dialog');
+
+                if (!activeOutboundCall.lead && activeOutboundCall.leadId && !resolvedLead && !isFetchingLead) {
+                    setIsFetchingLead(true);
+                    axios
+                        .get(`/api/leads/${activeOutboundCall.leadId}`)
+                        .then((response) => {
+                            const leadData = response.data?.data;
+                            if (leadData) {
+                                setResolvedLead({
+                                    id: String(leadData.id),
+                                    name: leadData.name,
+                                    phone: leadData.phone,
+                                    email: leadData.email ?? undefined,
+                                    city: leadData.city ?? undefined,
+                                    country: leadData.country ?? undefined,
+                                    service: leadData.service ? { id: leadData.service.id, name: leadData.service.name } : undefined,
+                                    inquiry_status: leadData.inquiry_status ?? undefined,
+                                    priority: leadData.priority ?? undefined,
+                                });
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Failed to fetch lead details for outbound call', error);
+                        })
+                        .finally(() => {
+                            setIsFetchingLead(false);
+                            setShowLeadDialog(true);
+                            setShowNotification(false);
+                        });
+                } else {
+                    setShowLeadDialog(true);
+                    setShowNotification(false);
+                }
                 break;
             case 'failed':
             case 'ended':
