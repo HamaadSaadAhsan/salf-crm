@@ -142,6 +142,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Call Sessions
     Route::prefix('api')->group(function () {
+        Route::get('/leads/{lead}', [\App\Http\Controllers\Api\Leads\LeadController::class, 'show'])->name('api.leads.show');
         Route::get('/leads/{lead}/calls', [CallSessionController::class, 'leadCallHistory'])->name('api.leads.calls');
         Route::get('/leads/{lead}/recordings', [CallSessionController::class, 'leadRecordings'])->name('api.leads.recordings');
         Route::get('/calls/active', [CallSessionController::class, 'getActiveCall'])->name('api.calls.active');
