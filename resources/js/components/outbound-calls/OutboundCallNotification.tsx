@@ -122,10 +122,10 @@ export function OutboundCallNotification({
                 </div>
 
                 {/* Actions */}
-                {call.lead && call.status === 'connected' && (
+                {call.lead && ['ringing', 'connected'].includes(call.status) && (
                     <div className="flex gap-2">
                         <Button variant="outline" className="flex-1" onClick={onOpenLeadDialog}>
-                            View Lead
+                            {call.status === 'connected' ? 'Open Lead Details' : 'View Lead'}
                         </Button>
                     </div>
                 )}

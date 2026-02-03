@@ -1,7 +1,10 @@
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { usePage } from '@inertiajs/react';
+import axios, { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { callNotes, callLead } from '@/routes/api/asterisk';
+import { update as updateLead } from '@/routes/leads';
 import type { SharedData } from '@/types';
 import type { AsteriskWebSocketMessage, CallRoutingInfo } from '@/types/asterisk';
 
@@ -450,10 +453,155 @@ export function useOutboundCalls() {
         setActiveOutboundCall(null);
     }, []);
 
+    /**
+     * Update an existing lead from an outbound call
+     */
+    const updateLeadFromCall = useCallback(async (
+        leadId: string,
+        leadData: {
+            name?: string;
+            email?: string;
+            city?: string;
+            country?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: { amount: number };
+        },
+        notes: string,
+        duration: number,
+        callInfo?: { uniqueid: string; caller: string }
+    ): Promise<void> => {
+        const call = activeOutboundCallRef.current;
+        const uniqueid = callInfo?.uniqueid || call?.uniqueid;
+
+        if (!uniqueid) {
+            throw new Error('No active call');
+        }
+
+        try {
+            // Generate the update URL
+            const updateUrl = updateLead(leadId).url;
+            console.log('Updating lead from outbound call:', { leadId, updateUrl, leadData });
+
+            // Update the lead information
+            await axios.put(updateUrl, leadData, {
+                headers: {
+                    'X-Inertia': 'false',
+                    Accept: 'application/json',
+                },
+            });
+
+            // Save call notes as activity
+            await axios.post(callNotes().url, {
+                lead_id: leadId,
+                notes,
+                uniqueid,
+                duration,
+                call_direction: 'outbound',
+            });
+
+            toast.success('Lead updated and call notes saved');
+        } catch (error) {
+            console.error('Failed to update lead:', error);
+            const axiosError = error as AxiosError<{ message?: string }>;
+            toast.error('Failed to update lead', {
+                description: axiosError.response?.data?.message || 'An error occurred',
+            });
+            throw error;
+        }
+    }, []);
+
+    /**
+     * Create a new lead from an outbound call (rare case - calling unknown number)
+     */
+    const createLeadFromCall = useCallback(async (
+        leadData: {
+            name: string;
+            phone: string;
+            email?: string;
+            city?: string;
+            country?: string;
+            service_id?: number;
+            detail?: string;
+            budget?: { amount: number };
+        },
+        notes: string,
+        duration: number,
+        sessionId: string,
+        callInfo?: { uniqueid: string; caller: string }
+    ): Promise<void> => {
+        const call = activeOutboundCallRef.current;
+        const uniqueid = callInfo?.uniqueid || call?.uniqueid;
+        const caller = callInfo?.caller || call?.phoneNumber;
+
+        if (!uniqueid) {
+            throw new Error('No active call');
+        }
+
+        try {
+            // Create the lead using the asterisk call-lead endpoint
+            const storeUrl = callLead().url;
+            console.log('Creating lead from outbound call:', { storeUrl, leadData });
+
+            const response = await axios.post(
+                storeUrl,
+                {
+                    ...leadData,
+                    uniqueid,
+                    caller,
+                    call_direction: 'outbound',
+                },
+                {
+                    headers: {
+                        'X-Inertia': 'false',
+                        Accept: 'application/json',
+                    },
+                },
+            );
+
+            const newLeadId = response.data?.data?.lead?.id || response.data?.data?.id;
+
+            if (!newLeadId) {
+                throw new Error('Failed to get new lead ID from response');
+            }
+
+            // Save call notes as activity
+            await axios.post(callNotes().url, {
+                lead_id: newLeadId,
+                notes,
+                uniqueid,
+                duration,
+                call_direction: 'outbound',
+            });
+
+            // Update call session to link to the new lead
+            if (sessionId) {
+                try {
+                    await axios.patch(`/api/asterisk/call-sessions/${sessionId}/link-lead`, {
+                        lead_id: newLeadId,
+                    });
+                } catch (linkError) {
+                    console.warn('Failed to link lead to call session:', linkError);
+                }
+            }
+
+            toast.success('Lead created and call notes saved');
+        } catch (error) {
+            console.error('Failed to create lead:', error);
+            const axiosError = error as AxiosError<{ message?: string }>;
+            toast.error('Failed to create lead', {
+                description: axiosError.response?.data?.message || 'An error occurred',
+            });
+            throw error;
+        }
+    }, []);
+
     return {
         activeOutboundCall,
         callHistory,
         startOutboundCall,
         clearOutboundCall,
+        updateLeadFromCall,
+        createLeadFromCall,
     };
 }
