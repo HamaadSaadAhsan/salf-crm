@@ -392,9 +392,32 @@ class Lead extends Model
     protected function formattedBudget(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->budget ?
-                ($this->budget['currency'] ?? 'USD').' '.number_format($this->budget['amount'] ?? 0) :
-                null
+            get: function () {
+                $budget = $this->budget;
+                
+                // Handle null or empty budget
+                if (empty($budget) || !is_array($budget)) {
+                    return null;
+                }
+                
+                // Handle string budget (shouldn't happen with cast, but safety check)
+                if (is_string($budget)) {
+                    $budget = json_decode($budget, true);
+                    if (!is_array($budget)) {
+                        return null;
+                    }
+                }
+                
+                $amount = $budget['amount'] ?? null;
+                $currency = $budget['currency'] ?? 'USD';
+                
+                // Return null if amount is not set or is 0
+                if ($amount === null || $amount === '') {
+                    return null;
+                }
+                
+                return $currency.' '.number_format((float) $amount);
+            }
         );
     }
 

@@ -935,6 +935,11 @@ class LeadController extends Controller
 
                 'custom_fields' => 'sometimes|nullable|array',
 
+                // Validate budget
+                'budget' => 'sometimes|nullable|array',
+                'budget.amount' => 'required_with:budget|numeric|min:0',
+                'budget.currency' => 'sometimes|string|max:3',
+
                 // Validate tags (accept objects or strings)
                 'tags' => 'sometimes|array',
                 'tags.*' => 'nullable',
@@ -956,6 +961,24 @@ class LeadController extends Controller
             // Normalize tags if provided: accept strings or objects and convert to canonical {label,value,color}
             if (array_key_exists('tags', $updateData)) {
                 $updateData['tags'] = $this->normalizeTags($updateData['tags'] ?? []);
+            }
+
+            // Normalize budget: ensure currency is set if amount is provided
+            if (array_key_exists('budget', $updateData)) {
+                if ($updateData['budget'] === null) {
+                    // Explicitly set to null to clear budget
+                    $updateData['budget'] = null;
+                } elseif (is_array($updateData['budget'])) {
+                    if (isset($updateData['budget']['amount']) && $updateData['budget']['amount'] > 0) {
+                        // Preserve existing currency if updating amount only, otherwise default to USD
+                        if (!isset($updateData['budget']['currency'])) {
+                            $updateData['budget']['currency'] = $lead->budget['currency'] ?? 'USD';
+                        }
+                    } else {
+                        // If amount is 0 or not set, set budget to null
+                        $updateData['budget'] = null;
+                    }
+                }
             }
 
             $lead->update($updateData);

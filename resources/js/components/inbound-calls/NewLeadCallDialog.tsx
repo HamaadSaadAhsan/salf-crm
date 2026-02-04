@@ -159,7 +159,10 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         country: formData.country || undefined,
                         service_id: formData.service_id,
                         detail: formData.detail || undefined,
-                        budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
+                        budget: formData.budget && Number(formData.budget) > 0 ? {
+                            amount: Number(formData.budget),
+                            currency: 'USD',
+                        } : undefined,
                     },
                     callNotes,
                     duration,
@@ -177,7 +180,10 @@ export function NewLeadCallDialog({ isOpen, onClose, call, onUpdateLead, onCreat
                         country: formData.country || undefined,
                         service_id: formData.service_id,
                         detail: formData.detail || undefined,
-                        budget: formData.budget ? { amount: Number(formData.budget) } : undefined,
+                        budget: formData.budget && Number(formData.budget) > 0 ? {
+                            amount: Number(formData.budget),
+                            currency: call.lead?.budget?.currency || 'USD',
+                        } : (call.lead?.budget && (formData.budget === '' || formData.budget === '0') ? null : undefined),
                     },
                     callNotes,
                     duration,
