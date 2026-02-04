@@ -54,3 +54,9 @@ CLAUDE.md
 
 server/node_modules
 server/.env
+
+data.ms
+storage/app/public/recordings
+
+**/*.bak
+**/*.php

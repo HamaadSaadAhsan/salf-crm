@@ -16,6 +16,7 @@ export interface Lead {
         lng: number;
     };
     inquiry_status: LeadStatus;
+    advisor_stage?: 'new' | 'contacted' | 'meeting' | 'contract_signed' | 'initial_payment' | 'won' | 'lost';
     priority: LeadPriority;
     inquiry_type?: LeadInquiryType;
     lead_score: number;
@@ -35,6 +36,7 @@ export interface Lead {
     next_task?: Task | null;
     tasks?: { data: Task[] };
     last_activity_at?: string;
+    viewed_at?: string;
     created_at: string;
     raw_created_at: ISODateString;
     updated_at: string;

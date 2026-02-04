@@ -1,5 +1,12 @@
 {
     "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ]
+        },
         "shadcn": {
             "command": "npx",
             "args": [
@@ -7,12 +14,14 @@
                 "mcp"
             ]
         },
-        "laravel-boost": {
+        "herd": {
             "command": "php",
             "args": [
-                "artisan",
-                "boost:mcp"
-            ]
+                "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
+            ],
+            "env": {
+                "SITE_PATH": "/Users/macbookpro/Herd/salf-crm-v2"
+            }
         }
     }
 }

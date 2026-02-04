@@ -6,6 +6,15 @@
                 "/Users/macbookpro/Herd/salf-crm-v2/artisan",
                 "boost:mcp"
             ]
+        },
+        "herd": {
+            "command": "/Users/macbookpro/Library/Application Support/Herd/bin/php83",
+            "args": [
+                "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
+            ],
+            "env": {
+                "SITE_PATH": "/Users/macbookpro/Herd/salf-crm-v2"
+            }
         }
     }
 }

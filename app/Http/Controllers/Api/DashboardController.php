@@ -160,7 +160,7 @@ class DashboardController extends Controller
             'role' => 'cro',
             'my_leads' => [
                 'assigned' => Lead::where('assigned_to', $user->id)
-                    ->whereIn('inquiry_status', ['new', 'assigned_to_cro', 'contacted'])
+                    ->whereIn('inquiry_status', ['new', 'assigned_to_cro', 'contacted', 'requalify'])
                     ->count(),
                 'pending_qualification' => Lead::where('assigned_to', $user->id)
                     ->where('inquiry_status', 'contacted')
@@ -190,7 +190,7 @@ class DashboardController extends Controller
 
         $myLeads = [
             'qualified_assigned' => Lead::where('assigned_to', $user->id)
-                ->where('inquiry_status', 'qualified')
+                ->whereIn('inquiry_status', ['qualified', 'assigned_to_advisor'])
                 ->count(),
             'in_proposal' => Lead::where('assigned_to', $user->id)
                 ->where('inquiry_status', 'proposal')

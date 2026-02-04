@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
@@ -24,9 +25,12 @@ class Lead extends Model
         'custom_fields', 'inquiry_status', 'priority', 'inquiry_type',
         'inquiry_country', 'assigned_to', 'assigned_date', 'ticket_id',
         'ticket_date', 'import_id', 'external_id', 'lead_score',
-        'last_activity_at', 'next_follow_up_at', 'tags',
+        'last_activity_at', 'viewed_at', 'next_follow_up_at', 'tags',
         'form_external_id', 'lead_form_id', 'ad_external_id',
-        'loss_reason', 'requalify_reason', 'qualified_by', 'qualified_at', 'converted_at',
+        'loss_reason', 'requalify_reason',
+        'advisor_stage', 'qualified_by', 'qualified_at',
+        'requalified_from_advisor_id',
+        'converted_at',
         'zone_id',
     ];
 
@@ -46,6 +50,7 @@ class Lead extends Model
         'assigned_date' => 'datetime',
         'ticket_date' => 'datetime',
         'last_activity_at' => 'datetime',
+        'viewed_at' => 'datetime',
         'next_follow_up_at' => 'datetime',
         'qualified_at' => 'datetime',
         'converted_at' => 'datetime',
@@ -336,6 +341,16 @@ class Lead extends Model
     public function qualifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'qualified_by');
+    }
+
+    public function advisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function leadCase(): HasOne
+    {
+        return $this->hasOne(LeadCase::class, 'lead_id');
     }
 
     public function zone(): BelongsTo

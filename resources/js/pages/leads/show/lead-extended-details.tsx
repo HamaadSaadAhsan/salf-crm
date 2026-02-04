@@ -603,6 +603,21 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             </div>
                         </div>
 
+                        {/* Advisor Stage (when assigned to advisor) */}
+                        {isAssignedToAdvisor && (
+                            <div className="flex items-start gap-2 text-sm">
+                                <Flag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-muted-foreground">Advisor Stage</span>
+                                    <span className="text-sm font-medium">
+                                        {model.advisor_stage
+                                            ? model.advisor_stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                                            : 'New'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Priority */}
                         <div className="flex items-start gap-2 text-sm">
                             <Flag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

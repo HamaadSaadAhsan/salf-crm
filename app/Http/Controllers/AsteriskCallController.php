@@ -4,15 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Events\InboundCallReceived;
 use App\Events\OutboundCallReceived;
+use App\Enums\TaskPriority;
+use App\Enums\TaskStatus;
+use App\Enums\TaskType;
 use App\Http\Requests\StoreInboundCallRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\Task;
+use App\Models\User;
+use App\Services\CROAssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AsteriskCallController extends Controller
 {
+    public function __construct(
+        private CROAssignmentService $croAssignmentService
+    ) {}
     /**
      * Handle inbound call event from Asterisk.
      */
@@ -334,6 +343,13 @@ class AsteriskCallController extends Controller
                 ->orWhere('slug', 'inbound-call')
                 ->first();
 
+            // Determine assignment: if CRO answered the call, assign to them; otherwise use fair distribution
+            $currentUser = auth()->user();
+            $croRoles = ['support-agent', 'senior-support-agent'];
+            $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+            $isCRO = $currentUser && $currentUser->hasAnyRole($croRoles) && ! $currentUser->hasAnyRole($adminRoles);
+
+            // Create lead first
             $lead = Lead::create([
                 'name' => $validated['name'],
                 'phone' => $validated['phone'],
@@ -346,8 +362,40 @@ class AsteriskCallController extends Controller
                 'inquiry_status' => 'new',
                 'priority' => 'medium',
                 'created_by' => auth()->id(),
-                'assigned_to' => auth()->id(),
             ]);
+
+            // Assign lead: if CRO answered, assign to them; otherwise use fair distribution
+            if ($isCRO) {
+                // CRO answered the call - assign directly to them
+                $lead->assigned_to = auth()->id();
+                $lead->assigned_date = now();
+                $lead->save();
+
+                // Update CRO's lead count
+                $currentUser->increment('current_lead_count');
+                $currentUser->update(['last_assignment_at' => now()]);
+            } else {
+                // Non-CRO user (including admins) - use fair distribution
+                // Admins should not be auto-assigned leads, so only assign if assignment service succeeds
+                $isAdmin = $currentUser && $currentUser->hasAnyRole($adminRoles);
+                
+                if ($isAdmin) {
+                    // Admin created the lead - leave unassigned for manual assignment
+                    // Don't auto-assign to admin
+                    Log::info('Lead created by admin - left unassigned for manual assignment', [
+                        'lead_id' => $lead->id,
+                        'admin_id' => auth()->id(),
+                    ]);
+                } else {
+                    // Regular user - try to assign via fair distribution
+                    if (! $this->croAssignmentService->assignCRO($lead)) {
+                        // Fallback: assign to current user if assignment service fails (only for non-admins)
+                        $lead->assigned_to = auth()->id();
+                        $lead->assigned_date = now();
+                        $lead->save();
+                    }
+                }
+            }
 
             // Create call activity
             LeadActivity::create([
@@ -1087,6 +1135,8 @@ class AsteriskCallController extends Controller
 
                     // Create call activity for the lead
                     if ($lead) {
+                        $userId = $callSession->caller_id ?? auth()->id();
+                        
                         LeadActivity::updateOrCreate(
                             [
                                 'external_id' => $callSession->session_id,
@@ -1094,7 +1144,7 @@ class AsteriskCallController extends Controller
                             ],
                             [
                                 'lead_id' => $lead->id,
-                                'user_id' => $callSession->caller_id ?? auth()->id(),
+                                'user_id' => $userId,
                                 'type' => 'call',
                                 'subject' => 'Outbound call connected',
                                 'description' => "Called {$validated['client']}",
@@ -1109,6 +1159,80 @@ class AsteriskCallController extends Controller
                                 ],
                             ]
                         );
+
+                        // Check if the caller is a CRO and automatically create "contacted" activity and follow-up task
+                        if ($userId) {
+                            $callerUser = User::find($userId);
+                            if ($callerUser) {
+                                $croRoles = ['support-agent', 'senior-support-agent'];
+                                $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+                                $isCRO = $callerUser->hasAnyRole($croRoles) && ! $callerUser->hasAnyRole($adminRoles);
+
+                                if ($isCRO) {
+                                    // Create "contacted" activity
+                                    LeadActivity::create([
+                                        'lead_id' => $lead->id,
+                                        'user_id' => $userId,
+                                        'type' => 'call',
+                                        'subject' => 'Lead contacted',
+                                        'description' => "CRO contacted lead via outbound call to {$validated['client']}",
+                                        'status' => 'completed',
+                                        'completed_at' => now(),
+                                        'metadata' => [
+                                            'call_session_id' => $callSession->id,
+                                            'session_id' => $callSession->session_id,
+                                            'agent' => $validated['agent'],
+                                            'client' => $validated['client'],
+                                            'direction' => 'outbound',
+                                            'auto_created' => true,
+                                        ],
+                                        'source_system' => 'asterisk',
+                                    ]);
+
+                                    // Update lead status to "contacted" if it's currently "new" or "assigned_to_cro"
+                                    $originalStatus = $lead->inquiry_status;
+                                    if (in_array($originalStatus, ['new', 'assigned_to_cro'], true)) {
+                                        $lead->inquiry_status = 'contacted';
+                                        $lead->save();
+
+                                        // Log status change activity
+                                        LeadActivity::create([
+                                            'lead_id' => $lead->id,
+                                            'user_id' => $userId,
+                                            'type' => 'status_change',
+                                            'status' => 'completed',
+                                            'subject' => 'Lead status updated',
+                                            'description' => 'Status changed to contacted after CRO made outbound call.',
+                                            'metadata' => [
+                                                'from_status' => $originalStatus,
+                                                'to_status' => 'contacted',
+                                                'triggered_by' => 'outbound_call',
+                                            ],
+                                        ]);
+                                    }
+
+                                    // Create follow-up task for the CRO
+                                    Task::create([
+                                        'taskable_type' => Lead::class,
+                                        'taskable_id' => $lead->id,
+                                        'title' => "Follow up with {$lead->name}",
+                                        'description' => "Follow up after outbound call to {$validated['client']}",
+                                        'type' => TaskType::FOLLOW_UP,
+                                        'status' => TaskStatus::PENDING,
+                                        'priority' => TaskPriority::MEDIUM,
+                                        'assigned_to_id' => $userId,
+                                        'created_by_id' => $userId,
+                                        'due_at' => now()->addDays(3), // Follow up in 3 days by default
+                                    ]);
+
+                                    Log::info('CRO outbound call: Created contacted activity and follow-up task', [
+                                        'lead_id' => $lead->id,
+                                        'user_id' => $userId,
+                                        'call_session_id' => $callSession->id,
+                                    ]);
+                                }
+                            }
+                        }
                     }
 
                     Log::info('Outbound call: Connected', [

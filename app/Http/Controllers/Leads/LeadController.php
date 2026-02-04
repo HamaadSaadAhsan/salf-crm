@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LeadFilterRequest;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
+use App\Models\LeadActivity;
+use App\Services\AdvisorAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +24,8 @@ use Throwable;
 class LeadController extends Controller
 {
     public function __construct(
-        private LeadCacheService $cacheService
+        private LeadCacheService $cacheService,
+        private AdvisorAssignmentService $advisorAssignmentService
     ) {}
 
     public function index(LeadFilterRequest $request)
@@ -677,6 +680,26 @@ class LeadController extends Controller
             }
         }
 
+        // Track first time a CRO views the lead (only support-agent and senior-support-agent are CROs)
+        $croRoles = ['support-agent', 'senior-support-agent'];
+        if ($user->hasAnyRole($croRoles) && is_null($lead->viewed_at)) {
+            $lead->viewed_at = now();
+            $lead->save();
+
+            LeadActivity::create([
+                'lead_id' => $lead->id,
+                'user_id' => $user->id,
+                'type' => 'status_change',
+                'status' => 'completed',
+                'subject' => 'Lead viewed for the first time',
+                'description' => 'CRO viewed this lead for the first time.',
+                'metadata' => [
+                    'event' => 'viewed',
+                    'viewed_at' => now()->toISOString(),
+                ],
+            ]);
+        }
+
         $cacheKey = $lead->getCacheKey('full');
 
         // Use flexible caching with stale-while-revalidate pattern
@@ -686,10 +709,10 @@ class LeadController extends Controller
                 $leadData = Lead::select([
                     'id', 'name', 'email', 'phone', 'occupation', 'address', 'city', 'country',
                     'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
-                    'inquiry_status', 'priority', 'inquiry_type', 'inquiry_country',
+                    'inquiry_status', 'advisor_stage', 'priority', 'inquiry_type', 'inquiry_country',
                     'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',
                     'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
-                    'last_activity_at', 'next_follow_up_at', 'tags',
+                    'last_activity_at', 'viewed_at', 'next_follow_up_at', 'tags',
                 ])
                     ->with([
                         'service' => function ($query) {
@@ -950,10 +973,19 @@ class LeadController extends Controller
 
             DB::beginTransaction();
 
+            $originalStatus = $lead->inquiry_status;
+            $originalAdvisorStage = $lead->advisor_stage;
+
             // Check if status is changing to 'qualified' to trigger event
             $isQualifying = isset($validated['inquiry_status']) &&
                 $validated['inquiry_status'] === 'qualified' &&
                 $lead->inquiry_status !== 'qualified';
+
+            // Check if status is changing to 'assigned_to_advisor' (auto-assignment)
+            $isAutoAssigning = isset($validated['inquiry_status']) &&
+                $validated['inquiry_status'] === 'assigned_to_advisor' &&
+                $lead->inquiry_status !== 'assigned_to_advisor' &&
+                ! isset($validated['assigned_to']); // Only auto-assign if not manually assigned
 
             // Update the lead with validated data
             $updateData = collect($validated)->except(['service', 'lead_source', 'assigned_to'])->toArray();
@@ -1011,6 +1043,156 @@ class LeadController extends Controller
                 }
             }
             $lead->save();
+
+            // Refresh instance with latest changes
+            $lead->refresh();
+
+            $newStatus = $lead->inquiry_status;
+
+            // Auto-assign advisor when lead is qualified or assigned_to_advisor
+            if (($isQualifying || $isAutoAssigning) && ! $lead->assigned_to) {
+                $assigned = $this->advisorAssignmentService->assignAdvisor($lead);
+                if ($assigned) {
+                    // Refresh lead to get updated assignment
+                    $lead->refresh();
+                    Log::info('Lead auto-assigned to advisor', [
+                        'lead_id' => $lead->id,
+                        'advisor_id' => $lead->assigned_to,
+                        'service_id' => $lead->service_id,
+                        'city' => $lead->city,
+                    ]);
+                } else {
+                    Log::warning('Failed to auto-assign advisor to lead', [
+                        'lead_id' => $lead->id,
+                        'service_id' => $lead->service_id,
+                        'city' => $lead->city,
+                    ]);
+                }
+            }
+
+            // When a lead is first assigned to an advisor, start advisor lifecycle
+            if ($originalStatus !== 'assigned_to_advisor' && $newStatus === 'assigned_to_advisor') {
+                if (! $lead->advisor_stage) {
+                    $lead->advisor_stage = 'new';
+                }
+
+                // Set qualified_by if not already set
+                if (! $lead->qualified_by && $isQualifying) {
+                    $lead->qualified_by = $request->user()->id;
+                    $lead->qualified_at = now();
+                    $lead->save();
+                }
+
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'status_change',
+                    'status' => 'completed',
+                    'subject' => 'Lead assigned to advisor',
+                    'description' => $lead->assigned_to
+                        ? "Lead lifecycle moved to advisor. Assigned to advisor ID: {$lead->assigned_to}"
+                        : 'Lead lifecycle moved to advisor.',
+                    'metadata' => [
+                        'from_status' => $originalStatus,
+                        'to_status' => $newStatus,
+                        'advisor_stage' => $lead->advisor_stage,
+                        'qualified_by' => $lead->qualified_by,
+                        'assigned_to' => $lead->assigned_to,
+                        'auto_assigned' => $isQualifying || $isAutoAssigning,
+                    ],
+                ]);
+            }
+
+            // Advisor marks lead as requalified - send back to CRO who qualified it
+            if ($originalStatus === 'assigned_to_advisor' && $newStatus === 'requalify') {
+                // Track which advisor requalified this lead
+                if ($lead->assigned_to && ! $lead->requalified_from_advisor_id) {
+                    $lead->requalified_from_advisor_id = $lead->assigned_to;
+                }
+
+                // Reassign back to CRO who originally qualified the lead, if known
+                if ($lead->qualified_by) {
+                    $lead->assigned_to = $lead->qualified_by;
+                }
+
+                // Clear advisor stage when going back to CRO
+                $lead->advisor_stage = null;
+
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'status_change',
+                    'status' => 'completed',
+                    'subject' => 'Lead requalified by advisor',
+                    'description' => 'Advisor requalified lead and sent it back to CRO.',
+                    'metadata' => [
+                        'from_status' => $originalStatus,
+                        'to_status' => $newStatus,
+                        'requalified_from_advisor_id' => $lead->requalified_from_advisor_id,
+                        'qualified_by' => $lead->qualified_by,
+                    ],
+                ]);
+            }
+
+            // CRO re-qualifies a lead that came back from advisor
+            if ($originalStatus === 'requalify' && $newStatus === 'assigned_to_advisor' && $lead->requalified_from_advisor_id) {
+                $lead->assigned_to = $lead->requalified_from_advisor_id;
+                $lead->advisor_stage = 'new';
+
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'status_change',
+                    'status' => 'completed',
+                    'subject' => 'Lead requalified by CRO',
+                    'description' => 'CRO requalified lead and returned it to advisor.',
+                    'metadata' => [
+                        'from_status' => $originalStatus,
+                        'to_status' => $newStatus,
+                        'advisor_id' => $lead->requalified_from_advisor_id,
+                    ],
+                ]);
+            }
+
+            // When advisor marks lead as won/lost, update advisor_stage accordingly
+            if ($originalStatus === 'assigned_to_advisor' && in_array($newStatus, ['won', 'lost'], true)) {
+                $lead->advisor_stage = $newStatus;
+
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'status_change',
+                    'status' => 'completed',
+                    'subject' => "Lead {$newStatus}",
+                    'description' => "Advisor marked lead as {$newStatus}.",
+                    'metadata' => [
+                        'from_status' => $originalStatus,
+                        'to_status' => $newStatus,
+                        'advisor_stage' => $lead->advisor_stage,
+                    ],
+                ]);
+            }
+
+            // Persist any advisor lifecycle adjustments
+            if ($lead->isDirty(['advisor_stage', 'assigned_to', 'requalified_from_advisor_id'])) {
+                $lead->save();
+            }
+
+            // Log a generic status change if inquiry_status changed and we haven't logged above
+            if ($originalStatus !== $newStatus && ! in_array($newStatus, ['assigned_to_advisor', 'requalify', 'won', 'lost'], true)) {
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'status_change',
+                    'status' => 'completed',
+                    'subject' => 'Lead status updated',
+                    'description' => "Status changed from {$originalStatus} to {$newStatus}.",
+                    'metadata' => [
+                        'from_status' => $originalStatus,
+                        'to_status' => $newStatus,
+                    ],
+                ]);
+            }
 
             // Fire LeadQualified event if status changed to qualified
             if ($isQualifying) {
