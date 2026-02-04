@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\InboundCallReceived;
-use App\Events\OutboundCallReceived;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Enums\TaskType;
+use App\Events\InboundCallReceived;
+use App\Events\OutboundCallReceived;
 use App\Http\Requests\StoreInboundCallRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -22,6 +22,7 @@ class AsteriskCallController extends Controller
     public function __construct(
         private CROAssignmentService $croAssignmentService
     ) {}
+
     /**
      * Handle inbound call event from Asterisk.
      */
@@ -378,7 +379,7 @@ class AsteriskCallController extends Controller
                 // Non-CRO user (including admins) - use fair distribution
                 // Admins should not be auto-assigned leads, so only assign if assignment service succeeds
                 $isAdmin = $currentUser && $currentUser->hasAnyRole($adminRoles);
-                
+
                 if ($isAdmin) {
                     // Admin created the lead - leave unassigned for manual assignment
                     // Don't auto-assign to admin
@@ -1136,7 +1137,7 @@ class AsteriskCallController extends Controller
                     // Create call activity for the lead
                     if ($lead) {
                         $userId = $callSession->caller_id ?? auth()->id();
-                        
+
                         LeadActivity::updateOrCreate(
                             [
                                 'external_id' => $callSession->session_id,

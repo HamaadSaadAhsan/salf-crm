@@ -43,4 +43,3 @@ class LeadCase extends Model
         return $this->belongsTo(User::class, 'advisor_id');
     }
 }
-

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Lead;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CROAssignmentService
@@ -12,7 +11,7 @@ class CROAssignmentService
     /**
      * Find and assign the best matching CRO for a new lead.
      *
-     * @param Lead|null $lead Optional lead for context (service, city, etc.)
+     * @param  Lead|null  $lead  Optional lead for context (service, city, etc.)
      * @return User|null The assigned CRO, or null if no match found
      */
     public function assignCROToLead(?Lead $lead = null): ?User
@@ -63,10 +62,6 @@ class CROAssignmentService
     /**
      * Calculate fairness score for CRO assignment.
      * Lower score = better candidate for assignment.
-     *
-     * @param User $cro
-     * @param Lead|null $lead
-     * @return float
      */
     private function calculateCROScore(User $cro, ?Lead $lead): float
     {
@@ -109,7 +104,6 @@ class CROAssignmentService
     /**
      * Assign CRO to lead and update lead status.
      *
-     * @param Lead $lead
      * @return bool True if assignment was successful
      */
     public function assignCRO(Lead $lead): bool

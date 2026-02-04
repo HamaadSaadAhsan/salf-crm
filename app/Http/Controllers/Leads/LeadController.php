@@ -1003,7 +1003,7 @@ class LeadController extends Controller
                 } elseif (is_array($updateData['budget'])) {
                     if (isset($updateData['budget']['amount']) && $updateData['budget']['amount'] > 0) {
                         // Preserve existing currency if updating amount only, otherwise default to USD
-                        if (!isset($updateData['budget']['currency'])) {
+                        if (! isset($updateData['budget']['currency'])) {
                             $updateData['budget']['currency'] = $lead->budget['currency'] ?? 'USD';
                         }
                     } else {

@@ -86,4 +86,3 @@ return new class extends Migration
         Schema::dropIfExists('lead_cases');
     }
 };
-

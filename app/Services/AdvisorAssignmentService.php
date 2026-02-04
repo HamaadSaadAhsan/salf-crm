@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Lead;
 use App\Models\Service;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdvisorAssignmentService
@@ -13,7 +12,6 @@ class AdvisorAssignmentService
     /**
      * Find and assign the best matching advisor for a qualified lead.
      *
-     * @param Lead $lead
      * @return User|null The assigned advisor, or null if no match found
      */
     public function assignAdvisorToLead(Lead $lead): ?User
@@ -130,11 +128,6 @@ class AdvisorAssignmentService
     /**
      * Calculate fairness score for advisor assignment.
      * Lower score = better candidate for assignment.
-     *
-     * @param User $advisor
-     * @param Service $service
-     * @param Lead $lead
-     * @return float
      */
     private function calculateAdvisorScore(User $advisor, Service $service, Lead $lead): float
     {
@@ -180,7 +173,6 @@ class AdvisorAssignmentService
     /**
      * Assign advisor to lead and update lead status.
      *
-     * @param Lead $lead
      * @return bool True if assignment was successful
      */
     public function assignAdvisor(Lead $lead): bool
