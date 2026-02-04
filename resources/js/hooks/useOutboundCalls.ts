@@ -1,3 +1,4 @@
+import { useEcho } from '@laravel/echo-react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { usePage } from '@inertiajs/react';
 import axios, { AxiosError } from 'axios';
@@ -39,6 +40,43 @@ export interface OutboundCall {
     sessionId?: string;
     /** Call direction - always 'outbound' for this hook */
     direction: 'outbound';
+}
+
+/**
+ * Data structure from Laravel Echo broadcast for outbound calls
+ */
+export interface OutboundCallData {
+    event: 'ring' | 'connect' | 'hangup';
+    agent_extension: string;
+    client: string;
+    uniqueid: string;
+    linkedid?: string;
+    sessionId?: string;
+    call_direction: 'outbound';
+    direction: 'outbound';
+    phase?: string;
+    dialstatus?: string;
+    duration?: number;
+    lead?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone: string;
+        city?: string;
+        country?: string;
+        service?: { id: number; name: string };
+        assigned_to?: { id: number; name: string };
+        inquiry_status: string;
+        priority: string;
+        detail?: string;
+        budget?: {
+            amount: number;
+        };
+        tags?: Record<string, string>;
+        lead_score?: number;
+        last_activity_at?: string;
+    };
+    timestamp: string;
 }
 
 /**
@@ -109,6 +147,98 @@ export function useOutboundCalls() {
     useEffect(() => {
         activeOutboundCallRef.current = activeOutboundCall;
     }, [activeOutboundCall]);
+
+    // Helper to convert Echo OutboundCallData to OutboundCall format
+    const convertEchoDataToOutboundCall = useCallback((data: OutboundCallData): OutboundCall => {
+        const currentCall = activeOutboundCallRef.current;
+        
+        // Map Echo event to OutboundCall status
+        let status: OutboundCall['status'] = 'ringing';
+        if (data.event === 'connect') {
+            status = 'connected';
+        } else if (data.event === 'hangup') {
+            status = 'ended';
+        } else if (data.event === 'ring') {
+            status = 'ringing';
+        }
+
+        // Convert lead data if present
+        const lead: OutboundCallLead | undefined = data.lead ? {
+            id: data.lead.id,
+            name: data.lead.name,
+            email: data.lead.email,
+            phone: data.lead.phone,
+            city: data.lead.city,
+            country: data.lead.country,
+            service: data.lead.service,
+            inquiry_status: data.lead.inquiry_status,
+            priority: data.lead.priority,
+            detail: data.lead.detail,
+            budget: data.lead.budget,
+        } : undefined;
+
+        return {
+            uniqueid: data.uniqueid,
+            linkedid: data.linkedid,
+            phoneNumber: data.client,
+            leadId: lead?.id,
+            lead: lead || currentCall?.lead || initialLeadRef.current || undefined,
+            status,
+            startTime: currentCall?.startTime || new Date(),
+            connectedAt: status === 'connected' ? new Date() : currentCall?.connectedAt,
+            endedAt: status === 'ended' ? new Date() : currentCall?.endedAt,
+            duration: data.duration ?? currentCall?.duration ?? 0,
+            sessionId: data.sessionId || currentCall?.sessionId,
+            direction: 'outbound',
+        };
+    }, []);
+
+    // Subscribe to outbound call events via Laravel Echo
+    useEcho('outbound-calls', '.outbound.call', (data: OutboundCallData) => {
+        // Only process events for the current user's extension
+        if (data.agent_extension !== currentUserExtension) {
+            console.log('📤 useOutboundCalls: Ignoring Echo event for different agent', {
+                event: data.event,
+                agent_extension: data.agent_extension,
+                currentUserExtension,
+            });
+            return;
+        }
+
+        console.log('📤 useOutboundCalls: Processing Echo event', {
+            event: data.event,
+            agent_extension: data.agent_extension,
+            client: data.client,
+            sessionId: data.sessionId,
+            uniqueid: data.uniqueid,
+            hasLead: !!data.lead,
+        });
+
+        const outboundCall = convertEchoDataToOutboundCall(data);
+
+        // Handle different events
+        switch (data.event) {
+            case 'ring':
+                setActiveOutboundCall(outboundCall);
+                toast.info('Ringing...', {
+                    description: `Calling ${data.client}`,
+                });
+                break;
+
+            case 'connect':
+                setActiveOutboundCall(outboundCall);
+                toast.success('Call connected!', {
+                    description: 'You are now connected',
+                });
+                break;
+
+            case 'hangup':
+                setCallHistory((history) => [outboundCall, ...history.slice(0, 49)]);
+                setActiveOutboundCall(null);
+                toast.info('Call ended');
+                break;
+        }
+    });
 
     // Process incoming WebSocket messages for outbound call events
     useEffect(() => {

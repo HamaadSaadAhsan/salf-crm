@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\InboundCallReceived;
+use App\Events\OutboundCallReceived;
 use App\Http\Requests\StoreInboundCallRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -1000,6 +1001,19 @@ class AsteriskCallController extends Controller
                         'agent' => $validated['agent'],
                         'client' => $validated['client'],
                     ]);
+
+                    // Broadcast outbound call event
+                    broadcast(new OutboundCallReceived(
+                        event: 'ring',
+                        agentExtension: $validated['agent'] ?? '',
+                        clientNumber: $validated['client'] ?? '',
+                        uniqueid: $validated['uniqueid'] ?? '',
+                        linkedid: $validated['linkedid'] ?? null,
+                        sessionId: $callSession->session_id,
+                        lead: $lead,
+                        callDirection: 'outbound',
+                        phase: $validated['phase'] ?? 'agent_dial'
+                    ));
                     break;
 
                 case 'outbound_agent_answer':
@@ -1103,6 +1117,20 @@ class AsteriskCallController extends Controller
                         'client' => $validated['client'],
                         'lead_id' => $lead?->id,
                     ]);
+
+                    // Broadcast outbound call connected event (triggers dialog)
+                    broadcast(new OutboundCallReceived(
+                        event: 'connect',
+                        agentExtension: $validated['agent'] ?? '',
+                        clientNumber: $validated['client'] ?? '',
+                        uniqueid: $validated['uniqueid'] ?? '',
+                        linkedid: $validated['linkedid'] ?? null,
+                        sessionId: $callSession->session_id,
+                        lead: $lead,
+                        callDirection: 'outbound',
+                        phase: 'connected',
+                        duration: $validated['duration'] ?? null
+                    ));
                     break;
 
                 case 'outbound_hangup':
@@ -1175,6 +1203,20 @@ class AsteriskCallController extends Controller
                         'end_reason' => $endReason,
                         'lead_id' => $lead?->id,
                     ]);
+
+                    // Broadcast outbound call ended event
+                    broadcast(new OutboundCallReceived(
+                        event: 'hangup',
+                        agentExtension: $validated['agent'] ?? '',
+                        clientNumber: $validated['client'] ?? '',
+                        uniqueid: $validated['uniqueid'] ?? '',
+                        linkedid: $validated['linkedid'] ?? null,
+                        sessionId: $callSession->session_id,
+                        lead: $lead,
+                        callDirection: 'outbound',
+                        dialstatus: $dialStatus,
+                        duration: $duration
+                    ));
                     break;
             }
 

@@ -34,6 +34,12 @@ Broadcast::channel('inbound-calls', function ($user) {
     return $user !== null;
 });
 
+// Outbound calls channel
+Broadcast::channel('outbound-calls', function ($user) {
+    // Allow authenticated users to listen to outbound call events
+    return $user !== null;
+});
+
 // Call session channel - allows listening to specific call session updates
 Broadcast::channel('call-session.{sessionId}', function ($user, $sessionId) {
     // Allow authenticated users to listen to call session events
