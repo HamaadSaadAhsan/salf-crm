@@ -55,7 +55,7 @@ class InboundCallReceived implements ShouldBroadcast
     public function broadcastWith(): array
     {
         // Refresh lead to ensure casts are applied
-        if ($this->lead && !$this->lead->relationLoaded('service')) {
+        if ($this->lead && ! $this->lead->relationLoaded('service')) {
             $this->lead->load(['service', 'assignedTo', 'source']);
         }
 
@@ -106,12 +106,12 @@ class InboundCallReceived implements ShouldBroadcast
      */
     private function getBudgetValue(): ?array
     {
-        if (!$this->lead) {
+        if (! $this->lead) {
             return null;
         }
 
         $budget = $this->lead->getAttribute('budget');
-        
+
         if (is_null($budget)) {
             return null;
         }
@@ -124,6 +124,7 @@ class InboundCallReceived implements ShouldBroadcast
         // If string, decode it
         if (is_string($budget)) {
             $decoded = json_decode($budget, true);
+
             return is_array($decoded) ? $decoded : null;
         }
 
