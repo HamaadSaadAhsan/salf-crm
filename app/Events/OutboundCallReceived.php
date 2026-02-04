@@ -50,6 +50,11 @@ class OutboundCallReceived implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
+        // Refresh lead to ensure casts are applied
+        if ($this->lead && !$this->lead->relationLoaded('service')) {
+            $this->lead->load(['service', 'assignedTo', 'source']);
+        }
+
         return [
             'event' => $this->event,
             'agent_extension' => $this->agentExtension,
@@ -80,12 +85,41 @@ class OutboundCallReceived implements ShouldBroadcast
                 'inquiry_status' => $this->lead->inquiry_status,
                 'priority' => $this->lead->priority,
                 'detail' => $this->lead->detail,
-                'budget' => $this->lead->budget,
+                'budget' => $this->getBudgetValue(),
                 'tags' => $this->lead->tags,
                 'lead_score' => $this->lead->lead_score,
                 'last_activity_at' => $this->lead->last_activity_at?->toISOString(),
             ] : null,
             'timestamp' => now()->toISOString(),
         ];
+    }
+
+    /**
+     * Get budget value ensuring proper casting
+     */
+    private function getBudgetValue(): ?array
+    {
+        if (!$this->lead) {
+            return null;
+        }
+
+        $budget = $this->lead->getAttribute('budget');
+        
+        if (is_null($budget)) {
+            return null;
+        }
+
+        // If already an array, return it
+        if (is_array($budget)) {
+            return $budget;
+        }
+
+        // If string, decode it
+        if (is_string($budget)) {
+            $decoded = json_decode($budget, true);
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return null;
     }
 }
