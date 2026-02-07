@@ -31,10 +31,12 @@ function Calendar({
           buttonVariants({ variant: 'ghost' }),
           'size-8 text-muted-foreground/80 hover:text-foreground p-0',
         ),
-        weekday: 'size-8 p-0 text-xs font-medium text-muted-foreground/80',
+        month_grid: 'w-full',
+        weekday:
+          'h-8 min-w-8 p-0 text-center text-xs font-medium text-muted-foreground/80',
         day_button:
-          'cursor-pointer relative flex size-8 items-center justify-center whitespace-nowrap rounded-md p-0 text-foreground transition-200 group-[[data-selected]:not(.range-middle)]:[transition-property:color,background-color,border-radius,box-shadow] group-[[data-selected]:not(.range-middle)]:duration-150 group-data-disabled:pointer-events-none focus-visible:z-10 hover:not-in-data-selected:bg-accent group-data-selected:bg-primary hover:not-in-data-selected:text-foreground group-data-selected:text-primary-foreground group-data-disabled:text-foreground/30 group-data-disabled:line-through group-data-outside:text-foreground/30 group-data-selected:group-data-outside:text-primary-foreground outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] group-[.range-start:not(.range-end)]:rounded-e-none group-[.range-end:not(.range-start)]:rounded-s-none group-[.range-middle]:rounded-none group-[.range-middle]:group-data-selected:bg-accent group-[.range-middle]:group-data-selected:text-foreground',
-        day: 'group size-8 px-0 py-px text-sm',
+          'cursor-pointer relative flex h-8 w-full min-w-8 items-center justify-center whitespace-nowrap rounded-md p-0 text-foreground transition-200 group-[[data-selected]:not(.range-middle)]:[transition-property:color,background-color,border-radius,box-shadow] group-[[data-selected]:not(.range-middle)]:duration-150 group-data-disabled:pointer-events-none focus-visible:z-10 hover:not-in-data-selected:bg-accent group-data-selected:bg-primary hover:not-in-data-selected:text-foreground group-data-selected:text-primary-foreground group-data-disabled:text-foreground/30 group-data-disabled:line-through group-data-outside:text-foreground/30 group-data-selected:group-data-outside:text-primary-foreground outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] group-[.range-start:not(.range-end)]:rounded-e-none group-[.range-end:not(.range-start)]:rounded-s-none group-[.range-middle]:rounded-none group-[.range-middle]:group-data-selected:bg-accent group-[.range-middle]:group-data-selected:text-foreground',
+        day: 'group h-8 min-w-8 px-0 py-px text-center text-sm',
         range_start: 'range-start',
         range_end: 'range-end',
         range_middle: 'range-middle',
@@ -43,7 +45,8 @@ function Calendar({
         outside:
           'text-muted-foreground data-selected:bg-accent/50 data-selected:text-muted-foreground',
         hidden: 'invisible',
-        week_number: 'size-8 p-0 text-xs font-medium text-muted-foreground/80',
+        week_number:
+          'h-8 min-w-8 p-0 text-xs font-medium text-muted-foreground/80',
         ...classNames,
       }}
       components={{

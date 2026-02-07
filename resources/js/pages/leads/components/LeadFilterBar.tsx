@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LeadFilters } from '@/hooks/useLeadFilters';
@@ -29,7 +30,8 @@ import {
 } from 'date-fns';
 import { CommandList } from 'cmdk';
 import { CalendarIcon, CalendarRange, Check, ChevronDown, ChevronRight, ChevronsUpDown, ListFilter, Layers, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface LeadFilterBarProps {
     filters: LeadFilters;
@@ -45,6 +47,52 @@ const PRIORITIES: { value: LeadPriority; label: string; color: string }[] = [
     { value: 'high', label: 'High', color: 'text-orange-500' },
     { value: 'urgent', label: 'Urgent', color: 'text-red-500' },
 ];
+
+/** Responsive wrapper: Popover on desktop, bottom Drawer on mobile */
+const FilterShell = memo(function FilterShell({
+    open,
+    onOpenChange,
+    trigger,
+    title,
+    popoverClassName,
+    popoverAlign = 'start',
+    children,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    trigger: React.ReactElement;
+    title: string;
+    popoverClassName?: string;
+    popoverAlign?: 'start' | 'center' | 'end';
+    children: React.ReactNode;
+}) {
+    const isMobile = useIsMobile();
+
+    if (isMobile) {
+        return (
+            <Drawer open={open} onOpenChange={onOpenChange}>
+                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                <DrawerContent>
+                    <DrawerHeader className="pb-2">
+                        <DrawerTitle>{title}</DrawerTitle>
+                    </DrawerHeader>
+                    <div className="max-h-[60vh] overflow-y-auto px-4 pb-4">
+                        {children}
+                    </div>
+                </DrawerContent>
+            </Drawer>
+        );
+    }
+
+    return (
+        <Popover open={open} onOpenChange={onOpenChange}>
+            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            <PopoverContent className={popoverClassName} align={popoverAlign}>
+                {children}
+            </PopoverContent>
+        </Popover>
+    );
+});
 
 const StatusFilter = memo(function StatusFilter({
     value,
@@ -66,8 +114,12 @@ const StatusFilter = memo(function StatusFilter({
     );
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+        <FilterShell
+            open={open}
+            onOpenChange={setOpen}
+            title="Status"
+            popoverClassName="w-[200px] p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 gap-1 border-dashed">
                     Status
                     {selected.length > 0 && (
@@ -77,24 +129,23 @@ const StatusFilter = memo(function StatusFilter({
                     )}
                     <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search statuses..." className="h-9" />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
-                        <CommandEmpty>No status found.</CommandEmpty>
-                        <CommandGroup>
-                            {statuses.map((status) => (
-                                <CommandItem key={status.id} value={status.name} onSelect={() => toggle(status.name)} className="cursor-pointer">
-                                    <Check className={cn('mr-2 h-4 w-4', selected.includes(status.name) ? 'opacity-100' : 'opacity-0')} />
-                                    <span className="capitalize">{status.name.replace(/_/g, ' ')}</span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+            }
+        >
+            <Command>
+                <CommandInput placeholder="Search statuses..." className="h-9" />
+                <CommandList className="max-h-[200px] overflow-y-auto">
+                    <CommandEmpty>No status found.</CommandEmpty>
+                    <CommandGroup>
+                        {statuses.map((status) => (
+                            <CommandItem key={status.id} value={status.name} onSelect={() => toggle(status.name)} className="cursor-pointer">
+                                <Check className={cn('mr-2 h-4 w-4', selected.includes(status.name) ? 'opacity-100' : 'opacity-0')} />
+                                <span className="capitalize">{status.name.replace(/_/g, ' ')}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </FilterShell>
     );
 });
 
@@ -117,8 +168,12 @@ const PriorityFilter = memo(function PriorityFilter({
     );
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+        <FilterShell
+            open={open}
+            onOpenChange={setOpen}
+            title="Priority"
+            popoverClassName="w-[180px] p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 gap-1 border-dashed">
                     Priority
                     {selected.length > 0 && (
@@ -128,27 +183,26 @@ const PriorityFilter = memo(function PriorityFilter({
                     )}
                     <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[180px] p-0" align="start">
-                <Command>
-                    <CommandList>
-                        <CommandGroup>
-                            {PRIORITIES.map((p) => (
-                                <CommandItem
-                                    key={p.value}
-                                    value={p.value}
-                                    onSelect={() => toggle(p.value)}
-                                    className="cursor-pointer"
-                                >
-                                    <Check className={cn('mr-2 h-4 w-4', selected.includes(p.value) ? 'opacity-100' : 'opacity-0')} />
-                                    <span className={p.color}>{p.label}</span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+            }
+        >
+            <Command>
+                <CommandList>
+                    <CommandGroup>
+                        {PRIORITIES.map((p) => (
+                            <CommandItem
+                                key={p.value}
+                                value={p.value}
+                                onSelect={() => toggle(p.value)}
+                                className="cursor-pointer"
+                            >
+                                <Check className={cn('mr-2 h-4 w-4', selected.includes(p.value) ? 'opacity-100' : 'opacity-0')} />
+                                <span className={p.color}>{p.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </FilterShell>
     );
 });
 
@@ -167,8 +221,12 @@ const AssignedToFilter = memo(function AssignedToFilter({
     const users = data?.data || [];
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+        <FilterShell
+            open={open}
+            onOpenChange={setOpen}
+            title="Assigned To"
+            popoverClassName="w-[220px] p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 gap-1 border-dashed">
                     Assigned To
                     {value && selectedName && (
@@ -178,36 +236,35 @@ const AssignedToFilter = memo(function AssignedToFilter({
                     )}
                     <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
-                <Command shouldFilter={false}>
-                    <CommandInput placeholder="Search users..." className="h-9" value={search} onValueChange={setSearch} />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
-                        <CommandEmpty>No users found.</CommandEmpty>
-                        <CommandGroup>
-                            {users.map((user: { id: number; name: string }) => (
-                                <CommandItem
-                                    key={user.id}
-                                    value={String(user.id)}
-                                    onSelect={() => {
-                                        if (value === user.id) {
-                                            onChange(undefined, undefined);
-                                        } else {
-                                            onChange(user.id, user.name);
-                                        }
-                                        setOpen(false);
-                                    }}
-                                    className="cursor-pointer"
-                                >
-                                    <Check className={cn('mr-2 h-4 w-4', value === user.id ? 'opacity-100' : 'opacity-0')} />
-                                    {user.name}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+            }
+        >
+            <Command shouldFilter={false}>
+                <CommandInput placeholder="Search users..." className="h-9" value={search} onValueChange={setSearch} />
+                <CommandList className="max-h-[200px] overflow-y-auto">
+                    <CommandEmpty>No users found.</CommandEmpty>
+                    <CommandGroup>
+                        {users.map((user: { id: number; name: string }) => (
+                            <CommandItem
+                                key={user.id}
+                                value={String(user.id)}
+                                onSelect={() => {
+                                    if (value === user.id) {
+                                        onChange(undefined, undefined);
+                                    } else {
+                                        onChange(user.id, user.name);
+                                    }
+                                    setOpen(false);
+                                }}
+                                className="cursor-pointer"
+                            >
+                                <Check className={cn('mr-2 h-4 w-4', value === user.id ? 'opacity-100' : 'opacity-0')} />
+                                {user.name}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </FilterShell>
     );
 });
 
@@ -328,8 +385,12 @@ const ServiceFilter = memo(function ServiceFilter({
     }, [selected, services]);
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+        <FilterShell
+            open={open}
+            onOpenChange={setOpen}
+            title="Service"
+            popoverClassName="w-[320px] p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 max-w-[220px] gap-1 border-dashed">
                     <Layers className="h-3.5 w-3.5 shrink-0 opacity-50" />
                     {selected.length > 0 ? (
@@ -344,112 +405,111 @@ const ServiceFilter = memo(function ServiceFilter({
                     )}
                     <ChevronsUpDown className="ml-auto h-3 w-3 shrink-0 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search services..." className="h-9" />
-                    <CommandList className="max-h-[340px] overflow-y-auto">
-                        <CommandEmpty>
-                            <div className="py-4 text-center">
-                                <Layers className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-                                <p className="text-sm text-muted-foreground">No services found</p>
-                            </div>
-                        </CommandEmpty>
-                        {grouped.parents.map((parent, index) => {
-                            const children = grouped.childrenMap.get(parent.id) || [];
-                            const hasChildren = children.length > 0;
-                            const isExpanded = expandedGroups.has(parent.id);
-                            const parentState = getParentState(parent.id);
-
-                            return (
-                                <CommandGroup key={parent.id}>
-                                    {index > 0 && <Separator className="mb-1" />}
-                                    <CommandItem
-                                        value={parent.name}
-                                        onSelect={() => {
-                                            if (hasChildren) {
-                                                toggleParentChildren(parent.id);
-                                            } else {
-                                                toggle(parent.id);
-                                            }
-                                        }}
-                                        className="cursor-pointer gap-2 py-2"
-                                    >
-                                        <Checkbox
-                                            size="sm"
-                                            checked={parentState === 'all' ? true : parentState === 'some' ? 'indeterminate' : false}
-                                            className="pointer-events-none"
-                                        />
-                                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                                            <span className="truncate text-sm font-medium">{parent.name}</span>
-                                            {hasChildren && (
-                                                <Badge variant="secondary" appearance="light" size="xs" className="shrink-0 tabular-nums">
-                                                    {children.length}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        {hasChildren && (
-                                            <button
-                                                type="button"
-                                                className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleGroup(parent.id);
-                                                }}
-                                            >
-                                                <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')} />
-                                            </button>
-                                        )}
-                                    </CommandItem>
-                                    {hasChildren && isExpanded && (
-                                        <div className="ml-3 border-l border-border/50 pl-1">
-                                            {children.map((child) => (
-                                                <CommandItem
-                                                    key={child.id}
-                                                    value={`${parent.name} ${child.name}`}
-                                                    onSelect={() => toggle(child.id)}
-                                                    className="cursor-pointer gap-2 py-1.5 pl-3"
-                                                >
-                                                    <Checkbox
-                                                        size="sm"
-                                                        checked={selected.includes(child.id)}
-                                                        className="pointer-events-none"
-                                                    />
-                                                    <span className="truncate text-sm">{child.name}</span>
-                                                    {child.country_code && (
-                                                        <Badge variant="outline" size="xs" className="ml-auto shrink-0 font-mono uppercase">
-                                                            {child.country_code}
-                                                        </Badge>
-                                                    )}
-                                                </CommandItem>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CommandGroup>
-                            );
-                        })}
-                    </CommandList>
-                </Command>
-                {selected.length > 0 && (
-                    <>
-                        <Separator />
-                        <div className="flex items-center justify-between px-3 py-2">
-                            <span className="text-xs text-muted-foreground">
-                                {selected.length} selected
-                            </span>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground"
-                                onClick={() => onChange(undefined)}
-                            >
-                                Clear
-                            </Button>
+            }
+        >
+            <Command>
+                <CommandInput placeholder="Search services..." className="h-9" />
+                <CommandList className="max-h-[340px] overflow-y-auto">
+                    <CommandEmpty>
+                        <div className="py-4 text-center">
+                            <Layers className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                            <p className="text-sm text-muted-foreground">No services found</p>
                         </div>
-                    </>
-                )}
-            </PopoverContent>
-        </Popover>
+                    </CommandEmpty>
+                    {grouped.parents.map((parent, index) => {
+                        const children = grouped.childrenMap.get(parent.id) || [];
+                        const hasChildren = children.length > 0;
+                        const isExpanded = expandedGroups.has(parent.id);
+                        const parentState = getParentState(parent.id);
+
+                        return (
+                            <CommandGroup key={parent.id}>
+                                {index > 0 && <Separator className="mb-1" />}
+                                <CommandItem
+                                    value={parent.name}
+                                    onSelect={() => {
+                                        if (hasChildren) {
+                                            toggleParentChildren(parent.id);
+                                        } else {
+                                            toggle(parent.id);
+                                        }
+                                    }}
+                                    className="cursor-pointer gap-2 py-2"
+                                >
+                                    <Checkbox
+                                        size="sm"
+                                        checked={parentState === 'all' ? true : parentState === 'some' ? 'indeterminate' : false}
+                                        className="pointer-events-none"
+                                    />
+                                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                                        <span className="truncate text-sm font-medium">{parent.name}</span>
+                                        {hasChildren && (
+                                            <Badge variant="secondary" appearance="light" size="xs" className="shrink-0 tabular-nums">
+                                                {children.length}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    {hasChildren && (
+                                        <button
+                                            type="button"
+                                            className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleGroup(parent.id);
+                                            }}
+                                        >
+                                            <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')} />
+                                        </button>
+                                    )}
+                                </CommandItem>
+                                {hasChildren && isExpanded && (
+                                    <div className="ml-3 border-l border-border/50 pl-1">
+                                        {children.map((child) => (
+                                            <CommandItem
+                                                key={child.id}
+                                                value={`${parent.name} ${child.name}`}
+                                                onSelect={() => toggle(child.id)}
+                                                className="cursor-pointer gap-2 py-1.5 pl-3"
+                                            >
+                                                <Checkbox
+                                                    size="sm"
+                                                    checked={selected.includes(child.id)}
+                                                    className="pointer-events-none"
+                                                />
+                                                <span className="truncate text-sm">{child.name}</span>
+                                                {child.country_code && (
+                                                    <Badge variant="outline" size="xs" className="ml-auto shrink-0 font-mono uppercase">
+                                                        {child.country_code}
+                                                    </Badge>
+                                                )}
+                                            </CommandItem>
+                                        ))}
+                                    </div>
+                                )}
+                            </CommandGroup>
+                        );
+                    })}
+                </CommandList>
+            </Command>
+            {selected.length > 0 && (
+                <>
+                    <Separator />
+                    <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-xs text-muted-foreground">
+                            {selected.length} selected
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                            onClick={() => onChange(undefined)}
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </>
+            )}
+        </FilterShell>
     );
 });
 
@@ -474,8 +534,12 @@ const SourceFilter = memo(function SourceFilter({
     );
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+        <FilterShell
+            open={open}
+            onOpenChange={setOpen}
+            title="Source"
+            popoverClassName="w-[220px] p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 gap-1 border-dashed">
                     Source
                     {selected.length > 0 && (
@@ -485,29 +549,28 @@ const SourceFilter = memo(function SourceFilter({
                     )}
                     <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search sources..." className="h-9" />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
-                        <CommandEmpty>No sources found.</CommandEmpty>
-                        <CommandGroup>
-                            {sources.map((source) => (
-                                <CommandItem
-                                    key={source.id}
-                                    value={source.name}
-                                    onSelect={() => toggle(source.id)}
-                                    className="cursor-pointer"
-                                >
-                                    <Check className={cn('mr-2 h-4 w-4', selected.includes(source.id) ? 'opacity-100' : 'opacity-0')} />
-                                    {source.name}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+            }
+        >
+            <Command>
+                <CommandInput placeholder="Search sources..." className="h-9" />
+                <CommandList className="max-h-[200px] overflow-y-auto">
+                    <CommandEmpty>No sources found.</CommandEmpty>
+                    <CommandGroup>
+                        {sources.map((source) => (
+                            <CommandItem
+                                key={source.id}
+                                value={source.name}
+                                onSelect={() => toggle(source.id)}
+                                className="cursor-pointer"
+                            >
+                                <Check className={cn('mr-2 h-4 w-4', selected.includes(source.id) ? 'opacity-100' : 'opacity-0')} />
+                                {source.name}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </FilterShell>
     );
 });
 
@@ -667,17 +730,23 @@ const DateRangeFilter = memo(function DateRangeFilter({
         return dateFrom ? `From ${format(new Date(dateFrom), 'MMM d')}` : `Until ${format(new Date(dateTo!), 'MMM d')}`;
     }, [hasValue, activePreset, dateFrom, dateTo]);
 
+    const handleOpenChange = useCallback(
+        (val: boolean) => {
+            setOpen(val);
+            if (!val) {
+                setView(activePreset === 'custom' ? 'custom' : 'presets');
+            }
+        },
+        [activePreset],
+    );
+
     return (
-        <Popover
+        <FilterShell
             open={open}
-            onOpenChange={(val) => {
-                setOpen(val);
-                if (!val) {
-                    setView(activePreset === 'custom' ? 'custom' : 'presets');
-                }
-            }}
-        >
-            <PopoverTrigger asChild>
+            onOpenChange={handleOpenChange}
+            title="Date Range"
+            popoverClassName="w-auto p-0"
+            trigger={
                 <Button variant="outline" size="sm" className="h-8 max-w-[240px] gap-1 border-dashed">
                     <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-50" />
                     {hasValue && triggerContent ? (
@@ -687,101 +756,101 @@ const DateRangeFilter = memo(function DateRangeFilter({
                     )}
                     <ChevronsUpDown className="ml-auto h-3 w-3 shrink-0 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-                {view === 'presets' ? (
-                    <div className="w-[220px]">
-                        <div className="px-3 pb-1 pt-3">
-                            <p className="text-xs font-medium text-muted-foreground">Quick select</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1 px-2 pb-1">
-                            {DATE_PRESETS.map((preset) => (
-                                <button
-                                    key={preset.key}
-                                    type="button"
-                                    className={cn(
-                                        'rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-accent',
-                                        activePreset === preset.key && 'bg-primary/10 font-medium text-primary',
-                                    )}
-                                    onClick={() => handlePresetSelect(preset)}
-                                >
-                                    {preset.label}
-                                </button>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="flex items-center justify-between px-3 py-2">
+            }
+        >
+            {view === 'presets' ? (
+                <div className="w-full md:w-[220px]">
+                    <div className="px-3 pb-1 pt-3">
+                        <p className="text-xs font-medium text-muted-foreground">Quick select</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 px-2 pb-1">
+                        {DATE_PRESETS.map((preset) => (
                             <button
+                                key={preset.key}
                                 type="button"
-                                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                                onClick={() => setView('custom')}
+                                className={cn(
+                                    'rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-accent',
+                                    activePreset === preset.key && 'bg-primary/10 font-medium text-primary',
+                                )}
+                                onClick={() => handlePresetSelect(preset)}
                             >
-                                Custom range...
+                                {preset.label}
                             </button>
-                            {hasValue && (
-                                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={handleClear}>
-                                    Clear
-                                </Button>
-                            )}
-                        </div>
+                        ))}
                     </div>
-                ) : (
-                    <div className="w-auto">
-                        <div className="flex items-center justify-between border-b px-3 py-2">
-                            <p className="text-sm font-medium">Custom range</p>
-                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setView('presets')}>
-                                Presets
-                            </Button>
-                        </div>
-                        {/* Display selected range summary */}
-                        {(dateFrom || dateTo) && (
-                            <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
-                                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-xs">
-                                    {dateFrom ? formatDateDisplay(dateFrom) : '...'}
-                                    <span className="mx-1.5 text-muted-foreground">to</span>
-                                    {dateTo ? formatDateDisplay(dateTo) : '...'}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex divide-x">
-                            <div className="p-3">
-                                <div className="mb-1.5 text-center text-xs font-medium text-muted-foreground">Start date</div>
-                                <Calendar
-                                    mode="single"
-                                    selected={fromDate}
-                                    onSelect={(date) => {
-                                        onChangeDateFrom(date ? format(date, 'yyyy-MM-dd') : undefined);
-                                    }}
-                                    initialFocus
-                                />
-                            </div>
-                            <div className="p-3">
-                                <div className="mb-1.5 text-center text-xs font-medium text-muted-foreground">End date</div>
-                                <Calendar
-                                    mode="single"
-                                    selected={toDate}
-                                    onSelect={(date) => {
-                                        onChangeDateTo(date ? format(date, 'yyyy-MM-dd') : undefined);
-                                    }}
-                                    disabled={(date) => (fromDate ? date < fromDate : false)}
-                                />
-                            </div>
-                        </div>
+                    <Separator />
+                    <div className="flex items-center justify-between px-3 py-2">
+                        <button
+                            type="button"
+                            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                            onClick={() => setView('custom')}
+                        >
+                            Custom range...
+                        </button>
                         {hasValue && (
-                            <>
-                                <Separator />
-                                <div className="flex justify-end px-3 py-2">
-                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={handleClear}>
-                                        Clear dates
-                                    </Button>
-                                </div>
-                            </>
+                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={handleClear}>
+                                Clear
+                            </Button>
                         )}
                     </div>
-                )}
-            </PopoverContent>
-        </Popover>
+                </div>
+            ) : (
+                <div className="w-full md:w-auto">
+                    <div className="flex items-center justify-between border-b px-3 py-2">
+                        <p className="text-sm font-medium">Custom range</p>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setView('presets')}>
+                            Presets
+                        </Button>
+                    </div>
+                    {(dateFrom || dateTo) && (
+                        <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
+                            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs">
+                                {dateFrom ? formatDateDisplay(dateFrom) : '...'}
+                                <span className="mx-1.5 text-muted-foreground">to</span>
+                                {dateTo ? formatDateDisplay(dateTo) : '...'}
+                            </span>
+                        </div>
+                    )}
+                    <div className="flex flex-col items-center divide-y md:flex-row md:items-start md:divide-x md:divide-y-0">
+                        <div className="w-full p-3">
+                            <div className="mb-1.5 text-center text-xs font-medium text-muted-foreground">Start date</div>
+                            <Calendar
+                                mode="single"
+                                selected={fromDate}
+                                onSelect={(date) => {
+                                    onChangeDateFrom(date ? format(date, 'yyyy-MM-dd') : undefined);
+                                }}
+                                className="mx-auto"
+                                initialFocus
+                            />
+                        </div>
+                        <div className="w-full p-3">
+                            <div className="mb-1.5 text-center text-xs font-medium text-muted-foreground">End date</div>
+                            <Calendar
+                                mode="single"
+                                selected={toDate}
+                                onSelect={(date) => {
+                                    onChangeDateTo(date ? format(date, 'yyyy-MM-dd') : undefined);
+                                }}
+                                disabled={(date) => (fromDate ? date < fromDate : false)}
+                                className="mx-auto"
+                            />
+                        </div>
+                    </div>
+                    {hasValue && (
+                        <>
+                            <Separator />
+                            <div className="flex justify-end px-3 py-2">
+                                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={handleClear}>
+                                    Clear dates
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </FilterShell>
     );
 });
 
@@ -821,7 +890,14 @@ const FilterCapsule = memo(function FilterCapsule({
     const isMulti = chip.rawValues.length > 1 && !!onRemoveValue;
 
     return (
-        <div className="group inline-flex h-7 max-w-[420px] items-center overflow-hidden rounded-md transition-shadow hover:shadow-sm">
+        <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="group inline-flex h-7 max-w-[420px] items-center overflow-hidden rounded-md transition-shadow hover:shadow-sm"
+        >
             {/* Label zone */}
             <Badge
                 variant={chip.variant}
@@ -910,7 +986,7 @@ const FilterCapsule = memo(function FilterCapsule({
             >
                 <X className="h-3.5 w-3.5" />
             </Badge>
-        </div>
+        </motion.div>
     );
 });
 
@@ -1029,6 +1105,18 @@ function useRemoveFilterValue(
 ) {
     return useCallback(
         (chip: FilterChipData, rawValue: string | number) => {
+            // Date chips are special: one chip spans date_from + date_to
+            if (chip.key === 'date_from') {
+                const idx = chip.rawValues.indexOf(rawValue);
+                // First rawValue = date_from, second = date_to
+                if (idx === 0) {
+                    onClearFilter('date_from');
+                } else {
+                    onClearFilter('date_to');
+                }
+                return;
+            }
+
             const remaining = chip.rawValues.filter((v) => v !== rawValue);
             if (remaining.length === 0) {
                 onClearFilter(chip.key);
@@ -1054,14 +1142,16 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
 
     return (
         <div className="hidden flex-wrap items-center gap-2 md:flex">
-            {chips.map((chip) => (
-                <FilterCapsule
-                    key={chip.key}
-                    chip={chip}
-                    onClear={() => onClearFilter(chip.key)}
-                    onRemoveValue={chip.rawValues.length > 1 ? (val) => onRemoveValue(chip, val) : undefined}
-                />
-            ))}
+            <AnimatePresence mode="popLayout">
+                {chips.map((chip) => (
+                    <FilterCapsule
+                        key={chip.key}
+                        chip={chip}
+                        onClear={() => onClearFilter(chip.key)}
+                        onRemoveValue={chip.rawValues.length > 1 ? (val) => onRemoveValue(chip, val) : undefined}
+                    />
+                ))}
+            </AnimatePresence>
         </div>
     );
 });
@@ -1209,37 +1299,54 @@ export default memo(function LeadFilterBar({ filters, activeFilterCount, onSetFi
     );
 
     return (
-        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
-            <StatusFilter value={filters.status} onChange={handleStatusChange} />
-            <PriorityFilter value={filters.priority} onChange={handlePriorityChange} />
-            {isSuperAdmin && (
-                <AssignedToFilter
-                    value={filters.assigned_to}
-                    selectedName={assignedToName}
-                    onChange={handleAssignedToChange}
+        <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="overflow-hidden border-b"
+        >
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+                <StatusFilter value={filters.status} onChange={handleStatusChange} />
+                <PriorityFilter value={filters.priority} onChange={handlePriorityChange} />
+                {isSuperAdmin && (
+                    <AssignedToFilter
+                        value={filters.assigned_to}
+                        selectedName={assignedToName}
+                        onChange={handleAssignedToChange}
+                    />
+                )}
+                <ServiceFilter value={filters.service_id} onChange={handleServiceChange} />
+                <SourceFilter value={filters.source_id} onChange={handleSourceChange} />
+                <DateRangeFilter
+                    dateFrom={filters.date_from}
+                    dateTo={filters.date_to}
+                    onChangeDateFrom={handleDateFromChange}
+                    onChangeDateTo={handleDateToChange}
                 />
-            )}
-            <ServiceFilter value={filters.service_id} onChange={handleServiceChange} />
-            <SourceFilter value={filters.source_id} onChange={handleSourceChange} />
-            <DateRangeFilter
-                dateFrom={filters.date_from}
-                dateTo={filters.date_to}
-                onChangeDateFrom={handleDateFromChange}
-                onChangeDateTo={handleDateToChange}
-            />
 
-            {/* Desktop: inline capsule chips */}
-            <ActiveFilterChips chips={chips} onClearFilter={onClearFilter} onRemoveValue={handleRemoveValue} />
+                {/* Desktop: inline capsule chips */}
+                <ActiveFilterChips chips={chips} onClearFilter={onClearFilter} onRemoveValue={handleRemoveValue} />
 
-            {/* Mobile: drawer trigger + bottom sheet */}
-            <MobileFilterDrawer chips={chips} onClearFilter={onClearFilter} onRemoveValue={handleRemoveValue} onClearAll={onClearAll} />
+                {/* Mobile: drawer trigger + bottom sheet */}
+                <MobileFilterDrawer chips={chips} onClearFilter={onClearFilter} onRemoveValue={handleRemoveValue} onClearAll={onClearAll} />
 
-            {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" className="hidden h-8 text-muted-foreground md:inline-flex" onClick={onClearAll}>
-                    Clear all
-                    <X className="ml-1 h-3 w-3" />
-                </Button>
-            )}
-        </div>
+                <AnimatePresence>
+                    {activeFilterCount > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.15 }}
+                        >
+                            <Button variant="ghost" size="sm" className="hidden h-8 text-muted-foreground md:inline-flex" onClick={onClearAll}>
+                                Clear all
+                                <X className="ml-1 h-3 w-3" />
+                            </Button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </motion.div>
     );
 });

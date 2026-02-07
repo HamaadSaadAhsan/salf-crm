@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 import type { Lead, LeadActivity } from '@/types/lead';
 import { Head, router, usePage } from '@inertiajs/react';
+import { AnimatePresence } from 'motion/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import OptimizedLeadRow from './components/LeadRow';
 import LeadFilterBar from './components/LeadFilterBar';
@@ -510,15 +511,17 @@ export default function LeadsInterface() {
                 </header>
 
                 {/* Filter Bar */}
-                {showFilterBar && (
-                    <LeadFilterBar
-                        filters={filters}
-                        activeFilterCount={activeFilterCount}
-                        onSetFilter={setFilter}
-                        onClearFilter={clearFilter}
-                        onClearAll={clearAll}
-                    />
-                )}
+                <AnimatePresence>
+                    {showFilterBar && (
+                        <LeadFilterBar
+                            filters={filters}
+                            activeFilterCount={activeFilterCount}
+                            onSetFilter={setFilter}
+                            onClearFilter={clearFilter}
+                            onClearAll={clearAll}
+                        />
+                    )}
+                </AnimatePresence>
 
                 <div className="flex flex-1">
                     {/* Main Content */}
