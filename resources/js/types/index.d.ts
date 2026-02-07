@@ -1,5 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
+import { Country } from '@/hooks/useLocation';
+import { LeadSource, Service, Status } from '@/types/lead';
 
 export interface Auth {
     user: User;
@@ -37,6 +39,10 @@ export interface SharedData {
     auth: Auth;
     impersonation: Impersonation;
     sidebarOpen: boolean;
+    countries: Country[];
+    statuses: Array<{ id: number; name: string; order: number; color: string }>;
+    services: Service[];
+    sources: LeadSource[];
     [key: string]: unknown;
 }
 

@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Events\LeadAssigned;
+use App\Events\LeadRequalified;
 use App\Listeners\SendLeadAssignedNotification;
+use App\Listeners\SendLeadRequalifiedNotification;
 use App\Models\CallSession;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -45,5 +47,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners for lead notifications
         Event::listen(LeadAssigned::class, SendLeadAssignedNotification::class);
+        Event::listen(LeadRequalified::class, SendLeadRequalifiedNotification::class);
     }
 }

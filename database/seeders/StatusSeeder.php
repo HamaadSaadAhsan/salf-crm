@@ -29,29 +29,39 @@ class StatusSeeder extends Seeder
                 'order' => 3,
             ],
             [
+                'name' => 'assigned_to_advisor',
+                'color' => '#6366F1', // Indigo
+                'order' => 4,
+            ],
+            [
+                'name' => 'requalify',
+                'color' => '#F97316', // Orange
+                'order' => 5,
+            ],
+            [
                 'name' => 'proposal',
                 'color' => '#06B6D4', // Cyan
-                'order' => 4,
+                'order' => 6,
             ],
             [
                 'name' => 'won',
                 'color' => '#10B981', // Green
-                'order' => 5,
+                'order' => 7,
             ],
             [
                 'name' => 'lost',
                 'color' => '#EF4444', // Red
-                'order' => 6,
+                'order' => 8,
             ],
             [
                 'name' => 'nurturing',
                 'color' => '#84CC16', // Lime
-                'order' => 7,
+                'order' => 9,
             ],
         ];
 
         foreach ($statuses as $status) {
-            Status::firstOrCreate(
+            Status::updateOrCreate(
                 ['name' => $status['name']],
                 $status
             );

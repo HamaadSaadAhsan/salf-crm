@@ -10,6 +10,7 @@ import { usePage } from '@inertiajs/react';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
 import { useTaskReminderListener } from '@/hooks/useTaskReminderListener';
 import { useLeadAssignmentListener } from '@/hooks/useLeadAssignmentListener';
+import { useLeadRequalifiedListener } from '@/hooks/useLeadRequalifiedListener';
 import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
 import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
@@ -61,6 +62,12 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
 
     // Enable real-time lead assignment listening via WebSocket
     useLeadAssignmentListener({
+        userId: auth.user.id,
+        enabled: true,
+    });
+
+    // Enable real-time lead requalification listening via WebSocket
+    useLeadRequalifiedListener({
         userId: auth.user.id,
         enabled: true,
     });

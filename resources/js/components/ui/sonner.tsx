@@ -17,7 +17,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             'group toast pointer-events-auto group-[.toaster]:bg-background group-[.toaster]:text-foreground! group-[.toaster]:border-border group-[.toaster]:shadow-lg has-[[role=alert]]:border-0! has-[[role=alert]]:shadow-none! has-[[role=alert]]:bg-transparent!',
           description: 'group-[.toast]:text-muted-foreground',
           actionButton:
-            'group-[.toast]:rounded-md! group-[.toast]:bg-primary group-[.toast]:text-primary-foreground! pointer-events-auto',
+            'group-[.toast]:rounded-md! group-[.toast]:bg-primary group-[.toast]:text-primary-foreground! group-[.toast[data-type=warning]]:bg-amber-600 group-[.toast[data-type=warning]]:text-white! group-[.toast[data-type=error]]:bg-destructive group-[.toast[data-type=error]]:text-white! group-[.toast[data-type=success]]:bg-emerald-600 group-[.toast[data-type=success]]:text-white! pointer-events-auto',
           cancelButton:
             'group-[.toast]:rounded-md! group-[.toast]:bg-secondary group-[.toast]:text-secondary-foreground! pointer-events-auto',
           closeButton: 'pointer-events-auto',

@@ -2,6 +2,7 @@ import { LeadsAPI } from '@/lib/api/leads';
 import axios from '@/lib/axios';
 import { Lead, LeadActivity, LeadFilters, Meta } from '@/types/lead';
 import { ApiResponse } from '@/types/user';
+import { router } from '@inertiajs/react';
 import { InfiniteQueryObserverBaseResult } from '@tanstack/query-core';
 import { keepPreviousData, QueryKey, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
@@ -470,9 +471,9 @@ export function useOptimisticLeadUpdate() {
             void queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
             void queryClient.invalidateQueries({ queryKey: ['leads'] });
 
-            // Refresh Inertia page data to update the table
+            // Refresh Inertia page data to update the table and lead detail
             router.reload({
-                only: ['leads', 'meta'],
+                only: ['leads', 'lead', 'meta'],
             });
         },
     });

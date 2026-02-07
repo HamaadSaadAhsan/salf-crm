@@ -29,3 +29,10 @@ Schedule::command('leads:warm-cache --stats')
     ->name('warm-leads-stats-cache')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Warm up dashboard caches every 10 minutes
+Schedule::command('cache:warm-dashboards')
+    ->everyTenMinutes()
+    ->name('warm-dashboard-caches')
+    ->withoutOverlapping()
+    ->runInBackground();

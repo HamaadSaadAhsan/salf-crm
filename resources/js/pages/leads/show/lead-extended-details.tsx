@@ -1,4 +1,4 @@
-import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X, ChevronsUpDown, Check, Globe } from 'lucide-react';
+import { Mail, Calendar, Tag, User, Link2, Tags, Briefcase, MapPin, DollarSign, Flag, FileText, Clock, Activity, Plus, X, ChevronsUpDown, Check, Globe, ArrowRight, XCircle, RotateCcw } from 'lucide-react';
 import { InlineEdit } from '@/components/inline-edit';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { router, usePage } from '@inertiajs/react';
@@ -16,6 +16,11 @@ import type { CustomFields, Lead, LeadStatus } from '@/types/lead';
 import { ResponsiveSelect } from '@/components/responsive-select';
 import { useCountryOptions, useCityOptions } from '@/hooks/useLocation';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { update as updateLead, updateAdvisorStage } from '@/actions/App/Http/Controllers/Leads/LeadController';
+import { toast } from 'sonner';
 
 type TagValue = string | { label: string; value: string; color?: string };
 
@@ -176,6 +181,237 @@ function CitySelect({
 // Statuses allowed when lead is assigned to an advisor
 const ADVISOR_ALLOWED_STATUSES = ['requalify', 'won', 'lost'];
 
+// Advisor stage transition map
+const ADVISOR_STAGE_TRANSITIONS: Record<string, { next: string; label: string } | null> = {
+    new: { next: 'contacted', label: 'Mark Contacted' },
+    contacted: { next: 'meeting', label: 'Set Meeting' },
+    meeting: { next: 'contract_signed', label: 'Contract Signed' },
+    contract_signed: { next: 'initial_payment', label: 'Initial Payment' },
+    initial_payment: { next: 'won', label: 'Mark Won' },
+};
+
+const ADVISOR_STAGE_LABELS: Record<string, string> = {
+    new: 'New',
+    contacted: 'Contacted',
+    meeting: 'Meeting',
+    contract_signed: 'Contract Signed',
+    initial_payment: 'Initial Payment',
+    won: 'Won',
+    lost: 'Lost',
+};
+
+function AdvisorStageProgression({ lead, onStageUpdated }: { lead: Lead; onStageUpdated: () => void }) {
+    const { auth } = usePage<SharedData>().props;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showLostDialog, setShowLostDialog] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [showRequalifyDialog, setShowRequalifyDialog] = useState(false);
+    const [lostReason, setLostReason] = useState('');
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [requalifyReason, setRequalifyReason] = useState('');
+
+    const currentStage = lead.advisor_stage ?? 'new';
+    const isTerminal = currentStage === 'won' || currentStage === 'lost';
+    const transition = ADVISOR_STAGE_TRANSITIONS[currentStage];
+
+    // Only assigned advisor or admin can progress
+    const isAdmin = auth.user.roles?.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r.name));
+    const isAssignedAdvisor = auth.user.id === lead.assigned_to?.data?.id;
+    const canProgress = isAdmin || isAssignedAdvisor;
+
+    const submitStageChange = async (stage: string, extra: Record<string, unknown> = {}) => {
+        setIsSubmitting(true);
+        try {
+            await axios.put(updateAdvisorStage.url(lead.id), { stage, ...extra });
+            toast.success(`Stage updated to ${ADVISOR_STAGE_LABELS[stage] ?? stage}`);
+            onStageUpdated();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update stage';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error(message);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleNextStage = () => {
+        if (!transition) return;
+
+        if (transition.next === 'initial_payment') {
+            setShowPaymentDialog(true);
+            return;
+        }
+
+        submitStageChange(transition.next);
+    };
+
+    const handleMarkLost = () => {
+        setShowLostDialog(true);
+    };
+
+    const handleRequalify = () => {
+        setShowRequalifyDialog(true);
+    };
+
+    const confirmRequalify = async () => {
+        if (!requalifyReason.trim()) return;
+        setIsSubmitting(true);
+        try {
+            await axios.put(updateLead.url(lead.id), {
+                inquiry_status: 'requalify',
+                requalify_reason: requalifyReason,
+            });
+            toast.success('Lead sent back for requalification');
+            onStageUpdated();
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to requalify lead');
+            }
+        } finally {
+            setIsSubmitting(false);
+            setShowRequalifyDialog(false);
+            setRequalifyReason('');
+        }
+    };
+
+    const confirmLost = () => {
+        if (!lostReason.trim()) return;
+        submitStageChange('lost', { reason: lostReason });
+        setShowLostDialog(false);
+        setLostReason('');
+    };
+
+    const confirmPayment = () => {
+        if (!paymentAmount || Number(paymentAmount) < 0) return;
+        submitStageChange('initial_payment', { initial_payment_amount: Number(paymentAmount) });
+        setShowPaymentDialog(false);
+        setPaymentAmount('');
+    };
+
+    return (
+        <>
+            <div className="flex items-start gap-2 text-sm">
+                <Flag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground">Advisor Stage</span>
+                    <Badge
+                        variant={isTerminal ? (currentStage === 'won' ? 'default' : 'destructive') : 'secondary'}
+                        className="w-fit"
+                    >
+                        {ADVISOR_STAGE_LABELS[currentStage] ?? currentStage}
+                    </Badge>
+                    {canProgress && !isTerminal && transition && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 gap-1 text-xs"
+                                onClick={handleNextStage}
+                                disabled={isSubmitting}
+                            >
+                                <ArrowRight className="h-3 w-3" />
+                                {transition.label}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 gap-1 text-xs"
+                                onClick={handleRequalify}
+                                disabled={isSubmitting}
+                            >
+                                <RotateCcw className="h-3 w-3" />
+                                Requalify
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                                onClick={handleMarkLost}
+                                disabled={isSubmitting}
+                            >
+                                <XCircle className="h-3 w-3" />
+                                Lost
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Lost Reason Dialog */}
+            <Dialog open={showLostDialog} onOpenChange={setShowLostDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Mark Lead as Lost</DialogTitle>
+                        <DialogDescription>Please provide a reason for marking this lead as lost.</DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        placeholder="Enter reason..."
+                        value={lostReason}
+                        onChange={(e) => setLostReason(e.target.value)}
+                        rows={3}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowLostDialog(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmLost} disabled={!lostReason.trim() || isSubmitting}>
+                            Confirm Lost
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Initial Payment Dialog */}
+            <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Initial Payment</DialogTitle>
+                        <DialogDescription>Enter the initial payment amount received from the client.</DialogDescription>
+                    </DialogHeader>
+                    <Input
+                        type="number"
+                        placeholder="Amount"
+                        min={0}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+                        <Button onClick={confirmPayment} disabled={!paymentAmount || Number(paymentAmount) < 0 || isSubmitting}>
+                            Confirm Payment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Requalify Reason Dialog */}
+            <Dialog open={showRequalifyDialog} onOpenChange={setShowRequalifyDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Requalify Lead</DialogTitle>
+                        <DialogDescription>Please provide a reason for sending this lead back for requalification.</DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        placeholder="Enter reason..."
+                        value={requalifyReason}
+                        onChange={(e) => setRequalifyReason(e.target.value)}
+                        rows={3}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowRequalifyDialog(false)}>Cancel</Button>
+                        <Button onClick={confirmRequalify} disabled={!requalifyReason.trim() || isSubmitting}>
+                            Confirm Requalify
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
 export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLeadUpdated?: () => void }) {
     const [model, setModel] = useState<Lead>(lead);
     const [tags, setTags] = useState<TagValue[]>(lead.tags ?? []);
@@ -199,11 +435,12 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     // Check if lead is assigned to an advisor (CROs cannot edit details)
     const isAssignedToAdvisor = model.inquiry_status === 'assigned_to_advisor';
 
-    // Check if current user is a CRO (restricted role)
+    // Check user roles
     const { auth } = usePage<SharedData>().props;
     const currentUserRoles = auth.user.roles?.map((r) => r.name) ?? [];
-    const isCRO = currentUserRoles.some((r) => ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'].includes(r))
-        && !currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
+    const isAdmin = currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
+    const isCRO = !isAdmin && currentUserRoles.some((r) => ['support-agent', 'senior-support-agent'].includes(r));
+    const isAdvisor = !isAdmin && currentUserRoles.some((r) => ['sales-rep', 'senior-sales-rep'].includes(r));
 
     // CROs cannot edit lead details when assigned to advisor
     const isReadOnly = isCRO && isAssignedToAdvisor;
@@ -314,8 +551,13 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             preserveScroll: true,
             preserveState: true,
             only: ['lead'],
-            onSuccess: () => {
-                setModel(prev => ({ ...prev, ...patch }));
+            onSuccess: (page) => {
+                const leadData = (page.props as { lead?: Lead }).lead;
+                if (leadData) {
+                    setModel(leadData);
+                } else {
+                    setModel(prev => ({ ...prev, ...patch }));
+                }
             },
         });
     };
@@ -497,13 +739,27 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
         });
     };
 
-    // Get status options - filter based on current state
+    // CRO-specific statuses
+    const CRO_NEW_STATUSES = ['new', 'contacted', 'qualified', 'nurturing', 'lost'];
+    const CRO_REQUALIFY_STATUSES = ['requalify', 'contacted', 'qualified', 'nurturing', 'lost'];
+
+    // Get status options - filter based on role and current state
     const getStatusOptions = () => {
         let filtered = statuses.filter((s) => s.value !== 'assigned_to_advisor');
 
-        // When assigned to advisor, only allow requalify, won, lost
-        if (isAssignedToAdvisor) {
-            filtered = filtered.filter((s) => ADVISOR_ALLOWED_STATUSES.includes(s.value));
+        if (isCRO) {
+            if (isAssignedToAdvisor) {
+                // CRO can requalify, mark won, or lost when lead is with advisor
+                filtered = filtered.filter((s) => ADVISOR_ALLOWED_STATUSES.includes(s.value));
+            } else if (model.inquiry_status === 'requalify') {
+                // Requalified leads skip 'new' — CRO re-processes from requalify onward
+                filtered = filtered.filter((s) => CRO_REQUALIFY_STATUSES.includes(s.value));
+            } else {
+                filtered = filtered.filter((s) => CRO_NEW_STATUSES.includes(s.value));
+            }
+        } else if (isAdvisor && isAssignedToAdvisor) {
+            // Advisors use stage progression, not status dropdown
+            filtered = [];
         }
 
         return filtered;
@@ -539,11 +795,14 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                             <Tag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Status</span>
-                                {statuses.length > 0 ? (
+                                {isAssignedToAdvisor && isAdvisor ? (
+                                    <span className="text-sm capitalize">Assigned to Advisor</span>
+                                ) : statuses.length > 0 && getStatusOptions().length > 0 ? (
                                     <InlineEdit
                                         type="select"
                                         options={getStatusOptions()}
                                         value={model.inquiry_status}
+                                        format={(v) => v.charAt(0).toUpperCase() + v.slice(1).replace(/_/g, ' ')}
                                         onSave={(v) => save({ inquiry_status: v as LeadStatus })}
                                     />
                                 ) : (
@@ -605,17 +864,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
 
                         {/* Advisor Stage (when assigned to advisor) */}
                         {isAssignedToAdvisor && (
-                            <div className="flex items-start gap-2 text-sm">
-                                <Flag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                <div className="flex flex-col">
-                                    <span className="text-xs text-muted-foreground">Advisor Stage</span>
-                                    <span className="text-sm font-medium">
-                                        {model.advisor_stage
-                                            ? model.advisor_stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-                                            : 'New'}
-                                    </span>
-                                </div>
-                            </div>
+                            <AdvisorStageProgression lead={model} onStageUpdated={reloadLead} />
                         )}
 
                         {/* Priority */}
@@ -726,6 +975,28 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                 )}
                             </div>
                         </div>
+
+                        {/* Qualified By */}
+                        {(model.qualified_by?.data || isAssignedToAdvisor) && (
+                            <div className="flex items-start gap-2 text-sm">
+                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-muted-foreground">Qualified By</span>
+                                    {model.qualified_by?.data ? (
+                                        <>
+                                            <span className="font-medium">{model.qualified_by.data.name}</span>
+                                            {model.qualified_at && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatDistanceToNow(parseISO(model.qualified_at), { addSuffix: true })}
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="text-muted-foreground">Not recorded</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Owner */}
                         {model.owner && (

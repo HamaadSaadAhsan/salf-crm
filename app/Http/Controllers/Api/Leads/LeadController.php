@@ -814,6 +814,9 @@ class LeadController extends Controller
 
             DB::beginTransaction();
 
+            // Track changed fields for tiered cache invalidation
+            $changedFields = array_keys(collect($validated)->except(['_method', '_token'])->toArray());
+
             // Update the lead with validated data
             $updateData = collect($validated)->except(['service', 'lead_source', 'assigned_to'])->toArray();
             $lead->update($updateData);
@@ -821,17 +824,20 @@ class LeadController extends Controller
             // Update relations if provided
             if (isset($validated['service'])) {
                 $lead->service()->associate($validated['service']['id']);
+                $changedFields[] = 'service_id';
             }
             if (isset($validated['lead_source'])) {
                 $lead->source()->associate($validated['lead_source']['id']);
+                $changedFields[] = 'lead_source_id';
             }
             if (isset($validated['assigned_to'])) {
                 $lead->assignedTo()->associate($validated['assigned_to']['id']);
+                $changedFields[] = 'assigned_to';
             }
             $lead->save();
 
-            // Clear related caches
-            $this->cacheService->invalidateLeadCache($lead);
+            // Clear related caches (tiered based on what actually changed)
+            $this->cacheService->invalidateLeadCache($lead, $changedFields);
 
             DB::commit();
 

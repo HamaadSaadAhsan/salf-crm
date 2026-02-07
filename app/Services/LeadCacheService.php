@@ -147,17 +147,58 @@ class LeadCacheService
 
     // ... rest of your existing methods ...
 
-    public function invalidateLeadCache(Lead $lead): void
-    {
-        $tags = [
-            'leads',
-            'leads_list',
-            "lead:{$lead->id}",
-            'leads_stats',
-        ];
+    /** Fields that affect which filtered lists a lead appears in. */
+    private const LIST_FIELDS = [
+        'inquiry_status',
+        'priority',
+        'assigned_to',
+        'service_id',
+        'lead_source_id',
+        'city',
+        'country',
+        'advisor_stage',
+    ];
 
-        cache()->tags($tags)->flush();
+    /** Fields that affect dashboard stats / aggregate counts. */
+    private const STATS_FIELDS = [
+        'inquiry_status',
+        'priority',
+        'assigned_to',
+    ];
+
+    /**
+     * Invalidate lead cache with tiered strategy based on changed fields.
+     *
+     * Tier 1 (detail only): name, email, tags, notes, custom_fields, etc.
+     * Tier 2 (detail + lists): status, priority, assigned_to, service, city, country
+     * Tier 3 (detail + lists + stats): inquiry_status, priority, assigned_to
+     *
+     * @param  array<string>  $changedFields  Dirty field names. Empty = flush all (legacy behaviour).
+     */
+    public function invalidateLeadCache(Lead $lead, array $changedFields = []): void
+    {
+        // Always invalidate the specific lead's detail cache
+        cache()->tags(["lead:{$lead->id}"])->flush();
         $this->invalidateSpecificKeys($lead);
+
+        // When no fields specified, flush everything (backward-compatible)
+        if (empty($changedFields)) {
+            cache()->tags(['leads', 'leads_list'])->flush();
+            cache()->tags(['leads_stats'])->flush();
+
+            return;
+        }
+
+        $affectsList = ! empty(array_intersect($changedFields, self::LIST_FIELDS));
+        $affectsStats = ! empty(array_intersect($changedFields, self::STATS_FIELDS));
+
+        if ($affectsList) {
+            cache()->tags(['leads', 'leads_list'])->flush();
+        }
+
+        if ($affectsStats) {
+            cache()->tags(['leads_stats'])->flush();
+        }
     }
 
     public static function has(string $key): bool

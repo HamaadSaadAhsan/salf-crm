@@ -1,7 +1,9 @@
 'use client';
 
-import axios from 'axios';
+import { SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
 export interface Country {
     id: number;
@@ -37,18 +39,12 @@ export interface City {
 }
 
 /**
- * Fetch all countries from the API
+ * Get all countries from Inertia shared props (once props)
  */
 export function useCountries() {
-    return useQuery({
-        queryKey: ['countries'],
-        queryFn: async () => {
-            const response = await axios.get('/api/countries');
-            return response.data.countries as Country[];
-        },
-        staleTime: 30 * 60 * 1000, // 30 minutes - countries rarely change
-        gcTime: 60 * 60 * 1000, // 1 hour
-    });
+    const { countries } = usePage<SharedData>().props;
+
+    return { data: countries || [], isLoading: false, error: null };
 }
 
 /**
@@ -72,14 +68,13 @@ export function useCities(countryCode?: string | null) {
  * Get country options formatted for select components
  */
 export function useCountryOptions() {
-    const { data: countries, isLoading, error } = useCountries();
-
+    const { countries } = usePage<SharedData>().props;
     const options = (countries || []).map((country) => ({
         value: country.code,
         label: country.name,
     }));
 
-    return { options, isLoading, error };
+    return { options, isLoading: false, error: null };
 }
 
 /**

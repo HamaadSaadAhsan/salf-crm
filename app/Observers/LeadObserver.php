@@ -49,29 +49,25 @@ class LeadObserver
     {
         $changes = $lead->getDirty();
         $original = $lead->getOriginal();
-        $userId = Auth::id() ?? $lead->assigned_to ?? $lead->created_by;
-
-        // Skip if we don't have a valid user
-        if (! $userId) {
-            return;
-        }
+        $userId = Auth::id();
+        $isSystem = ! $userId;
 
         foreach ($changes as $field => $newValue) {
             $oldValue = $original[$field] ?? null;
 
             // Skip certain fields that shouldn't create activities
-            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count'])) {
+            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count', 'advisor_stage'])) {
                 continue;
             }
 
-            $this->createFieldChangeActivity($lead, $field, $oldValue, $newValue, $userId);
+            $this->createFieldChangeActivity($lead, $field, $oldValue, $newValue, $userId, $isSystem);
         }
     }
 
     /**
      * Create activity for field changes
      */
-    private function createFieldChangeActivity(Lead $lead, string $field, $oldValue, $newValue, int $userId): void
+    private function createFieldChangeActivity(Lead $lead, string $field, $oldValue, $newValue, ?int $userId, bool $isSystem = false): void
     {
         $fieldName = $this->getFieldDisplayName($field);
 
@@ -120,7 +116,7 @@ class LeadObserver
     /**
      * Create activity for tags changes
      */
-    private function createTagsChangeActivity(Lead $lead, $oldTags, $newTags, int $userId): void
+    private function createTagsChangeActivity(Lead $lead, $oldTags, $newTags, ?int $userId): void
     {
         // Parse tags if they're JSON strings
         $oldTagsArray = is_string($oldTags) ? json_decode($oldTags, true) : $oldTags;
@@ -220,7 +216,7 @@ class LeadObserver
     /**
      * Create status change activity
      */
-    private function createStatusChangeActivity(Lead $lead, $oldStatus, $newStatus, int $userId): void
+    private function createStatusChangeActivity(Lead $lead, $oldStatus, $newStatus, ?int $userId): void
     {
         $statusOptions = Lead::getStatusOptions();
         $oldStatusLabel = $statusOptions[$oldStatus] ?? $oldStatus;
@@ -252,7 +248,7 @@ class LeadObserver
     /**
      * Create assignment change activity
      */
-    private function createAssignmentChangeActivity(Lead $lead, $oldUserId, $newUserId, int $userId): void
+    private function createAssignmentChangeActivity(Lead $lead, $oldUserId, $newUserId, ?int $userId): void
     {
         $oldUser = $oldUserId ? \App\Models\User::find($oldUserId) : null;
         $newUser = $newUserId ? \App\Models\User::find($newUserId) : null;

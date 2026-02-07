@@ -29,6 +29,8 @@ export interface Lead {
     status: { data: Status };
     assigned_to?: { data: User };
     created_by?: User;
+    qualified_by?: { data: User };
+    qualified_at?: string;
     owner?: User;
     days_since_created: number;
     is_hot_lead: boolean;
@@ -57,7 +59,7 @@ export type Status = {
     name: LeadStatus;
 };
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'proposal' | 'won' | 'lost' | 'nurturing' | 'converted';
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'requalify' | 'proposal' | 'won' | 'lost' | 'nurturing' | 'converted';
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 

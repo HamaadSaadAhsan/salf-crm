@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::resource('leads', LeadController::class)->names('leads');
+    Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
     Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
     Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
 
@@ -138,6 +139,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
         Route::post('/{id}/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
         Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+    });
+
+    // Saved Filters
+    Route::prefix('api')->group(function () {
+        Route::apiResource('saved-filters', \App\Http\Controllers\Api\SavedFilterController::class)
+            ->names('api.saved-filters');
     });
 
     // Call Sessions

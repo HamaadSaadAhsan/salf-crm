@@ -1,7 +1,9 @@
 // hooks/useStatus.ts
 import { authApi } from '@/lib/api'; // adjust import path as needed
+import { SharedData } from '@/types';
 import { Status } from '@/types/lead';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePage } from '@inertiajs/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Query keys for better organization
 export const statusKeys = {
@@ -12,27 +14,14 @@ export const statusKeys = {
     detail: (id: number) => [...statusKeys.details(), id] as const,
 };
 
-export const useStatuses = (filters?: { enabled?: boolean; staleTime?: number; gcTime?: number }) => {
-    const query = useQuery({
-        queryKey: statusKeys.lists(),
-        queryFn: async () => await authApi.getStatuses(filters),
-        staleTime: 2 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
-        placeholderData: keepPreviousData,
-        retry: (failureCount, error: any) => {
-            if (error?.status >= 400 && error?.status < 500) return false;
-            return failureCount < 2;
-        },
-        enabled: !!authApi,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    });
+export const useStatuses = () => {
+    const { statuses } = usePage<SharedData>().props;
 
     return {
-        statuses: query.data?.data || [],
-        loading: query.isLoading,
-        error: query.error,
-        refetch: query.refetch,
+        statuses: statuses || [],
+        loading: false,
+        error: null,
+        refetch: () => {},
     };
 };
 

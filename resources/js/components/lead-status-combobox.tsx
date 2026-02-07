@@ -5,11 +5,28 @@ import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { useOptimisticLeadUpdate } from '@/hooks/useLead';
 import { useStatuses } from '@/lib/useStatus';
 import { cn } from '@/lib/utils';
+import { SharedData } from '@/types';
 import { Lead, LeadStatus, Status } from '@/types/lead';
+import { usePage } from '@inertiajs/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CommandList } from 'cmdk';
-import { AlertCircle, Check, CheckCircle2, ChevronsUpDown, Clock, FileText, Phone, Trophy, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { AlertCircle, Check, CheckCircle2, ChevronsUpDown, Clock, FileText, Phone, RefreshCw, Trophy, UserCheck, XCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+/**
+ * CRO status transition map — mirrors backend rules in LeadController::update()
+ */
+const croTransitions: Record<string, string[]> = {
+    new: ['contacted', 'nurturing', 'lost'],
+    contacted: ['qualified', 'nurturing', 'lost'],
+    qualified: ['assigned_to_advisor', 'nurturing', 'lost'],
+    requalify: ['contacted', 'qualified', 'nurturing', 'lost'],
+    nurturing: ['contacted', 'lost'],
+    assigned_to_advisor: ['requalify', 'won', 'lost'],
+};
+
+const restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
+const adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
 
 type Props = {
     lead: Lead | null | undefined;
@@ -18,9 +35,29 @@ type Props = {
 function LeadStatusCombobox({ lead }: Props) {
     const portalContainer = usePortalContainer();
     const [open, setOpen] = useState(false);
-    const { statuses, loading: _loading, error: _error } = useStatuses();
+    const { statuses } = useStatuses();
     const { mutate: updateLead } = useOptimisticLeadUpdate();
     const queryClient = useQueryClient();
+    const { auth } = usePage<SharedData>().props;
+
+    const allowedStatuses = useMemo(() => {
+        if (!lead || !statuses.length) return statuses;
+
+        const userRoles = (auth.user?.roles ?? []).map((r) => r.name);
+        const isCRO = userRoles.some((r) => restrictedRoles.includes(r)) && !userRoles.some((r) => adminRoles.includes(r));
+        const isAdmin = userRoles.some((r) => adminRoles.includes(r)) || auth.isSuperAdmin;
+
+        // Admins see all statuses
+        if (isAdmin) return statuses;
+
+        // CROs see only allowed transitions from current status
+        if (isCRO) {
+            const allowed = croTransitions[lead.inquiry_status] ?? [];
+            return statuses.filter((s) => allowed.includes(s.name));
+        }
+
+        return statuses;
+    }, [lead, statuses, auth]);
 
     const handleStatusChange = (status: string) => {
         // Optimistically update the lead cache
@@ -29,10 +66,9 @@ function LeadStatusCombobox({ lead }: Props) {
             inquiry_status: status,
         }));
 
-        // onServiceChange(service);
         updateLead({ id: lead?.id || '', updates: { inquiry_status: status as LeadStatus } });
 
-        setOpen(false); // Close the popover after selection
+        setOpen(false);
     };
 
     if (!lead) {
@@ -64,6 +100,18 @@ function LeadStatusCombobox({ lead }: Props) {
                                 <>
                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
                                     <span className="text-sm font-medium text-green-500">Qualified</span>
+                                </>
+                            )}
+                            {lead.inquiry_status === 'assigned_to_advisor' && (
+                                <>
+                                    <UserCheck className="h-4 w-4 text-indigo-500" />
+                                    <span className="text-sm font-medium text-indigo-500">Assigned to Advisor</span>
+                                </>
+                            )}
+                            {lead.inquiry_status === 'requalify' && (
+                                <>
+                                    <RefreshCw className="h-4 w-4 text-orange-500" />
+                                    <span className="text-sm font-medium text-orange-500">Requalify</span>
                                 </>
                             )}
                             {lead.inquiry_status === 'proposal' && (
@@ -105,7 +153,7 @@ function LeadStatusCombobox({ lead }: Props) {
                         <CommandList className="overflow-y-auto">
                             <CommandEmpty>No status found.</CommandEmpty>
                             <CommandGroup className="">
-                                {statuses.map((status: Status) => (
+                                {allowedStatuses.map((status: Status) => (
                                     <CommandItem
                                         key={status.id}
                                         value={status.name}

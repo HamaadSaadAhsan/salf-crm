@@ -16,21 +16,21 @@ class CountrySeeder extends Seeder
             ['name' => 'Mexico', 'code' => 'MEX', 'iso2' => 'MX', 'phone_code' => '+52', 'currency' => 'MXN', 'currency_symbol' => '$', 'is_active' => true],
 
             // Europe - Western
-            ['name' => 'United Kingdom', 'code' => 'GBR', 'iso2' => 'GB', 'phone_code' => '+44', 'currency' => 'GBP', 'currency_symbol' => '£', 'is_active' => true],
-            ['name' => 'France', 'code' => 'FRA', 'iso2' => 'FR', 'phone_code' => '+33', 'currency' => 'EUR', 'currency_symbol' => '€', 'is_active' => true],
-            ['name' => 'Germany', 'code' => 'DEU', 'iso2' => 'DE', 'phone_code' => '+49', 'currency' => 'EUR', 'currency_symbol' => '€', 'is_active' => true],
-            ['name' => 'Spain', 'code' => 'ESP', 'iso2' => 'ES', 'phone_code' => '+34', 'currency' => 'EUR', 'currency_symbol' => '€', 'is_active' => true],
-            ['name' => 'Portugal', 'code' => 'PRT', 'iso2' => 'PT', 'phone_code' => '+351', 'currency' => 'EUR', 'currency_symbol' => '€', 'is_active' => true],
+            ['name' => 'United Kingdom', 'code' => 'GBR', 'iso2' => 'GB', 'phone_code' => '+44', 'currency' => 'GBP', 'currency_symbol' => "\u{00A3}", 'is_active' => true],
+            ['name' => 'France', 'code' => 'FRA', 'iso2' => 'FR', 'phone_code' => '+33', 'currency' => 'EUR', 'currency_symbol' => "\u{20AC}", 'is_active' => true],
+            ['name' => 'Germany', 'code' => 'DEU', 'iso2' => 'DE', 'phone_code' => '+49', 'currency' => 'EUR', 'currency_symbol' => "\u{20AC}", 'is_active' => true],
+            ['name' => 'Spain', 'code' => 'ESP', 'iso2' => 'ES', 'phone_code' => '+34', 'currency' => 'EUR', 'currency_symbol' => "\u{20AC}", 'is_active' => true],
+            ['name' => 'Portugal', 'code' => 'PRT', 'iso2' => 'PT', 'phone_code' => '+351', 'currency' => 'EUR', 'currency_symbol' => "\u{20AC}", 'is_active' => true],
 
             // Europe - Eastern
-            ['name' => 'Poland', 'code' => 'POL', 'iso2' => 'PL', 'phone_code' => '+48', 'currency' => 'PLN', 'currency_symbol' => 'zł', 'is_active' => true],
-            ['name' => 'Czech Republic', 'code' => 'CZE', 'iso2' => 'CZ', 'phone_code' => '+420', 'currency' => 'CZK', 'currency_symbol' => 'Kč', 'is_active' => true],
+            ['name' => 'Poland', 'code' => 'POL', 'iso2' => 'PL', 'phone_code' => '+48', 'currency' => 'PLN', 'currency_symbol' => "z\u{0142}", 'is_active' => true],
+            ['name' => 'Czech Republic', 'code' => 'CZE', 'iso2' => 'CZ', 'phone_code' => '+420', 'currency' => 'CZK', 'currency_symbol' => "K\u{010D}", 'is_active' => true],
             ['name' => 'Hungary', 'code' => 'HUN', 'iso2' => 'HU', 'phone_code' => '+36', 'currency' => 'HUF', 'currency_symbol' => 'Ft', 'is_active' => true],
 
             // Middle East
-            ['name' => 'United Arab Emirates', 'code' => 'ARE', 'iso2' => 'AE', 'phone_code' => '+971', 'currency' => 'AED', 'currency_symbol' => 'د.إ', 'is_active' => true],
-            ['name' => 'Saudi Arabia', 'code' => 'SAU', 'iso2' => 'SA', 'phone_code' => '+966', 'currency' => 'SAR', 'currency_symbol' => 'ر.س', 'is_active' => true],
-            ['name' => 'Qatar', 'code' => 'QAT', 'iso2' => 'QA', 'phone_code' => '+974', 'currency' => 'QAR', 'currency_symbol' => 'ر.ق', 'is_active' => true],
+            ['name' => 'United Arab Emirates', 'code' => 'ARE', 'iso2' => 'AE', 'phone_code' => '+971', 'currency' => 'AED', 'currency_symbol' => "\u{062F}.\u{0625}", 'is_active' => true],
+            ['name' => 'Saudi Arabia', 'code' => 'SAU', 'iso2' => 'SA', 'phone_code' => '+966', 'currency' => 'SAR', 'currency_symbol' => "\u{0631}.\u{0633}", 'is_active' => true],
+            ['name' => 'Qatar', 'code' => 'QAT', 'iso2' => 'QA', 'phone_code' => '+974', 'currency' => 'QAR', 'currency_symbol' => "\u{0631}.\u{0642}", 'is_active' => true],
 
             // Caribbean
             ['name' => 'Dominica', 'code' => 'DMA', 'iso2' => 'DM', 'phone_code' => '+1-767', 'currency' => 'XCD', 'currency_symbol' => '$', 'is_active' => true],
@@ -40,11 +40,13 @@ class CountrySeeder extends Seeder
             ['name' => 'Saint Lucia', 'code' => 'LCA', 'iso2' => 'LC', 'phone_code' => '+1-758', 'currency' => 'XCD', 'currency_symbol' => '$', 'is_active' => true],
 
             // Asia Pacific
-            ['name' => 'China', 'code' => 'CHN', 'iso2' => 'CN', 'phone_code' => '+86', 'currency' => 'CNY', 'currency_symbol' => '¥', 'is_active' => true],
-            ['name' => 'Japan', 'code' => 'JPN', 'iso2' => 'JP', 'phone_code' => '+81', 'currency' => 'JPY', 'currency_symbol' => '¥', 'is_active' => true],
-            ['name' => 'Pakistan', 'code' => 'PAK', 'iso2' => 'PK', 'phone_code' => '+92', 'currency' => 'PKR', 'currency_symbol' => '₨', 'is_active' => true],
+            ['name' => 'China', 'code' => 'CHN', 'iso2' => 'CN', 'phone_code' => '+86', 'currency' => 'CNY', 'currency_symbol' => "\u{00A5}", 'is_active' => true],
+            ['name' => 'Japan', 'code' => 'JPN', 'iso2' => 'JP', 'phone_code' => '+81', 'currency' => 'JPY', 'currency_symbol' => "\u{00A5}", 'is_active' => true],
             ['name' => 'Singapore', 'code' => 'SGP', 'iso2' => 'SG', 'phone_code' => '+65', 'currency' => 'SGD', 'currency_symbol' => '$', 'is_active' => true],
             ['name' => 'Australia', 'code' => 'AUS', 'iso2' => 'AU', 'phone_code' => '+61', 'currency' => 'AUD', 'currency_symbol' => '$', 'is_active' => true],
+
+            // South Asia
+            ['name' => 'Pakistan', 'code' => 'PAK', 'iso2' => 'PK', 'phone_code' => '+92', 'currency' => 'PKR', 'currency_symbol' => "\u{20A8}", 'is_active' => true],
 
             // South America
             ['name' => 'Brazil', 'code' => 'BRA', 'iso2' => 'BR', 'phone_code' => '+55', 'currency' => 'BRL', 'currency_symbol' => 'R$', 'is_active' => true],
@@ -53,10 +55,16 @@ class CountrySeeder extends Seeder
 
             // Africa
             ['name' => 'South Africa', 'code' => 'ZAF', 'iso2' => 'ZA', 'phone_code' => '+27', 'currency' => 'ZAR', 'currency_symbol' => 'R', 'is_active' => true],
+
+            // Other
+            ['name' => 'International', 'code' => 'INT', 'iso2' => null, 'phone_code' => null, 'currency' => null, 'currency_symbol' => null, 'is_active' => true],
         ];
 
         foreach ($countries as $countryData) {
-            Country::create($countryData);
+            Country::updateOrCreate(
+                ['code' => $countryData['code']],
+                $countryData,
+            );
         }
     }
 }

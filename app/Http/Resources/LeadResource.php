@@ -27,6 +27,7 @@ class LeadResource extends JsonResource
                 ]
             ),
             'inquiry_status' => $this->inquiry_status,
+            'advisor_stage' => $this->advisor_stage,
             'priority' => $this->priority,
             'inquiry_type' => $this->inquiry_type,
             'lead_score' => $this->lead_score,
@@ -54,6 +55,11 @@ class LeadResource extends JsonResource
                 $this->relationLoaded('createdBy') && $this->createdBy,
                 fn () => UserResource::make($this->createdBy)
             ),
+            'qualified_by' => $this->when(
+                $this->relationLoaded('qualifiedBy') && $this->qualifiedBy,
+                fn () => UserResource::make($this->qualifiedBy)
+            ),
+            'qualified_at' => $this->qualified_at?->toISOString(),
 
             // Computed fields
             'days_since_created' => $this->days_since_created,

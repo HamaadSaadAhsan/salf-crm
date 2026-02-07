@@ -18,6 +18,8 @@ import { router, usePage } from '@inertiajs/react';
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Line, LineChart, Area, AreaChart, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useEcho } from '@laravel/echo-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CRODashboardProps {
     data?: DashboardOverview;
@@ -32,6 +34,14 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
 
     const { props } = usePage();
     const userId = (props.auth as any)?.user?.id;
+
+    const queryClient = useQueryClient();
+
+    // Listen for lead stage changes to auto-refresh dashboard data
+    useEcho('leads', '.lead.stage.changed', () => {
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] });
+        queryClient.invalidateQueries({ queryKey: ['metrics', 'user-performance'] });
+    });
 
     // Fetch personal performance data
     const thirtyDaysAgo = new Date();
@@ -287,7 +297,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
             )}
 
             {/* Today's Tasks */}
-            {myTasks.today && myTasks.today > 0 && (
+            {myTasks.today > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Today's Tasks</CardTitle>

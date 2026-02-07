@@ -51,7 +51,7 @@ class DashboardController extends Controller
         return response()->json($data);
     }
 
-    protected function getSuperAdminDashboard(User $user): array
+    public function getSuperAdminDashboard(User $user): array
     {
         $today = Carbon::today();
         $lastMonth = Carbon::today()->subMonth();
@@ -131,7 +131,7 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function getManagerDashboard(User $user): array
+    public function getManagerDashboard(User $user): array
     {
         $today = Carbon::today();
         $dailyMetric = DailyMetric::whereDate('metric_date', $today->toDateString())->first();
@@ -152,7 +152,7 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function getCRODashboard(User $user): array
+    public function getCRODashboard(User $user): array
     {
         $today = Carbon::today();
 
@@ -184,7 +184,7 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function getAdvisorDashboard(User $user): array
+    public function getAdvisorDashboard(User $user): array
     {
         $today = Carbon::today();
 
@@ -220,7 +220,7 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function getBasicDashboard(User $user): array
+    public function getBasicDashboard(User $user): array
     {
         return [
             'role' => 'basic',
