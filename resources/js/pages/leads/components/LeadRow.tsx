@@ -69,26 +69,17 @@ const PRIORITY_COLORS = {
     low: 'text-cyan-400',
 } as const;
 
+// Helper to extract source data from either format
+function getSourceData(source?: { data?: { slug: string; name: string } } | { slug: string; name: string }) {
+    if (!source) return null;
+    if ('data' in source) return source.data || null;
+    if ('slug' in source) return source;
+    return null;
+}
+
 // Memoized source icon component
 const SourceIcon = memo(({ source }: { source?: { data?: { slug: string; name: string } } | { slug: string; name: string } }) => {
-    // Helper function to get source data regardless of format
-    const getSourceData = () => {
-        if (!source) return null;
-
-        // Handle { data?: LeadSource } format
-        if ('data' in source) {
-            return source.data || null;
-        }
-
-        // Handle direct LeadSource format
-        if ('slug' in source) {
-            return source;
-        }
-
-        return null;
-    };
-
-    const sourceData = getSourceData();
+    const sourceData = getSourceData(source);
     const IconComponent = sourceData?.slug ? SOURCE_ICONS[sourceData.slug as keyof typeof SOURCE_ICONS] : null;
     const colorClass = sourceData?.slug ? SOURCE_ICON_COLORS[sourceData.slug as keyof typeof SOURCE_ICON_COLORS] : 'text-gray-400';
 
@@ -358,7 +349,20 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
 
             {/* Priority */}
             <div className="flex items-center justify-center" role="gridcell">
-                <PriorityIcon priority={lead.priority} />
+                {lead.priority ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                                <PriorityIcon priority={lead.priority} />
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="capitalize">
+                            {lead.priority} priority
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <PriorityIcon priority={lead.priority} />
+                )}
             </div>
 
             {/* Star */}
@@ -367,26 +371,23 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
             </div>
 
             {/* Source Icon - Hidden on mobile/tablet */}
-            <div
-                className="hidden items-center justify-center md:flex"
-                role="gridcell"
-                title={(() => {
-                    if (!lead.source) return undefined;
-
-                    // Handle { data?: LeadSource } format
-                    if ('data' in lead.source) {
-                        return lead.source.data?.name;
+            <div className="hidden items-center justify-center md:flex" role="gridcell">
+                {(() => {
+                    const sourceData = getSourceData(lead.source);
+                    if (sourceData?.name) {
+                        return (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-flex">
+                                        <SourceIcon source={lead.source} />
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">{sourceData.name}</TooltipContent>
+                            </Tooltip>
+                        );
                     }
-
-                    // Handle direct LeadSource format
-                    if ('name' in lead.source) {
-                        return lead.source.name;
-                    }
-
-                    return undefined;
+                    return <SourceIcon source={lead.source} />;
                 })()}
-            >
-                <SourceIcon source={lead.source} />
             </div>
 
             {/* Name */}
@@ -405,9 +406,20 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 className="hidden min-w-0 items-center-safe justify-start overflow-hidden px-2 text-left text-sm text-ellipsis whitespace-nowrap md:flex"
                 role="gridcell"
             >
-                <span className="text-gray-600 dark:text-gray-400" title={lead.service?.data?.full_hierarchy || lead.service?.data?.name}>
-                    {lead.service?.data?.full_hierarchy || lead.service?.data?.name || '-'}
-                </span>
+                {lead.service?.data?.name ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="truncate text-gray-600 dark:text-gray-400">
+                                {lead.service.data.full_hierarchy || lead.service.data.name}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            {lead.service.data.full_hierarchy || lead.service.data.name}
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <span className="text-gray-600 dark:text-gray-400">-</span>
+                )}
             </div>
 
             {/* Labels and Attachments - Hidden on mobile/tablet */}
