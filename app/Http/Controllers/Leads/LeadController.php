@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers\Leads;
 
+use App\Events\LeadRequalified;
+use App\Events\LeadStageChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LeadFilterRequest;
+use App\Http\Requests\UpdateAdvisorStageRequest;
 use App\Http\Resources\LeadResource;
+use App\Jobs\WarmDashboardCacheJob;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadCase;
+use App\Models\Service;
 use App\Services\AdvisorAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
@@ -34,7 +40,10 @@ class LeadController extends Controller
 
         // Set default pagination values and ensure they're integers
         $filters['page'] = max(1, (int) ($filters['page'] ?? 1));
-        $filters['per_page'] = max(1, min(100, (int) ($filters['per_page'] ?? 25)));
+        $filters['per_page'] = max(1, min(200, (int) ($filters['per_page'] ?? 25)));
+
+        // Preserve user-provided filters for the response (before server injection)
+        $userFilters = $filters;
 
         // CROs and Advisors should only see leads assigned to them
         // Roles that require lead filtering: support-agent, senior-support-agent, sales-rep, senior-sales-rep
@@ -44,6 +53,12 @@ class LeadController extends Controller
 
         if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
+        }
+
+        // Expand parent service IDs to include their children (single query, done once)
+        if (! empty($filters['service_id'])) {
+            $serviceIds = is_array($filters['service_id']) ? $filters['service_id'] : [$filters['service_id']];
+            $filters['service_id'] = $this->expandServiceIds(array_map('intval', $serviceIds));
         }
 
         $cacheKey = Lead::getListCacheKey($filters);
@@ -79,7 +94,7 @@ class LeadController extends Controller
         return Inertia::render('leads/index', [
             'leads' => $result['data'],
             'meta' => $result['meta'],
-            'filters' => $filters,
+            'filters' => $userFilters,
             'search_info' => $result['search_info'] ?? null,
             'cache_info' => [
                 'cached' => $fromCache,
@@ -214,7 +229,12 @@ class LeadController extends Controller
 
         // Priority filter
         if (! empty($filters['priority'])) {
-            $filterConditions[] = 'priority = "'.$filters['priority'].'"';
+            if (is_array($filters['priority'])) {
+                $priorityFilter = 'priority IN ['.implode(', ', array_map(fn ($p) => '"'.$p.'"', $filters['priority'])).']';
+                $filterConditions[] = $priorityFilter;
+            } else {
+                $filterConditions[] = 'priority = "'.$filters['priority'].'"';
+            }
         }
 
         // Assigned user filter
@@ -224,7 +244,11 @@ class LeadController extends Controller
 
         // Source filter
         if (! empty($filters['source_id'])) {
-            $filterConditions[] = 'lead_source_id = '.$filters['source_id'];
+            if (is_array($filters['source_id'])) {
+                $filterConditions[] = 'lead_source_id IN ['.implode(', ', $filters['source_id']).']';
+            } else {
+                $filterConditions[] = 'lead_source_id = '.$filters['source_id'];
+            }
         }
 
         // Inquiry type filter
@@ -248,9 +272,10 @@ class LeadController extends Controller
             $filterConditions[] = 'budget_currency = "'.$filters['budget_currency'].'"';
         }
 
-        // Service filter
+        // Service filter (already expanded in index() to include children of parents)
         if (! empty($filters['service_id'])) {
-            $filterConditions[] = 'service_id = '.$filters['service_id'];
+            $serviceIds = is_array($filters['service_id']) ? $filters['service_id'] : [$filters['service_id']];
+            $filterConditions[] = 'service_id IN ['.implode(', ', $serviceIds).']';
         }
 
         // Date range filter (using timestamps)
@@ -420,7 +445,7 @@ class LeadController extends Controller
         $this->applyDatabaseSorting($query, $filters);
 
         // Get paginated results
-        $perPage = min((int) ($filters['per_page'] ?? 25), 100);
+        $perPage = min((int) ($filters['per_page'] ?? 25), 200);
         $page = (int) ($filters['page'] ?? 1);
         $leads = $query->paginate($perPage, ['*'], 'page', $page);
 
@@ -456,7 +481,11 @@ class LeadController extends Controller
 
         // Priority filter
         if (! empty($filters['priority'])) {
-            $query->where('priority', $filters['priority']);
+            if (is_array($filters['priority'])) {
+                $query->whereIn('priority', $filters['priority']);
+            } else {
+                $query->where('priority', $filters['priority']);
+            }
         }
 
         // Assigned user filter
@@ -466,7 +495,11 @@ class LeadController extends Controller
 
         // Source filter
         if (! empty($filters['source_id'])) {
-            $query->where('lead_source_id', $filters['source_id']);
+            if (is_array($filters['source_id'])) {
+                $query->whereIn('lead_source_id', $filters['source_id']);
+            } else {
+                $query->where('lead_source_id', $filters['source_id']);
+            }
         }
 
         // Inquiry type filter
@@ -490,9 +523,10 @@ class LeadController extends Controller
             $query->whereRaw("budget->>'currency' = ?", [$filters['budget_currency']]);
         }
 
-        // Service filter
+        // Service filter (already expanded in index() to include children of parents)
         if (! empty($filters['service_id'])) {
-            $query->where('service_id', $filters['service_id']);
+            $serviceIds = is_array($filters['service_id']) ? $filters['service_id'] : [$filters['service_id']];
+            $query->whereIn('service_id', $serviceIds);
         }
 
         // Date range filter
@@ -595,6 +629,19 @@ class LeadController extends Controller
         if ($sortBy !== 'id') {
             $query->orderBy('id', 'desc');
         }
+    }
+
+    /**
+     * Expand service IDs to include children of any parent services.
+     *
+     * @param  int[]  $serviceIds
+     * @return int[]
+     */
+    private function expandServiceIds(array $serviceIds): array
+    {
+        $childIds = Service::whereIn('parent_id', $serviceIds)->pluck('id')->toArray();
+
+        return array_values(array_unique(array_merge($serviceIds, $childIds)));
     }
 
     /**
@@ -711,6 +758,7 @@ class LeadController extends Controller
                     'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
                     'inquiry_status', 'advisor_stage', 'priority', 'inquiry_type', 'inquiry_country',
                     'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',
+                    'qualified_by', 'qualified_at',
                     'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
                     'last_activity_at', 'viewed_at', 'next_follow_up_at', 'tags',
                 ])
@@ -721,6 +769,7 @@ class LeadController extends Controller
                         'source:id,name,slug',
                         'assignedTo:id,name,email',
                         'assignedTo.roles:id,name,guard_name',
+                        'qualifiedBy:id,name,email',
                         'createdBy:id,name',
                         // Activities are loaded via API for server-side pagination
                         'tasks' => function ($query) {
@@ -885,6 +934,115 @@ class LeadController extends Controller
     }
 
     /**
+     * Progress the advisor stage for a lead.
+     */
+    public function updateAdvisorStage(UpdateAdvisorStageRequest $request, Lead $lead): JsonResponse
+    {
+        /** @var array<string, array<int, string>> */
+        $allowedTransitions = [
+            'new' => ['contacted', 'lost'],
+            'contacted' => ['meeting', 'lost'],
+            'meeting' => ['contract_signed', 'lost'],
+            'contract_signed' => ['initial_payment', 'lost'],
+            'initial_payment' => ['won', 'lost'],
+        ];
+
+        if ($lead->inquiry_status !== 'assigned_to_advisor') {
+            return response()->json(['message' => 'Lead is not assigned to an advisor.'], 422);
+        }
+
+        $currentStage = $lead->advisor_stage ?? 'new';
+        $newStage = $request->validated()['stage'];
+
+        $allowed = $allowedTransitions[$currentStage] ?? [];
+        if (! in_array($newStage, $allowed, true)) {
+            return response()->json([
+                'message' => "Cannot transition from '{$currentStage}' to '{$newStage}'.",
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $lead->advisor_stage = $newStage;
+
+            if ($newStage === 'contract_signed') {
+                LeadCase::firstOrCreate(
+                    ['lead_id' => $lead->id],
+                    ['advisor_id' => $lead->assigned_to],
+                );
+            }
+
+            if ($newStage === 'initial_payment') {
+                $leadCase = LeadCase::firstOrCreate(
+                    ['lead_id' => $lead->id],
+                    ['advisor_id' => $lead->assigned_to],
+                );
+                $leadCase->update([
+                    'initial_payment_at' => now(),
+                    'initial_payment_amount' => $request->validated()['initial_payment_amount'],
+                ]);
+            }
+
+            if ($newStage === 'won') {
+                $lead->inquiry_status = 'won';
+            }
+
+            if ($newStage === 'lost') {
+                $lead->inquiry_status = 'lost';
+                $lead->loss_reason = $request->validated()['reason'] ?? null;
+            }
+
+            $lead->save();
+
+            LeadActivity::create([
+                'lead_id' => $lead->id,
+                'user_id' => $request->user()->id,
+                'type' => 'status_change',
+                'status' => 'completed',
+                'subject' => 'Advisor stage: '.str_replace('_', ' ', ucfirst($newStage)),
+                'description' => 'Advisor stage changed from '.str_replace('_', ' ', $currentStage).' to '.str_replace('_', ' ', $newStage).'.',
+                'metadata' => [
+                    'from_stage' => $currentStage,
+                    'to_stage' => $newStage,
+                    'advisor_id' => $lead->assigned_to,
+                ],
+            ]);
+
+            $this->cacheService->invalidateLeadCache($lead, ['advisor_stage']);
+
+            // Invalidate and re-warm dashboard caches for affected users
+            $this->invalidateAndWarmDashboardCache($lead);
+
+            // Dispatch stage changed event
+            LeadStageChanged::dispatch($lead, $request->user(), 'advisor_stage', $currentStage, $newStage);
+
+            DB::commit();
+
+            $lead->load([
+                'service' => fn ($q) => $q->select('id', 'name')->withCount('children'),
+                'source:id,name,slug',
+                'assignedTo:id,name,email',
+                'assignedTo.roles:id,name,guard_name',
+                'createdBy:id,name',
+            ]);
+
+            return response()->json([
+                'lead' => (new LeadResource($lead))->toArray($request),
+                'success' => 'Advisor stage updated successfully.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Advisor stage update failed: '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to update advisor stage.',
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
      * Update the specified lead
      *
      * @throws Throwable
@@ -902,12 +1060,11 @@ class LeadController extends Controller
 
         // CROs cannot edit lead details when lead is assigned to an advisor
         if ($isCRO && $lead->inquiry_status === 'assigned_to_advisor') {
-            // Only allow status changes (requalify, won, lost)
-            $allowedFields = ['inquiry_status', '_method', '_token'];
+            // Only allow status changes (requalify, won, lost) — no field edits, no reassignment
+            $allowedFields = ['inquiry_status', 'loss_reason', 'requalify_reason', '_method', '_token'];
             $requestFields = array_keys($request->all());
             $disallowedFields = array_diff($requestFields, $allowedFields);
 
-            // Reject if any non-status fields are being updated
             if (! empty($disallowedFields)) {
                 abort(403, 'You cannot edit lead details while it is assigned to an advisor. Only status changes (requalify, won, lost) are allowed.');
             }
@@ -921,12 +1078,14 @@ class LeadController extends Controller
             }
         }
 
+        // CROs cannot reassign leads that are assigned to an advisor
+        if ($isCRO && $lead->inquiry_status === 'assigned_to_advisor' && $request->has('assigned_to')) {
+            abort(403, 'You cannot reassign a lead that is assigned to an advisor.');
+        }
+
         try {
-            // Build allowed inquiry statuses - include assigned_to_advisor only if lead already has it
-            $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
-            if ($lead->inquiry_status === 'assigned_to_advisor') {
-                $allowedStatuses[] = 'assigned_to_advisor';
-            }
+            // Build allowed inquiry statuses — transition rules enforced separately for CROs
+            $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'assigned_to_advisor', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
 
             $validated = $request->validate([
                 'name' => 'sometimes|string|max:255',
@@ -956,6 +1115,9 @@ class LeadController extends Controller
                 'assigned_to.id' => 'sometimes|exists:users,id',
                 'next_follow_up_at' => 'sometimes|nullable|date',
 
+                'loss_reason' => 'sometimes|nullable|string|max:1000',
+                'requalify_reason' => 'sometimes|nullable|string|max:1000',
+
                 'custom_fields' => 'sometimes|nullable|array',
 
                 // Validate budget
@@ -971,10 +1133,56 @@ class LeadController extends Controller
                 'tags.*.color' => 'nullable|string',
             ]);
 
+            // Validate CRO status transitions - enforce valid workflow order
+            if ($isCRO && isset($validated['inquiry_status']) && $validated['inquiry_status'] !== $lead->inquiry_status) {
+                $croTransitions = [
+                    'new' => ['contacted', 'nurturing', 'lost'],
+                    'contacted' => ['qualified', 'nurturing', 'lost'],
+                    'qualified' => ['assigned_to_advisor', 'nurturing', 'lost'],
+                    'requalify' => ['contacted', 'qualified', 'nurturing', 'lost'],
+                    'nurturing' => ['contacted', 'lost'],
+                    'assigned_to_advisor' => ['requalify', 'won', 'lost'],
+                ];
+
+                $currentStatus = $lead->inquiry_status;
+                $newStatus = $validated['inquiry_status'];
+                $allowedNext = $croTransitions[$currentStatus] ?? [];
+
+                if (! in_array($newStatus, $allowedNext, true)) {
+                    return response()->json([
+                        'message' => "Cannot transition from '{$currentStatus}' to '{$newStatus}'.",
+                    ], 422);
+                }
+            }
+
+            // Require loss_reason when marking as lost
+            if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'lost') {
+                if (empty($request->input('loss_reason'))) {
+                    return response()->json([
+                        'message' => 'A reason is required when marking a lead as lost.',
+                        'errors' => ['loss_reason' => ['A reason is required when marking a lead as lost.']],
+                    ], 422);
+                }
+                $validated['loss_reason'] = $request->input('loss_reason');
+            }
+
+            // Require requalify_reason when sending lead back for requalification
+            if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'requalify') {
+                if (empty($request->input('requalify_reason'))) {
+                    return response()->json([
+                        'message' => 'A reason is required when requalifying a lead.',
+                        'errors' => ['requalify_reason' => ['A reason is required when requalifying a lead.']],
+                    ], 422);
+                }
+            }
+
             DB::beginTransaction();
 
             $originalStatus = $lead->inquiry_status;
             $originalAdvisorStage = $lead->advisor_stage;
+
+            // Track changed fields for tiered cache invalidation
+            $changedFields = array_keys(collect($validated)->except(['_method', '_token'])->toArray());
 
             // Check if status is changing to 'qualified' to trigger event
             $isQualifying = isset($validated['inquiry_status']) &&
@@ -1110,6 +1318,9 @@ class LeadController extends Controller
                     $lead->requalified_from_advisor_id = $lead->assigned_to;
                 }
 
+                // Store requalification reason
+                $lead->requalify_reason = $request->input('requalify_reason');
+
                 // Reassign back to CRO who originally qualified the lead, if known
                 if ($lead->qualified_by) {
                     $lead->assigned_to = $lead->qualified_by;
@@ -1124,20 +1335,29 @@ class LeadController extends Controller
                     'type' => 'status_change',
                     'status' => 'completed',
                     'subject' => 'Lead requalified by advisor',
-                    'description' => 'Advisor requalified lead and sent it back to CRO.',
+                    'description' => $request->input('requalify_reason'),
                     'metadata' => [
                         'from_status' => $originalStatus,
                         'to_status' => $newStatus,
                         'requalified_from_advisor_id' => $lead->requalified_from_advisor_id,
                         'qualified_by' => $lead->qualified_by,
+                        'requalify_reason' => $request->input('requalify_reason'),
                     ],
                 ]);
             }
 
             // CRO re-qualifies a lead that came back from advisor
-            if ($originalStatus === 'requalify' && $newStatus === 'assigned_to_advisor' && $lead->requalified_from_advisor_id) {
+            // This handles both direct (requalify → assigned_to_advisor) and
+            // multi-step flows (requalify → contacted/qualified → assigned_to_advisor)
+            if ($newStatus === 'assigned_to_advisor' && $lead->requalified_from_advisor_id) {
                 $lead->assigned_to = $lead->requalified_from_advisor_id;
                 $lead->advisor_stage = 'new';
+
+                // Update LeadCase advisor_id if it exists (may be stale from previous cycle)
+                $existingCase = LeadCase::where('lead_id', $lead->id)->first();
+                if ($existingCase && $existingCase->advisor_id !== $lead->requalified_from_advisor_id) {
+                    $existingCase->update(['advisor_id' => $lead->requalified_from_advisor_id]);
+                }
 
                 LeadActivity::create([
                     'lead_id' => $lead->id,
@@ -1175,6 +1395,8 @@ class LeadController extends Controller
 
             // Persist any advisor lifecycle adjustments
             if ($lead->isDirty(['advisor_stage', 'assigned_to', 'requalified_from_advisor_id'])) {
+                // Track lifecycle fields for tiered cache invalidation
+                $changedFields = array_unique(array_merge($changedFields, array_keys($lead->getDirty())));
                 $lead->save();
             }
 
@@ -1199,8 +1421,30 @@ class LeadController extends Controller
                 event(new \App\Events\LeadQualified($lead->fresh(), $request->user()));
             }
 
-            // Clear related caches
-            $this->cacheService->invalidateLeadCache($lead);
+            // Clear related caches (tiered based on what actually changed)
+            $this->cacheService->invalidateLeadCache($lead, $changedFields);
+
+            // Invalidate and re-warm dashboard caches for affected users
+            $this->invalidateAndWarmDashboardCache($lead);
+
+            // Dispatch requalification event when advisor sends lead back to CRO
+            if ($originalStatus === 'assigned_to_advisor' && $newStatus === 'requalify') {
+                $originalAdvisorUser = $lead->requalified_from_advisor_id
+                    ? \App\Models\User::find($lead->requalified_from_advisor_id)
+                    : null;
+
+                LeadRequalified::dispatch(
+                    $lead,
+                    $request->user(),
+                    $originalAdvisorUser,
+                    $request->input('requalify_reason', '')
+                );
+            }
+
+            // Dispatch stage changed event for status transitions
+            if ($originalStatus !== $newStatus) {
+                LeadStageChanged::dispatch($lead, $request->user(), 'status_change', $originalStatus, $newStatus);
+            }
 
             DB::commit();
 
@@ -1211,8 +1455,9 @@ class LeadController extends Controller
                     $leadData = Lead::select([
                         'id', 'name', 'email', 'phone', 'occupation', 'address', 'city', 'country',
                         'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
-                        'inquiry_status', 'priority', 'inquiry_type', 'inquiry_country',
+                        'inquiry_status', 'advisor_stage', 'priority', 'inquiry_type', 'inquiry_country',
                         'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',
+                        'qualified_by', 'qualified_at',
                         'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
                         'last_activity_at', 'next_follow_up_at', 'tags',
                     ])
@@ -1222,6 +1467,8 @@ class LeadController extends Controller
                             },
                             'source:id,name,slug',
                             'assignedTo:id,name,email',
+                            'assignedTo.roles:id,name,guard_name',
+                            'qualifiedBy:id,name,email',
                             'createdBy:id,name',
                             'activities' => function ($query) {
                                 $query->select('id', 'lead_id', 'user_id', 'status', 'subject', 'created_at', 'description', 'category', 'type', 'attachments')
@@ -1278,6 +1525,19 @@ class LeadController extends Controller
             }
 
             return back()->withErrors(['error' => 'Failed to update lead']);
+        }
+    }
+
+    /**
+     * Invalidate dashboard caches for affected users and dispatch re-warm jobs.
+     */
+    private function invalidateAndWarmDashboardCache(Lead $lead): void
+    {
+        $affectedUserIds = array_filter([$lead->assigned_to, $lead->qualified_by]);
+
+        foreach ($affectedUserIds as $userId) {
+            Cache::forget("dashboard:overview:{$userId}:".now()->format('Y-m-d'));
+            WarmDashboardCacheJob::dispatch($userId);
         }
     }
 
