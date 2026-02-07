@@ -7,9 +7,11 @@ use App\Models\Country;
 use App\Models\LeadSource;
 use App\Models\Service;
 use App\Models\Status;
+use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -21,6 +23,18 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * Skip Inertia processing for API routes that return JSON directly.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        if ($request->is('api/*')) {
+            return $next($request);
+        }
+
+        return parent::handle($request, $next);
+    }
 
     /**
      * Determines the current asset version.
