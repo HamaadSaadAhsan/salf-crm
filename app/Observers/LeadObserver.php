@@ -299,9 +299,13 @@ class LeadObserver
     /**
      * Create follow-up activities for status changes
      */
-    private function createFollowUpForStatusChange(Lead $lead, string $newStatus, int $userId): void
+    private function createFollowUpForStatusChange(Lead $lead, string $newStatus, ?int $userId): void
     {
         $assignedUserId = $lead->assigned_to ?? $userId;
+
+        if (! $assignedUserId) {
+            return;
+        }
 
         switch ($newStatus) {
             case 'contacted':
