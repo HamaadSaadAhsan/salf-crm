@@ -55,6 +55,7 @@ describe('CRO status transition restrictions when lead is assigned to advisor', 
         $response = $this->actingAs($this->cro)
             ->putJson("/leads/{$lead->id}", [
                 'inquiry_status' => 'requalify',
+                'requalify_reason' => 'Needs further review',
             ]);
 
         $response->assertSuccessful();
@@ -85,6 +86,7 @@ describe('CRO status transition restrictions when lead is assigned to advisor', 
         $response = $this->actingAs($this->cro)
             ->putJson("/leads/{$lead->id}", [
                 'inquiry_status' => 'lost',
+                'loss_reason' => 'Client not interested',
             ]);
 
         $response->assertSuccessful();
