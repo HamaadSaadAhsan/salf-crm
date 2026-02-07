@@ -273,7 +273,7 @@ SearchInput.displayName = 'SearchInput';
 // Main leads interface using Inertia
 export default function LeadsInterface() {
 
-    const pageProps = usePage<LeadsPageProps & { [key: string]: any }>().props;
+    const pageProps = usePage<LeadsPageProps & Record<string, unknown>>().props;
 
     // Handle both direct array and nested data structure
     const leads = useMemo(

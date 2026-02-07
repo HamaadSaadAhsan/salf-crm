@@ -29,7 +29,7 @@ import {
 } from 'date-fns';
 import { CommandList } from 'cmdk';
 import { CalendarIcon, CalendarRange, Check, ChevronDown, ChevronRight, ChevronsUpDown, ListFilter, Layers, X } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface LeadFilterBarProps {
     filters: LeadFilters;
@@ -245,16 +245,16 @@ const ServiceFilter = memo(function ServiceFilter({
     }, [services]);
 
     // Auto-expand groups that have selected children
-    useMemo(() => {
-        const autoExpand = new Set(expandedGroups);
-        for (const [parentId, children] of grouped.childrenMap) {
-            if (children.some((c) => selected.includes(c.id))) {
-                autoExpand.add(parentId);
+    useEffect(() => {
+        setExpandedGroups((prev) => {
+            const autoExpand = new Set(prev);
+            for (const [parentId, children] of grouped.childrenMap) {
+                if (children.some((c) => selected.includes(c.id))) {
+                    autoExpand.add(parentId);
+                }
             }
-        }
-        if (autoExpand.size !== expandedGroups.size) {
-            setExpandedGroups(autoExpand);
-        }
+            return autoExpand.size !== prev.size ? autoExpand : prev;
+        });
     }, [selected, grouped.childrenMap]);
 
     const toggleGroup = useCallback((parentId: number) => {

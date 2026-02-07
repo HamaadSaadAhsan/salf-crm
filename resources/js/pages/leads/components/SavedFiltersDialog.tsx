@@ -97,8 +97,9 @@ function SaveForm({
                             toast.success('Filter preset updated');
                             onSaved();
                         },
-                        onError: (error: any) => {
-                            toast.error(error?.response?.data?.message || 'Failed to update preset');
+                        onError: (error: unknown) => {
+                            const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                            toast.error(msg || 'Failed to update preset');
                         },
                     },
                 );
@@ -111,8 +112,9 @@ function SaveForm({
                         setIsDefault(false);
                         onSaved();
                     },
-                    onError: (error: any) => {
-                        toast.error(error?.response?.data?.message || 'Failed to save preset');
+                    onError: (error: unknown) => {
+                        const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                        toast.error(msg || 'Failed to save preset');
                     },
                 });
             }
