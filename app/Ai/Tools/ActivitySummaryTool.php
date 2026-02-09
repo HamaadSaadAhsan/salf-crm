@@ -51,7 +51,7 @@ class ActivitySummaryTool implements Tool
                 ->limit(10)
                 ->get(),
             default => (clone $query)->pending()
-                ->orderByRaw("CASE WHEN due_at < NOW() THEN 0 ELSE 1 END, due_at ASC NULLS LAST")
+                ->orderByRaw('CASE WHEN due_at < NOW() THEN 0 ELSE 1 END, due_at ASC NULLS LAST')
                 ->limit(15)
                 ->get(),
         };

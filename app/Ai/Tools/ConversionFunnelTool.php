@@ -49,12 +49,12 @@ class ConversionFunnelTool implements Tool
         // Average time between stages
         $avgResponseTime = (clone $baseQuery)
             ->whereNotNull('first_cro_contact_at')
-            ->selectRaw("AVG(EXTRACT(EPOCH FROM (first_cro_contact_at - created_at))/3600) as avg_hours")
+            ->selectRaw('AVG(EXTRACT(EPOCH FROM (first_cro_contact_at - created_at))/3600) as avg_hours')
             ->value('avg_hours');
 
         $avgQualificationTime = (clone $baseQuery)
             ->whereNotNull('qualified_at')
-            ->selectRaw("AVG(EXTRACT(EPOCH FROM (qualified_at - created_at))/3600) as avg_hours")
+            ->selectRaw('AVG(EXTRACT(EPOCH FROM (qualified_at - created_at))/3600) as avg_hours')
             ->value('avg_hours');
 
         return json_encode([

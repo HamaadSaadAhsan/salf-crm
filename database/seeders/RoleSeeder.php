@@ -31,6 +31,6 @@ class RoleSeeder extends Seeder
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
 
-        $this->command->info('Created ' . count($roles) . ' roles.');
+        $this->command->info('Created '.count($roles).' roles.');
     }
 }
