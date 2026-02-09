@@ -17,6 +17,8 @@ use App\Observers\RoleObserver;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Ai\AiManager;
+use Laravel\Ai\Contracts\Providers\TextProvider;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -27,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TextProvider::class, fn ($app) => $app->make(AiManager::class)->textProvider());
     }
 
     /**
