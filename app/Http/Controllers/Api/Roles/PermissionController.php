@@ -28,7 +28,7 @@ class PermissionController extends Controller
     public function index(): AnonymousResourceCollection
     {
         // Use memo for request-scoped caching
-        $permissions = cache()->memo('permissions.all', fn () => Permission::query()
+        $permissions = cache()->memo('permissions.all', fn() => Permission::query()
             ->orderBy('name')
             ->get()
         );
@@ -54,7 +54,7 @@ class PermissionController extends Controller
     public function matrix(): JsonResponse
     {
         // Use memo for request-scoped caching
-        $matrix = cache()->memo('permissions.matrix', fn () => Permission::query()
+        $matrix = cache()->memo('permissions.matrix', fn() => Permission::query()
             ->orderBy('name')
             ->get()
         );
@@ -85,15 +85,15 @@ class PermissionController extends Controller
             $this->clearPermissionCache();
             $this->broadcastPermissionsUpdated($affectedRoleIds);
 
-            if($request->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json(['message' => 'Permissions updated successfully']);
-            }else{
+            } else {
                 return redirect()->back()->with('success', 'Permissions updated successfully');
             }
         } catch (\Throwable $e) {
-            if($request->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json(['message' => 'Failed to update permissions'], 500);
-            }else{
+            } else {
                 return redirect()->back()->with('success', 'Permissions updated successfully');
             }
         }
@@ -109,7 +109,7 @@ class PermissionController extends Controller
     }
 
     /**
-     * @param  array<int>  $roleIds
+     * @param array<int> $roleIds
      */
     private function broadcastPermissionsUpdated(array $roleIds): void
     {
