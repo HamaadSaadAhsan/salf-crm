@@ -187,6 +187,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/daily', [MetricsController::class, 'dailyMetrics'])->name('metrics.daily');
     });
 
+    // AI Chat
+    Route::prefix('api/ai-chat')->group(function () {
+        Route::post('/message', [\App\Http\Controllers\Api\AiChatController::class, 'message'])->name('ai-chat.message');
+        Route::get('/conversations', [\App\Http\Controllers\Api\AiChatController::class, 'conversations'])->name('ai-chat.conversations');
+        Route::get('/conversations/{id}', [\App\Http\Controllers\Api\AiChatController::class, 'conversation'])->name('ai-chat.conversation');
+        Route::get('/suggestions', [\App\Http\Controllers\Api\AiChatController::class, 'suggestions'])->name('ai-chat.suggestions');
+    });
+
     // Roles
     Route::prefix('roles')->group(function () {
         Route::get('/', [RoleController::class, 'index']);
