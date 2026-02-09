@@ -21,6 +21,15 @@ class InboundCallLeadSourceSeeder extends Seeder
             ]
         );
 
-        $this->command->info('Inbound Call lead source created successfully.');
+        LeadSource::updateOrCreate(
+            ['identifier' => 'outbound-call'],
+            [
+                'name' => 'Outbound Call',
+                'slug' => 'outbound-call',
+                'status' => 'active',
+            ]
+        );
+
+        $this->command->info('Inbound & Outbound Call lead sources created successfully.');
     }
 }
