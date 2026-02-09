@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Api\Roles;
 
+use App\Events\RolePermissionsUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePermissionRequest;
 use App\Http\Resources\PermissionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -32,6 +36,21 @@ class PermissionController extends Controller
         return PermissionResource::collection($permissions);
     }
 
+    public function store(StorePermissionRequest $request): JsonResponse
+    {
+        $permission = Permission::create([
+            'name' => $request->validated('name'),
+            'guard_name' => 'web',
+        ]);
+
+        $this->clearPermissionCache();
+
+        return response()->json([
+            'message' => 'Permission created successfully',
+            'data' => new PermissionResource($permission),
+        ], 201);
+    }
+
     public function matrix(): JsonResponse
     {
         // Use memo for request-scoped caching
@@ -43,7 +62,7 @@ class PermissionController extends Controller
         return response()->json(['data' => $matrix]);
     }
 
-    public function bulkUpdate(Request $request): JsonResponse
+    public function bulkUpdate(Request $request): mixed
     {
         $request->validate([
             'role_permissions' => 'required|array',
@@ -53,6 +72,8 @@ class PermissionController extends Controller
         ]);
 
         try {
+            $affectedRoleIds = collect($request->role_permissions)->pluck('role_id')->toArray();
+
             DB::transaction(function () use ($request) {
                 foreach ($request->role_permissions as $rolePermission) {
                     Role::findOrFail($rolePermission['role_id'])
@@ -62,10 +83,19 @@ class PermissionController extends Controller
             });
 
             $this->clearPermissionCache();
+            $this->broadcastPermissionsUpdated($affectedRoleIds);
 
-            return response()->json(['message' => 'Permissions updated successfully']);
+            if($request->expectsJson()) {
+                return response()->json(['message' => 'Permissions updated successfully']);
+            }else{
+                return redirect()->back()->with('success', 'Permissions updated successfully');
+            }
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to update permissions'], 500);
+            if($request->expectsJson()) {
+                return response()->json(['message' => 'Failed to update permissions'], 500);
+            }else{
+                return redirect()->back()->with('success', 'Permissions updated successfully');
+            }
         }
     }
 
@@ -73,6 +103,24 @@ class PermissionController extends Controller
     {
         foreach (self::CACHE_KEYS as $key) {
             cache()->forget($key);
+        }
+        // Clear Spatie's internal permission cache so getAllPermissions() returns fresh data
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * @param  array<int>  $roleIds
+     */
+    private function broadcastPermissionsUpdated(array $roleIds): void
+    {
+        $roles = Role::whereIn('id', $roleIds)->with('users:id')->get();
+
+        foreach ($roles as $role) {
+            $userIds = $role->users->pluck('id')->toArray();
+
+            if (count($userIds) > 0) {
+                RolePermissionsUpdated::dispatch($role->name, $userIds);
+            }
         }
     }
 }

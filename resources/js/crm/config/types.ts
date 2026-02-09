@@ -16,6 +16,8 @@ export interface NavItem {
   };
   more?: true;
   dropdown?: true;
+  requiredRole?: string;
+  requiredPermission?: string;
 }
 
 export type NavConfig = NavItem[];

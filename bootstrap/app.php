@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Spatie\Permission\Exceptions\UnauthorizedException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -44,5 +45,15 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->renderable(function (UnauthorizedException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'You do not have permission to access this resource.'], 403);
+            }
+
+            $user = $request->user();
+            $redirectTo = $user?->can('view dashboard') ? 'dashboard' : 'home';
+
+            return redirect()->route($redirectTo)
+                ->with('error', 'You do not have permission to access that page.');
+        });
     })->create();

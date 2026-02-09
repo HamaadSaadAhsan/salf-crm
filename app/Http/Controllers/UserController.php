@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RolePermissionsUpdated;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserFilterRequest;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
@@ -439,6 +442,7 @@ class UserController extends Controller
     {
         $user->load([
             'roles',
+            'permissions',
             'activeServices',
             'activeServices.parent',
             'services' => function ($q) {
@@ -489,12 +493,17 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
+        $allPermissions = Permission::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('users/show', [
             'user' => (new UserResource($user))->resolve(),
             'roles' => $roles,
             'zones' => $zones,
             'offices' => $offices,
             'services' => $services,
+            'allPermissions' => $allPermissions,
         ]);
     }
 
@@ -751,6 +760,34 @@ class UserController extends Controller
                 'message' => 'Failed to update services.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Update user's direct permissions
+     */
+    public function updatePermissions(User $user, \Illuminate\Http\Request $request): JsonResponse|Response
+    {
+        $validated = $request->validate([
+            'permission_ids' => 'present|array',
+            'permission_ids.*' => 'integer|exists:permissions,id',
+        ]);
+
+        $permissions = Permission::whereIn('id', $validated['permission_ids'])->get();
+        $user->syncPermissions($permissions);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        broadcast(new RolePermissionsUpdated('direct-permissions', [$user->id]))->toOthers();
+
+        if ($request->expectsJson()){
+            return response()->json([
+                'message' => 'Permissions updated successfully.',
+            ]);
+        }else{
+            return Inertia::render('settings/management/permissions/permission-matrix', [
+                'message' => __('Permissions updated successfully.'),
+            ]);
         }
     }
 

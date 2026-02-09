@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Roles;
 
+use App\Events\RolePermissionsUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
@@ -79,6 +80,7 @@ class RoleController extends Controller
 
             DB::commit();
             $this->clearRoleCache();
+            $this->broadcastPermissionsUpdated($role);
 
             return response()->json([
                 'message' => 'Role updated successfully',
@@ -109,6 +111,7 @@ class RoleController extends Controller
     {
         $role->permissions()->sync($request->permission_ids);
         $this->clearRoleCache();
+        $this->broadcastPermissionsUpdated($role);
 
         return response()->json(['message' => 'Permissions assigned successfully']);
     }
@@ -119,5 +122,16 @@ class RoleController extends Controller
         cache()->forget('permissions.matrix');
         // Clear individual role caches
         Role::all()->each(fn ($role) => cache()->forget("roles.{$role->id}"));
+        // Clear Spatie's internal permission cache so getAllPermissions() returns fresh data
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function broadcastPermissionsUpdated(Role $role): void
+    {
+        $userIds = $role->users()->pluck('id')->toArray();
+
+        if (count($userIds) > 0) {
+            RolePermissionsUpdated::dispatch($role->name, $userIds);
+        }
     }
 }

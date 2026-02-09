@@ -18,12 +18,16 @@ export interface NavItem {
     dropdown?: true;
     isActive?: boolean;
     requiredRole?: string;
+    requiredPermission?: string;
+    superAdminOnly?: boolean;
     items?: {
         title: string;
         path: string;
         icon?: LucideIcon | TablerIcon;
         isActive?: boolean;
         requiredRole?: string;
+        requiredPermission?: string;
+        superAdminOnly?: boolean;
     }[];
 }
 

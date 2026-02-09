@@ -1,9 +1,10 @@
 import { Head } from '@inertiajs/react';
-import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users } from 'lucide-react';
+import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users, Shield, Lock, Badge } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from './page-header';
 import { ManagementCard } from './management-card';
 import { Content } from '@/crm/layout/components/content';
+import React from 'react';
 
 export default function ManagementSettingsPage() {
   const userManagementSections = [
@@ -12,6 +13,18 @@ export default function ManagementSettingsPage() {
       description: 'Manage user accounts, roles, and permissions',
       icon: Users,
       href: '/users',
+    },
+    {
+      title: 'Roles',
+      description: 'Create and manage roles with permission assignments',
+      icon: Shield,
+      href: '/settings/management/roles',
+    },
+    {
+      title: 'Permissions',
+      description: 'Configure the permission matrix across all roles',
+      icon: Lock,
+      href: '/settings/management/permissions',
     },
   ];
 
@@ -55,6 +68,7 @@ export default function ManagementSettingsPage() {
       icon: GraduationCap,
       href: '/services',
       disabled: false,
+      badge: React.createElement(Badge),
     },
   ];
 

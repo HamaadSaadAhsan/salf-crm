@@ -2,21 +2,28 @@ import { User } from '@/types/auth';
 
 export class ACL {
     private user: User | null;
+    private serverPermissions: string[];
 
-    constructor(user: User | null = null) {
+    constructor(user: User | null = null, serverPermissions: string[] = []) {
         this.user = user;
+        this.serverPermissions = serverPermissions;
     }
 
-    // Check if user has specific permission (Spatie format)
+    /**
+     * Check if user has a specific permission.
+     * Uses server-computed permissions as the source of truth.
+     * Falls back to client-side role/direct permission check if server permissions aren't available.
+     */
     can(permission: string): boolean {
         if (!this.user) return false;
 
-        if (!this.user.roles) return false;
+        // Server-computed permissions are the source of truth
+        if (this.serverPermissions.length > 0) {
+            return this.serverPermissions.includes(permission);
+        }
 
-        // Check role permissions
-        const hasRolePermission = this.user?.roles.some((role) => role.permissions.some((perm) => perm.name === permission));
-
-        // Check direct permissions
+        // Fallback: check role permissions then direct permissions
+        const hasRolePermission = this.user?.roles?.some((role) => role.permissions.some((perm) => perm.name === permission)) || false;
         const hasDirectPermission = this.user.direct_permissions?.some((perm) => perm.name === permission) || false;
 
         return hasRolePermission || hasDirectPermission;
@@ -56,13 +63,16 @@ export class ACL {
         return roleNames.every((roleName) => this.hasRole(roleName));
     }
 
-    // Get all user permissions (including direct permissions)
+    // Get all user permissions (server-computed)
     getAllPermissions(): string[] {
+        if (this.serverPermissions.length > 0) {
+            return this.serverPermissions;
+        }
+
         if (!this.user) return [];
         if (!this.user.roles) return [];
 
         const rolePermissions = this.user.roles.flatMap((role) => role.permissions.map((perm) => perm.name));
-
         const directPermissions = this.user.direct_permissions?.map((perm) => perm.name) || [];
 
         return [...new Set([...rolePermissions, ...directPermissions])];
@@ -77,13 +87,9 @@ export class ACL {
 
     // Check permission with Laravel-style gate logic
     allows(permission: string, resource?: any): boolean {
-        // For a simple permission check
         if (!resource) {
             return this.can(permission);
         }
-
-        // For resource-specific permissions, you can add custom logic here
-        // This is where you'd implement ownership checks, etc.
         return this.can(permission);
     }
 

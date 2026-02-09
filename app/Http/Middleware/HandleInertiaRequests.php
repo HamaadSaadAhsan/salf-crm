@@ -97,7 +97,10 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $user?->loadMissing('roles:id,name');
+        $user?->loadMissing('roles:id,name', 'roles.permissions:id,name', 'permissions:id,name');
+
+        // Compute all permissions: direct user permissions take precedence, then role permissions
+        $permissions = $user ? $user->getAllPermissions()->pluck('name')->unique()->values()->toArray() : [];
 
         return [
             ...parent::share($request),
@@ -105,6 +108,7 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $user,
+                'permissions' => $permissions,
                 'isSuperAdmin' => $user?->hasRole('super-admin') ?? false,
             ],
             'impersonation' => [

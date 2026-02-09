@@ -5,7 +5,7 @@ export function PageHeader() {
   return (
     <ContentHeader>
       <div className="flex items-center justify-between w-full">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <Settings2 className="size-5 text-primary" />
             <h1 className="text-lg font-semibold">Management Settings</h1>

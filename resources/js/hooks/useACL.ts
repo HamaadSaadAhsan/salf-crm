@@ -1,11 +1,14 @@
 import { ACL } from '@/lib/acl';
-import { User } from '@/types/auth';
+import { type SharedData } from '@/types';
 import { useMemo } from 'react';
-import { useAuth } from './auth';
+import { usePage } from '@inertiajs/react';
 
 export function useACL() {
-    const { user }: { user: User } = useAuth({ middleware: 'auth' });
-    const acl = useMemo(() => new ACL(user), [user]);
+    const { auth } = usePage<SharedData>().props;
+    const user = auth?.user || null;
+    const serverPermissions = auth?.permissions || [];
+
+    const acl = useMemo(() => new ACL(user as any, serverPermissions), [user, serverPermissions]);
 
     return {
         can: acl.can.bind(acl),

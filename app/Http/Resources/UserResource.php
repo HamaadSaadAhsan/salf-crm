@@ -90,6 +90,14 @@ class UserResource extends JsonResource
                     });
                 }
             ),
+            'direct_permissions' => $this->whenLoaded('permissions', function () {
+                return $this->permissions->map(function ($permission) {
+                    return [
+                        'id' => $permission->id,
+                        'name' => $permission->name,
+                    ];
+                });
+            }),
             'zone' => $this->whenLoaded('zone', function () {
                 return [
                     'id' => $this->zone?->id,

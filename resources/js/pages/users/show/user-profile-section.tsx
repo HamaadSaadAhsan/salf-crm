@@ -367,6 +367,7 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
               <FormField
                 control={form.control}
                 name="email"
+                disabled
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>

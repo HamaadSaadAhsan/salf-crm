@@ -10,10 +10,16 @@ import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { type BreadcrumbItem } from '@/types';
 import { UserProfileSection } from './show/user-profile-section';
+import { UserPermissionsSection } from './show/user-permissions-section';
 import { UserServicesSection } from './show/user-services-section';
 import { UserStatsSection } from './show/user-stats-section';
 import { UserActionsSection } from './show/user-actions-section';
 import { UserActivityHeatmap } from './show/user-activity-heatmap';
+
+interface Permission {
+  id: number;
+  name: string;
+}
 
 interface Role {
   id: number;
@@ -80,6 +86,7 @@ interface UserData {
   services?: Service[];
   leads?: Lead[];
   roles?: Role[];
+  direct_permissions?: Permission[];
   zone?: Zone;
   office?: Office;
   created_at?: string;
@@ -102,9 +109,10 @@ interface Props {
   zones: Zone[];
   offices: Office[];
   services: AvailableService[];
+  allPermissions: Permission[];
 }
 
-export default function UserShow({ user, roles, zones, offices, services }: Props) {
+export default function UserShow({ user, roles, zones, offices, services, allPermissions }: Props) {
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Users', href: '/users' },
@@ -195,6 +203,12 @@ export default function UserShow({ user, roles, zones, offices, services }: Prop
               roles={roles}
               zones={zones}
               offices={offices}
+            />
+
+            {/* Direct Permissions Section */}
+            <UserPermissionsSection
+              user={user}
+              allPermissions={allPermissions}
             />
 
             {/* User Services Section */}

@@ -1,4 +1,3 @@
-import AuthenticatedSessionController from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,8 @@ import { register } from '@/routes';
 import { request } from '@/routes/password';
 import { Form, Head } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
+import { store as storePost } from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController'; // Generated helper
+
 
 interface LoginProps {
     status?: string;
@@ -23,7 +24,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
             {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
 
-            <Form {...AuthenticatedSessionController.store.form()} resetOnSuccess={['password']} className="flex flex-col gap-6">
+            <Form action={storePost()} resetOnSuccess={['password']} className="flex flex-col gap-6">
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">

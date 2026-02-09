@@ -41,12 +41,14 @@ Route::post('/asterisk/ring-group-member', [\App\Http\Controllers\AsteriskCallCo
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
-    })->name('dashboard');
+    })->middleware('role_or_permission:super-admin|view dashboard')->name('dashboard');
 
-    Route::resource('leads', LeadController::class)->names('leads');
-    Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
-    Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
-    Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
+    Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
+        Route::resource('leads', LeadController::class)->names('leads');
+        Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
+        Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
+        Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
+    });
 
     Route::apiResource('statuses', StatusController::class)->names('statuses');
     Route::apiResource('sources', SourceController::class)->names('sources');
@@ -79,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
             Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
+            Route::patch('users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.update-permissions');
             Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
         });
 
@@ -126,8 +129,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('tasks', TaskController::class)->names('tasks');
 
     // Lead Activities
-    Route::get('leads/{lead}/activities/month-summary', [LeadActivityController::class, 'monthSummary'])->name('leads.activities.month-summary');
-    Route::apiResource('lead-activities', LeadActivityController::class)->names('lead-activities');
+    Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
+        Route::get('leads/{lead}/activities/month-summary', [LeadActivityController::class, 'monthSummary'])->name('leads.activities.month-summary');
+        Route::apiResource('lead-activities', LeadActivityController::class)->names('lead-activities');
+    });
 
     // Notifications Page
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.page');
@@ -162,7 +167,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Dashboard & Metrics
-    Route::prefix('api/dashboard')->group(function () {
+    Route::prefix('api/dashboard')->middleware('role_or_permission:super-admin|view dashboard')->group(function () {
         Route::get('/overview', [DashboardController::class, 'overview'])->name('dashboard.overview');
         Route::get('/leads-overview', [DashboardController::class, 'leadsOverview'])->name('dashboard.leads-overview');
         Route::get('/lead-analytics', [DashboardController::class, 'leadAnalytics'])->name('dashboard.lead-analytics');
@@ -178,7 +183,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/lead-lifecycle-analysis', [DashboardController::class, 'leadLifecycleAnalysis'])->name('dashboard.lead-lifecycle-analysis');
     });
 
-    Route::prefix('api/metrics')->group(function () {
+    Route::prefix('api/metrics')->middleware('role_or_permission:super-admin|view analytics')->group(function () {
         Route::get('/conversion', [MetricsController::class, 'conversion'])->name('metrics.conversion');
         Route::get('/business-performance', [MetricsController::class, 'businessPerformance'])->name('metrics.business-performance');
         Route::get('/department-handoff', [MetricsController::class, 'departmentHandoff'])->name('metrics.department-handoff');
@@ -196,7 +201,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Roles
-    Route::prefix('roles')->group(function () {
+    Route::prefix('roles')->middleware('role:super-admin')->group(function () {
         Route::get('/', [RoleController::class, 'index']);
         Route::post('/', [RoleController::class, 'store']);
         Route::get('/{role}', [RoleController::class, 'show']);
@@ -206,8 +211,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Permissions
-    Route::prefix('permissions')->group(function () {
+    Route::prefix('permissions')->middleware('role:super-admin')->group(function () {
         Route::get('/', [PermissionController::class, 'index']);
+        Route::post('/', [PermissionController::class, 'store']);
         Route::get('/matrix', [PermissionController::class, 'matrix']);
         Route::post('/bulk-update', [PermissionController::class, 'bulkUpdate']);
     });
@@ -224,7 +230,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/facebook/callback', [FacebookOAuthController::class, 'callback']);
 
-    Route::prefix('integrations')->group(function () {
+    Route::prefix('integrations')->middleware('role_or_permission:super-admin|manage integrations')->group(function () {
         Route::get('/', [\App\Http\Controllers\IntegrationController::class, 'index'])->name('integrations');
         Route::prefix('/facebook')->group(function () {
             // Template management
@@ -273,17 +279,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // SIP/Call Management Routes
-    Route::resource('sip-accounts', \App\Http\Controllers\SipAccountController::class)->names('sip-accounts');
-    Route::post('sip-accounts/{sip_account}/register', [\App\Http\Controllers\SipAccountController::class, 'register'])->name('sip-accounts.register');
-    Route::post('sip-accounts/{sip_account}/toggle', [\App\Http\Controllers\SipAccountController::class, 'toggle'])->name('sip-accounts.toggle');
+    Route::middleware('role_or_permission:super-admin|make calls')->group(function () {
+        Route::resource('sip-accounts', \App\Http\Controllers\SipAccountController::class)->names('sip-accounts');
+        Route::post('sip-accounts/{sip_account}/register', [\App\Http\Controllers\SipAccountController::class, 'register'])->name('sip-accounts.register');
+        Route::post('sip-accounts/{sip_account}/toggle', [\App\Http\Controllers\SipAccountController::class, 'toggle'])->name('sip-accounts.toggle');
 
-    Route::resource('calls', \App\Http\Controllers\CallController::class)->except(['edit', 'update', 'destroy'])->names('calls');
-    //    Route::get('calls/history', [\App\Http\Controllers\CallController::class, 'history'])->name('calls.history');
+        Route::resource('calls', \App\Http\Controllers\CallController::class)->except(['edit', 'update', 'destroy'])->names('calls');
+        //    Route::get('calls/history', [\App\Http\Controllers\CallController::class, 'history'])->name('calls.history');
+    });
 
-    Route::resource('workflows', \App\Http\Controllers\WorkflowController::class)->names('workflows');
-    Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
-    Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
-    Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
+    Route::middleware('role:super-admin')->group(function () {
+        Route::resource('workflows', \App\Http\Controllers\WorkflowController::class)->names('workflows');
+        Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
+        Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
+        Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
+    });
 
     // Note: Task routes are defined above
     Route::post('tasks/{task}/complete', [\App\Http\Controllers\TaskController::class, 'complete'])->name('tasks.complete');
@@ -305,7 +315,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Call API endpoints - Real-time call control
-    Route::prefix('api/calls')->group(function () {
+    Route::prefix('api/calls')->middleware('role_or_permission:super-admin|make calls')->group(function () {
         // Note: 'initiate' route is defined in CallSessionController (line 62) - removed duplicate here
         Route::post('{id}/answer', [\App\Http\Controllers\Api\CallController::class, 'answer'])->name('api.calls.answer');
         Route::post('{id}/hangup', [\App\Http\Controllers\Api\CallController::class, 'hangup'])->name('api.calls.hangup');
@@ -320,14 +330,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Legacy call control endpoints (AJAX) - kept for backward compatibility
-    Route::post('calls/{call_session}/answer', [\App\Http\Controllers\CallController::class, 'answer'])->name('calls.answer');
-    Route::post('calls/{call_session}/hangup', [\App\Http\Controllers\CallController::class, 'hangup'])->name('calls.hangup');
-    Route::post('calls/{call_session}/hold', [\App\Http\Controllers\CallController::class, 'hold'])->name('calls.hold');
-    Route::post('calls/{call_session}/unhold', [\App\Http\Controllers\CallController::class, 'unhold'])->name('calls.unhold');
-    Route::post('calls/{call_session}/mute', [\App\Http\Controllers\CallController::class, 'mute'])->name('calls.mute');
-    Route::post('calls/{call_session}/unmute', [\App\Http\Controllers\CallController::class, 'unmute'])->name('calls.unmute');
-    Route::post('calls/{call_session}/start-recording', [\App\Http\Controllers\CallController::class, 'startRecording'])->name('calls.start-recording');
-    Route::post('calls/{call_session}/stop-recording', [\App\Http\Controllers\CallController::class, 'stopRecording'])->name('calls.stop-recording');
+    Route::middleware('role_or_permission:super-admin|make calls')->group(function () {
+        Route::post('calls/{call_session}/answer', [\App\Http\Controllers\CallController::class, 'answer'])->name('calls.answer');
+        Route::post('calls/{call_session}/hangup', [\App\Http\Controllers\CallController::class, 'hangup'])->name('calls.hangup');
+        Route::post('calls/{call_session}/hold', [\App\Http\Controllers\CallController::class, 'hold'])->name('calls.hold');
+        Route::post('calls/{call_session}/unhold', [\App\Http\Controllers\CallController::class, 'unhold'])->name('calls.unhold');
+        Route::post('calls/{call_session}/mute', [\App\Http\Controllers\CallController::class, 'mute'])->name('calls.mute');
+        Route::post('calls/{call_session}/unmute', [\App\Http\Controllers\CallController::class, 'unmute'])->name('calls.unmute');
+        Route::post('calls/{call_session}/start-recording', [\App\Http\Controllers\CallController::class, 'startRecording'])->name('calls.start-recording');
+        Route::post('calls/{call_session}/stop-recording', [\App\Http\Controllers\CallController::class, 'stopRecording'])->name('calls.stop-recording');
+    });
 
     // Asterisk Inbound Call Management
     Route::prefix('api/asterisk')->group(function () {

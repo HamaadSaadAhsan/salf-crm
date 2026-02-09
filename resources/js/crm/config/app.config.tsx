@@ -8,11 +8,12 @@ import { management } from '@/routes/settings';
 
 export const MAIN_NAV: NavConfig = [
         {
-            id:'dashboard',
+            id: 'dashboard',
             title: 'Dashboard',
             path: dashboard().url,
             icon: LayoutGrid,
             isActive: true,
+            requiredPermission: 'view dashboard',
             items: [
                 {
                     title: 'Overview',
@@ -21,17 +22,19 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'Analytics',
                     path: '#',
+                    requiredPermission: 'view analytics',
                 },
                 {
                     title: 'Reports',
                     path: '#',
+                    requiredPermission: 'view reports',
                 },
             ],
         },
         {
-            id: "tasks",
-            title: "Tasks",
-            path: "/tasks",
+            id: 'tasks',
+            title: 'Tasks',
+            path: '/tasks',
             icon: Bot,
         },
         {
@@ -39,6 +42,7 @@ export const MAIN_NAV: NavConfig = [
             title: 'Leads',
             path: '/leads',
             icon: Users,
+            requiredPermission: 'view leads',
             items: [
                 {
                     title: 'All Leads',
@@ -59,10 +63,11 @@ export const MAIN_NAV: NavConfig = [
             ],
         },
         {
-            id:'workflows',
+            id: 'workflows',
             title: 'Workflows',
             path: '/workflows',
             icon: Workflow,
+            superAdminOnly: true,
             items: [
                 {
                     title: 'All Workflows',
@@ -83,6 +88,7 @@ export const MAIN_NAV: NavConfig = [
             title: 'Management',
             path: management.url(),
             icon: Bot,
+            superAdminOnly: true,
             items: [
                 {
                     title: 'Users',
@@ -103,6 +109,7 @@ export const MAIN_NAV: NavConfig = [
             title: 'Integrations',
             path: '/integrations',
             icon: IconTools,
+            requiredPermission: 'manage integrations',
             items: [
                 {
                     title: 'Overview',
@@ -124,6 +131,7 @@ export const MAIN_NAV: NavConfig = [
             title: 'Calls',
             path: '/calls',
             icon: PhoneCall,
+            requiredPermission: 'make calls',
             items: [
                 {
                     title: 'All Calls',
@@ -144,6 +152,7 @@ export const MAIN_NAV: NavConfig = [
             title: 'SIP Accounts',
             path: '/sip-accounts',
             icon: Phone,
+            superAdminOnly: true,
             items: [
                 {
                     title: 'All Accounts',
@@ -168,7 +177,7 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'Management',
                     path: '/settings/management',
-                    requiredRole: 'Super Admin',
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Security',

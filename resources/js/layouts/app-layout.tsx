@@ -11,6 +11,7 @@ import { useTaskReminders } from '@/hooks/useTaskReminders';
 import { useTaskReminderListener } from '@/hooks/useTaskReminderListener';
 import { useLeadAssignmentListener } from '@/hooks/useLeadAssignmentListener';
 import { useLeadRequalifiedListener } from '@/hooks/useLeadRequalifiedListener';
+import { usePermissionUpdateListener } from '@/hooks/usePermissionUpdateListener';
 import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
 import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
@@ -24,27 +25,31 @@ interface AppLayoutProps {
 
 export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
     const { auth } = usePage<SharedData>().props;
-    const userRole = auth.user.role;
+    const isSuperAdmin = auth.isSuperAdmin;
+    const userPermissions = auth.permissions ?? [];
 
-    // Filter navigation items based on user role
+    // Filter navigation items based on role, permissions, and super admin status
     const filteredNav: NavConfig = useMemo(() => {
-        return MAIN_NAV.map(item => {
-            // Filter out items the user doesn't have access to
-            if (item.requiredRole && item.requiredRole !== userRole) {
-                return null;
-            }
+        const hasPermission = (permission: string) => userPermissions.includes(permission);
 
-            // Filter sub-items based on role
+        const isItemAllowed = (item: { superAdminOnly?: boolean; requiredPermission?: string; requiredRole?: string }) => {
+            if (item.superAdminOnly && !isSuperAdmin) return false;
+            if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false;
+            return true;
+        };
+
+        return MAIN_NAV.map(item => {
+            if (!isItemAllowed(item)) return null;
+
+            // Filter sub-items
             if (item.items) {
-                const filteredItems = item.items.filter(
-                    subItem => !subItem.requiredRole || subItem.requiredRole === userRole
-                );
+                const filteredItems = item.items.filter(isItemAllowed);
                 return { ...item, items: filteredItems };
             }
 
             return item;
         }).filter(Boolean) as NavConfig;
-    }, [userRole]);
+    }, [isSuperAdmin, userPermissions]);
 
     // Enable task reminder polling (fallback)
     useTaskReminders({
@@ -68,6 +73,12 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
 
     // Enable real-time lead requalification listening via WebSocket
     useLeadRequalifiedListener({
+        userId: auth.user.id,
+        enabled: true,
+    });
+
+    // Enable real-time permission update listening via WebSocket
+    usePermissionUpdateListener({
         userId: auth.user.id,
         enabled: true,
     });

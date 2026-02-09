@@ -4,8 +4,9 @@ import { Country } from '@/hooks/useLocation';
 import { LeadSource, Service, Status } from '@/types/lead';
 
 export interface Auth {
-    user: User;
-    isSuperAdmin: boolean;
+    readonly user: User;
+    readonly permissions: readonly string[];
+    readonly isSuperAdmin: boolean;
 }
 
 export interface Impersonation {
