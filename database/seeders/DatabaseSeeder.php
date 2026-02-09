@@ -27,15 +27,16 @@ class DatabaseSeeder extends Seeder
             LeadSourceSeeder::class,
         ]);
 
-        // Users and Permissions
+        // Users, Roles and Permissions
         $this->call([
+            RoleSeeder::class,
             UserSeeder::class,
             TicketsLeadsPermissionsSeeder::class,
         ]);
 
         // Leads and Related Data
         $this->call([
-            LeadSeeder::class,
+//            LeadSeeder::class,
             InboundCallLeadSourceSeeder::class,
         ]);
 
