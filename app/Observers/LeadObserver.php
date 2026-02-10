@@ -398,7 +398,7 @@ class LeadObserver
             ->whereIn('type', ['follow_up', 'task'])
             ->update([
                 'status' => 'completed',
-                'completed_at' => now(),
+                'completed_at' => \Illuminate\Support\Facades\DB::raw('GREATEST(COALESCE(scheduled_at, NOW()), NOW())'),
             ]);
     }
 

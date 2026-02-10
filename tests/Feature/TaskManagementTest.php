@@ -5,8 +5,14 @@ use App\Models\Lead;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    config(['broadcasting.default' => 'null']);
+    Permission::firstOrCreate(['name' => 'view leads', 'guard_name' => 'web']);
+});
 
 it('can create a task for a lead', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
@@ -194,6 +200,7 @@ it('can delete a task', function () {
 
 it('loads tasks with lead', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
 
     $tasks = Task::factory()->count(5)->create([
@@ -213,6 +220,7 @@ it('loads tasks with lead', function () {
 
 it('orders tasks by completion status and due date', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
 
     // Create completed task
@@ -261,6 +269,7 @@ it('orders tasks by completion status and due date', function () {
 
 it('limits tasks to 10 per lead', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
 
     Task::factory()->count(15)->create([
@@ -280,6 +289,7 @@ it('limits tasks to 10 per lead', function () {
 
 it('includes task type metadata', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
     $task = Task::factory()->create([
         'taskable_type' => 'App\\Models\\Lead',
@@ -304,6 +314,7 @@ it('includes task type metadata', function () {
 
 it('eager loads collaborators with tasks', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
+    $user->givePermissionTo('view leads');
     $collaborator = User::factory()->create(['name' => 'Jane Collaborator', 'email_verified_at' => now()]);
     $lead = Lead::factory()->create();
 

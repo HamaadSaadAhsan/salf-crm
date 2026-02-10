@@ -18,11 +18,12 @@ beforeEach(function () {
     $this->advisorRole = Role::create(['name' => 'sales-rep']);
     $this->adminRole = Role::create(['name' => 'super-admin']);
 
-    // Create edit leads permission and assign to roles
+    // Create permissions and assign to roles
     $editPermission = Permission::create(['name' => 'edit leads']);
-    $this->croRole->givePermissionTo($editPermission);
-    $this->advisorRole->givePermissionTo($editPermission);
-    $this->adminRole->givePermissionTo($editPermission);
+    $viewPermission = Permission::create(['name' => 'view leads']);
+    $this->croRole->givePermissionTo([$editPermission, $viewPermission]);
+    $this->advisorRole->givePermissionTo([$editPermission, $viewPermission]);
+    $this->adminRole->givePermissionTo([$editPermission, $viewPermission]);
 
     // Create users
     $this->cro = User::factory()->create();

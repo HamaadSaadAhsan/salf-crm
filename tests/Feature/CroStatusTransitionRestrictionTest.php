@@ -17,11 +17,12 @@ beforeEach(function () {
     $salesRepRole = Role::create(['name' => 'sales-rep']);
     $adminRole = Role::create(['name' => 'admin']);
 
-    // Create 'edit leads' permission and assign to roles
+    // Create permissions and assign to roles
     $editLeadsPermission = Permission::create(['name' => 'edit leads']);
-    $supportAgentRole->givePermissionTo($editLeadsPermission);
-    $salesRepRole->givePermissionTo($editLeadsPermission);
-    $adminRole->givePermissionTo($editLeadsPermission);
+    $viewLeadsPermission = Permission::create(['name' => 'view leads']);
+    $supportAgentRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);
+    $salesRepRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);
+    $adminRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);
 
     // Create a CRO user
     $this->cro = User::factory()->create([

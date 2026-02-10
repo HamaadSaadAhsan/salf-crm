@@ -15,6 +15,11 @@ beforeEach(function () {
     $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
     $adminRole = \Spatie\Permission\Models\Role::create(['name' => 'super-admin']);
 
+    $viewLeads = \Spatie\Permission\Models\Permission::create(['name' => 'view leads']);
+    $editLeads = \Spatie\Permission\Models\Permission::create(['name' => 'edit leads']);
+    $salesRepRole->givePermissionTo([$viewLeads, $editLeads]);
+    $supportAgentRole->givePermissionTo([$viewLeads, $editLeads]);
+
     $this->advisor = User::factory()->create();
     $this->advisor->assignRole($salesRepRole);
 

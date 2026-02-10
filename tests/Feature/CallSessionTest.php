@@ -9,7 +9,9 @@ it('requires authentication for call routes', function () {
 });
 
 it('call routes exist', function () {
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'make calls', 'guard_name' => 'web']);
     $user = \App\Models\User::factory()->create();
+    $user->givePermissionTo('make calls');
     $this->actingAs($user);
 
     $response = $this->get('/calls');
