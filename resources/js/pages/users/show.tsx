@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Building, MapPin, Briefcase } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { UserProfileSection } from './show/user-profile-section';
 import { UserPermissionsSection } from './show/user-permissions-section';
 import { UserServicesSection } from './show/user-services-section';
+import { UserOrganizationsSection } from './show/user-organizations-section';
 import { UserStatsSection } from './show/user-stats-section';
 import { UserActionsSection } from './show/user-actions-section';
 import { UserActivityHeatmap } from './show/user-activity-heatmap';
@@ -71,6 +72,20 @@ interface Office {
   };
 }
 
+interface UserOrganization {
+  id: number;
+  name: string;
+  slug: string;
+  role: string;
+  is_default: boolean;
+}
+
+interface AvailableOrganization {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface UserData {
   id: number;
   name: string;
@@ -87,6 +102,7 @@ interface UserData {
   leads?: Lead[];
   roles?: Role[];
   direct_permissions?: Permission[];
+  organizations?: UserOrganization[];
   zone?: Zone;
   office?: Office;
   created_at?: string;
@@ -110,9 +126,11 @@ interface Props {
   offices: Office[];
   services: AvailableService[];
   allPermissions: Permission[];
+  allOrganizations: AvailableOrganization[];
 }
 
-export default function UserShow({ user, roles, zones, offices, services, allPermissions }: Props) {
+export default function UserShow({ user, roles, zones, offices, services, allPermissions, allOrganizations }: Props) {
+  const { auth } = usePage<SharedData>().props;
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Users', href: '/users' },
@@ -216,6 +234,14 @@ export default function UserShow({ user, roles, zones, offices, services, allPer
               user={user}
               availableServices={services}
             />
+
+            {/* User Organizations Section (Super Admin only) */}
+            {auth.isSuperAdmin && (
+              <UserOrganizationsSection
+                user={user}
+                allOrganizations={allOrganizations}
+              />
+            )}
 
             {/* User Activity Heatmap */}
             <UserActivityHeatmap userId={user.id} />

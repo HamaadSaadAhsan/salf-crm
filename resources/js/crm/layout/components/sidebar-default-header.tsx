@@ -9,11 +9,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppearance } from '@/hooks/use-appearance';
+import { logout } from '@/routes';
 import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, LogOut, Moon, PanelRightOpen, Settings, Sun, User } from 'lucide-react';
 import { useLayout } from './layout-context';
-import { logout } from '@/routes';
+import { SidebarOrgSwitcher } from '@/crm/layout/components/sidebar-org-switcher';
 
 export function SidebarDefaultHeader() {
     const { sidebarCollapse, setSidebarCollapse } = useLayout();
@@ -53,6 +54,7 @@ export function SidebarDefaultHeader() {
                                     <span>Settings</span>
                                 </Link>
                             </DropdownMenuItem>
+                            <SidebarOrgSwitcher />
                             <DropdownMenuItem asChild className="w-full cursor-pointer">
                                 <Link href={logout()}>
                                     <LogOut className="size-4" />

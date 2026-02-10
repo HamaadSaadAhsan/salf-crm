@@ -116,6 +116,10 @@ class HandleInertiaRequests extends Middleware
                 'impersonator' => ImpersonationController::getImpersonator(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'currentOrganization' => fn () => $user?->currentOrganization()?->only(['id', 'name', 'slug', 'logo']),
+            'organizations' => fn () => $user?->organizations()
+                ->select(['organizations.id', 'organizations.name', 'organizations.slug', 'organizations.logo'])
+                ->get() ?? [],
         ];
     }
 }

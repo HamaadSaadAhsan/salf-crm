@@ -14,6 +14,7 @@ use App\Observers\LeadActivityObserver;
 use App\Observers\LeadObserver;
 use App\Observers\PermissionObserver;
 use App\Observers\RoleObserver;
+use App\Services\Tenancy\TenantManager;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(TenantManager::class);
+
         $this->app->bind(TextProvider::class, fn ($app) => $app->make(AiManager::class)->textProvider());
     }
 

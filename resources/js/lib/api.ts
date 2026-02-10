@@ -19,6 +19,12 @@ class ApiClient {
         return response.data;
     }
 
+    async patch(endpoint: string, data: any) {
+        const url = `${endpoint}`;
+        const response = await axios.patch(url, data);
+        return response.data;
+    }
+
     async delete(endpoint: string) {
         const url = `${endpoint}`;
         const response = await axios.delete(url);

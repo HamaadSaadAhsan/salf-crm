@@ -25,9 +25,7 @@ class UserController extends Controller
 {
     public function __construct(
         private CacheService $cacheService
-    )
-    {
-    }
+    ) {}
 
     /**
      * Display the users management page
@@ -165,7 +163,7 @@ class UserController extends Controller
     private function applyFilters($query, array $filters): void
     {
         // Email verification status filter
-        if (!empty($filters['email_verified'])) {
+        if (! empty($filters['email_verified'])) {
             if ($filters['email_verified'] === 'verified') {
                 $query->whereNotNull('email_verified_at');
             } else {
@@ -174,7 +172,7 @@ class UserController extends Controller
         }
 
         // Role filter
-        if (!empty($filters['role'])) {
+        if (! empty($filters['role'])) {
             if (is_array($filters['role'])) {
                 $query->whereHas('roles', function ($q) use ($filters) {
                     $q->whereIn('name', $filters['role']);
@@ -187,14 +185,14 @@ class UserController extends Controller
         }
 
         // Permission filter
-        if (!empty($filters['permission'])) {
+        if (! empty($filters['permission'])) {
             $query->whereHas('roles.permissions', function ($q) use ($filters) {
                 $q->where('name', $filters['permission']);
             });
         }
 
         // Service assignment filter
-        if (!empty($filters['service_id'])) {
+        if (! empty($filters['service_id'])) {
             if (is_array($filters['service_id'])) {
                 $query->whereHas('activeServices', function ($q) use ($filters) {
                     $q->whereIn('service_id', $filters['service_id']);
@@ -203,7 +201,7 @@ class UserController extends Controller
                 $serviceId = $filters['service_id'];
 
                 // Include child services if filtering by parent
-                if (!empty($filters['include_child_services'])) {
+                if (! empty($filters['include_child_services'])) {
                     $service = Service::find($serviceId);
                     if ($service) {
                         $childServiceIds = $service->getAllDescendants()->pluck('id')->toArray();
@@ -225,54 +223,54 @@ class UserController extends Controller
         }
 
         // Service country filter
-        if (!empty($filters['service_country'])) {
+        if (! empty($filters['service_country'])) {
             $query->whereHas('activeServices', function ($q) use ($filters) {
                 $q->where('country_code', $filters['service_country']);
             });
         }
 
         // Users without any services
-        if (!empty($filters['no_services'])) {
+        if (! empty($filters['no_services'])) {
             $query->doesntHave('activeServices');
         }
 
         // Users with minimum number of services
-        if (!empty($filters['min_services'])) {
-            $query->has('activeServices', '>=', (int)$filters['min_services']);
+        if (! empty($filters['min_services'])) {
+            $query->has('activeServices', '>=', (int) $filters['min_services']);
         }
 
         // Service assignment status filter
-        if (!empty($filters['service_status'])) {
+        if (! empty($filters['service_status'])) {
             $query->whereHas('services', function ($q) use ($filters) {
                 $q->wherePivot('status', $filters['service_status']);
             });
         }
 
         // Service assignment metadata filter
-        if (!empty($filters['service_role'])) {
+        if (! empty($filters['service_role'])) {
             $query->whereHas('services', function ($q) use ($filters) {
                 $q->whereRaw("service_user.metadata ->> 'role' = ?", [$filters['service_role']]);
             });
         }
 
         // Date range filter (user creation)
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->where('created_at', '>=', $filters['date_from']);
         }
-        if (!empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
+        if (! empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
         }
 
         // Email verification date range
-        if (!empty($filters['verified_from'])) {
+        if (! empty($filters['verified_from'])) {
             $query->where('email_verified_at', '>=', $filters['verified_from']);
         }
-        if (!empty($filters['verified_to'])) {
-            $query->where('email_verified_at', '<=', $filters['verified_to'] . ' 23:59:59');
+        if (! empty($filters['verified_to'])) {
+            $query->where('email_verified_at', '<=', $filters['verified_to'].' 23:59:59');
         }
 
         // Users with leads filter
-        if (!empty($filters['has_leads'])) {
+        if (! empty($filters['has_leads'])) {
             if ($filters['has_leads'] === 'yes') {
                 $query->has('leads');
             } else {
@@ -281,42 +279,42 @@ class UserController extends Controller
         }
 
         // Users with active leads
-        if (!empty($filters['has_active_leads'])) {
+        if (! empty($filters['has_active_leads'])) {
             $query->whereHas('leads', function ($q) {
                 $q->whereNotIn('inquiry_status', ['won', 'lost', 'closed']);
             });
         }
 
         // Lead count filter
-        if (!empty($filters['min_leads'])) {
-            $query->has('leads', '>=', (int)$filters['min_leads']);
+        if (! empty($filters['min_leads'])) {
+            $query->has('leads', '>=', (int) $filters['min_leads']);
         }
-        if (!empty($filters['max_leads'])) {
-            $query->has('leads', '<=', (int)$filters['max_leads']);
+        if (! empty($filters['max_leads'])) {
+            $query->has('leads', '<=', (int) $filters['max_leads']);
         }
 
         // Search filter - Enhanced with PostgreSQL full-text search
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $searchTerm = trim($filters['search']);
 
             if (strlen($searchTerm) >= 3) {
                 // Use PostgreSQL full-text search for longer terms
                 $query->where(function ($q) use ($searchTerm) {
                     $q->whereRaw("to_tsvector('english', coalesce(name, '') || ' ' || coalesce(email, '')) @@ plainto_tsquery('english', ?)", [$searchTerm])
-                        ->orWhere('email', 'ilike', '%' . $searchTerm . '%')
-                        ->orWhere('name', 'ilike', '%' . $searchTerm . '%');
+                        ->orWhere('email', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('name', 'ilike', '%'.$searchTerm.'%');
                 });
             } else {
                 // Use LIKE search for shorter terms
                 $query->where(function ($q) use ($searchTerm) {
-                    $q->where('name', 'ilike', '%' . $searchTerm . '%')
-                        ->orWhere('email', 'ilike', '%' . $searchTerm . '%');
+                    $q->where('name', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('email', 'ilike', '%'.$searchTerm.'%');
                 });
             }
         }
 
         // Active users only (if you have a status field)
-        if (!empty($filters['active_only'])) {
+        if (! empty($filters['active_only'])) {
             // Assuming you might add a status field later
             // $query->where('status', 'active');
 
@@ -325,19 +323,19 @@ class UserController extends Controller
         }
 
         // Recently created users
-        if (!empty($filters['recent_days'])) {
-            $recentDays = (int)$filters['recent_days'];
+        if (! empty($filters['recent_days'])) {
+            $recentDays = (int) $filters['recent_days'];
             $recentDate = now()->subDays($recentDays);
             $query->where('created_at', '>=', $recentDate);
         }
 
         // Users by domain
-        if (!empty($filters['email_domain'])) {
-            $query->where('email', 'ilike', '%@' . $filters['email_domain']);
+        if (! empty($filters['email_domain'])) {
+            $query->where('email', 'ilike', '%@'.$filters['email_domain']);
         }
 
         // Exclude specific users
-        if (!empty($filters['exclude_ids'])) {
+        if (! empty($filters['exclude_ids'])) {
             if (is_array($filters['exclude_ids'])) {
                 $query->whereNotIn('id', $filters['exclude_ids']);
             } else {
@@ -358,11 +356,11 @@ class UserController extends Controller
             'leads_count', 'active_leads_count',
         ];
 
-        if (!in_array($sortBy, $allowedSortFields)) {
+        if (! in_array($sortBy, $allowedSortFields)) {
             $sortBy = 'created_at';
         }
 
-        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+        if (! in_array(strtolower($sortOrder), ['asc', 'desc'])) {
             $sortOrder = 'desc';
         }
 
@@ -378,8 +376,8 @@ class UserController extends Controller
     private function shouldBypassCache(array $filters): bool
     {
         // Bypass cache for real-time requirements
-        return !empty($filters['real_time']) ||
-            (!empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
+        return ! empty($filters['real_time']) ||
+            (! empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
     }
 
     /**
@@ -400,12 +398,18 @@ class UserController extends Controller
             ]);
 
             // Assign roles if provided
-            if (!empty($validated['roles'])) {
+            if (! empty($validated['roles'])) {
                 $user->syncRoles($validated['roles']);
+
+                // Replicate roles to all user's organizations
+                $orgIds = $user->organizations()->pluck('organizations.id')->toArray();
+                if (! empty($orgIds)) {
+                    $this->syncRolesAcrossOrganizations($user, $orgIds);
+                }
             }
 
             // Assign services if provided
-            if (!empty($validated['services'])) {
+            if (! empty($validated['services'])) {
                 foreach ($validated['services'] as $serviceId) {
                     $service = Service::find($serviceId);
                     if ($service) {
@@ -457,6 +461,7 @@ class UserController extends Controller
             'zone',
             'office',
             'office.zone',
+            'organizations',
         ]);
 
         $user->loadCount([
@@ -499,6 +504,11 @@ class UserController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $allOrganizations = \App\Models\Organization::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return Inertia::render('users/show', [
             'user' => (new UserResource($user))->resolve(),
             'roles' => $roles,
@@ -506,6 +516,7 @@ class UserController extends Controller
             'offices' => $offices,
             'services' => $services,
             'allPermissions' => $allPermissions,
+            'allOrganizations' => $allOrganizations,
         ]);
     }
 
@@ -552,13 +563,19 @@ class UserController extends Controller
                 $updateData['password'] = Hash::make($validated['password']);
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $user->update($updateData);
             }
 
             // Update roles if provided
             if (isset($validated['roles'])) {
                 $user->syncRoles($validated['roles']);
+
+                // Replicate roles to all user's organizations
+                $orgIds = $user->organizations()->pluck('organizations.id')->toArray();
+                if (! empty($orgIds)) {
+                    $this->syncRolesAcrossOrganizations($user, $orgIds);
+                }
             }
 
             // Update services if provided
@@ -778,6 +795,12 @@ class UserController extends Controller
         $permissions = Permission::whereIn('id', $validated['permission_ids'])->get();
         $user->syncPermissions($permissions);
 
+        // Replicate direct permissions to all user's organizations
+        $orgIds = $user->organizations()->pluck('organizations.id')->toArray();
+        if (! empty($orgIds)) {
+            $this->syncPermissionsAcrossOrganizations($user, $orgIds);
+        }
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         broadcast(new RolePermissionsUpdated('direct-permissions', [$user->id]))->toOthers();
@@ -794,6 +817,135 @@ class UserController extends Controller
     }
 
     /**
+     * Update user's organizations
+     */
+    public function updateOrganizations(User $user, \Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'organization_ids' => 'present|array',
+                'organization_ids.*' => 'integer|exists:organizations,id',
+            ]);
+
+            $syncData = [];
+            foreach ($validated['organization_ids'] as $orgId) {
+                $syncData[$orgId] = [
+                    'role' => 'member',
+                    'is_default' => false,
+                    'joined_at' => now(),
+                ];
+            }
+
+            // Preserve existing pivot data for orgs that stay
+            $existing = $user->organizations()->get()->keyBy('id');
+            foreach ($syncData as $orgId => $data) {
+                if ($existing->has($orgId)) {
+                    $pivot = $existing->get($orgId)->pivot;
+                    $syncData[$orgId] = [
+                        'role' => $pivot->role,
+                        'is_default' => $pivot->is_default,
+                        'joined_at' => $pivot->joined_at,
+                    ];
+                }
+            }
+
+            $user->organizations()->sync($syncData);
+
+            // Replicate user's Spatie roles and direct permissions to all assigned organizations
+            $this->syncRolesAcrossOrganizations($user, $validated['organization_ids']);
+            $this->syncPermissionsAcrossOrganizations($user, $validated['organization_ids']);
+
+            CacheService::flush('users');
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return response()->json([
+                'message' => 'Organizations updated successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update organizations.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Ensure the user's Spatie roles exist for each assigned organization.
+     *
+     * @param  array<int>  $organizationIds
+     */
+    private function syncRolesAcrossOrganizations(User $user, array $organizationIds): void
+    {
+        $teamsKey = config('permission.column_names.team_foreign_key');
+        $roleIds = DB::table('model_has_roles')
+            ->where('model_id', $user->id)
+            ->where('model_type', get_class($user))
+            ->pluck('role_id')
+            ->unique();
+
+        if ($roleIds->isEmpty() || empty($organizationIds)) {
+            return;
+        }
+
+        foreach ($organizationIds as $orgId) {
+            foreach ($roleIds as $roleId) {
+                DB::table('model_has_roles')->updateOrInsert(
+                    [
+                        'role_id' => $roleId,
+                        'model_id' => $user->id,
+                        'model_type' => get_class($user),
+                        $teamsKey => $orgId,
+                    ],
+                    [
+                        'role_id' => $roleId,
+                        'model_id' => $user->id,
+                        'model_type' => get_class($user),
+                        $teamsKey => $orgId,
+                    ]
+                );
+            }
+        }
+    }
+
+    /**
+     * Ensure the user's direct permissions exist for each assigned organization.
+     *
+     * @param  array<int>  $organizationIds
+     */
+    private function syncPermissionsAcrossOrganizations(User $user, array $organizationIds): void
+    {
+        $teamsKey = config('permission.column_names.team_foreign_key');
+        $permissionIds = DB::table('model_has_permissions')
+            ->where('model_id', $user->id)
+            ->where('model_type', get_class($user))
+            ->pluck('permission_id')
+            ->unique();
+
+        if ($permissionIds->isEmpty() || empty($organizationIds)) {
+            return;
+        }
+
+        foreach ($organizationIds as $orgId) {
+            foreach ($permissionIds as $permissionId) {
+                DB::table('model_has_permissions')->updateOrInsert(
+                    [
+                        'permission_id' => $permissionId,
+                        'model_id' => $user->id,
+                        'model_type' => get_class($user),
+                        $teamsKey => $orgId,
+                    ],
+                    [
+                        'permission_id' => $permissionId,
+                        'model_id' => $user->id,
+                        'model_type' => get_class($user),
+                        $teamsKey => $orgId,
+                    ]
+                );
+            }
+        }
+    }
+
+    /**
      * Get user's activity heatmap data
      */
     public function activityHeatmap(User $user, \Illuminate\Http\Request $request): JsonResponse
@@ -803,7 +955,7 @@ class UserController extends Controller
         ]);
 
         $period = $validated['period'] ?? 30;
-        $cacheKey = "user:{$user->id}:activity_heatmap:{$period}:" . now()->format('Y-m-d');
+        $cacheKey = "user:{$user->id}:activity_heatmap:{$period}:".now()->format('Y-m-d');
 
         $data = $this->cacheService->remember($cacheKey, function () use ($user, $period) {
             return $this->getUserActivityHeatmapData($user, $period);

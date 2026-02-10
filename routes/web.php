@@ -39,6 +39,10 @@ Route::post('/asterisk/call-recording', [CallSessionController::class, 'updateRe
 Route::post('/asterisk/ring-group-member', [\App\Http\Controllers\AsteriskCallController::class, 'handleRingGroupMember'])->name('asterisk.ring-group-member');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Organization switching
+    Route::post('organizations/switch', [\App\Http\Controllers\OrganizationSwitchController::class, 'switch'])->name('organizations.switch');
+    Route::get('api/organizations', [\App\Http\Controllers\OrganizationSwitchController::class, 'index'])->name('organizations.index');
+
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->middleware('role_or_permission:super-admin|view dashboard')->name('dashboard');
@@ -82,6 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
             Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
             Route::patch('users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.update-permissions');
+            Route::patch('users/{user}/organizations', [UserController::class, 'updateOrganizations'])->name('users.update-organizations');
             Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
         });
 
@@ -200,22 +205,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/suggestions', [\App\Http\Controllers\Api\AiChatController::class, 'suggestions'])->name('ai-chat.suggestions');
     });
 
-    // Roles
-    Route::prefix('roles')->middleware('role:super-admin')->group(function () {
-        Route::get('/', [RoleController::class, 'index']);
-        Route::post('/', [RoleController::class, 'store']);
-        Route::get('/{role}', [RoleController::class, 'show']);
-        Route::put('/{role}', [RoleController::class, 'update']);
-        Route::delete('/{role}', [RoleController::class, 'destroy']);
-        Route::post('/{role}/assign-permissions', [RoleController::class, 'assignPermissions']);
-    });
+    // Roles & Permissions API
+    Route::prefix('api')->middleware('role:super-admin')->group(function () {
+        Route::prefix('roles')->group(function () {
+            Route::get('/', [RoleController::class, 'index']);
+            Route::post('/', [RoleController::class, 'store']);
+            Route::get('/{role}', [RoleController::class, 'show']);
+            Route::put('/{role}', [RoleController::class, 'update']);
+            Route::delete('/{role}', [RoleController::class, 'destroy']);
+            Route::post('/{role}/assign-permissions', [RoleController::class, 'assignPermissions']);
+        });
 
-    // Permissions
-    Route::prefix('permissions')->middleware('role:super-admin')->group(function () {
-        Route::get('/', [PermissionController::class, 'index']);
-        Route::post('/', [PermissionController::class, 'store']);
-        Route::get('/matrix', [PermissionController::class, 'matrix']);
-        Route::post('/bulk-update', [PermissionController::class, 'bulkUpdate']);
+        Route::prefix('permissions')->group(function () {
+            Route::get('/', [PermissionController::class, 'index']);
+            Route::post('/', [PermissionController::class, 'store']);
+            Route::get('/matrix', [PermissionController::class, 'matrix']);
+            Route::post('/bulk-update', [PermissionController::class, 'bulkUpdate']);
+        });
+
+        Route::prefix('organizations')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Organizations\OrganizationController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Organizations\OrganizationController::class, 'store']);
+            Route::put('/{organization}', [\App\Http\Controllers\Api\Organizations\OrganizationController::class, 'update']);
+            Route::delete('/{organization}', [\App\Http\Controllers\Api\Organizations\OrganizationController::class, 'destroy']);
+            Route::post('/{organization}/toggle-active', [\App\Http\Controllers\Api\Organizations\OrganizationController::class, 'toggleActive']);
+        });
     });
 
     // Admin Facebook Token Management (Super Admin Only)

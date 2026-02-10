@@ -118,6 +118,17 @@ class UserResource extends JsonResource
                     ] : null,
                 ];
             }),
+            'organizations' => $this->whenLoaded('organizations', function () {
+                return $this->organizations->map(function ($org) {
+                    return [
+                        'id' => $org->id,
+                        'name' => $org->name,
+                        'slug' => $org->slug,
+                        'role' => $org->pivot->role,
+                        'is_default' => $org->pivot->is_default,
+                    ];
+                });
+            }),
             'availability' => $this->availability,
             'availability_date' => $this->availability_date?->toISOString(),
             'availability_time' => $this->availability_time,

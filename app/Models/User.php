@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\Tenancy\TenantManager;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -81,6 +83,34 @@ class User extends Authenticatable
             'performance_weight' => 'decimal:2',
             'conversion_rate' => 'decimal:2',
         ];
+    }
+
+    public function organizations(): BelongsToMany
+    {
+        return $this->belongsToMany(Organization::class)
+            ->withPivot(['role', 'is_default', 'joined_at'])
+            ->withTimestamps();
+    }
+
+    public function currentOrganization(): ?Organization
+    {
+        return app(TenantManager::class)->get();
+    }
+
+    public function defaultOrganization(): ?Organization
+    {
+        return $this->organizations()->wherePivot('is_default', true)->first();
+    }
+
+    public function belongsToOrganization(int $orgId): bool
+    {
+        return $this->organizations()->where('organizations.id', $orgId)->exists();
+    }
+
+    public function switchOrganization(Organization $org): void
+    {
+        session(['current_organization_id' => $org->id]);
+        $this->unsetRelation('roles')->unsetRelation('permissions');
     }
 
     public function leads(): HasMany
@@ -214,9 +244,13 @@ class User extends Authenticatable
         });
     }
 
-    // PostgreSQL specific: Array aggregation for reporting
-    public static function getServiceAssignmentReport()
+    /**
+     * PostgreSQL specific: Array aggregation for reporting.
+     */
+    public static function getServiceAssignmentReport(): Collection
     {
+        $orgId = app(TenantManager::class)->id();
+
         return self::select([
             'users.id',
             'users.name',
@@ -230,6 +264,7 @@ class User extends Authenticatable
             ")
             ->leftJoin('service_user', 'users.id', '=', 'service_user.user_id')
             ->leftJoin('services', 'service_user.service_id', '=', 'services.id')
+            ->when($orgId, fn ($q) => $q->where('services.organization_id', $orgId))
             ->groupBy(['users.id', 'users.name', 'users.email'])
             ->having('count(DISTINCT services.id)', '>', 0)
             ->get();

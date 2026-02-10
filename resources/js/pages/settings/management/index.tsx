@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users, Shield, Lock, Badge } from 'lucide-react';
+import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users, Shield, Lock, Badge, Landmark } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from './page-header';
 import { ManagementCard } from './management-card';
@@ -25,6 +25,12 @@ export default function ManagementSettingsPage() {
       description: 'Configure the permission matrix across all roles',
       icon: Lock,
       href: '/settings/management/permissions',
+    },
+    {
+      title: 'Organizations',
+      description: 'Create and manage organizations for multi-tenancy',
+      icon: Landmark,
+      href: '/settings/management/organizations',
     },
   ];
 

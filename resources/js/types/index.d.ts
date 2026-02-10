@@ -17,6 +17,18 @@ export interface Impersonation {
     } | null;
 }
 
+export interface Organization {
+    id: number;
+    name: string;
+    slug: string;
+    logo?: string;
+    is_active?: boolean;
+    owner?: { id: number; name: string; email: string } | null;
+    users_count?: number;
+    created_at?: string;
+    pivot?: { role: string; is_default: boolean };
+}
+
 export interface BreadcrumbItem {
     title: string;
     href: string;
@@ -44,6 +56,8 @@ export interface SharedData {
     statuses: Array<{ id: number; name: string; order: number; color: string }>;
     services: Service[];
     sources: LeadSource[];
+    currentOrganization: Organization | null;
+    organizations: Organization[];
     [key: string]: unknown;
 }
 
