@@ -10,8 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
-use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -28,7 +26,7 @@ class PermissionController extends Controller
     public function index(): AnonymousResourceCollection
     {
         // Use memo for request-scoped caching
-        $permissions = cache()->memo('permissions.all', fn() => Permission::query()
+        $permissions = cache()->memo('permissions.all', fn () => Permission::query()
             ->orderBy('name')
             ->get()
         );
@@ -54,7 +52,7 @@ class PermissionController extends Controller
     public function matrix(): JsonResponse
     {
         // Use memo for request-scoped caching
-        $matrix = cache()->memo('permissions.matrix', fn() => Permission::query()
+        $matrix = cache()->memo('permissions.matrix', fn () => Permission::query()
             ->orderBy('name')
             ->get()
         );
@@ -109,7 +107,7 @@ class PermissionController extends Controller
     }
 
     /**
-     * @param array<int> $roleIds
+     * @param  array<int>  $roleIds
      */
     private function broadcastPermissionsUpdated(array $roleIds): void
     {
