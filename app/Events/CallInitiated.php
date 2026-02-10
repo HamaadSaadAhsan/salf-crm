@@ -37,10 +37,6 @@ class CallInitiated implements ShouldBroadcast
             'caller' => [
                 'id' => $this->callSession->caller_id,
                 'name' => $this->callSession->caller->name ?? null,
-                'number' => $this->callSession->caller_number,
-            ],
-            'callee' => [
-                'number' => $this->callSession->callee_number,
             ],
             'call_type' => $this->callSession->call_type,
             'call_direction' => $this->callSession->call_direction,

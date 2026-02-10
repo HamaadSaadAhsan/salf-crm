@@ -10,7 +10,7 @@ import type { CallRoutingInfo } from '@/types/asterisk';
 
 export interface InboundCallData {
     event: 'ring' | 'connect' | 'disconnect' | 'hangup' | 'stop_ringing';
-    caller: string;
+    caller?: string;
     exten: string;
     uniqueid: string;
     linkedid?: string;
@@ -32,7 +32,7 @@ export interface InboundCallData {
         id: string;
         name: string;
         email?: string;
-        phone: string;
+        phone?: string;
         city?: string;
         country?: string;
         service?: { id: number; name: string };
@@ -115,7 +115,7 @@ export function useInboundCalls() {
 
                     const restoredCall: ActiveCall = {
                         event: data.active_call.event,
-                        caller: data.active_call.caller,
+                        caller: data.active_call.caller || undefined,
                         exten: data.active_call.exten,
                         uniqueid: data.active_call.uniqueid || '',
                         sessionId: data.active_call.sessionId,

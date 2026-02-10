@@ -169,8 +169,6 @@ class CallSessionService
             'session_id' => $sessionId,
             'lead_id' => $lead?->id,
             'caller_id' => $caller->id,
-            'caller_number' => $caller->phone ?? $caller->extension,
-            'callee_number' => $calleeNumber,
             'timestamp' => $timestamp->format('Y-m-d H:i:s'),
         ];
     }
@@ -242,12 +240,11 @@ class CallSessionService
             'type' => 'call',
             'status' => 'pending',
             'subject' => 'Outbound Call',
-            'description' => "Call initiated to {$callSession->callee_number}",
+            'description' => 'Outbound call initiated',
             'metadata' => [
                 'call_session_id' => $callSession->id,
                 'session_id' => $callSession->session_id,
                 'call_signature' => $callSession->call_signature,
-                'phone_number' => $callSession->callee_number,
                 'call_direction' => 'outbound',
             ],
             'scheduled_at' => now(),

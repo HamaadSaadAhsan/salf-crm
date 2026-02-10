@@ -21,6 +21,11 @@ class CallSessionController extends Controller
         private readonly CallRecordingService $recordingService
     ) {}
 
+    private function canViewPhoneNumbers(): bool
+    {
+        return auth()->user()?->can('view phone numbers') ?? false;
+    }
+
     /**
      * Get active call session for the current user
      * Used to restore call dialog after page refresh
@@ -58,46 +63,61 @@ class CallSessionController extends Controller
             ]);
         }
 
+        $canViewPhone = $this->canViewPhoneNumbers();
+
+        $leadData = null;
+        if ($activeCall->lead) {
+            $leadData = [
+                'id' => $activeCall->lead->id,
+                'name' => $activeCall->lead->name,
+                'email' => $activeCall->lead->email,
+                'city' => $activeCall->lead->city,
+                'country' => $activeCall->lead->country,
+                'service' => $activeCall->lead->service ? [
+                    'id' => $activeCall->lead->service_id,
+                    'name' => $activeCall->lead->service->name,
+                ] : null,
+                'assigned_to' => $activeCall->lead->assignedTo ? [
+                    'id' => $activeCall->lead->assigned_to,
+                    'name' => $activeCall->lead->assignedTo->name,
+                ] : null,
+                'inquiry_status' => $activeCall->lead->inquiry_status,
+                'priority' => $activeCall->lead->priority,
+                'detail' => $activeCall->lead->detail,
+                'budget' => $activeCall->lead->budget,
+                'tags' => $activeCall->lead->tags,
+                'lead_score' => $activeCall->lead->lead_score,
+                'last_activity_at' => $activeCall->lead->last_activity_at?->toIso8601String(),
+            ];
+
+            if ($canViewPhone) {
+                $leadData['phone'] = $activeCall->lead->phone;
+            }
+        }
+
+        $activeCallData = [
+            'event' => $activeCall->status === 'answered' ? 'connect' : 'ring',
+            'exten' => $activeCall->callee_number,
+            'uniqueid' => $activeCall->uniqueid,
+            'sessionId' => $activeCall->session_id,
+            'call_direction' => $activeCall->call_direction,
+            'target_extension' => $activeCall->callee_number,
+            'agent_extension' => $activeCall->call_direction === 'outbound' ? $user->extension : null,
+            'answered_by_user_id' => $activeCall->answered_by_user_id,
+            'intended_for_user_id' => $activeCall->intended_for_user_id,
+            'is_coverage_call' => $activeCall->is_coverage_call,
+            'started_at' => $activeCall->started_at?->toIso8601String(),
+            'answered_at' => $activeCall->answered_at?->toIso8601String(),
+            'lead' => $leadData,
+        ];
+
+        if ($canViewPhone) {
+            $activeCallData['caller'] = $activeCall->caller_number;
+        }
+
         return response()->json([
             'success' => true,
-            'active_call' => [
-                'event' => $activeCall->status === 'answered' ? 'connect' : 'ring',
-                'caller' => $activeCall->caller_number,
-                'exten' => $activeCall->callee_number,
-                'uniqueid' => $activeCall->uniqueid,
-                'sessionId' => $activeCall->session_id,
-                'call_direction' => $activeCall->call_direction,
-                'target_extension' => $activeCall->callee_number,
-                'agent_extension' => $activeCall->call_direction === 'outbound' ? $user->extension : null,
-                'answered_by_user_id' => $activeCall->answered_by_user_id,
-                'intended_for_user_id' => $activeCall->intended_for_user_id,
-                'is_coverage_call' => $activeCall->is_coverage_call,
-                'started_at' => $activeCall->started_at?->toIso8601String(),
-                'answered_at' => $activeCall->answered_at?->toIso8601String(),
-                'lead' => $activeCall->lead ? [
-                    'id' => $activeCall->lead->id,
-                    'name' => $activeCall->lead->name,
-                    'email' => $activeCall->lead->email,
-                    'phone' => $activeCall->lead->phone,
-                    'city' => $activeCall->lead->city,
-                    'country' => $activeCall->lead->country,
-                    'service' => $activeCall->lead->service ? [
-                        'id' => $activeCall->lead->service_id,
-                        'name' => $activeCall->lead->service->name,
-                    ] : null,
-                    'assigned_to' => $activeCall->lead->assignedTo ? [
-                        'id' => $activeCall->lead->assigned_to,
-                        'name' => $activeCall->lead->assignedTo->name,
-                    ] : null,
-                    'inquiry_status' => $activeCall->lead->inquiry_status,
-                    'priority' => $activeCall->lead->priority,
-                    'detail' => $activeCall->lead->detail,
-                    'budget' => $activeCall->lead->budget,
-                    'tags' => $activeCall->lead->tags,
-                    'lead_score' => $activeCall->lead->lead_score,
-                    'last_activity_at' => $activeCall->lead->last_activity_at?->toIso8601String(),
-                ] : null,
-            ],
+            'active_call' => $activeCallData,
         ]);
     }
 
@@ -108,10 +128,11 @@ class CallSessionController extends Controller
     {
         $calls = $this->callSessionService->getLeadCallHistory($lead);
         $statistics = $this->callSessionService->getLeadCallStatistics($lead);
+        $canViewPhone = $this->canViewPhoneNumbers();
 
         return response()->json([
-            'calls' => $calls->map(function ($call) {
-                return [
+            'calls' => $calls->map(function ($call) use ($canViewPhone) {
+                $callData = [
                     'id' => $call->id,
                     'session_id' => $call->session_id,
                     'call_signature' => $call->call_signature,
@@ -120,8 +141,6 @@ class CallSessionController extends Controller
                         'id' => $call->caller?->id,
                         'name' => $call->caller?->name,
                     ],
-                    'caller_number' => $call->caller_number,
-                    'callee_number' => $call->callee_number,
                     'status' => $call->status,
                     'started_at' => $call->started_at?->toIso8601String(),
                     'answered_at' => $call->answered_at?->toIso8601String(),
@@ -143,6 +162,13 @@ class CallSessionController extends Controller
                         'extension' => $call->intendedFor->extension,
                     ] : null,
                 ];
+
+                if ($canViewPhone) {
+                    $callData['caller_number'] = $call->caller_number;
+                    $callData['callee_number'] = $call->callee_number;
+                }
+
+                return $callData;
             }),
             'statistics' => $statistics,
         ]);
@@ -154,6 +180,11 @@ class CallSessionController extends Controller
     public function show(CallSession $callSession): JsonResponse
     {
         $callSession->load(['caller', 'lead', 'callLogs']);
+
+        if (! $this->canViewPhoneNumbers()) {
+            $callSession->makeHidden(['caller_number', 'callee_number']);
+            $callSession->lead?->makeHidden(['phone']);
+        }
 
         return response()->json([
             'call' => $callSession,
@@ -340,36 +371,31 @@ class CallSessionController extends Controller
     public function initiateCall(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phone_number' => 'nullable|string',
-            'lead_id' => 'nullable|exists:leads,id',
+            'lead_id' => 'required|exists:leads,id',
         ]);
 
         try {
             $user = auth()->user();
-            $lead = isset($validated['lead_id']) ? Lead::find($validated['lead_id']) : null;
+            $lead = Lead::findOrFail($validated['lead_id']);
 
-            // Get phone number from lead if not provided
-            $phoneNumber = $validated['phone_number'] ?? $lead?->phone;
-
-            if (! $phoneNumber) {
+            if (! $lead->phone) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Phone number is required. Please provide a phone number or select a lead with a phone number.',
+                    'message' => 'The selected lead does not have a phone number.',
                 ], 422);
             }
 
             // Generate call signature without creating database records
             // Call tracking (sessions, logs) is now handled by server.js
+            // Phone number is resolved server-side from the lead — never sent by frontend
             $signatureData = $this->callSessionService->generateCallSignature(
                 $user,
-                $phoneNumber,
+                $lead->phone,
                 $lead
             );
 
             // Invalidate lead cache to reflect new activity
-            if ($lead) {
-                $this->leadCacheService->invalidateLeadCache($lead);
-            }
+            $this->leadCacheService->invalidateLeadCache($lead);
 
             return response()->json([
                 'success' => true,
@@ -379,7 +405,7 @@ class CallSessionController extends Controller
         } catch (\Exception $e) {
             \Log::error('Failed to initiate call', [
                 'error' => $e->getMessage(),
-                'request' => $validated,
+                'lead_id' => $validated['lead_id'] ?? null,
             ]);
 
             return response()->json([

@@ -9,6 +9,18 @@ class LeadActivityResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $canViewPhone = $request->user()?->can('view phone numbers');
+
+        $metadata = $this->metadata;
+        if (! $canViewPhone && is_array($metadata)) {
+            unset($metadata['phone_number'], $metadata['caller_number'], $metadata['callee_number']);
+        }
+
+        $description = $this->description;
+        if (! $canViewPhone && $this->type === 'call' && $description) {
+            $description = preg_replace('/Call initiated to .+/', 'Call initiated', $description);
+        }
+
         return [
             'id' => $this->id,
             'lead_id' => $this->lead_id,
@@ -16,8 +28,8 @@ class LeadActivityResource extends JsonResource
             'type' => $this->type,
             'status' => $this->status,
             'subject' => $this->subject,
-            'description' => $this->description,
-            'metadata' => $this->metadata,
+            'description' => $description,
+            'metadata' => $metadata,
             'priority' => $this->priority,
             'category' => $this->category,
             'duration_minutes' => $this->duration_minutes,

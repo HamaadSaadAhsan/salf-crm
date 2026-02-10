@@ -638,6 +638,11 @@ class LeadController extends Controller
                 return (new LeadResource($leadData))->toArray(request());
             });
 
+        // Strip phone number after cache retrieval if user lacks permission
+        if (! $user->can('view phone numbers')) {
+            unset($resourceData['phone']);
+        }
+
         return response()->json([
             'data' => $resourceData,
             'meta' => [

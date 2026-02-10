@@ -58,7 +58,6 @@ class OutboundCallReceived implements ShouldBroadcast
         return [
             'event' => $this->event,
             'agent_extension' => $this->agentExtension,
-            'client' => $this->clientNumber,
             'uniqueid' => $this->uniqueid,
             'linkedid' => $this->linkedid,
             'sessionId' => $this->sessionId,
@@ -71,7 +70,6 @@ class OutboundCallReceived implements ShouldBroadcast
                 'id' => $this->lead->id,
                 'name' => $this->lead->name,
                 'email' => $this->lead->email,
-                'phone' => $this->lead->phone,
                 'city' => $this->lead->city,
                 'country' => $this->lead->country,
                 'service' => $this->lead->service ? [
