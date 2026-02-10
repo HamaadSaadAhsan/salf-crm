@@ -84,7 +84,7 @@ export function RoleSheet({ open, onOpenChange, role, permissions }: RoleSheetPr
     setError(null);
     setSuccess(null);
 
-    const url = role ? `/roles/${role.id}` : '/roles';
+    const url = role ? `/api/roles/${role.id}` : '/api/roles';
     const method = role ? 'put' : 'post';
 
     router[method](

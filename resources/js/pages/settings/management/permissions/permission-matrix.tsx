@@ -77,7 +77,7 @@ export function PermissionMatrix({ roles, permissions }: PermissionMatrixProps) 
         }));
 
         router.post(
-            '/permissions/bulk-update',
+            '/api/permissions/bulk-update',
             { role_permissions: rolePermissions },
             {
                 onSuccess: () => {
