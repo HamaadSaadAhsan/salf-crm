@@ -20,7 +20,7 @@ export function DeleteRoleDialog({ role, onOpenChange }: DeleteRoleDialogProps) 
   const handleDelete = () => {
     if (!role) return;
 
-    router.delete(`/roles/${role.id}`, {
+    router.delete(`/api/roles/${role.id}`, {
       onSuccess: () => {
         onOpenChange();
       },

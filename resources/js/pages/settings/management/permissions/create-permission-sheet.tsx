@@ -36,7 +36,7 @@ export function CreatePermissionSheet({ open, onOpenChange }: CreatePermissionSh
     setSuccess(null);
 
     router.post(
-      '/permissions',
+      '/api/permissions',
       { name },
       {
         onSuccess: () => {
