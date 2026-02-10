@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class Ad extends Model
 {
+    use BelongsToOrganization;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -15,6 +18,7 @@ class Ad extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'organization_id',
         'user_id',
         'external_id',
         'name',

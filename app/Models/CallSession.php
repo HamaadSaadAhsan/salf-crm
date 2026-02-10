@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Database\Eloquent\BroadcastsEvents;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 class CallSession extends Model
 {
-    use BroadcastsEvents, HasFactory;
+    use BelongsToOrganization, BroadcastsEvents, HasFactory;
 
     protected function casts(): array
     {
@@ -25,6 +26,7 @@ class CallSession extends Model
     }
 
     protected $fillable = [
+        'organization_id',
         'session_id',
         'uniqueid',
         'caller_id',

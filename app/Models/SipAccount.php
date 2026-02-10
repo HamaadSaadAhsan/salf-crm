@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SipAccount extends Model
 {
-    use HasFactory;
+    use BelongsToOrganization, HasFactory;
 
     protected function casts(): array
     {
@@ -21,6 +22,7 @@ class SipAccount extends Model
     }
 
     protected $fillable = [
+        'organization_id',
         'user_id',
         'username',
         'password',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -17,9 +18,10 @@ use Laravel\Scout\Searchable;
 
 class Lead extends Model
 {
-    use HasFactory, HasUuids, Searchable, SoftDeletes;
+    use BelongsToOrganization, HasFactory, HasUuids, Searchable, SoftDeletes;
 
     protected $fillable = [
+        'organization_id',
         'name', 'email', 'phone', 'occupation', 'address', 'country', 'city',
         'latitude', 'longitude', 'service_id', 'lead_source_id', 'detail', 'budget',
         'custom_fields', 'inquiry_status', 'priority', 'inquiry_type',

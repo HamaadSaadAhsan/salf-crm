@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,9 +12,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LeadActivity extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToOrganization, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
+        'organization_id',
         'lead_id',
         'user_id',
         'type',
