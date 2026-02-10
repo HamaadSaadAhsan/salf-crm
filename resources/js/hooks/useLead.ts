@@ -785,7 +785,8 @@ export function useLeadNotes(leadId: string | null, page: number = 1, perPage: n
             const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
                 params: {
                     lead_id: leadId,
-                    type: 'note',
+                    type: 'note,call',
+                    exclude_system: 1,
                     page,
                     per_page: perPage,
                 },

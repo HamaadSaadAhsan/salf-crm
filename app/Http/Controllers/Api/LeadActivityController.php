@@ -123,6 +123,14 @@ class LeadActivityController extends Controller
             }
         }
 
+        // Exclude system-generated activities (observer-created notes, tag changes)
+        if ($request->boolean('exclude_system')) {
+            $query->where(function ($q) {
+                $q->whereNull('category')
+                    ->orWhereNotIn('category', ['system', 'tag_change']);
+            });
+        }
+
         // Filter by month if provided (YYYY-MM format)
         if ($request->has('month') && $request->month) {
             $year = substr($request->month, 0, 4);
