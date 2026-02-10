@@ -59,5 +59,4 @@ data.ms
 storage/app/public/recordings
 
 **/*.bak
-**/*.php
 .DS_Store
