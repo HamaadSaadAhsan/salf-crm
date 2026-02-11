@@ -10,7 +10,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Shield, Search, X, Edit, Trash2, Users, Lock } from 'lucide-react';
+import { Shield, Search, X, Edit, Trash2, Users, Lock, Settings2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardHeader, CardTable } from '@/components/ui/card';
@@ -222,7 +222,7 @@ export function RoleList({ roles, onEditRole, onDeleteRole }: RoleListProps) {
                 className="pl-9 h-9"
               />
             </div>
-            {table.getColumn('name')?.getFilterValue() && (
+            {!!table.getColumn('name')?.getFilterValue() && (
               <Button
                 variant="ghost"
                 onClick={() => table.getColumn('name')?.setFilterValue('')}
@@ -234,14 +234,22 @@ export function RoleList({ roles, onEditRole, onDeleteRole }: RoleListProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <DataGridColumnVisibility table={table} />
+            <DataGridColumnVisibility
+              table={table}
+              trigger={
+                <Button size="sm" variant="outline">
+                  <Settings2 />
+                  View Settings
+                </Button>
+              }
+            />
           </div>
         </CardHeader>
         <CardTable>
-          <DataGridTable table={table} columns={columns} />
+          <DataGridTable />
         </CardTable>
         <CardFooter className="pt-4">
-          <DataGridPagination table={table} />
+          <DataGridPagination />
         </CardFooter>
       </Card>
     </DataGrid>
