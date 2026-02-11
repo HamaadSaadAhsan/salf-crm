@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,37 +37,34 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
     setError(null);
     setSuccess(null);
 
-    router.post('/api/users', formData, {
-      onSuccess: () => {
-        setSuccess('User created successfully!');
-        setFormData({
-          name: '',
-          email: '',
-          password: '',
-          password_confirmation: '',
-        });
-        // Close the sheet after a short delay
-        setTimeout(() => {
-          onOpenChange(false);
-          setSuccess(null);
-          // Reload the page to show the new user
-          router.reload({ only: ['users'] });
-        }, 1500);
-      },
-      onError: (errors: any) => {
-        console.error('User creation error:', errors);
-        const errorMessage =
-          errors?.message ||
-          errors?.email?.[0] ||
-          errors?.name?.[0] ||
-          errors?.password?.[0] ||
-          'Failed to create user. Please try again.';
-        setError(errorMessage);
-      },
-      onFinish: () => {
-        setIsLoading(false);
-      },
-    });
+    try {
+      await axios.post('/api/users', formData);
+      setSuccess('User created successfully!');
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        password_confirmation: '',
+      });
+      // Close the sheet after a short delay
+      setTimeout(() => {
+        onOpenChange(false);
+        setSuccess(null);
+        // Reload the page to show the new user
+        router.reload({ only: ['users'] });
+      }, 1500);
+    } catch (err: any) {
+      const errors = err.response?.data?.errors;
+      const errorMessage =
+        errors?.email?.[0] ||
+        errors?.name?.[0] ||
+        errors?.password?.[0] ||
+        err.response?.data?.message ||
+        'Failed to create user. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
