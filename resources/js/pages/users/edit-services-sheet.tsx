@@ -108,33 +108,24 @@ export function EditServicesSheet({
 
   const toggleParentService = (parentService: Service) => {
     const children = parentService.children || [];
-    if (children.length === 0) {
-      toggleService(parentService.id);
-      return;
-    }
+    const isSelected = selectedServiceIds.includes(parentService.id);
 
-    const allIds = [parentService.id, ...children.map((c) => c.id)];
-    const allSelected = allIds.every((id) => selectedServiceIds.includes(id));
-
-    if (allSelected) {
-      setSelectedServiceIds((prev) => prev.filter((id) => !allIds.includes(id)));
+    if (isSelected) {
+      // Deselect parent only
+      setSelectedServiceIds((prev) => prev.filter((id) => id !== parentService.id));
     } else {
-      setSelectedServiceIds((prev) => [...new Set([...prev, ...allIds])]);
+      // Select parent and remove any explicitly selected children (parent covers them)
+      const childIds = children.map((c) => c.id);
+      setSelectedServiceIds((prev) => [...prev.filter((id) => !childIds.includes(id)), parentService.id]);
     }
   };
 
-  const isParentChecked = (parentService: Service): boolean | 'indeterminate' => {
-    const children = parentService.children || [];
-    if (children.length === 0) {
-      return selectedServiceIds.includes(parentService.id);
-    }
+  const isParentSelected = (parentService: Service): boolean => {
+    return selectedServiceIds.includes(parentService.id);
+  };
 
-    const allIds = [parentService.id, ...children.map((c) => c.id)];
-    const selectedCount = allIds.filter((id) => selectedServiceIds.includes(id)).length;
-
-    if (selectedCount === 0) return false;
-    if (selectedCount === allIds.length) return true;
-    return 'indeterminate';
+  const isChildEffectivelySelected = (childService: Service, parentService: Service): boolean => {
+    return selectedServiceIds.includes(parentService.id) || selectedServiceIds.includes(childService.id);
   };
 
   const flattenServices = (items: Service[]): Service[] => {
@@ -195,7 +186,7 @@ export function EditServicesSheet({
                       <div className="flex items-center gap-2">
                         <Checkbox
                           id={`parent-${parentService.id}`}
-                          checked={isParentChecked(parentService)}
+                          checked={isParentSelected(parentService)}
                           onCheckedChange={() => toggleParentService(parentService)}
                           disabled={isLoading}
                         />
@@ -217,9 +208,9 @@ export function EditServicesSheet({
                             <div key={childService.id} className="flex items-center gap-2">
                               <Checkbox
                                 id={`child-${childService.id}`}
-                                checked={selectedServiceIds.includes(childService.id)}
+                                checked={isChildEffectivelySelected(childService, parentService)}
                                 onCheckedChange={() => toggleService(childService.id)}
-                                disabled={isLoading}
+                                disabled={isLoading || isParentSelected(parentService)}
                               />
                               <label
                                 htmlFor={`child-${childService.id}`}
@@ -266,7 +257,7 @@ export function EditServicesSheet({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedServiceIds(allServices.map((s) => s.id))}
+                    onClick={() => setSelectedServiceIds(parentServices.map((s) => s.id))}
                     disabled={isLoading}
                   >
                     Select All
