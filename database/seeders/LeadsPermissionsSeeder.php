@@ -123,6 +123,9 @@ class LeadsPermissionsSeeder extends Seeder
             'manage webhooks',
             'manage automations',
             'view api logs',
+
+            // Phone number visibility
+            'view phone numbers',
         ];
 
         // Combine all permissions

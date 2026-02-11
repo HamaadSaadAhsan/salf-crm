@@ -14,7 +14,10 @@ class LeadResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'phone' => $this->phone,
+            'phone' => $this->when(
+                $request->user()?->can('view phone numbers'),
+                $this->phone
+            ),
             'occupation' => $this->occupation,
             'address' => $this->when($this->address, $this->address),
             'city' => $this->city,

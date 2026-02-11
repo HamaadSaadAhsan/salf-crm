@@ -13,7 +13,7 @@ export interface OutboundCallLead {
     id: string;
     name: string;
     email?: string;
-    phone: string;
+    phone?: string;
     city?: string;
     country?: string;
     service?: { id: number; name: string };
@@ -48,7 +48,7 @@ export interface OutboundCall {
 export interface OutboundCallData {
     event: 'ring' | 'connect' | 'hangup';
     agent_extension: string;
-    client: string;
+    client?: string;
     uniqueid: string;
     linkedid?: string;
     sessionId?: string;
@@ -61,7 +61,7 @@ export interface OutboundCallData {
         id: string;
         name: string;
         email?: string;
-        phone: string;
+        phone?: string;
         city?: string;
         country?: string;
         service?: { id: number; name: string };
@@ -180,7 +180,7 @@ export function useOutboundCalls() {
         return {
             uniqueid: data.uniqueid,
             linkedid: data.linkedid,
-            phoneNumber: data.client,
+            phoneNumber: data.client || lead?.name || 'Protected',
             leadId: lead?.id,
             lead: lead || currentCall?.lead || initialLeadRef.current || undefined,
             status,
@@ -221,7 +221,7 @@ export function useOutboundCalls() {
             case 'ring':
                 setActiveOutboundCall(outboundCall);
                 toast.info('Ringing...', {
-                    description: `Calling ${data.client}`,
+                    description: data.lead?.name ? `Calling ${data.lead.name}` : 'Calling...',
                 });
                 break;
 

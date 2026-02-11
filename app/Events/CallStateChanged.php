@@ -47,8 +47,6 @@ class CallStateChanged implements ShouldBroadcast
             'session_id' => $this->sessionId,
             'status' => $this->callData['status'] ?? null,
             'caller_id' => $this->callData['caller_id'] ?? null,
-            'caller_number' => $this->callData['caller_number'] ?? null,
-            'callee_number' => $this->callData['callee_number'] ?? null,
             'lead_id' => $this->callData['lead_id'] ?? null,
             'end_reason' => $this->callData['end_reason'] ?? null,
             'timestamp' => now()->toISOString(),

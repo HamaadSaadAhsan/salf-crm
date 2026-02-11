@@ -18,7 +18,8 @@ interface CallInitiateResponse {
     signature_data: {
         call_signature: string;
         caller_id: string;
-        callee_number: string;
+        lead_id: number;
+        session_id: string;
     };
 }
 
@@ -35,9 +36,8 @@ export function useCall({ wsRef, dispatch }: UseCallOptions): UseCallReturn {
             }
 
             try {
-                // Step 1: Create call session via API
+                // Step 1: Create call session via API (phone resolved server-side from lead)
                 const { data } = await axios.post<CallInitiateResponse>('/api/calls/initiate', {
-                    phone_number: params.phoneNumber,
                     lead_id: params.leadId,
                 });
 
@@ -45,21 +45,22 @@ export function useCall({ wsRef, dispatch }: UseCallOptions): UseCallReturn {
                     throw new Error(data.message || 'Failed to initiate call session');
                 }
 
-                const { call_signature, caller_id, callee_number } = data.signature_data;
+                const { call_signature, caller_id, lead_id, session_id } = data.signature_data;
 
                 // Step 2: Send originate action to Asterisk
+                // The Node server will look up the phone number from the lead
                 const originateAction = {
                     agent: params.extension,
-                    client: callee_number,
                     call_signature,
-                    lead_id: params.leadId,
+                    lead_id: lead_id || params.leadId,
                     caller_id,
+                    session_id,
                 };
 
                 wsRef.current.send(JSON.stringify(originateAction));
                 dispatch({ type: 'INCREMENT_MESSAGES_SENT' });
 
-                toast.success(`Calling ${callee_number}...`);
+                toast.success('Initiating call...');
                 return true;
             } catch (error) {
                 console.error('Failed to originate call:', error);
