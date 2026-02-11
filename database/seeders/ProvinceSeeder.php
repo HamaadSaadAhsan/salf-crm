@@ -71,8 +71,7 @@ class ProvinceSeeder extends Seeder
                 ['name' => 'Balochistan', 'code' => 'BA'],
                 ['name' => 'Gilgit-Baltistan', 'code' => 'GB'],
                 ['name' => 'Azad Jammu and Kashmir', 'code' => 'JK'],
-                ['name' => 'Islamabad Capital Territory', 'code' => 'IS'],
-                ['name' => 'Islamabad', 'code' => null],
+                ['name' => 'Islamabad', 'code' => 'IS'],
             ],
 
             // International
