@@ -67,6 +67,11 @@ class DashboardController extends Controller
         // Program sales breakdown (created, qualified, won per program)
         $programSales = $this->getProgramSalesBreakdown();
 
+        // Backwards-compatible sales metrics for existing API consumers/tests
+        $salesCbi = $programSales['cbi'] ?? ['created' => 0, 'qualified' => 0, 'won' => 0];
+        $salesRbi = $programSales['rbi'] ?? ['created' => 0, 'qualified' => 0, 'won' => 0];
+        $salesSkilled = $programSales['skilled'] ?? ['created' => 0, 'qualified' => 0, 'won' => 0];
+
         // LTQ Rate (Lead-to-Qualification %)
         $qualifiedCount = Lead::whereNotNull('qualified_at')->count();
         $ltqRate = $totalLeads > 0 ? round(($qualifiedCount / $totalLeads) * 100, 2) : 0;
@@ -100,6 +105,10 @@ class DashboardController extends Controller
                 'leads_delta' => round($leadsDelta, 2),
                 'last_month_leads' => $leadsLastMonth,
                 'program_sales' => $programSales,
+                // Legacy sales_* keys kept for test/API compatibility
+                'sales_cbi' => $salesCbi,
+                'sales_rbi' => $salesRbi,
+                'sales_skilled' => $salesSkilled,
                 'best_lead_source' => $bestLeadSource,
                 'ltq_rate' => $ltqRate,
                 'qts_rate' => $qtsRate,
