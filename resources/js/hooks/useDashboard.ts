@@ -7,9 +7,12 @@ export interface DashboardOverview {
         total_leads?: number;
         leads_delta?: number;
         last_month_leads?: number;
-        sales_cbi?: number;
-        sales_rbi?: number;
-        sales_skilled?: number;
+        program_sales?: {
+            cbi: { created: number; qualified: number; won: number };
+            rbi: { created: number; qualified: number; won: number };
+            skilled: { created: number; qualified: number; won: number };
+        };
+        avg_lead_score?: number;
         best_lead_source?: {
             name: string;
             conversion_rate: number;

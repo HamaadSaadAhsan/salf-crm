@@ -64,10 +64,8 @@ class DashboardController extends Controller
         $leadsLastMonth = Lead::whereMonth('created_at', $lastMonth->month)->count();
         $leadsDelta = $leadsLastMonth > 0 ? (($leadsThisMonth - $leadsLastMonth) / $leadsLastMonth) * 100 : 0;
 
-        // Sales by program category (won leads)
-        $salesCbi = $this->getSalesByParentService('CBI Programs');
-        $salesRbi = $this->getSalesByParentService('RBI Programs', excludeDCategory: true);
-        $salesSkilled = $this->getSalesByParentService('Skilled Immigration');
+        // Program sales breakdown (created, qualified, won per program)
+        $programSales = $this->getProgramSalesBreakdown();
 
         // LTQ Rate (Lead-to-Qualification %)
         $qualifiedCount = Lead::whereNotNull('qualified_at')->count();
@@ -86,6 +84,9 @@ class DashboardController extends Controller
             ->selectRaw('AVG(EXTRACT(EPOCH FROM (converted_at - created_at))/(24*3600)) as avg_days')
             ->value('avg_days');
 
+        // Average lead score
+        $avgLeadScore = Lead::whereNotNull('lead_score')->avg('lead_score');
+
         // System adoption rate from daily metrics
         $systemAdoptionRate = $dailyMetric?->system_adoption_rate ?? 0;
 
@@ -98,13 +99,12 @@ class DashboardController extends Controller
                 'total_leads' => $totalLeads,
                 'leads_delta' => round($leadsDelta, 2),
                 'last_month_leads' => $leadsLastMonth,
-                'sales_cbi' => $salesCbi,
-                'sales_rbi' => $salesRbi,
-                'sales_skilled' => $salesSkilled,
+                'program_sales' => $programSales,
                 'best_lead_source' => $bestLeadSource,
                 'ltq_rate' => $ltqRate,
                 'qts_rate' => $qtsRate,
                 'avg_lifecycle_days' => round($avgLifecycleDays ?? 0, 1),
+                'avg_lead_score' => round($avgLeadScore ?? 0, 1),
                 'system_adoption_rate' => $systemAdoptionRate,
                 'avg_leads_per_advisor_per_day' => $avgLeadsPerAdvisorPerDay,
             ],
@@ -112,26 +112,45 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get count of won leads where the service belongs to a specific parent category.
+     * Get created, qualified, and won counts for each program category (CBI, RBI, Skilled).
+     *
+     * @return array<string, array{created: int, qualified: int, won: int}>
      */
-    protected function getSalesByParentService(string $parentName, bool $excludeDCategory = false): int
+    protected function getProgramSalesBreakdown(): array
     {
-        $parent = Service::where('name', $parentName)->first();
+        $programs = [
+            'cbi' => ['parent' => 'CBI Programs', 'excludeD' => false],
+            'rbi' => ['parent' => 'RBI Programs', 'excludeD' => true],
+            'skilled' => ['parent' => 'Skilled Immigration', 'excludeD' => false],
+        ];
 
-        if (! $parent) {
-            return 0;
-        }
+        $result = [];
 
-        $query = Lead::where('inquiry_status', 'won')
-            ->whereHas('service', function ($q) use ($parent, $excludeDCategory) {
+        foreach ($programs as $key => $config) {
+            $parent = Service::where('name', $config['parent'])->first();
+
+            if (! $parent) {
+                $result[$key] = ['created' => 0, 'qualified' => 0, 'won' => 0];
+
+                continue;
+            }
+
+            $baseQuery = Lead::whereHas('service', function ($q) use ($parent, $config) {
                 $q->where('parent_id', $parent->id);
 
-                if ($excludeDCategory) {
+                if ($config['excludeD']) {
                     $q->where('name', 'not like', 'D%');
                 }
             });
 
-        return $query->count();
+            $result[$key] = [
+                'created' => (clone $baseQuery)->count(),
+                'qualified' => (clone $baseQuery)->whereNotNull('qualified_at')->count(),
+                'won' => (clone $baseQuery)->where('inquiry_status', 'won')->count(),
+            ];
+        }
+
+        return $result;
     }
 
     /**

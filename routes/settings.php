@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Settings\LeadSourceManagementController;
+use App\Http\Controllers\Settings\LeadStatusManagementController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -31,5 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:super-admin')->group(function () {
         Route::get('settings/management/roles', [RoleManagementController::class, 'index'])->name('settings.management.roles');
         Route::get('settings/management/permissions', [PermissionManagementController::class, 'index'])->name('settings.management.permissions');
+        Route::get('settings/management/lead-sources', [LeadSourceManagementController::class, 'index'])->name('settings.management.lead-sources');
+        Route::get('settings/management/lead-statuses', [LeadStatusManagementController::class, 'index'])->name('settings.management.lead-statuses');
     });
 });

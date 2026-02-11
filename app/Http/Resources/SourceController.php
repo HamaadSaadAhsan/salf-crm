@@ -52,7 +52,7 @@ class SourceController extends Controller
 
         $query = LeadSource::query()
             ->select([
-                'id', 'name',
+                'id', 'name', 'source_score',
             ]);
 
         // Apply filters
@@ -142,5 +142,66 @@ class SourceController extends Controller
         // Bypass cache for real-time requirements
         return ! empty($filters['real_time']) ||
             (! empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:lead_sources,slug',
+            'identifier' => 'nullable|string|max:255|unique:lead_sources,identifier',
+            'status' => 'required|in:active,inactive',
+            'source_score' => 'nullable|integer|min:0|max:10',
+        ]);
+
+        $source = LeadSource::create($validated);
+
+        return response()->json([
+            'data' => new LeadSourceResource($source),
+            'message' => 'Lead source created successfully.',
+        ], 201);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(\Illuminate\Http\Request $request, LeadSource $source): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:lead_sources,slug,'.$source->id,
+            'identifier' => 'nullable|string|max:255|unique:lead_sources,identifier,'.$source->id,
+            'status' => 'sometimes|required|in:active,inactive',
+            'source_score' => 'sometimes|nullable|integer|min:0|max:10',
+        ]);
+
+        $source->update($validated);
+
+        return response()->json([
+            'data' => new LeadSourceResource($source->fresh()),
+            'message' => 'Lead source updated successfully.',
+        ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(LeadSource $source): JsonResponse
+    {
+        // Check if source has leads
+        if ($source->leads()->count() > 0) {
+            return response()->json([
+                'message' => 'Cannot delete lead source that has associated leads.',
+            ], 422);
+        }
+
+        $source->delete();
+
+        return response()->json([
+            'message' => 'Lead source deleted successfully.',
+        ]);
     }
 }

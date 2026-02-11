@@ -16,6 +16,7 @@ class LeadSource extends Model
         'slug',
         'identifier',
         'status',
+        'source_score',
     ];
 
     protected $casts = [
@@ -25,6 +26,7 @@ class LeadSource extends Model
 
     protected $attributes = [
         'status' => 'active',
+        'source_score' => 0,
     ];
 
     protected static function boot()

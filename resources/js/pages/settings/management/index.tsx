@@ -1,5 +1,18 @@
 import { Head } from '@inertiajs/react';
-import { Globe, Map, MapPinned, MapPin, Building2, GraduationCap, Users, Shield, Lock, Badge } from 'lucide-react';
+import {
+  Globe,
+  Map,
+  MapPinned,
+  MapPin,
+  Building2,
+  GraduationCap,
+  Users,
+  Shield,
+  Lock,
+  Badge,
+  Share2,
+  ListChecks,
+} from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from './page-header';
 import { ManagementCard } from './management-card';
@@ -72,6 +85,21 @@ export default function ManagementSettingsPage() {
     },
   ];
 
+  const leadManagementSections = [
+    {
+      title: 'Lead Sources',
+      description: 'Manage and organize lead sources',
+      icon: Share2,
+      href: '/settings/management/lead-sources',
+    },
+    {
+      title: 'Lead Statuses',
+      description: 'Configure lead lifecycle statuses and colors',
+      icon: ListChecks,
+      href: '/settings/management/lead-statuses',
+    },
+  ];
+
   return (
     <AppLayout>
       <Head title="Management Settings" />
@@ -128,6 +156,23 @@ export default function ManagementSettingsPage() {
                       href={section.href}
                       disabled={section.disabled}
                       badge={section.badge}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-muted-foreground mb-4">
+                  Lead Management
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {leadManagementSections.map((section) => (
+                    <ManagementCard
+                      key={section.title}
+                      title={section.title}
+                      description={section.description}
+                      icon={section.icon}
+                      href={section.href}
                     />
                   ))}
                 </div>

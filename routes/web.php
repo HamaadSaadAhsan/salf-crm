@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::apiResource('statuses', StatusController::class)->names('statuses');
+    Route::post('statuses/reorder', [StatusController::class, 'reorder'])->name('statuses.reorder');
     Route::apiResource('sources', SourceController::class)->names('sources');
 
     // User Impersonation (Super Admin only)

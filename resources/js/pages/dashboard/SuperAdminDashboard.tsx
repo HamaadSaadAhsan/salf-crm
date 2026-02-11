@@ -1,6 +1,7 @@
 import { DashboardOverview, useDailyMetrics, useSystemAdoption } from '@/hooks/useDashboard';
 import { StatMetricCard } from '@/components/dashboard/StatMetricCard';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { ProgramSalesCard } from '@/components/dashboard/ProgramSalesCard';
 import { RevenuePipeline } from '@/components/dashboard/revenue-pipeline';
 import { LeadLifecycleFunnel } from '@/components/dashboard/lead-lifecycle-funnel';
 import { ActivityHeatmap } from '@/components/dashboard/activity-heatmap';
@@ -14,14 +15,12 @@ import { CHART_COLORS, CHART_PRESETS } from '@/lib/dashboard-colors';
 import { format } from 'date-fns';
 import {
     Users,
-    TrendingUp,
     Target,
     Clock,
     Activity,
     Award,
     BarChart3,
     Percent,
-    UserCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -87,7 +86,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
             {/* ===== Section 1: High-Level KPIs ===== */}
 
             {/* Row 1: Core Sales KPIs */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <StatMetricCard
                     title="Total Leads"
                     value={formatNumber(kpis.total_leads)}
@@ -98,23 +97,14 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     icon={Users}
                 />
                 <StatMetricCard
-                    title="Sales - CBI"
-                    value={formatNumber(kpis.sales_cbi)}
-                    isLoading={isLoading}
-                    icon={TrendingUp}
-                />
-                <StatMetricCard
-                    title="Sales - RBI"
-                    value={formatNumber(kpis.sales_rbi)}
-                    lastLabel="Excl. D Category"
+                    title="Avg Lead Score"
+                    value={kpis.avg_lead_score ?? 0}
                     isLoading={isLoading}
                     icon={Target}
                 />
-                <StatMetricCard
-                    title="Sales - Skilled"
-                    value={formatNumber(kpis.sales_skilled)}
+                <ProgramSalesCard
+                    programSales={kpis.program_sales}
                     isLoading={isLoading}
-                    icon={UserCheck}
                 />
             </div>
 

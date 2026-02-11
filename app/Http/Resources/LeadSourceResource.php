@@ -14,6 +14,7 @@ class LeadSourceResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'status' => $this->status,
+            'source_score' => $this->source_score ?? 0,
             'is_active' => $this->isActive(),
             'is_inactive' => $this->isInactive(),
             'leads_count' => $this->leads_count,

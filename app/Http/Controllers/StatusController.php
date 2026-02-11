@@ -144,4 +144,77 @@ class StatusController extends Controller
         return ! empty($filters['real_time']) ||
             (! empty($filters['assigned_to']) && $filters['assigned_to'] === auth()->id());
     }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:statuses,name',
+            'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'order' => 'nullable|integer|min:0',
+        ]);
+
+        $status = Status::create($validated);
+
+        return response()->json([
+            'data' => new StatusResource($status),
+            'message' => 'Status created successfully.',
+        ], 201);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(\Illuminate\Http\Request $request, Status $status): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255|unique:statuses,name,'.$status->id,
+            'color' => 'sometimes|required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'order' => 'sometimes|nullable|integer|min:0',
+        ]);
+
+        $status->update($validated);
+
+        return response()->json([
+            'data' => new StatusResource($status->fresh()),
+            'message' => 'Status updated successfully.',
+        ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Status $status): JsonResponse
+    {
+        $status->delete();
+
+        return response()->json([
+            'message' => 'Status deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Reorder statuses
+     */
+    public function reorder(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'orders' => 'required|array',
+            'orders.*.id' => 'required|exists:statuses,id',
+            'orders.*.order' => 'required|integer|min:0',
+        ]);
+
+        \DB::transaction(function () use ($validated) {
+            foreach ($validated['orders'] as $orderData) {
+                Status::where('id', $orderData['id'])
+                    ->update(['order' => $orderData['order']]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Statuses reordered successfully.',
+        ]);
+    }
 }
