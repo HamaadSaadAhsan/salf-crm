@@ -19,7 +19,11 @@ class CityController extends Controller
             ->withCount('zones');
 
         if ($request->filled('province_id')) {
-            $query->where('province_id', $request->province_id);
+            $provinceIds = is_array($request->province_id)
+                ? $request->province_id
+                : explode(',', $request->province_id);
+
+            $query->whereIn('province_id', $provinceIds);
         }
 
         if ($request->filled('country_code')) {

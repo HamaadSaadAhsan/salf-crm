@@ -19,6 +19,7 @@ export interface Zone {
   cities_count: number;
   city_ids: number[];
   province_id?: number;
+  province_ids?: number[];
   country_id?: number;
   created_at: string;
   updated_at: string;

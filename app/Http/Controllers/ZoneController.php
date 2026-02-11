@@ -32,6 +32,7 @@ class ZoneController extends Controller
                     'cities_count' => $zone->cities->count(),
                     'city_ids' => $zone->cities->pluck('id')->toArray(),
                     'province_id' => $province?->id,
+                    'province_ids' => $zone->cities->pluck('province_id')->unique()->values()->toArray(),
                     'country_id' => $country?->id,
                     'created_at' => $zone->created_at?->toDateTimeString(),
                     'updated_at' => $zone->updated_at?->toDateTimeString(),

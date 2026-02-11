@@ -69,7 +69,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
     const [provinces, setProvinces] = useState<Province[]>([]);
     const [cities, setCities] = useState<City[]>([]);
     const [selectedCountryId, setSelectedCountryId] = useState<number | null>(null);
-    const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(null);
+    const [selectedProvinceIds, setSelectedProvinceIds] = useState<number[]>([]);
     const [selectedCityIds, setSelectedCityIds] = useState<number[]>([]);
     const [isLoadingProvinces, setIsLoadingProvinces] = useState(false);
     const [isLoadingCities, setIsLoadingCities] = useState(false);
@@ -98,23 +98,23 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
             setProvinces([]);
             setCities([]);
             if (!isInitializing) {
-                setSelectedProvinceId(null);
+                setSelectedProvinceIds([]);
                 setSelectedCityIds([]);
             }
         }
     }, [selectedCountryId]);
 
-    // Fetch cities when province changes
+    // Fetch cities when provinces change
     useEffect(() => {
-        if (selectedProvinceId) {
-            fetchCities(selectedProvinceId);
+        if (selectedProvinceIds.length > 0) {
+            fetchCities(selectedProvinceIds);
         } else {
             setCities([]);
             if (!isInitializing) {
                 setSelectedCityIds([]);
             }
         }
-    }, [selectedProvinceId]);
+    }, [selectedProvinceIds]);
 
     useEffect(() => {
         if (zone && open) {
@@ -137,8 +137,10 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
             if (zone.country_id) {
                 setSelectedCountryId(zone.country_id);
             }
-            if (zone.province_id) {
-                setSelectedProvinceId(zone.province_id);
+            if (zone.province_ids && zone.province_ids.length > 0) {
+                setSelectedProvinceIds(zone.province_ids);
+            } else if (zone.province_id) {
+                setSelectedProvinceIds([zone.province_id]);
             }
 
             setTimeout(() => setIsInitializing(false), 100);
@@ -151,7 +153,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                 is_active: true,
             });
             setSelectedCountryId(null);
-            setSelectedProvinceId(null);
+            setSelectedProvinceIds([]);
             setSelectedCityIds([]);
             setIsInitializing(false);
         }
@@ -181,10 +183,10 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
         }
     };
 
-    const fetchCities = async (provinceId: number) => {
+    const fetchCities = async (provinceIds: number[]) => {
         setIsLoadingCities(true);
         try {
-            const response = await axios.get(`/api/cities?province_id=${provinceId}`);
+            const response = await axios.get(`/api/cities?province_id=${provinceIds.join(',')}`);
             setCities(response.data.cities || []);
         } catch (error) {
             console.error('Error fetching cities:', error);
@@ -257,7 +259,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
         const countryId = parseInt(value);
         setIsInitializing(false);
         setSelectedCountryId(countryId);
-        setSelectedProvinceId(null);
+        setSelectedProvinceIds([]);
         setSelectedCityIds([]);
         setCitySearchQuery('');
 
@@ -270,11 +272,17 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
         }
     };
 
-    const handleProvinceChange = (value: string) => {
-        const provinceId = parseInt(value);
+    const handleProvinceToggle = (provinceId: number) => {
         setIsInitializing(false);
-        setSelectedProvinceId(provinceId);
-        setSelectedCityIds([]);
+        setSelectedProvinceIds((prev) => {
+            if (prev.includes(provinceId)) {
+                // Remove province and deselect its cities
+                const removedProvinceCityIds = cities.filter((c) => c.province_id === provinceId).map((c) => c.id);
+                setSelectedCityIds((prevCities) => prevCities.filter((id) => !removedProvinceCityIds.includes(id)));
+                return prev.filter((id) => id !== provinceId);
+            }
+            return [...prev, provinceId];
+        });
         setCitySearchQuery('');
     };
 
@@ -300,8 +308,27 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
         return cities.filter((city) => city.name.toLowerCase().includes(query));
     };
 
+    const getCitiesGroupedByProvince = () => {
+        const filtered = getFilteredCities();
+        const grouped: { province: Province; cities: City[] }[] = [];
+
+        for (const provinceId of selectedProvinceIds) {
+            const province = provinces.find((p) => p.id === provinceId);
+            if (!province) continue;
+            const provinceCities = filtered.filter((c) => c.province_id === provinceId);
+            if (provinceCities.length > 0) {
+                grouped.push({ province, cities: provinceCities });
+            }
+        }
+
+        return grouped;
+    };
+
+    const [newCityProvinceId, setNewCityProvinceId] = useState<number | null>(null);
+
     const handleCreateCity = async () => {
-        if (!newCityName.trim() || !selectedProvinceId) return;
+        const targetProvinceId = newCityProvinceId || selectedProvinceIds[0];
+        if (!newCityName.trim() || !targetProvinceId) return;
 
         setIsCreatingCity(true);
         setNewCityError(null);
@@ -310,7 +337,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
             const response = await axios.post('/cities', {
                 name: newCityName.trim(),
                 code: newCityCode.trim() || null,
-                province_id: selectedProvinceId,
+                province_id: targetProvinceId,
                 is_active: true,
             });
 
@@ -323,6 +350,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
             // Reset dialog
             setNewCityName('');
             setNewCityCode('');
+            setNewCityProvinceId(null);
             setShowNewCityDialog(false);
         } catch (error: any) {
             console.error('Error creating city:', error);
@@ -468,11 +496,15 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                                     disabled={isLoading || !selectedCountryId || isLoadingProvinces}
                                                     className="w-full justify-between font-normal"
                                                 >
-                                                    {selectedProvinceId
-                                                        ? provinces.find((province) => province.id === selectedProvinceId)?.name
-                                                        : isLoadingProvinces
-                                                          ? 'Loading...'
-                                                          : 'Select province...'}
+                                                    <span className="truncate">
+                                                        {selectedProvinceIds.length > 0
+                                                            ? selectedProvinceIds.length === 1
+                                                                ? provinces.find((p) => p.id === selectedProvinceIds[0])?.name
+                                                                : `${selectedProvinceIds.length} provinces`
+                                                            : isLoadingProvinces
+                                                              ? 'Loading...'
+                                                              : 'Select provinces...'}
+                                                    </span>
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
@@ -486,16 +518,12 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                                                 <CommandItem
                                                                     key={province.id}
                                                                     value={province.name}
-                                                                    onSelect={() => {
-                                                                        handleProvinceChange(province.id.toString());
-                                                                        setProvinceOpen(false);
-                                                                    }}
+                                                                    onSelect={() => handleProvinceToggle(province.id)}
                                                                 >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            'mr-2 h-4 w-4',
-                                                                            selectedProvinceId === province.id ? 'opacity-100' : 'opacity-0',
-                                                                        )}
+                                                                    <SimpleCheckbox
+                                                                        checked={selectedProvinceIds.includes(province.id)}
+                                                                        size="sm"
+                                                                        className="pointer-events-none"
                                                                     />
                                                                     {province.name}
                                                                 </CommandItem>
@@ -509,7 +537,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                 </div>
 
                                 {/* Cities Selection */}
-                                {selectedProvinceId && (
+                                {selectedProvinceIds.length > 0 && (
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between">
                                             <Label className="flex items-center gap-2">
@@ -596,28 +624,45 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                                 )}
 
                                                 {getFilteredCities().length > 0 ? (
-                                                    <div className="grid max-h-[280px] grid-cols-3 gap-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                                                        {getFilteredCities().map((city) => (
-                                                            <div
-                                                                key={city.id}
-                                                                className={cn(
-                                                                    'flex cursor-pointer items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-colors hover:bg-accent',
-                                                                    selectedCityIds.includes(city.id) && 'border-primary bg-primary/5',
+                                                    <div className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+                                                        {getCitiesGroupedByProvince().map(({ province, cities: provinceCities }) => (
+                                                            <div key={province.id}>
+                                                                {selectedProvinceIds.length > 1 && (
+                                                                    <div className="mb-2 flex items-center gap-2">
+                                                                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                                            {province.name}
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground/60">
+                                                                            ({provinceCities.filter((c) => selectedCityIds.includes(c.id)).length}/{provinceCities.length})
+                                                                        </span>
+                                                                        <div className="h-px flex-1 bg-border" />
+                                                                    </div>
                                                                 )}
-                                                                onClick={() => !isLoading && handleCityToggle(city.id)}
-                                                            >
-                                                                <SimpleCheckbox
-                                                                    checked={selectedCityIds.includes(city.id)}
-                                                                    size="sm"
-                                                                    disabled={isLoading}
-                                                                    className="pointer-events-none"
-                                                                />
-                                                                <label
-                                                                    className="cursor-pointer truncate text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                                    title={city.name}
-                                                                >
-                                                                    {city.name}
-                                                                </label>
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    {provinceCities.map((city) => (
+                                                                        <div
+                                                                            key={city.id}
+                                                                            className={cn(
+                                                                                'flex cursor-pointer items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-colors hover:bg-accent',
+                                                                                selectedCityIds.includes(city.id) && 'border-primary bg-primary/5',
+                                                                            )}
+                                                                            onClick={() => !isLoading && handleCityToggle(city.id)}
+                                                                        >
+                                                                            <SimpleCheckbox
+                                                                                checked={selectedCityIds.includes(city.id)}
+                                                                                size="sm"
+                                                                                disabled={isLoading}
+                                                                                className="pointer-events-none"
+                                                                            />
+                                                                            <label
+                                                                                className="cursor-pointer truncate text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                                                title={city.name}
+                                                                            >
+                                                                                {city.name}
+                                                                            </label>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -699,9 +744,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                 Add New City
                             </DialogTitle>
                             <DialogDescription>
-                                Add a new city to{' '}
-                                <span className="font-medium">{provinces.find((p) => p.id === selectedProvinceId)?.name || 'this province'}</span>. It will
-                                be automatically selected for this zone.
+                                Add a new city to a selected province. It will be automatically selected for this zone.
                             </DialogDescription>
                         </DialogHeader>
 
@@ -711,6 +754,49 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertDescription>{newCityError}</AlertDescription>
                                 </Alert>
+                            )}
+
+                            {selectedProvinceIds.length > 1 && (
+                                <div className="space-y-2">
+                                    <Label>Province</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-between font-normal">
+                                                {newCityProvinceId
+                                                    ? provinces.find((p) => p.id === newCityProvinceId)?.name
+                                                    : provinces.find((p) => p.id === selectedProvinceIds[0])?.name}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="z-[200] w-full p-0" align="start">
+                                            <Command>
+                                                <CommandList>
+                                                    <CommandGroup>
+                                                        {provinces
+                                                            .filter((p) => selectedProvinceIds.includes(p.id))
+                                                            .map((province) => (
+                                                                <CommandItem
+                                                                    key={province.id}
+                                                                    value={province.name}
+                                                                    onSelect={() => setNewCityProvinceId(province.id)}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            'mr-2 h-4 w-4',
+                                                                            (newCityProvinceId || selectedProvinceIds[0]) === province.id
+                                                                                ? 'opacity-100'
+                                                                                : 'opacity-0',
+                                                                        )}
+                                                                    />
+                                                                    {province.name}
+                                                                </CommandItem>
+                                                            ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
                             )}
 
                             <div className="space-y-2">
