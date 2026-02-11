@@ -298,6 +298,7 @@ Wayfinder generates TypeScript functions for Laravel routes. Import from `@/acti
 - always warn about the context remaining and before starting a new task make
   sure the left over context is enough for the or not. if not ask the user to
   use compact
+- NEVER add `Co-Authored-By` lines to git commit messages. Do not include any Claude attribution in commits.
 
 === documentation context ===
 

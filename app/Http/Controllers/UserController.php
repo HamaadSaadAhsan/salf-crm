@@ -15,7 +15,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -395,7 +394,7 @@ class UserController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'password' => $validated['password'],
             ]);
 
             // Assign roles if provided
@@ -548,7 +547,7 @@ class UserController extends Controller
                 $updateData['email'] = $validated['email'];
             }
             if (isset($validated['password'])) {
-                $updateData['password'] = Hash::make($validated['password']);
+                $updateData['password'] = $validated['password'];
             }
             if (array_key_exists('extension', $validated)) {
                 $updateData['extension'] = $validated['extension'];

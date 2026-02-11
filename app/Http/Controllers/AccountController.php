@@ -81,7 +81,7 @@ class AccountController extends Controller
 
             // Update password
             $user->update([
-                'password' => Hash::make($validated['password']),
+                'password' => $validated['password'],
             ]);
 
             return response()->json([
