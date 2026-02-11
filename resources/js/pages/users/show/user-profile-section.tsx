@@ -89,6 +89,14 @@ const profileSchema = z.object({
   email: z.string().email('Invalid email address'),
   roles: z.array(z.string()).optional(),
   extension: z.string().max(20, 'Extension must be at most 20 characters').nullable().optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
+  password_confirmation: z.string().optional().or(z.literal('')),
+}).refine((data) => {
+  if (data.password && data.password !== data.password_confirmation) return false;
+  return true;
+}, {
+  message: 'Password confirmation does not match',
+  path: ['password_confirmation'],
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -107,11 +115,18 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
       email: user.email,
       roles: user.roles?.map((r) => r.name) || [],
       extension: user.extension || '',
+      password: '',
+      password_confirmation: '',
     },
   });
 
   const handleProfileUpdate = async (values: ProfileFormValues) => {
     setIsSubmitting(true);
+    const payload: Record<string, unknown> = { ...values };
+    if (!payload.password) {
+      delete payload.password;
+      delete payload.password_confirmation;
+    }
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'PUT',
@@ -125,7 +140,7 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
           ),
         },
         credentials: 'include',
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -396,6 +411,32 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
                     <FormLabel>Extension (PBX/SIP)</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ''} placeholder="e.g. 1001" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password <span className="text-xs text-muted-foreground font-normal">(leave empty to keep current)</span></FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Enter new password" autoComplete="new-password" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password_confirmation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Confirm new password" autoComplete="new-password" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -1,5 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Building, MapPin, Briefcase } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Building, MapPin, Briefcase, UserCog } from 'lucide-react';
+import { type SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -113,6 +114,20 @@ interface Props {
 }
 
 export default function UserShow({ user, roles, zones, offices, services, allPermissions }: Props) {
+  const { auth } = usePage<SharedData>().props;
+  const isSuperAdmin = auth.isSuperAdmin;
+  const currentUserId = auth.user.id;
+
+  const canImpersonate = (): boolean => {
+    if (!isSuperAdmin || user.id === currentUserId) return false;
+    return !user.roles?.some((role) => role.name === 'super-admin');
+  };
+
+  const handleImpersonate = () => {
+    if (!canImpersonate()) return;
+    router.post(`/impersonate/${user.id}`);
+  };
+
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Users', href: '/users' },
@@ -142,6 +157,17 @@ export default function UserShow({ user, roles, zones, offices, services, allPer
               </Link>
             </Button>
           </div>
+          {canImpersonate() && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImpersonate}
+              className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+            >
+              <UserCog className="size-4 mr-2" />
+              Impersonate User
+            </Button>
+          )}
         </div>
       </ContentHeader>
 

@@ -85,7 +85,7 @@ class ImpersonationController extends Controller
         // Login back as the original user
         Auth::login($impersonator);
 
-        return redirect()->route('dashboard')->with('success', 'You have stopped impersonating and returned to your account.');
+        return redirect()->route('users.page')->with('success', 'You have stopped impersonating and returned to your account.');
     }
 
     /**
