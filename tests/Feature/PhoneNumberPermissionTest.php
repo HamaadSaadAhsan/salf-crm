@@ -8,7 +8,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Seed roles and permissions
-    $this->seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
+    $this->seed(\Database\Seeders\LeadsPermissionsSeeder::class);
 
     $this->lead = Lead::factory()->create([
         'phone' => '+1234567890',

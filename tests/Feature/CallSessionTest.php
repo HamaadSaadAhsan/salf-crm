@@ -29,7 +29,7 @@ it('generates call signature in correct format', function () {
     expect($signatureData['call_signature'])->toMatch('/^LEAD-[0-9a-f\-]+-USER-\d+-\d{4}-\d{2}-\d{2}-\d{6}-[A-Z0-9]{6}$/');
     expect($signatureData['call_signature'])->toContain("LEAD-{$lead->id}");
     expect($signatureData['call_signature'])->toContain("USER-{$user->id}");
-    expect($signatureData)->toHaveKeys(['call_signature', 'session_id', 'lead_id', 'caller_id', 'caller_number', 'callee_number', 'timestamp']);
+    expect($signatureData)->toHaveKeys(['call_signature', 'session_id', 'lead_id', 'caller_id', 'timestamp']);
 });
 
 it('generates call signature without lead', function () {

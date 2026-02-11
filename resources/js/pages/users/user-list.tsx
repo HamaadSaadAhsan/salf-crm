@@ -1,17 +1,20 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
+  Cell,
   ColumnDef,
   ColumnFiltersState,
   ColumnPinningState,
+  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  HeaderGroup,
+  Row,
   SortingState,
   useReactTable,
-  flexRender,
 } from '@tanstack/react-table';
-import { Building, Search, Shield, X, Edit, MapPin, Globe, Building2, UserCog } from 'lucide-react';
+import { Building, Search, Shield, X, Edit, MapPin, Globe, Building2, UserCog, MoreVertical } from 'lucide-react';
 import { EditOfficeSheet } from './edit-office-sheet';
 import { EditZoneSheet } from './edit-zone-sheet';
 import { EditServicesSheet } from './edit-services-sheet';
@@ -29,6 +32,13 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -40,6 +50,18 @@ import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { DataGridColumnVisibility } from '@/components/ui/data-grid-column-visibility';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import {
+  DataGridTableBase,
+  DataGridTableBody,
+  DataGridTableBodyRowCell,
+  DataGridTableBodyRowExpandded,
+  DataGridTableEmpty,
+  DataGridTableHead,
+  DataGridTableHeadRow,
+  DataGridTableHeadRowCell,
+  DataGridTableHeadRowCellResize,
+  DataGridTableRowSpacer,
+} from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -255,8 +277,8 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
       header: ({ column }) => (
         <DataGridColumnHeader column={column} title="Roles" />
       ),
-      minSize: 150,
-      size: 180,
+      minSize: 180,
+      size: 250,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
           {row.original.roles && row.original.roles.length > 0 ? (
@@ -413,6 +435,63 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
         return <span className="whitespace-nowrap">{formatDate(date)}</span>;
       },
       enableSorting: true,
+    },
+    {
+      id: 'actions',
+      header: () => <></>,
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="pointer-events-none opacity-0 transition-opacity duration-300 group-hover/row:pointer-events-auto group-hover/row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem onClick={() => handleEditPrograms(user)}>
+                <Building className="mr-2 h-4 w-4" />
+                Edit Programs
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEditOffice(user)}>
+                <MapPin className="mr-2 h-4 w-4" />
+                Edit Office
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEditRegion(user)}>
+                <Globe className="mr-2 h-4 w-4" />
+                Edit Region
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/users/${user.id}`} className="flex items-center">
+                  <Edit className="mr-2 h-4 w-4" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              {canImpersonate(user) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleImpersonate(user)}
+                    className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                  >
+                    <UserCog className="mr-2 h-4 w-4" />
+                    Impersonate User
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+      size: 60,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false,
     },
   ];
 
@@ -807,85 +886,60 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
         </CardHeader>
 
         <CardTable>
-          <ScrollArea className="max-h-[calc(100vh-320px)]">
-            <div className="relative w-full overflow-auto">
-              <table className="w-full caption-bottom text-sm table-auto">
-                <thead className="[&_tr]:border-b">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="h-10 px-2.5 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
-                          style={{
-                            width: header.getSize() !== 150 ? header.getSize() : 'auto',
-                          }}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="[&_tr:last-child]:border-0">
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <ContextMenu key={row.id}>
+          <ScrollArea>
+            <DataGridTableBase>
+              <DataGridTableHead>
+                {table.getHeaderGroups().map((headerGroup: HeaderGroup<User>, index) => (
+                  <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
+                    {headerGroup.headers.map((header, hIndex) => (
+                      <DataGridTableHeadRowCell header={header} key={hIndex}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanResize() && (
+                          <DataGridTableHeadRowCellResize header={header} />
+                        )}
+                      </DataGridTableHeadRowCell>
+                    ))}
+                  </DataGridTableHeadRow>
+                ))}
+              </DataGridTableHead>
+              <DataGridTableRowSpacer />
+              <DataGridTableBody>
+                {table.getRowModel().rows.length ? (
+                  table.getRowModel().rows.map((row: Row<User>) => (
+                    <Fragment key={row.id}>
+                      <ContextMenu>
                         <ContextMenuTrigger asChild>
                           <tr
-                            data-state={row.getIsSelected() && 'selected'}
-                            className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                            data-state={row.getIsSelected() ? 'selected' : undefined}
+                            className="group/row hover:bg-muted/40 data-[state=selected]:bg-muted/50 [&:not(:last-child)>td]:border-b [&_>:first-child]:relative"
                           >
-                            {row.getVisibleCells().map((cell) => (
-                              <td
-                                key={cell.id}
-                                className="p-2.5 align-middle"
-                                style={{
-                                  width: cell.column.getSize() !== 150 ? cell.column.getSize() : 'auto',
-                                  minWidth: cell.column.columnDef.minSize,
-                                  maxWidth: cell.column.columnDef.maxSize,
-                                }}
-                              >
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext(),
-                                )}
-                              </td>
+                            {row.getVisibleCells().map((cell: Cell<User, unknown>, colIndex) => (
+                              <DataGridTableBodyRowCell cell={cell} key={colIndex}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </DataGridTableBodyRowCell>
                             ))}
                           </tr>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-56">
-                          <ContextMenuItem
-                            onClick={() => handleEditPrograms(row.original)}
-                          >
+                          <ContextMenuItem onClick={() => handleEditPrograms(row.original)}>
                             <Building className="mr-2 h-4 w-4" />
-                            <span>Edit Programs</span>
+                            Edit Programs
                           </ContextMenuItem>
-                          <ContextMenuItem
-                            onClick={() => handleEditOffice(row.original)}
-                          >
+                          <ContextMenuItem onClick={() => handleEditOffice(row.original)}>
                             <MapPin className="mr-2 h-4 w-4" />
-                            <span>Edit Office</span>
+                            Edit Office
                           </ContextMenuItem>
-                          <ContextMenuItem
-                            onClick={() => handleEditRegion(row.original)}
-                          >
+                          <ContextMenuItem onClick={() => handleEditRegion(row.original)}>
                             <Globe className="mr-2 h-4 w-4" />
-                            <span>Edit Region</span>
+                            Edit Region
                           </ContextMenuItem>
                           <ContextMenuSeparator />
                           <ContextMenuItem asChild>
-                            <Link
-                              href={`/users/${row.original.id}`}
-                              className="flex items-center"
-                            >
+                            <Link href={`/users/${row.original.id}`} className="flex items-center">
                               <Edit className="mr-2 h-4 w-4" />
-                              <span>View Details</span>
+                              View Details
                             </Link>
                           </ContextMenuItem>
                           {canImpersonate(row.original) && (
@@ -896,26 +950,20 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
                                 className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
                               >
                                 <UserCog className="mr-2 h-4 w-4" />
-                                <span>Impersonate User</span>
+                                Impersonate User
                               </ContextMenuItem>
                             </>
                           )}
                         </ContextMenuContent>
                       </ContextMenu>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No results.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      {row.getIsExpanded() && <DataGridTableBodyRowExpandded row={row} />}
+                    </Fragment>
+                  ))
+                ) : (
+                  <DataGridTableEmpty />
+                )}
+              </DataGridTableBody>
+            </DataGridTableBase>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </CardTable>

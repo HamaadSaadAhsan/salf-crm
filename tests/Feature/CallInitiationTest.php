@@ -30,8 +30,6 @@ test('initiating call with lead returns signature data', function () {
                 'session_id',
                 'lead_id',
                 'caller_id',
-                'caller_number',
-                'callee_number',
                 'timestamp',
             ],
             'message',
@@ -43,28 +41,16 @@ test('initiating call with lead returns signature data', function () {
     // Verify signature data contains correct info
     $signatureData = $response->json('signature_data');
     expect($signatureData['lead_id'])->toBe($this->lead->id)
-        ->and($signatureData['caller_id'])->toBe($this->user->id)
-        ->and($signatureData['callee_number'])->toBe($this->lead->phone);
+        ->and($signatureData['caller_id'])->toBe($this->user->id);
 });
 
-test('initiating call with phone number returns signature data', function () {
+test('initiating call without lead_id fails validation', function () {
     $response = $this->postJson(route('api.calls.initiate'), [
         'phone_number' => '+9876543210',
     ]);
 
-    $response->assertOk()
-        ->assertJsonStructure([
-            'success',
-            'signature_data',
-            'message',
-        ])
-        ->assertJson([
-            'success' => true,
-        ]);
-
-    $signatureData = $response->json('signature_data');
-    expect($signatureData['callee_number'])->toBe('+9876543210')
-        ->and($signatureData['lead_id'])->toBeNull();
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['lead_id']);
 });
 
 test('initiating call without phone number or lead fails', function () {
