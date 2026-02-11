@@ -106,6 +106,37 @@ export function EditServicesSheet({
     );
   };
 
+  const toggleParentService = (parentService: Service) => {
+    const children = parentService.children || [];
+    if (children.length === 0) {
+      toggleService(parentService.id);
+      return;
+    }
+
+    const allIds = [parentService.id, ...children.map((c) => c.id)];
+    const allSelected = allIds.every((id) => selectedServiceIds.includes(id));
+
+    if (allSelected) {
+      setSelectedServiceIds((prev) => prev.filter((id) => !allIds.includes(id)));
+    } else {
+      setSelectedServiceIds((prev) => [...new Set([...prev, ...allIds])]);
+    }
+  };
+
+  const isParentChecked = (parentService: Service): boolean | 'indeterminate' => {
+    const children = parentService.children || [];
+    if (children.length === 0) {
+      return selectedServiceIds.includes(parentService.id);
+    }
+
+    const allIds = [parentService.id, ...children.map((c) => c.id)];
+    const selectedCount = allIds.filter((id) => selectedServiceIds.includes(id)).length;
+
+    if (selectedCount === 0) return false;
+    if (selectedCount === allIds.length) return true;
+    return 'indeterminate';
+  };
+
   const flattenServices = (items: Service[]): Service[] => {
     const result: Service[] = [];
     items.forEach((service) => {
@@ -164,8 +195,8 @@ export function EditServicesSheet({
                       <div className="flex items-center gap-2">
                         <Checkbox
                           id={`parent-${parentService.id}`}
-                          checked={selectedServiceIds.includes(parentService.id)}
-                          onCheckedChange={() => toggleService(parentService.id)}
+                          checked={isParentChecked(parentService)}
+                          onCheckedChange={() => toggleParentService(parentService)}
                           disabled={isLoading}
                         />
                         <label
