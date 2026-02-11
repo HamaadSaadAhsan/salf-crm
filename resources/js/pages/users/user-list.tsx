@@ -60,7 +60,7 @@ import {
   DataGridTableHeadRow,
   DataGridTableHeadRowCell,
   DataGridTableHeadRowCellResize,
-  DataGridTableRowSpacer,
+
 } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import {
@@ -904,7 +904,6 @@ const UserList = ({ users, zones = [], offices = [], services = [] }: UserListPr
                   </DataGridTableHeadRow>
                 ))}
               </DataGridTableHead>
-              <DataGridTableRowSpacer />
               <DataGridTableBody>
                 {table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row: Row<User>) => (
