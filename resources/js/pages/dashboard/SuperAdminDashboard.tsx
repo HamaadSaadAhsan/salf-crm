@@ -1,8 +1,6 @@
 import { DashboardOverview, useDailyMetrics, useSystemAdoption } from '@/hooks/useDashboard';
 import { StatMetricCard } from '@/components/dashboard/StatMetricCard';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { LeadsOverview } from '@/components/dashboard/leads-overview';
-import { LeadAnalytics } from '@/components/dashboard/lead-analytics';
 import { RevenuePipeline } from '@/components/dashboard/revenue-pipeline';
 import { LeadLifecycleFunnel } from '@/components/dashboard/lead-lifecycle-funnel';
 import { ActivityHeatmap } from '@/components/dashboard/activity-heatmap';
@@ -27,7 +25,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Area, AreaChart, Bar, BarChart, Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Area, AreaChart, Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface SuperAdminDashboardProps {
@@ -38,7 +36,6 @@ interface SuperAdminDashboardProps {
 export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProps) {
     const kpis = data?.kpis || {};
 
-    // Fetch metrics data for charts
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -52,12 +49,9 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
         end_date: new Date().toISOString().split('T')[0],
     });
 
-    // Transform daily metrics for charts
     const conversionChartData = dailyMetrics?.map((metric: any) => ({
         date: new Date(metric.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         rate: Number(metric.overall_conversion_rate) || 0,
-        qualified: metric.qualified_leads || 0,
-        converted: metric.converted_leads || 0,
     })) || [];
 
     const leadVolumeData = dailyMetrics?.map((metric: any) => ({
@@ -74,10 +68,6 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
     } satisfies ChartConfig;
 
     const leadVolumeConfig = {
-        total: {
-            label: 'Total Leads',
-            color: CHART_COLORS.blue.DEFAULT,
-        },
         new: {
             label: 'New Leads',
             color: CHART_PRESETS.growth.primary,
@@ -85,21 +75,19 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
     } satisfies ChartConfig;
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-muted-foreground">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
+                <p className="text-sm text-muted-foreground sm:text-base">
                     System-wide overview and key performance indicators
                 </p>
             </div>
 
-            {/* ============================================ */}
-            {/* Section 1: High-Level KPIs                   */}
-            {/* ============================================ */}
+            {/* ===== Section 1: High-Level KPIs ===== */}
 
             {/* Row 1: Core Sales KPIs */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatMetricCard
                     title="Total Leads"
                     value={formatNumber(kpis.total_leads)}
@@ -131,7 +119,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
             </div>
 
             {/* Row 2: Performance KPIs */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Best Lead Source"
                     value={kpis.best_lead_source
@@ -162,7 +150,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
             </div>
 
             {/* Row 3: System KPIs */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
                     label="System Adoption"
                     value={formatPercent(kpis.system_adoption_rate)}
@@ -177,19 +165,17 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 />
             </div>
 
-            {/* ============================================ */}
-            {/* Section 2: Charts & Analytics                */}
-            {/* ============================================ */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight mb-6">Charts & Analytics</h2>
+            {/* ===== Section 2: Charts & Analytics ===== */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Charts & Analytics</h2>
 
                 {/* Lead Volume + Conversion Rate Trend */}
-                <div className="grid gap-4 md:grid-cols-2 mb-6">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     {/* Lead Volume */}
-                    <Card id="lead-volume-chart">
-                        <CardHeader className="min-h-auto py-6 border-0">
-                            <CardTitle className="text-xl font-semibold">Lead Volume</CardTitle>
-                            <CardToolbar className="flex items-center gap-2 flex-wrap">
+                    <Card id="lead-volume-chart" className="min-w-0">
+                        <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
+                            <CardTitle className="text-base font-semibold sm:text-xl">Lead Volume</CardTitle>
+                            <CardToolbar className="flex items-center gap-2">
                                 <ExportButton
                                     data={leadVolumeData}
                                     elementId="lead-volume-chart"
@@ -201,14 +187,14 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                 />
                             </CardToolbar>
                         </CardHeader>
-                        <CardContent className="pt-6">
+                        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
                             {metricsLoading ? (
-                                <Skeleton className="h-[300px] w-full" />
+                                <Skeleton className="h-[200px] w-full sm:h-[250px] lg:h-[300px]" />
                             ) : leadVolumeData.length > 0 ? (
-                                <ChartContainer config={leadVolumeConfig} className="h-[300px] w-full">
+                                <ChartContainer config={leadVolumeConfig} className="aspect-video w-full max-h-[300px]">
                                     <AreaChart
                                         data={leadVolumeData}
-                                        margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
+                                        margin={{ top: 10, left: -10, right: 10, bottom: 0 }}
                                     >
                                         <defs>
                                             <linearGradient id="newGradient" x1="0" y1="0" x2="0" y2="1">
@@ -217,8 +203,8 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 12 }} />
-                                        <YAxis className="text-xs" tick={{ fontSize: 12 }} />
+                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                                        <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
                                         <ChartTooltip content={<ChartTooltipContent />} />
                                         <Area
                                             type="monotone"
@@ -230,7 +216,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                     </AreaChart>
                                 </ChartContainer>
                             ) : (
-                                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                                <div className="flex h-[200px] items-center justify-center text-muted-foreground sm:h-[250px] lg:h-[300px]">
                                     No data available
                                 </div>
                             )}
@@ -238,10 +224,10 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     </Card>
 
                     {/* Conversion Rate Trend */}
-                    <Card id="conversion-rate-trend-chart">
-                        <CardHeader className="min-h-auto py-6 border-0">
-                            <CardTitle className="text-xl font-semibold">Conversion Rate Trend</CardTitle>
-                            <CardToolbar className="flex items-center gap-2 flex-wrap">
+                    <Card id="conversion-rate-trend-chart" className="min-w-0">
+                        <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
+                            <CardTitle className="text-base font-semibold sm:text-xl">Conversion Rate Trend</CardTitle>
+                            <CardToolbar className="flex items-center gap-2">
                                 <ExportButton
                                     data={conversionChartData}
                                     elementId="conversion-rate-trend-chart"
@@ -253,31 +239,31 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                 />
                             </CardToolbar>
                         </CardHeader>
-                        <CardContent className="pt-6">
+                        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
                             {metricsLoading ? (
-                                <Skeleton className="h-[300px] w-full" />
+                                <Skeleton className="h-[200px] w-full sm:h-[250px] lg:h-[300px]" />
                             ) : conversionChartData.length > 0 ? (
-                                <ChartContainer config={conversionChartConfig} className="h-[300px] w-full">
+                                <ChartContainer config={conversionChartConfig} className="aspect-video w-full max-h-[300px]">
                                     <LineChart
                                         data={conversionChartData}
-                                        margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
+                                        margin={{ top: 10, left: -10, right: 10, bottom: 0 }}
                                     >
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 12 }} />
-                                        <YAxis className="text-xs" tick={{ fontSize: 12 }} />
+                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                                        <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
                                         <ChartTooltip content={<ChartTooltipContent />} />
                                         <Line
                                             type="monotone"
                                             dataKey="rate"
                                             stroke="var(--color-rate)"
                                             strokeWidth={2}
-                                            dot={{ r: 4 }}
-                                            activeDot={{ r: 6 }}
+                                            dot={{ r: 3 }}
+                                            activeDot={{ r: 5 }}
                                         />
                                     </LineChart>
                                 </ChartContainer>
                             ) : (
-                                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                                <div className="flex h-[200px] items-center justify-center text-muted-foreground sm:h-[250px] lg:h-[300px]">
                                     No data available
                                 </div>
                             )}
@@ -286,31 +272,25 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 </div>
 
                 {/* Revenue Pipeline + Lifecycle Funnel */}
-                <div className="grid gap-4 md:grid-cols-2 mb-6">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <RevenuePipeline />
                     <LeadLifecycleFunnel />
                 </div>
 
                 {/* Lead Source Performance + Program Performance */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <LeadSourcePerformance />
                     <ProgramPerformance />
                 </div>
             </div>
 
-            {/* ============================================ */}
-            {/* Section 3: Activity & Tasks                  */}
-            {/* ============================================ */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight mb-6">Activity & Tasks</h2>
+            {/* ===== Section 3: Activity & Tasks ===== */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Activity & Tasks</h2>
 
-                {/* Activity Heatmap */}
-                <div className="mb-6">
-                    <ActivityHeatmap />
-                </div>
+                <ActivityHeatmap />
 
-                {/* Task Completion + Lead Lifecycle Analysis */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <TaskCompletionAnalysis />
                     <LeadLifecycleAnalysis />
                 </div>

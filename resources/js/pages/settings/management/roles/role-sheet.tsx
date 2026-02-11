@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
+import axios from '@/lib/axios';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -78,7 +79,7 @@ export function RoleSheet({ open, onOpenChange, role, permissions }: RoleSheetPr
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -87,37 +88,30 @@ export function RoleSheet({ open, onOpenChange, role, permissions }: RoleSheetPr
     const url = role ? `/api/roles/${role.id}` : '/api/roles';
     const method = role ? 'put' : 'post';
 
-    router[method](
-      url,
-      { name, permissions: selectedPermissions },
-      {
-        onSuccess: () => {
-          const message = role ? 'Role updated successfully!' : 'Role created successfully!';
-          setSuccess(message);
+    try {
+      await axios[method](url, { name, permissions: selectedPermissions });
 
-          if (!role && createMore) {
-            setName('');
-            setSelectedPermissions([]);
-            setSuccess(null);
-            setIsLoading(false);
-          } else {
-            setTimeout(() => {
-              onOpenChange(false);
-              setSuccess(null);
-            }, 1500);
-          }
-        },
-        onError: (errors: Record<string, string>) => {
-          const errorMessage = errors?.message || errors?.name || 'Failed to save role.';
-          setError(errorMessage);
-        },
-        onFinish: () => {
-          if (!createMore) {
-            setIsLoading(false);
-          }
-        },
-      },
-    );
+      const message = role ? 'Role updated successfully!' : 'Role created successfully!';
+      setSuccess(message);
+
+      if (!role && createMore) {
+        setName('');
+        setSelectedPermissions([]);
+        setSuccess(null);
+      } else {
+        setTimeout(() => {
+          onOpenChange(false);
+          setSuccess(null);
+          router.reload();
+        }, 1500);
+      }
+    } catch (err: any) {
+      const errors = err.response?.data?.errors;
+      const errorMessage = errors?.name?.[0] || err.response?.data?.message || 'Failed to save role.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {

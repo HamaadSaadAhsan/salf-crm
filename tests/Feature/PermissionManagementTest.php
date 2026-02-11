@@ -41,7 +41,7 @@ test('non super admin cannot access permissions management page', function () {
 test('super admin can create a permission', function () {
     $admin = createPermAdmin();
 
-    $response = $this->actingAs($admin)->post('/permissions', [
+    $response = $this->actingAs($admin)->post('/api/permissions', [
         'name' => 'new_permission',
     ]);
 
@@ -53,7 +53,7 @@ test('cannot create duplicate permission', function () {
     $admin = createPermAdmin();
     Permission::create(['name' => 'existing_permission', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->post('/permissions', [
+    $response = $this->actingAs($admin)->post('/api/permissions', [
         'name' => 'existing_permission',
     ]);
 
@@ -66,7 +66,7 @@ test('super admin can bulk update permissions', function () {
     $perm1 = Permission::create(['name' => 'edit_posts', 'guard_name' => 'web']);
     $perm2 = Permission::create(['name' => 'delete_posts', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->postJson('/permissions/bulk-update', [
+    $response = $this->actingAs($admin)->postJson('/api/permissions/bulk-update', [
         'role_permissions' => [
             [
                 'role_id' => $role->id,
@@ -82,7 +82,7 @@ test('super admin can bulk update permissions', function () {
 test('non super admin cannot bulk update permissions', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->postJson('/permissions/bulk-update', [
+    $response = $this->actingAs($user)->postJson('/api/permissions/bulk-update', [
         'role_permissions' => [],
     ]);
 
@@ -92,7 +92,7 @@ test('non super admin cannot bulk update permissions', function () {
 test('non super admin cannot create a permission', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->postJson('/permissions', [
+    $response = $this->actingAs($user)->postJson('/api/permissions', [
         'name' => 'unauthorized_permission',
     ]);
 

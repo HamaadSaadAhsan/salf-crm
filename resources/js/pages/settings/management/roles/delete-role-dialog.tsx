@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import axios from '@/lib/axios';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,17 +18,16 @@ interface DeleteRoleDialogProps {
 }
 
 export function DeleteRoleDialog({ role, onOpenChange }: DeleteRoleDialogProps) {
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!role) return;
 
-    router.delete(`/api/roles/${role.id}`, {
-      onSuccess: () => {
-        onOpenChange();
-      },
-      onError: (errors) => {
-        console.error('Delete error:', errors);
-      },
-    });
+    try {
+      await axios.delete(`/api/roles/${role.id}`);
+      onOpenChange();
+      router.reload();
+    } catch (err: any) {
+      console.error('Delete error:', err.response?.data);
+    }
   };
 
   return (
