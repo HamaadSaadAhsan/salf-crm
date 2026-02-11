@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { SimpleCheckbox } from '@/components/ui/simple-checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
     Dialog,
@@ -522,8 +522,9 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                             <div className="flex items-center gap-3">
                                                 {cities.length > 0 && (
                                                     <div className="flex items-center space-x-2">
-                                                        <Checkbox
+                                                        <SimpleCheckbox
                                                             id="select-all"
+                                                            size="sm"
                                                             checked={
                                                                 getFilteredCities().length > 0 &&
                                                                 getFilteredCities().every((city) => selectedCityIds.includes(city.id))
@@ -605,10 +606,9 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                                                                 )}
                                                                 onClick={() => !isLoading && handleCityToggle(city.id)}
                                                             >
-                                                                <Checkbox
-                                                                    id={`city-${city.id}`}
+                                                                <SimpleCheckbox
                                                                     checked={selectedCityIds.includes(city.id)}
-                                                                    onCheckedChange={() => handleCityToggle(city.id)}
+                                                                    size="sm"
                                                                     disabled={isLoading}
                                                                     className="pointer-events-none"
                                                                 />
