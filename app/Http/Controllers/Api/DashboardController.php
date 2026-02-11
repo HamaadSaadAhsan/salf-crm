@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyMetric;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\Service;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\UserPerformanceSnapshot;
@@ -55,80 +56,140 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
         $lastMonth = Carbon::today()->subMonth();
-
         $dailyMetric = DailyMetric::whereDate('metric_date', $today->toDateString())->first();
-        $lastMonthMetric = DailyMetric::whereDate('metric_date', $lastMonth->toDateString())->first();
 
-        // Calculate deltas
+        // Total leads with delta
+        $totalLeads = Lead::count();
         $leadsThisMonth = Lead::whereMonth('created_at', $today->month)->count();
         $leadsLastMonth = Lead::whereMonth('created_at', $lastMonth->month)->count();
         $leadsDelta = $leadsLastMonth > 0 ? (($leadsThisMonth - $leadsLastMonth) / $leadsLastMonth) * 100 : 0;
 
-        $conversionThisMonth = $dailyMetric?->overall_conversion_rate ?? 0;
-        $conversionLastMonth = $lastMonthMetric?->overall_conversion_rate ?? 0;
-        $conversionDelta = $conversionLastMonth > 0 ? (($conversionThisMonth - $conversionLastMonth) / $conversionLastMonth) * 100 : 0;
+        // Sales by program category (won leads)
+        $salesCbi = $this->getSalesByParentService('CBI Programs');
+        $salesRbi = $this->getSalesByParentService('RBI Programs', excludeDCategory: true);
+        $salesSkilled = $this->getSalesByParentService('Skilled Immigration');
 
-        // Calculate revenue metrics (budget is stored as JSON, so we'll count deals instead)
-        $activeDealsCount = Lead::whereIn('inquiry_status', ['qualified', 'proposal', 'negotiation'])->count();
-        $lastMonthActiveDeals = Lead::whereMonth('created_at', $lastMonth->month)
-            ->whereIn('inquiry_status', ['qualified', 'proposal', 'negotiation'])
-            ->count();
+        // LTQ Rate (Lead-to-Qualification %)
+        $qualifiedCount = Lead::whereNotNull('qualified_at')->count();
+        $ltqRate = $totalLeads > 0 ? round(($qualifiedCount / $totalLeads) * 100, 2) : 0;
 
-        // Since we don't have estimated_value, we'll use deal count as a proxy
-        $pipelineRevenue = $activeDealsCount * 50000; // Average deal value assumption
-        $lastMonthRevenue = $lastMonthActiveDeals * 50000;
-        $revenueDelta = $lastMonthRevenue > 0 ? (($pipelineRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100 : 0;
-        $avgDealValue = $activeDealsCount > 0 ? $pipelineRevenue / $activeDealsCount : 0;
+        // QTS Rate (Qualification-to-Sale %)
+        $wonCount = Lead::where('inquiry_status', 'won')->count();
+        $qtsRate = $qualifiedCount > 0 ? round(($wonCount / $qualifiedCount) * 100, 2) : 0;
 
-        // Calculate tasks overview
-        $totalTasks = Task::count();
-        $completedTasks = Task::where('status', 'completed')->count();
-        $followUpTasks = Task::where('type', 'follow_up')->whereIn('status', ['pending', 'in_progress'])->count();
-        $inProgressTasks = Task::where('status', 'in_progress')->count();
-        $pendingTasks = Task::where('status', 'pending')->count();
-        $completionRate = $totalTasks > 0 ? ($completedTasks / $totalTasks) * 100 : 0;
+        // Best lead source by conversion rate
+        $bestLeadSource = $this->getBestLeadSource();
+
+        // Average lifecycle days (created_at to converted_at for won leads)
+        $avgLifecycleDays = Lead::where('inquiry_status', 'won')
+            ->whereNotNull('converted_at')
+            ->selectRaw('AVG(EXTRACT(EPOCH FROM (converted_at - created_at))/(24*3600)) as avg_days')
+            ->value('avg_days');
+
+        // System adoption rate from daily metrics
+        $systemAdoptionRate = $dailyMetric?->system_adoption_rate ?? 0;
+
+        // Avg leads per advisor per day
+        $avgLeadsPerAdvisorPerDay = $this->getAvgLeadsPerAdvisorPerDay();
 
         return [
             'role' => 'super-admin',
             'kpis' => [
-                'total_leads' => $dailyMetric?->total_leads ?? 0,
-                'conversion_rate' => $conversionThisMonth,
-                'lead_conversion_score' => $dailyMetric?->lead_conversion_score ?? 0,
-                'system_adoption_rate' => $dailyMetric?->system_adoption_rate ?? 0,
-                'active_users' => $dailyMetric?->active_users ?? 0,
-                'task_completion_rate' => $dailyMetric?->task_completion_rate ?? 0,
-                // Delta values
-                'leads_delta' => $leadsDelta,
+                'total_leads' => $totalLeads,
+                'leads_delta' => round($leadsDelta, 2),
                 'last_month_leads' => $leadsLastMonth,
-                'conversion_delta' => $conversionDelta,
-                'last_month_conversion' => $conversionLastMonth,
-                'score_delta' => 0, // Calculate if needed
-                'task_delta' => 0, // Calculate if needed
+                'sales_cbi' => $salesCbi,
+                'sales_rbi' => $salesRbi,
+                'sales_skilled' => $salesSkilled,
+                'best_lead_source' => $bestLeadSource,
+                'ltq_rate' => $ltqRate,
+                'qts_rate' => $qtsRate,
+                'avg_lifecycle_days' => round($avgLifecycleDays ?? 0, 1),
+                'system_adoption_rate' => $systemAdoptionRate,
+                'avg_leads_per_advisor_per_day' => $avgLeadsPerAdvisorPerDay,
             ],
-            'response_times' => [
-                'avg_first_response' => $dailyMetric?->avg_first_response_time,
-                'avg_qualification' => $dailyMetric?->avg_qualification_time,
-                'avg_conversion' => $dailyMetric?->avg_conversion_time,
-            ],
-            'lifecycle' => [
-                'average_days' => $dailyMetric?->average_lifecycle_days ?? 0,
-            ],
-            'revenue' => [
-                'total' => $pipelineRevenue,
-                'delta' => $revenueDelta,
-                'avg_deal_value' => $avgDealValue,
-                'active_deals' => $activeDealsCount,
-            ],
-            'tasks_overview' => [
-                'completed' => $completedTasks,
-                'follow_ups' => $followUpTasks,
-                'in_progress' => $inProgressTasks,
-                'pending' => $pendingTasks,
-                'total' => $totalTasks,
-                'completion_rate' => $completionRate,
-            ],
-            'recent_activity' => $this->getRecentSystemActivity(),
         ];
+    }
+
+    /**
+     * Get count of won leads where the service belongs to a specific parent category.
+     */
+    protected function getSalesByParentService(string $parentName, bool $excludeDCategory = false): int
+    {
+        $parent = Service::where('name', $parentName)->first();
+
+        if (! $parent) {
+            return 0;
+        }
+
+        $query = Lead::where('inquiry_status', 'won')
+            ->whereHas('service', function ($q) use ($parent, $excludeDCategory) {
+                $q->where('parent_id', $parent->id);
+
+                if ($excludeDCategory) {
+                    $q->where('name', 'not like', 'D%');
+                }
+            });
+
+        return $query->count();
+    }
+
+    /**
+     * Get the lead source with the highest conversion rate.
+     *
+     * @return array{name: string, conversion_rate: float, total_leads: int}|null
+     */
+    protected function getBestLeadSource(): ?array
+    {
+        $result = Lead::selectRaw('
+                lead_sources.name as source_name,
+                COUNT(leads.id) as total_leads,
+                SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END) as won_leads
+            ')
+            ->join('lead_sources', 'leads.lead_source_id', '=', 'lead_sources.id')
+            ->groupBy('lead_sources.id', 'lead_sources.name')
+            ->havingRaw('COUNT(leads.id) >= 5')
+            ->orderByRaw('SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END)::float / COUNT(leads.id) DESC')
+            ->first();
+
+        if (! $result) {
+            return null;
+        }
+
+        $conversionRate = $result->total_leads > 0
+            ? round(($result->won_leads / $result->total_leads) * 100, 2)
+            : 0;
+
+        return [
+            'name' => $result->source_name,
+            'conversion_rate' => $conversionRate,
+            'total_leads' => (int) $result->total_leads,
+        ];
+    }
+
+    /**
+     * Calculate average leads assigned per advisor per working day.
+     */
+    protected function getAvgLeadsPerAdvisorPerDay(): float
+    {
+        $advisorCount = User::role(['sales-rep', 'senior-sales-rep'])->count();
+
+        if ($advisorCount === 0) {
+            return 0;
+        }
+
+        // Count leads assigned to advisors in the last 30 days
+        $thirtyDaysAgo = Carbon::now()->subDays(30);
+        $assignedLeads = Lead::where('created_at', '>=', $thirtyDaysAgo)
+            ->whereHas('assignedTo', function ($q) {
+                $q->role(['sales-rep', 'senior-sales-rep']);
+            })
+            ->count();
+
+        // Approximate 22 working days in 30 calendar days
+        $workingDays = 22;
+
+        return round($assignedLeads / ($advisorCount * $workingDays), 2);
     }
 
     public function getManagerDashboard(User $user): array

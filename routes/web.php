@@ -201,7 +201,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Roles
-    Route::prefix('roles')->middleware('role:super-admin')->group(function () {
+    Route::prefix('api/roles')->middleware('role:super-admin')->group(function () {
         Route::get('/', [RoleController::class, 'index']);
         Route::post('/', [RoleController::class, 'store']);
         Route::get('/{role}', [RoleController::class, 'show']);
@@ -211,7 +211,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Permissions
-    Route::prefix('permissions')->middleware('role:super-admin')->group(function () {
+    Route::prefix('api/permissions')->middleware('role:super-admin')->group(function () {
         Route::get('/', [PermissionController::class, 'index']);
         Route::post('/', [PermissionController::class, 'store']);
         Route::get('/matrix', [PermissionController::class, 'matrix']);

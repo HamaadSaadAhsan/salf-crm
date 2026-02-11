@@ -130,9 +130,17 @@ test('dashboard overview returns role-appropriate data for super admin', functio
 
     $response->assertSuccessful();
     $response->assertJsonStructure([
-        'kpis',
-        'recent_activity',
-        'response_times',
+        'kpis' => [
+            'total_leads',
+            'sales_cbi',
+            'sales_rbi',
+            'sales_skilled',
+            'ltq_rate',
+            'qts_rate',
+            'avg_lifecycle_days',
+            'system_adoption_rate',
+            'avg_leads_per_advisor_per_day',
+        ],
     ]);
 });
 

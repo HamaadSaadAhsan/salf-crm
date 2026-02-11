@@ -5,25 +5,25 @@ export interface DashboardOverview {
     role: string;
     kpis?: {
         total_leads?: number;
-        conversion_rate?: number;
-        lead_conversion_score?: number;
+        leads_delta?: number;
+        last_month_leads?: number;
+        sales_cbi?: number;
+        sales_rbi?: number;
+        sales_skilled?: number;
+        best_lead_source?: {
+            name: string;
+            conversion_rate: number;
+            total_leads: number;
+        } | null;
+        ltq_rate?: number;
+        qts_rate?: number;
+        avg_lifecycle_days?: number;
         system_adoption_rate?: number;
-        active_users?: number;
-        task_completion_rate?: number;
+        avg_leads_per_advisor_per_day?: number;
+        // Legacy fields for other dashboards
+        conversion_rate?: number;
         qualified_leads?: number;
         converted_leads?: number;
-        conversion_delta?: number;
-        last_month_conversion?: number;
-        score_delta?: number;
-        last_month_score?: number;
-        last_month_leads?: number;
-        leads_delta?: number;
-        task_delta?: number;
-        last_month_task_completion?: number;
-        qualified_delta?: number;
-        last_month_qualified?: number;
-        converted_delta?: number;
-        last_month_converted?: number;
     };
     my_leads?: {
         assigned?: number;
@@ -56,9 +56,6 @@ export interface DashboardOverview {
     team_performance?: Record<string, unknown>;
     hot_leads?: Array<unknown>;
     upcoming_meetings?: Array<unknown>;
-    recent_activity?: Array<unknown>;
-    revenue: Record<string, number>;
-    tasks_overview: Record<string, number>;
 }
 
 export function useDashboardOverview() {

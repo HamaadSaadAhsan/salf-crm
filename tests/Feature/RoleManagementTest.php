@@ -40,7 +40,7 @@ test('non super admin cannot access roles management page', function () {
 test('super admin can create a role', function () {
     $admin = createSuperAdmin();
 
-    $response = $this->actingAs($admin)->post('/roles', [
+    $response = $this->actingAs($admin)->post('/api/roles', [
         'name' => 'test-role',
     ]);
 
@@ -52,7 +52,7 @@ test('super admin can create a role with permissions', function () {
     $admin = createSuperAdmin();
     $permission = Permission::create(['name' => 'test_permission', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->post('/roles', [
+    $response = $this->actingAs($admin)->post('/api/roles', [
         'name' => 'test-role-with-perms',
         'permissions' => [$permission->id],
     ]);
@@ -66,7 +66,7 @@ test('super admin can update a role', function () {
     $admin = createSuperAdmin();
     $role = Role::create(['name' => 'old-name', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->put("/roles/{$role->id}", [
+    $response = $this->actingAs($admin)->put("/api/roles/{$role->id}", [
         'name' => 'new-name',
     ]);
 
@@ -78,7 +78,7 @@ test('super admin can delete a role without users', function () {
     $admin = createSuperAdmin();
     $role = Role::create(['name' => 'deletable-role', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->delete("/roles/{$role->id}");
+    $response = $this->actingAs($admin)->delete("/api/roles/{$role->id}");
 
     $response->assertOk();
     expect(Role::where('name', 'deletable-role')->exists())->toBeFalse();
@@ -90,7 +90,7 @@ test('cannot delete a role with assigned users', function () {
     $user = User::factory()->create();
     $user->assignRole('busy-role');
 
-    $response = $this->actingAs($admin)->delete("/roles/{$role->id}");
+    $response = $this->actingAs($admin)->delete("/api/roles/{$role->id}");
 
     $response->assertUnprocessable();
     expect(Role::where('name', 'busy-role')->exists())->toBeTrue();
@@ -99,7 +99,7 @@ test('cannot delete a role with assigned users', function () {
 test('non super admin cannot create a role', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->postJson('/roles', [
+    $response = $this->actingAs($user)->postJson('/api/roles', [
         'name' => 'unauthorized-role',
     ]);
 
@@ -110,7 +110,7 @@ test('non super admin cannot delete a role', function () {
     $user = User::factory()->create();
     $role = Role::create(['name' => 'protected-role', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($user)->deleteJson("/roles/{$role->id}");
+    $response = $this->actingAs($user)->deleteJson("/api/roles/{$role->id}");
 
     $response->assertForbidden();
 });

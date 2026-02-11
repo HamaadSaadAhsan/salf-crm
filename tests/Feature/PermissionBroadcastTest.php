@@ -27,7 +27,7 @@ test('event is dispatched when role permissions are updated', function () {
     $user = User::factory()->create();
     $user->assignRole('test-role');
 
-    $this->actingAs($admin)->put("/roles/{$role->id}", [
+    $this->actingAs($admin)->put("/api/roles/{$role->id}", [
         'name' => 'test-role',
         'permissions' => [$permission->id],
     ]);
@@ -47,7 +47,7 @@ test('event is dispatched when permissions are bulk updated', function () {
     $user = User::factory()->create();
     $user->assignRole('broadcast-role');
 
-    $this->actingAs($admin)->post('/permissions/bulk-update', [
+    $this->actingAs($admin)->post('/api/permissions/bulk-update', [
         'role_permissions' => [
             [
                 'role_id' => $role->id,
@@ -68,7 +68,7 @@ test('event is not dispatched when role has no users', function () {
     $role = Role::create(['name' => 'empty-role', 'guard_name' => 'web']);
     $permission = Permission::create(['name' => 'empty_perm', 'guard_name' => 'web']);
 
-    $this->actingAs($admin)->put("/roles/{$role->id}", [
+    $this->actingAs($admin)->put("/api/roles/{$role->id}", [
         'name' => 'empty-role',
         'permissions' => [$permission->id],
     ]);
