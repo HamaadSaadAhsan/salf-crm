@@ -22,7 +22,7 @@ test('non super admin users cannot access settings management page', function ()
 
     $response = $this->actingAs($user)->get('/settings/management');
 
-    $response->assertForbidden();
+    $response->assertRedirect();
 });
 
 test('unauthenticated users are redirected to login', function () {

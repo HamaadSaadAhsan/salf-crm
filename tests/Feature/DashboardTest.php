@@ -9,7 +9,10 @@ test('guests are redirected to the login page', function () {
 });
 
 test('authenticated users can visit the dashboard', function () {
-    $this->actingAs($user = User::factory()->create());
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view dashboard', 'guard_name' => 'web']);
+    $user = User::factory()->create();
+    $user->givePermissionTo('view dashboard');
+    $this->actingAs($user);
 
     $this->get('/dashboard')->assertOk();
 });

@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             UserSeeder::class,
-            TicketsLeadsPermissionsSeeder::class,
+            LeadsPermissionsSeeder::class,
         ]);
 
         // Leads and Related Data
@@ -41,9 +41,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Analytics and Metrics (last)
-        $this->call([
-            LeadConversionSeeder::class,
-            MetricsSeeder::class,
-        ]);
+        //        $this->call([
+        //            LeadConversionSeeder::class,
+        //            MetricsSeeder::class,
+        //        ]);
     }
 }

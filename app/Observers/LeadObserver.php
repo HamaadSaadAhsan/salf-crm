@@ -2,9 +2,11 @@
 
 namespace App\Observers;
 
+use App\Enums\TaskStatus;
 use App\Events\LeadUpdated;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
@@ -307,6 +309,12 @@ class LeadObserver
             return;
         }
 
+        // Complete pending tasks and activities on terminal statuses
+        $terminalStatuses = ['qualified', 'won', 'lost', 'converted', 'unqualified'];
+        if (in_array($newStatus, $terminalStatuses)) {
+            $this->completePendingTasksAndActivities($lead);
+        }
+
         switch ($newStatus) {
             case 'contacted':
                 LeadActivity::create([
@@ -368,6 +376,30 @@ class LeadObserver
                 ]);
                 break;
         }
+    }
+
+    /**
+     * Complete all pending tasks and follow-up activities for a lead.
+     */
+    private function completePendingTasksAndActivities(Lead $lead): void
+    {
+        Task::query()
+            ->where('taskable_type', Lead::class)
+            ->where('taskable_id', $lead->id)
+            ->whereIn('status', [TaskStatus::PENDING, TaskStatus::IN_PROGRESS])
+            ->update([
+                'status' => TaskStatus::COMPLETED,
+                'completed_at' => now(),
+            ]);
+
+        LeadActivity::query()
+            ->where('lead_id', $lead->id)
+            ->where('status', 'pending')
+            ->whereIn('type', ['follow_up', 'task'])
+            ->update([
+                'status' => 'completed',
+                'completed_at' => \Illuminate\Support\Facades\DB::raw('GREATEST(COALESCE(scheduled_at, NOW()), NOW())'),
+            ]);
     }
 
     /**

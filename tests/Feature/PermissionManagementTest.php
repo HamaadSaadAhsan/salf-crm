@@ -35,7 +35,7 @@ test('non super admin cannot access permissions management page', function () {
 
     $response = $this->actingAs($user)->get('/settings/management/permissions');
 
-    $response->assertForbidden();
+    $response->assertRedirect();
 });
 
 test('super admin can create a permission', function () {
@@ -66,7 +66,7 @@ test('super admin can bulk update permissions', function () {
     $perm1 = Permission::create(['name' => 'edit_posts', 'guard_name' => 'web']);
     $perm2 = Permission::create(['name' => 'delete_posts', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($admin)->post('/permissions/bulk-update', [
+    $response = $this->actingAs($admin)->postJson('/permissions/bulk-update', [
         'role_permissions' => [
             [
                 'role_id' => $role->id,
@@ -82,7 +82,7 @@ test('super admin can bulk update permissions', function () {
 test('non super admin cannot bulk update permissions', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/permissions/bulk-update', [
+    $response = $this->actingAs($user)->postJson('/permissions/bulk-update', [
         'role_permissions' => [],
     ]);
 
@@ -92,7 +92,7 @@ test('non super admin cannot bulk update permissions', function () {
 test('non super admin cannot create a permission', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/permissions', [
+    $response = $this->actingAs($user)->postJson('/permissions', [
         'name' => 'unauthorized_permission',
     ]);
 

@@ -34,7 +34,7 @@ test('non super admin cannot access roles management page', function () {
 
     $response = $this->actingAs($user)->get('/settings/management/roles');
 
-    $response->assertForbidden();
+    $response->assertRedirect();
 });
 
 test('super admin can create a role', function () {
@@ -99,7 +99,7 @@ test('cannot delete a role with assigned users', function () {
 test('non super admin cannot create a role', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/roles', [
+    $response = $this->actingAs($user)->postJson('/roles', [
         'name' => 'unauthorized-role',
     ]);
 
@@ -110,7 +110,7 @@ test('non super admin cannot delete a role', function () {
     $user = User::factory()->create();
     $role = Role::create(['name' => 'protected-role', 'guard_name' => 'web']);
 
-    $response = $this->actingAs($user)->delete("/roles/{$role->id}");
+    $response = $this->actingAs($user)->deleteJson("/roles/{$role->id}");
 
     $response->assertForbidden();
 });

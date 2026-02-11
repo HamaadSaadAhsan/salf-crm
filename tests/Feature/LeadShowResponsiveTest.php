@@ -11,8 +11,10 @@ beforeEach(function () {
     // Disable broadcasting to avoid Pusher/Reverb connection errors in tests
     config(['broadcasting.default' => 'null']);
 
-    // Create admin user for authentication
+    // Create admin user with view leads permission
+    $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
     $this->user = User::factory()->create();
+    $this->user->assignRole($role);
 });
 
 describe('Lead Show Page Responsive Design', function () {

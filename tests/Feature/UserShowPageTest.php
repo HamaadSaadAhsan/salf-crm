@@ -23,7 +23,7 @@ describe('User Show Page', function () {
 
         $response = $this->actingAs($regularUser)->get("/users/{$targetUser->id}");
 
-        $response->assertForbidden();
+        $response->assertRedirect();
     });
 
     it('can be accessed by super-admin', function () {

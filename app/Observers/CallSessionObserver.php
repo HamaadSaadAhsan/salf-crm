@@ -2,9 +2,13 @@
 
 namespace App\Observers;
 
+use App\Enums\TaskPriority;
+use App\Enums\TaskStatus;
+use App\Enums\TaskType;
 use App\Models\CallSession;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\Task;
 use Illuminate\Support\Facades\Log;
 
 class CallSessionObserver
@@ -54,6 +58,36 @@ class CallSessionObserver
                     'session_id' => $callSession->session_id,
                 ],
             ]);
+
+            // Reuse existing pending follow-up task if one exists (e.g. multiple calls in a day)
+            $existingTask = Task::query()
+                ->where('taskable_type', Lead::class)
+                ->where('taskable_id', $lead->id)
+                ->where('type', TaskType::FOLLOW_UP)
+                ->where('status', TaskStatus::PENDING)
+                ->first();
+
+            if ($existingTask) {
+                $existingTask->update([
+                    'title' => 'Follow up after '.$callDirection.' call',
+                    'description' => 'Automatic follow-up task rescheduled after '.$callDirection.' call was answered.',
+                    'due_at' => $followUpDate->copy()->addDay(),
+                    'assigned_to_id' => $assignedUserId,
+                    'priority' => $lead->priority === 'urgent' ? TaskPriority::URGENT : TaskPriority::MEDIUM,
+                ]);
+            } else {
+                Task::create([
+                    'taskable_type' => Lead::class,
+                    'taskable_id' => $lead->id,
+                    'title' => 'Follow up after '.$callDirection.' call',
+                    'description' => 'Automatic follow-up task scheduled after '.$callDirection.' call was answered.',
+                    'type' => TaskType::FOLLOW_UP,
+                    'status' => TaskStatus::PENDING,
+                    'priority' => $lead->priority === 'urgent' ? TaskPriority::URGENT : TaskPriority::MEDIUM,
+                    'assigned_to_id' => $assignedUserId,
+                    'due_at' => $followUpDate->copy()->addDay(),
+                ]);
+            }
         }
 
         Log::info('Lead follow-up automatically set to 1 day from now', [

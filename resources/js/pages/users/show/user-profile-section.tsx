@@ -8,6 +8,7 @@ import { Edit, Loader2, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ interface UserData {
   name: string;
   email: string;
   email_verified_at?: string;
+  extension?: string | null;
   availability?: boolean;
   availability_date?: string;
   availability_time?: string;
@@ -86,6 +88,7 @@ const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   roles: z.array(z.string()).optional(),
+  extension: z.string().max(20, 'Extension must be at most 20 characters').nullable().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -103,6 +106,7 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
       name: user.name,
       email: user.email,
       roles: user.roles?.map((r) => r.name) || [],
+      extension: user.extension || '',
     },
   });
 
@@ -295,6 +299,12 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
               </dd>
             </div>
             <div>
+              <dt className="text-muted-foreground">Extension</dt>
+              <dd className="font-medium mt-1">
+                {user.extension || <span className="text-muted-foreground">No extension</span>}
+              </dd>
+            </div>
+            <div>
               <dt className="text-muted-foreground">Zone</dt>
               <dd className="font-medium mt-1 flex items-center gap-2">
                 {user.zone?.name || <span className="text-muted-foreground">No zone</span>}
@@ -374,6 +384,52 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
                     <FormControl>
                       <Input {...field} type="email" placeholder="Enter email address" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="extension"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Extension (PBX/SIP)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="e.g. 1001" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="roles"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Roles</FormLabel>
+                    <div className="space-y-2 rounded-md border p-3 max-h-[200px] overflow-y-auto">
+                      {roles.map((role) => (
+                        <div key={role.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`role-${role.id}`}
+                            checked={form.watch('roles')?.includes(role.name) ?? false}
+                            onCheckedChange={(checked) => {
+                              const current = form.getValues('roles') || [];
+                              form.setValue(
+                                'roles',
+                                checked
+                                  ? [...current, role.name]
+                                  : current.filter((r) => r !== role.name),
+                                { shouldDirty: true }
+                              );
+                            }}
+                          />
+                          <label htmlFor={`role-${role.id}`} className="text-sm cursor-pointer">
+                            {role.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

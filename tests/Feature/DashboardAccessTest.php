@@ -2,21 +2,33 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    // Create permissions
+    $viewDashboard = Permission::create(['name' => 'view dashboard']);
+    $viewAnalytics = Permission::create(['name' => 'view analytics']);
+
     // Create all necessary roles
     Role::create(['name' => 'super-admin']);
-    Role::create(['name' => 'admin']);
-    Role::create(['name' => 'manager']);
-    Role::create(['name' => 'team-lead']);
-    Role::create(['name' => 'support-agent']);
+    $admin = Role::create(['name' => 'admin']);
+    $manager = Role::create(['name' => 'manager']);
+    $teamLead = Role::create(['name' => 'team-lead']);
+    $supportAgent = Role::create(['name' => 'support-agent']);
     Role::create(['name' => 'senior-support-agent']);
-    Role::create(['name' => 'sales-rep']);
+    $salesRep = Role::create(['name' => 'sales-rep']);
     Role::create(['name' => 'senior-sales-rep']);
     Role::create(['name' => 'customer']);
+
+    // Assign permissions to roles
+    $admin->givePermissionTo([$viewDashboard, $viewAnalytics]);
+    $manager->givePermissionTo([$viewDashboard, $viewAnalytics]);
+    $teamLead->givePermissionTo([$viewDashboard, $viewAnalytics]);
+    $supportAgent->givePermissionTo([$viewDashboard, $viewAnalytics]);
+    $salesRep->givePermissionTo([$viewDashboard, $viewAnalytics]);
 });
 
 test('authenticated users can access dashboard overview', function () {

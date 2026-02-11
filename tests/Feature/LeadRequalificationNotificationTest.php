@@ -22,8 +22,9 @@ beforeEach(function () {
     $this->advisorRole = Role::create(['name' => 'sales-rep']);
 
     $editPermission = Permission::create(['name' => 'edit leads']);
-    $this->croRole->givePermissionTo($editPermission);
-    $this->advisorRole->givePermissionTo($editPermission);
+    $viewPermission = Permission::create(['name' => 'view leads']);
+    $this->croRole->givePermissionTo([$editPermission, $viewPermission]);
+    $this->advisorRole->givePermissionTo([$editPermission, $viewPermission]);
 
     $this->cro = User::factory()->create();
     $this->cro->assignRole($this->croRole);

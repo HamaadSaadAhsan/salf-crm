@@ -7,11 +7,13 @@ use App\Models\User;
 beforeEach(function () {
     // Disable broadcasting for tests
     config(['broadcasting.default' => 'log']);
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view leads', 'guard_name' => 'web']);
 });
 
 it('can paginate comments and all activities independently', function () {
     // Create a user and lead
     $user = User::factory()->create();
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
 
     // Create activities in interleaved manner so both types appear on first page
@@ -88,6 +90,7 @@ it('can paginate comments and all activities independently', function () {
 
 it('maintains separate pagination state for comments and activities', function () {
     $user = User::factory()->create();
+    $user->givePermissionTo('view leads');
     $lead = Lead::factory()->create();
 
     // Create mixed activities
