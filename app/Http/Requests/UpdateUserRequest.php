@@ -30,6 +30,7 @@ class UpdateUserRequest extends FormRequest
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['string', 'exists:roles,name'],
+            'extension' => ['sometimes', 'nullable', 'string', 'max:20'],
             'services' => ['sometimes', 'array'],
             'services.*' => ['integer', 'exists:services,id'],
             'service_metadata' => ['sometimes', 'array'],

@@ -127,6 +127,7 @@ class UserController extends Controller
                 'email_verified_at',
                 'zone_id',
                 'office_id',
+                'extension',
                 'created_at',
                 'updated_at',
             ]);
@@ -548,6 +549,9 @@ class UserController extends Controller
             }
             if (isset($validated['password'])) {
                 $updateData['password'] = Hash::make($validated['password']);
+            }
+            if (array_key_exists('extension', $validated)) {
+                $updateData['extension'] = $validated['extension'];
             }
 
             if (! empty($updateData)) {

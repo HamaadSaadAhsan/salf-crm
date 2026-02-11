@@ -118,6 +118,7 @@ class UserResource extends JsonResource
                     ] : null,
                 ];
             }),
+            'extension' => $this->extension,
             'availability' => $this->availability,
             'availability_date' => $this->availability_date?->toISOString(),
             'availability_time' => $this->availability_time,
