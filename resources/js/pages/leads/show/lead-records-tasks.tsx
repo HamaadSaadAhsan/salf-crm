@@ -29,6 +29,7 @@ type Props = {
 };
 
 type TasksByDate = {
+    upcoming: Task[];
     today: Task[];
     yesterday: Task[];
     lastWeek: Task[];
@@ -74,6 +75,7 @@ function isLastWeek(date: Date): boolean {
 
 export function LeadRecordsTasks({ lead, users = [] }: Props) {
     const [expanded, setExpanded] = useState({
+        upcoming: true,
         today: true,
         yesterday: false,
         lastWeek: false,
@@ -86,11 +88,15 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
 
     const tasksByDate: TasksByDate = useMemo(() => {
         const result: TasksByDate = {
+            upcoming: [],
             today: [],
             yesterday: [],
             lastWeek: [],
             older: [],
         };
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         tasks.forEach((task) => {
             if (!task.due_at) {
@@ -102,6 +108,8 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
 
             if (isToday(dueDate)) {
                 result.today.push(task);
+            } else if (dueDate > todayStart) {
+                result.upcoming.push(task);
             } else if (isYesterday(dueDate)) {
                 result.yesterday.push(task);
             } else if (isLastWeek(dueDate)) {
@@ -295,6 +303,7 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
                 </div>
             ) : (
                 <>
+                    {renderTaskGroup('Upcoming', tasksByDate.upcoming, 'upcoming')}
                     {renderTaskGroup('Today', tasksByDate.today, 'today')}
                     {renderTaskGroup('Yesterday', tasksByDate.yesterday, 'yesterday')}
                     {renderTaskGroup('Last week', tasksByDate.lastWeek, 'lastWeek')}
