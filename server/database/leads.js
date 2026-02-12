@@ -105,6 +105,31 @@ const LeadsDB = {
 
         return null;
     },
+
+    /**
+     * Assign lead to user if not already assigned
+     * @param {string} leadId - Lead UUID
+     * @param {number} userId - User ID to assign
+     * @returns {Promise<boolean>} Whether assignment was made
+     */
+    async assignIfUnassigned(leadId, userId) {
+        const result = await Database.queryWithRetry(
+            `
+            UPDATE leads
+            SET assigned_to = $2, updated_at = NOW()
+            WHERE id = $1::uuid
+            AND assigned_to IS NULL
+            AND deleted_at IS NULL
+        `,
+            [leadId, userId]
+        );
+
+        if (result && result.rowCount > 0) {
+            Logger.info('Lead assigned to user on call answer', { lead_id: leadId, user_id: userId });
+            return true;
+        }
+        return false;
+    },
 };
 
 module.exports = LeadsDB;

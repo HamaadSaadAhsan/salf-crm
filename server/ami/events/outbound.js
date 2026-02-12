@@ -287,6 +287,14 @@ const OutboundHandlers = {
      * @param {Object} dbSession - Database session
      */
     async handleHangup(evt, sessionData, dbSession) {
+        // Prevent duplicate processing - Asterisk fires Hangup for each channel leg
+        if (sessionData._hangupProcessed) {
+            SessionManager.delete(sessionData);
+            return;
+        }
+        sessionData._hangupProcessed = true;
+        SessionManager.set(evt.linkedid, sessionData);
+
         const endedAt = new Date();
         let duration = null;
 

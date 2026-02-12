@@ -109,12 +109,20 @@ const InboundHandlers = {
         }
 
         if (isConnected && (CONFIG.notifications.mode === 'connect' || CONFIG.notifications.mode === 'all')) {
-            if (sessionData && sessionData.session_id) {
+            // Prevent duplicate processing - Asterisk fires NewState 'Up' for each channel leg
+            if (sessionData && sessionData.session_id && !sessionData._answeredProcessed) {
+                sessionData._answeredProcessed = true;
+
                 const answeredExtension = evt.exten || evt.connectedlinenum;
                 const userId = await UsersDB.getByExtension(answeredExtension);
 
                 // Find or create lead
                 const leadId = await LeadsDB.findOrCreate(sessionData.caller_number, userId);
+
+                // Assign lead to answering user if not already assigned
+                if (leadId && userId) {
+                    await LeadsDB.assignIfUnassigned(leadId, userId);
+                }
 
                 // Generate call signature
                 let callSignature = sessionData.call_signature;
@@ -371,6 +379,18 @@ const InboundHandlers = {
                 },
                 sessionData.currentRingingExtension
             );
+        }
+
+        // Prevent duplicate processing - Asterisk fires Hangup for each channel leg
+        if (sessionData && sessionData._hangupProcessed) {
+            // Still clean up and broadcast, but skip DB writes
+            SessionManager.delete(sessionData);
+            return;
+        }
+
+        if (sessionData) {
+            sessionData._hangupProcessed = true;
+            SessionManager.set(evt.linkedid, sessionData);
         }
 
         const endedAt = new Date();
