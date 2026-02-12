@@ -2,6 +2,7 @@
 
 const Logger = require('../logger');
 const Broadcaster = require('../broadcaster');
+const LeadsDB = require('../database/leads');
 const { MessageType } = require('../constants');
 
 /**
@@ -26,7 +27,7 @@ const WebSocketHandlers = {
      * @param {Object} connection - WebSocket connection
      * @param {Object} message - Message object
      */
-    handleMessage(connection, message) {
+    async handleMessage(connection, message) {
         if (message.type !== 'utf8') {
             return;
         }
@@ -68,9 +69,37 @@ const WebSocketHandlers = {
                 AMIActions.route(data, connection);
             }
 
-            // Handle originate shorthand (agent + client)
-            if (data.agent && data.client && !data.Action && AMIActions) {
-                AMIActions.originate(data, connection);
+            // Handle originate request (agent + lead_id + explicit originate flag)
+            // Phone number is resolved server-side from lead_id — never sent by frontend
+            if (data.agent && data.originate === true && !data.Action && AMIActions) {
+                const leadId = data.lead_id || data.leadId;
+                if (!leadId) {
+                    Logger.warn('Originate request missing lead_id', { agent: data.agent });
+                    Broadcaster.send(connection, {
+                        event: 'originate_response',
+                        success: false,
+                        error: 'Missing lead_id',
+                    });
+                    return;
+                }
+
+                const phone = await LeadsDB.fetchPhoneById(leadId);
+                if (!phone) {
+                    Logger.warn('Originate request: lead phone not found', { lead_id: leadId });
+                    Broadcaster.send(connection, {
+                        event: 'originate_response',
+                        success: false,
+                        error: 'Lead phone number not found',
+                    });
+                    return;
+                }
+
+                Logger.info('Originate request: resolved phone from lead', {
+                    agent: data.agent,
+                    lead_id: leadId,
+                });
+
+                AMIActions.originate({ ...data, client: phone }, connection);
             }
         } catch (err) {
             Logger.error('Error parsing message', { error: err.message });

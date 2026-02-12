@@ -64,9 +64,25 @@ function extractExtensionFromChannel(channel) {
     return null;
 }
 
+/**
+ * Check if a string looks like a valid agent extension (short numeric, e.g. 201, 202)
+ * as opposed to a client phone number (long digit string like 00000000804)
+ * @param {string} value - Value to check
+ * @returns {boolean} True if it looks like an agent extension
+ */
+function isAgentExtension(value) {
+    if (!value) {
+        return false;
+    }
+    const digits = value.replace(/[^0-9]/g, '');
+    // Agent extensions are typically 2-4 digits (e.g. 201, 202, 204)
+    return digits.length >= 2 && digits.length <= 4;
+}
+
 module.exports = {
     simpleStringify,
     generateUUID,
     normalizePhone,
     extractExtensionFromChannel,
+    isAgentExtension,
 };

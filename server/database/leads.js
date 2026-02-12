@@ -107,6 +107,28 @@ const LeadsDB = {
     },
 
     /**
+     * Fetch phone number by lead ID
+     * @param {string|number} leadId - Lead ID
+     * @returns {Promise<string|null>} Phone number or null
+     */
+    async fetchPhoneById(leadId) {
+        if (!leadId) {
+            return null;
+        }
+
+        const result = await Database.queryWithRetry(
+            `SELECT phone FROM leads WHERE id = $1 AND deleted_at IS NULL LIMIT 1`,
+            [leadId]
+        );
+
+        if (!result || result.rows.length === 0) {
+            return null;
+        }
+
+        return result.rows[0].phone;
+    },
+
+    /**
      * Assign lead to user if not already assigned
      * @param {string} leadId - Lead UUID
      * @param {number} userId - User ID to assign

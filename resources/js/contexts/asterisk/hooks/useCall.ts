@@ -48,8 +48,9 @@ export function useCall({ wsRef, dispatch }: UseCallOptions): UseCallReturn {
                 const { call_signature, caller_id, lead_id, session_id } = data.signature_data;
 
                 // Step 2: Send originate action to Asterisk
-                // The Node server will look up the phone number from the lead
+                // The Node server will look up the phone number from the lead_id
                 const originateAction = {
+                    originate: true,
                     agent: params.extension,
                     call_signature,
                     lead_id: lead_id || params.leadId,

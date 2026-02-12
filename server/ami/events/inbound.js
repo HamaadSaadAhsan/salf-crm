@@ -10,7 +10,7 @@ const LeadsDB = require('../../database/leads');
 const UsersDB = require('../../database/users');
 const MessageBuilder = require('../../message-builder');
 const { MessageType } = require('../../constants');
-const { extractExtensionFromChannel } = require('../../utils');
+const { extractExtensionFromChannel, isAgentExtension } = require('../../utils');
 const { getAMI } = require('../state');
 
 /**
@@ -109,11 +109,20 @@ const InboundHandlers = {
         }
 
         if (isConnected && (CONFIG.notifications.mode === 'connect' || CONFIG.notifications.mode === 'all')) {
-            // Prevent duplicate processing - Asterisk fires NewState 'Up' for each channel leg
-            if (sessionData && sessionData.session_id && !sessionData._answeredProcessed) {
+            // Determine extension from the event
+            const answeredExtension = evt.exten || evt.calleridnum || evt.connectedlinenum;
+
+            // Skip if this is the client channel (phone number, not an agent extension)
+            // Agent extensions are short (e.g. 201, 202, 204), client numbers are long
+            if (!isAgentExtension(answeredExtension)) {
+                Logger.debug('Skipping NewState Up for non-agent extension', {
+                    extension: answeredExtension,
+                    linkedid: evt.linkedid,
+                });
+            } else if (sessionData && sessionData.session_id && !sessionData._answeredProcessed) {
+                // Prevent duplicate processing - only process once per call for actual agent extension
                 sessionData._answeredProcessed = true;
 
-                const answeredExtension = evt.exten || evt.connectedlinenum;
                 const userId = await UsersDB.getByExtension(answeredExtension);
 
                 // Find or create lead
@@ -177,17 +186,20 @@ const InboundHandlers = {
                 });
             }
 
-            const leadData = await LeadsDB.fetchByPhone(evt.connectedlinenum);
+            // Only broadcast CONNECT for agent extensions to avoid duplicate events
+            if (isAgentExtension(answeredExtension)) {
+                const leadData = await LeadsDB.fetchByPhone(evt.connectedlinenum);
 
-            const message = MessageBuilder.create(MessageType.CONNECT, sessionData)
-                .withCallInfo(evt)
-                .withCaller(evt.connectedlinenum)
-                .withExtension(evt.calleridnum)
-                .withLead(leadData)
-                .withRouting('connected')
-                .build();
+                const message = MessageBuilder.create(MessageType.CONNECT, sessionData)
+                    .withCallInfo(evt)
+                    .withCaller(evt.connectedlinenum)
+                    .withExtension(answeredExtension)
+                    .withLead(leadData)
+                    .withRouting('connected')
+                    .build();
 
-            Broadcaster.broadcast(message);
+                Broadcaster.broadcast(message);
+            }
         }
 
         if (isBusy && (CONFIG.notifications.mode === 'busy' || CONFIG.notifications.mode === 'all')) {

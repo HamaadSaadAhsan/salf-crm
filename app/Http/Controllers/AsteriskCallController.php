@@ -151,9 +151,13 @@ class AsteriskCallController extends Controller
                 }
             } elseif ($validated['event'] === 'connect') {
                 // Call was answered - update status and track who answered
-                if ($callSession) {
+                // Skip if exten is a client phone number (not an agent extension)
+                // Agent extensions are short (2-4 digits like 201, 202), client numbers are longer
+                $isAgentExtension = $exten && strlen(preg_replace('/[^0-9]/', '', $exten)) <= 4;
+
+                if ($callSession && $isAgentExtension && ! $callSession->answered_at) {
                     // Find who answered the call
-                    $answeredByUser = $exten ? \App\Models\User::where('extension', $exten)->first() : null;
+                    $answeredByUser = \App\Models\User::where('extension', $exten)->first();
                     $answeredByUserId = $answeredByUser?->id;
 
                     // Check if this is a coverage call (answered by different user than intended)
