@@ -1278,6 +1278,13 @@ class LeadController extends Controller
 
             $newStatus = $lead->inquiry_status;
 
+            // Set qualified_by when CRO qualifies the lead
+            if ($isQualifying && ! $lead->qualified_by) {
+                $lead->qualified_by = $request->user()->id;
+                $lead->qualified_at = now();
+                $lead->save();
+            }
+
             // Auto-assign advisor when lead is qualified or assigned_to_advisor
             if (($isQualifying || $isAutoAssigning) && ! $lead->assigned_to) {
                 $assigned = $this->advisorAssignmentService->assignAdvisor($lead);
@@ -1303,13 +1310,6 @@ class LeadController extends Controller
             if ($originalStatus !== 'assigned_to_advisor' && $newStatus === 'assigned_to_advisor') {
                 if (! $lead->advisor_stage) {
                     $lead->advisor_stage = 'new';
-                }
-
-                // Set qualified_by if not already set
-                if (! $lead->qualified_by && $isQualifying) {
-                    $lead->qualified_by = $request->user()->id;
-                    $lead->qualified_at = now();
-                    $lead->save();
                 }
 
                 LeadActivity::create([
