@@ -35,7 +35,7 @@ it('creates a follow-up task when an outbound call is answered', function () {
         ->first();
 
     expect($task)->not->toBeNull()
-        ->and($task->title)->toBe('Follow up after outbound call')
+        ->and($task->title)->toBe("Follow up with {$lead->name} after outbound call")
         ->and($task->status)->toBe(TaskStatus::PENDING)
         ->and($task->priority)->toBe(TaskPriority::MEDIUM)
         ->and($task->assigned_to_id)->toBe($user->id);
@@ -64,7 +64,7 @@ it('creates a follow-up task when an inbound call is answered', function () {
         ->first();
 
     expect($task)->not->toBeNull()
-        ->and($task->title)->toBe('Follow up after inbound call')
+        ->and($task->title)->toBe("Follow up with {$lead->name} after inbound call")
         ->and($task->priority)->toBe(TaskPriority::URGENT);
 });
 
@@ -108,7 +108,7 @@ it('reuses existing pending follow-up task on multiple calls for same lead', fun
         ->where('type', TaskType::FOLLOW_UP)
         ->first();
 
-    expect($task->title)->toBe('Follow up after inbound call');
+    expect($task->title)->toBe("Follow up with {$lead->name} after inbound call");
 });
 
 it('completes pending tasks when lead is qualified', function () {

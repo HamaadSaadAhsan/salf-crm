@@ -1252,13 +1252,13 @@ class AsteriskCallController extends Controller
                                         'taskable_type' => Lead::class,
                                         'taskable_id' => $lead->id,
                                         'title' => "Follow up with {$lead->name}",
-                                        'description' => "Follow up after outbound call to {$validated['client']}",
+                                        'description' => "Follow up after outbound call to {$lead->name}",
                                         'type' => TaskType::FOLLOW_UP,
                                         'status' => TaskStatus::PENDING,
                                         'priority' => TaskPriority::MEDIUM,
                                         'assigned_to_id' => $userId,
                                         'created_by_id' => $userId,
-                                        'due_at' => now()->addDays(3), // Follow up in 3 days by default
+                                        'due_at' => now()->addDay(),
                                     ]);
 
                                     Log::info('CRO outbound call: Created contacted activity and follow-up task', [

@@ -70,7 +70,7 @@ it('automatically updates lead status to contacted when outbound call is answere
         ->first();
 
     expect($followUpActivity)->not->toBeNull();
-    expect($followUpActivity->subject)->toBe('Follow up after outbound call');
+    expect($followUpActivity->subject)->toBe("Follow up with {$lead->name} after outbound call");
     expect($followUpActivity->user_id)->toBe($user->id);
     expect($followUpActivity->category)->toBe('follow_up');
     expect($followUpActivity->metadata['triggered_by'])->toBe('outbound_call_answered');

@@ -46,10 +46,10 @@ class CallSessionObserver
                 'user_id' => $assignedUserId,
                 'type' => 'follow_up',
                 'status' => 'pending',
-                'subject' => 'Follow up after '.$callDirection.' call',
-                'description' => 'Automatic follow-up scheduled after '.$callDirection.' call was answered.',
+                'subject' => "Follow up with {$lead->name} after {$callDirection} call",
+                'description' => "Automatic follow-up scheduled after {$callDirection} call was answered.",
                 'scheduled_at' => $followUpDate,
-                'due_at' => $followUpDate->copy()->addDay(),
+                'due_at' => $followUpDate,
                 'priority' => $lead->priority === 'urgent' ? 'urgent' : 'medium',
                 'category' => 'follow_up',
                 'metadata' => [
@@ -69,9 +69,9 @@ class CallSessionObserver
 
             if ($existingTask) {
                 $existingTask->update([
-                    'title' => 'Follow up after '.$callDirection.' call',
-                    'description' => 'Automatic follow-up task rescheduled after '.$callDirection.' call was answered.',
-                    'due_at' => $followUpDate->copy()->addDay(),
+                    'title' => "Follow up with {$lead->name} after {$callDirection} call",
+                    'description' => "Automatic follow-up task rescheduled after {$callDirection} call was answered.",
+                    'due_at' => $followUpDate,
                     'assigned_to_id' => $assignedUserId,
                     'priority' => $lead->priority === 'urgent' ? TaskPriority::URGENT : TaskPriority::MEDIUM,
                 ]);
@@ -79,13 +79,13 @@ class CallSessionObserver
                 Task::create([
                     'taskable_type' => Lead::class,
                     'taskable_id' => $lead->id,
-                    'title' => 'Follow up after '.$callDirection.' call',
-                    'description' => 'Automatic follow-up task scheduled after '.$callDirection.' call was answered.',
+                    'title' => "Follow up with {$lead->name} after {$callDirection} call",
+                    'description' => "Automatic follow-up task scheduled after {$callDirection} call was answered.",
                     'type' => TaskType::FOLLOW_UP,
                     'status' => TaskStatus::PENDING,
                     'priority' => $lead->priority === 'urgent' ? TaskPriority::URGENT : TaskPriority::MEDIUM,
                     'assigned_to_id' => $assignedUserId,
-                    'due_at' => $followUpDate->copy()->addDay(),
+                    'due_at' => $followUpDate,
                 ]);
             }
         }
