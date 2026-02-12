@@ -275,6 +275,18 @@ export function useInboundCalls() {
             const isSameCall = prev && (prev.uniqueid === data.uniqueid || prev.linkedid === data.linkedid || prev.uniqueid === data.linkedid);
 
             if (isSameCall) {
+                // If we already own this call from a previous connect event, preserve ownership.
+                // Duplicate connect events can arrive (e.g. from BridgeEnter + NewState) with
+                // different extensions (ring group vs actual agent). Once ownership is established,
+                // don't let a subsequent event without answered_by_user_id downgrade it.
+                if (prev.isOwner && prev.event === 'connect' && !data.answered_by_user_id) {
+                    console.log('Connect event: already owner, ignoring duplicate without answered_by_user_id', {
+                        prevExten: prev.exten,
+                        newExten: data.exten,
+                    });
+                    return prev;
+                }
+
                 // Determine if we should be considered the owner of this call
                 // We are the owner if:
                 // 1. isCallOwner returns true (answered_by_user_id matches or exten matches)

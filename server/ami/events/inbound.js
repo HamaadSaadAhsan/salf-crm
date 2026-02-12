@@ -186,8 +186,14 @@ const InboundHandlers = {
                 });
             }
 
-            // Only broadcast CONNECT for agent extensions to avoid duplicate events
-            if (isAgentExtension(answeredExtension)) {
+            // Only broadcast CONNECT for actual agent extensions, skip ring group extensions (e.g. 299)
+            // Also skip if BridgeEnter already broadcast a CONNECT for this call
+            if (isAgentExtension(answeredExtension) && !(sessionData && sessionData._connectBroadcasted)) {
+                if (sessionData) {
+                    sessionData._connectBroadcasted = true;
+                    SessionManager.set(evt.linkedid, sessionData);
+                }
+
                 const leadData = await LeadsDB.fetchByPhone(evt.connectedlinenum);
 
                 const message = MessageBuilder.create(MessageType.CONNECT, sessionData)
@@ -280,6 +286,11 @@ const InboundHandlers = {
             .build();
 
         if (answeredExtension) {
+            // Mark that we already broadcast CONNECT so handleNewState won't duplicate it
+            if (sessionData) {
+                sessionData._connectBroadcasted = true;
+                SessionManager.set(evt.linkedid, sessionData);
+            }
             Broadcaster.toExtension(message, answeredExtension);
         }
 
