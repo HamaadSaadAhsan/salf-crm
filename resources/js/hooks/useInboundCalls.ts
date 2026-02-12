@@ -509,6 +509,7 @@ export function useInboundCalls() {
                     ...leadData,
                     uniqueid: activeCall.uniqueid,
                     caller: activeCall.caller,
+                    call_direction: 'inbound',
                 },
                 {
                     headers: {

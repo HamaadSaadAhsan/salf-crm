@@ -369,15 +369,16 @@ class AsteriskCallController extends Controller
             'budget' => ['nullable', 'array'],
             'uniqueid' => ['required', 'string'],
             'caller' => ['required', 'string'],
+            'call_direction' => ['nullable', 'string', 'in:inbound,outbound'],
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Get "Inbound Call" source
-            $inboundSource = \App\Models\LeadSource::where('identifier', 'inbound-call')
-                ->orWhere('slug', 'inbound-call')
-                ->first();
+            // Get the appropriate call source based on direction
+            $callDirection = $validated['call_direction'] ?? 'inbound';
+            $sourceSlug = $callDirection === 'outbound' ? 'outbound-call' : 'inbound-call';
+            $callSource = \App\Models\LeadSource::where('slug', $sourceSlug)->first();
 
             // Determine assignment: if CRO answered the call, assign to them; otherwise use fair distribution
             $currentUser = auth()->user();
@@ -392,7 +393,7 @@ class AsteriskCallController extends Controller
                 'email' => $validated['email'] ?? null,
                 'city' => $validated['city'] ?? null,
                 'service_id' => $validated['service_id'] ?? null,
-                'lead_source_id' => $inboundSource?->id,
+                'lead_source_id' => $callSource?->id,
                 'detail' => $validated['detail'] ?? null,
                 'budget' => $validated['budget'] ?? null,
                 'inquiry_status' => 'new',
@@ -434,28 +435,32 @@ class AsteriskCallController extends Controller
             }
 
             // Create call activity
+            $directionLabel = $callDirection === 'outbound' ? 'Outbound' : 'Inbound';
             LeadActivity::create([
                 'lead_id' => $lead->id,
                 'user_id' => auth()->id(),
                 'type' => 'call',
-                'subject' => 'Inbound call received',
-                'description' => 'Received inbound call',
+                'subject' => "{$directionLabel} call received",
+                'description' => "Lead created from {$callDirection} call",
                 'status' => 'completed',
                 'completed_at' => now(),
                 'metadata' => [
                     'call_id' => $validated['uniqueid'],
                     'caller' => $validated['caller'],
-                    'direction' => 'inbound',
+                    'direction' => $callDirection,
                 ],
                 'source_system' => 'asterisk',
                 'external_id' => $validated['uniqueid'],
             ]);
 
             // Link the lead to the call session
-            $callSession = \App\Models\CallSession::where('caller_number', $validated['caller'])
-                ->whereNull('lead_id')
-                ->where('call_direction', 'inbound')
+            $callSession = \App\Models\CallSession::whereNull('lead_id')
+                ->where('call_direction', $callDirection)
                 ->where('created_at', '>=', now()->subMinutes(5))
+                ->where(function ($q) use ($validated) {
+                    $q->where('caller_number', $validated['caller'])
+                        ->orWhere('callee_number', $validated['caller']);
+                })
                 ->orderBy('created_at', 'desc')
                 ->first();
 
