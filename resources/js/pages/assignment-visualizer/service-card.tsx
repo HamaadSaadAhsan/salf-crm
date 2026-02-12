@@ -14,6 +14,10 @@ interface Advisor {
     conversion_rate: number;
     performance_weight: number;
     availability: boolean;
+    last_assignment_at: string | null;
+    waiting_minutes: number | null;
+    assignment_score: number;
+    queue_position: number | null;
     service_lead_count: number;
     status_breakdown: Record<string, number>;
 }

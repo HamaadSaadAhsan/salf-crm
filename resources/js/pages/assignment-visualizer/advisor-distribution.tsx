@@ -2,8 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumber, formatPercent } from '@/lib/dashboard-utils';
-import { CHART_COLORS } from '@/lib/dashboard-colors';
-import { CircleCheck, CircleX } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 const MAX_WORKLOAD = 30;
 
@@ -30,8 +29,28 @@ interface Advisor {
     conversion_rate: number;
     performance_weight: number;
     availability: boolean;
+    last_assignment_at: string | null;
+    waiting_minutes: number | null;
+    assignment_score: number;
+    queue_position: number | null;
     service_lead_count: number;
     status_breakdown: Record<string, number>;
+}
+
+function formatWaitTime(minutes: number | null): string {
+    if (minutes === null) return 'Never assigned';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}
+
+function getQueueLabel(position: number | null): { label: string; variant: 'success' | 'warning' | 'secondary' | 'destructive' } | null {
+    if (position === null) return { label: 'Offline', variant: 'destructive' };
+    if (position === 1) return { label: 'Up Next', variant: 'success' };
+    if (position <= 3) return { label: `#${position}`, variant: 'warning' };
+    return { label: `#${position}`, variant: 'secondary' };
 }
 
 interface AdvisorDistributionProps {
@@ -59,11 +78,14 @@ export function AdvisorDistribution({ advisors, fairnessScore }: AdvisorDistribu
             {advisors.map((advisor) => {
                 const loadRatio = advisor.current_lead_count / MAX_WORKLOAD;
                 const loadPercent = Math.min(100, Math.round(loadRatio * 100));
+                const queueInfo = getQueueLabel(advisor.queue_position);
 
                 return (
                     <div
                         key={advisor.id}
-                        className="rounded-lg border bg-card p-3 transition-shadow hover:shadow-sm"
+                        className={`rounded-lg border bg-card p-3 transition-shadow hover:shadow-sm ${
+                            advisor.queue_position === 1 ? 'ring-2 ring-emerald-500/30' : ''
+                        } ${!advisor.availability ? 'opacity-60' : ''}`}
                     >
                         <div className="mb-2 flex items-center gap-2">
                             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
@@ -86,6 +108,11 @@ export function AdvisorDistribution({ advisors, fairnessScore }: AdvisorDistribu
                                     {formatNumber(advisor.service_lead_count)} leads in service
                                 </p>
                             </div>
+                            {queueInfo && (
+                                <Badge variant={queueInfo.variant} appearance="light" size="sm">
+                                    {queueInfo.label}
+                                </Badge>
+                            )}
                         </div>
 
                         {/* Load bar */}
@@ -139,19 +166,16 @@ export function AdvisorDistribution({ advisors, fairnessScore }: AdvisorDistribu
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
-                                        <span>Conv: {formatPercent(advisor.conversion_rate)}</span>
+                                        <span className="flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {formatWaitTime(advisor.waiting_minutes)}
+                                        </span>
                                     </TooltipTrigger>
-                                    <TooltipContent>Conversion rate</TooltipContent>
+                                    <TooltipContent>Time since last assignment</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <span>Wt: {advisor.performance_weight.toFixed(1)}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Performance weight</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                            <span>Conv: {formatPercent(advisor.conversion_rate)}</span>
+                            <span>Wt: {advisor.performance_weight.toFixed(1)}</span>
                         </div>
                     </div>
                 );

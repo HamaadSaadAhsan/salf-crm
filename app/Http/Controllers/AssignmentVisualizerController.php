@@ -39,32 +39,36 @@ class AssignmentVisualizerController extends Controller
             ->groupBy('service_id', 'assigned_to', 'inquiry_status')
             ->get();
 
-        // Get advisors assigned to these services via pivot
-        $serviceUsers = DB::table('service_user')
-            ->whereIn('service_id', $allServiceIds)
-            ->where('status', 'active')
-            ->pluck('user_id', 'service_id')
-            ->toArray();
-
-        // Collect unique user IDs (from both pivot and actual leads)
-        $userIds = collect($serviceUsers)->values()
-            ->merge($leadCounts->pluck('assigned_to'))
-            ->unique()
-            ->values();
-
-        $advisors = User::query()
-            ->whereIn('id', $userIds)
-            ->select(['id', 'name', 'email', 'avatar', 'current_lead_count', 'conversion_rate', 'performance_weight', 'availability'])
-            ->get()
-            ->keyBy('id');
-
         // Build pivot lookup: service_id => [user_ids]
-        $servicePivot = DB::table('service_user')
+        $rawPivot = DB::table('service_user')
             ->whereIn('service_id', $allServiceIds)
             ->where('status', 'active')
             ->get()
             ->groupBy('service_id')
             ->map(fn ($rows) => $rows->pluck('user_id')->unique()->values());
+
+        // Propagate parent assignments to children: if advisor is assigned to
+        // parent service, they also handle all children of that parent.
+        $servicePivot = collect();
+        foreach ($parentServices as $parent) {
+            $parentUserIds = $rawPivot->get($parent->id, collect());
+            $servicePivot[$parent->id] = $parentUserIds;
+
+            foreach ($parent->children as $child) {
+                $childUserIds = $rawPivot->get($child->id, collect());
+                // Merge parent advisors into child
+                $servicePivot[$child->id] = $childUserIds->merge($parentUserIds)->unique()->values();
+            }
+        }
+
+        // Collect unique user IDs (from both pivot and actual leads)
+        $userIds = $servicePivot->flatten()->merge($leadCounts->pluck('assigned_to'))->unique()->values();
+
+        $advisors = User::query()
+            ->whereIn('id', $userIds)
+            ->select(['id', 'name', 'email', 'avatar', 'current_lead_count', 'conversion_rate', 'performance_weight', 'availability', 'last_assignment_at'])
+            ->get()
+            ->keyBy('id');
 
         // Index lead counts for fast lookup
         $leadIndex = [];
@@ -151,10 +155,29 @@ class AssignmentVisualizerController extends Controller
                 'conversion_rate' => (float) $advisor->conversion_rate,
                 'performance_weight' => (float) $advisor->performance_weight,
                 'availability' => (bool) $advisor->availability,
+                'last_assignment_at' => $advisor->last_assignment_at?->toISOString(),
+                'waiting_minutes' => $advisor->last_assignment_at
+                    ? (int) now()->diffInMinutes($advisor->last_assignment_at)
+                    : null,
+                'assignment_score' => $this->calculateAssignmentScore($advisor),
                 'service_lead_count' => $totalForService,
                 'status_breakdown' => $statusCounts,
             ];
         })->filter()->values();
+
+        // Sort: available advisors first (by score desc), then unavailable
+        $advisorData = $advisorData->sortBy([
+            ['availability', 'desc'],
+            ['assignment_score', 'desc'],
+        ])->values();
+
+        // Assign queue positions only to available advisors
+        $position = 1;
+        $advisorData = $advisorData->map(function ($advisor) use (&$position) {
+            $advisor['queue_position'] = $advisor['availability'] ? $position++ : null;
+
+            return $advisor;
+        })->values();
 
         $advisorLeadCounts = $advisorData->pluck('service_lead_count')->toArray();
         $totalLeads = array_sum($advisorLeadCounts);
@@ -170,6 +193,40 @@ class AssignmentVisualizerController extends Controller
             'advisor_ids' => $allUserIds->toArray(),
             'advisor_leads' => $advisorLeadCounts,
         ];
+    }
+
+    /**
+     * Calculate assignment score matching IntelligentAssignmentService algorithm.
+     * Higher score = next in queue.
+     */
+    private function calculateAssignmentScore(User $advisor): float
+    {
+        $maxWorkload = 30;
+        $baseScore = 100.0;
+
+        $workloadPenalty = ($advisor->current_lead_count / $maxWorkload) * 40;
+        $baseScore -= $workloadPenalty;
+
+        $performanceBonus = ($advisor->performance_weight - 1.0) * 20;
+        $baseScore += $performanceBonus;
+
+        $conversionBonus = min(20, $advisor->conversion_rate);
+        $baseScore += $conversionBonus;
+
+        $recencyPenalty = 0;
+        if ($advisor->last_assignment_at) {
+            $minutes = (int) now()->diffInMinutes($advisor->last_assignment_at);
+            if ($minutes < 5) {
+                $recencyPenalty = 30;
+            } elseif ($minutes < 15) {
+                $recencyPenalty = 15;
+            } elseif ($minutes < 30) {
+                $recencyPenalty = 5;
+            }
+        }
+        $baseScore -= $recencyPenalty;
+
+        return max(0, $baseScore);
     }
 
     /**

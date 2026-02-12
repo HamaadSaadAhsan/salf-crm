@@ -131,6 +131,75 @@ test('API returns correct service hierarchy with lead counts', function () {
     expect($child['advisors'][0]['status_breakdown']['qualified'])->toBe(2);
 });
 
+test('API returns queue position for advisors sorted by assignment score', function () {
+    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+
+    // Advisor with lower workload should be ranked higher (up next)
+    $advisorLow = User::factory()->create([
+        'availability' => true,
+        'active' => true,
+        'current_lead_count' => 2,
+        'conversion_rate' => 10.0,
+        'performance_weight' => 1.0,
+        'last_assignment_at' => now()->subHours(2),
+    ]);
+    $advisorLow->assignRole($salesRepRole);
+
+    // Advisor with higher workload should be ranked lower
+    $advisorHigh = User::factory()->create([
+        'availability' => true,
+        'active' => true,
+        'current_lead_count' => 20,
+        'conversion_rate' => 10.0,
+        'performance_weight' => 1.0,
+        'last_assignment_at' => now()->subHours(2),
+    ]);
+    $advisorHigh->assignRole($salesRepRole);
+
+    // Unavailable advisor should have null queue_position
+    $advisorOffline = User::factory()->create([
+        'availability' => false,
+        'active' => true,
+        'current_lead_count' => 1,
+        'conversion_rate' => 10.0,
+        'performance_weight' => 1.0,
+    ]);
+    $advisorOffline->assignRole($salesRepRole);
+
+    $service = Service::create([
+        'name' => 'Queue Test Service',
+        'detail' => 'Testing queue order',
+        'sort_order' => 1,
+        'status' => 'active',
+    ]);
+
+    $advisorLow->services()->attach($service->id, ['status' => 'active', 'assigned_at' => now()]);
+    $advisorHigh->services()->attach($service->id, ['status' => 'active', 'assigned_at' => now()]);
+    $advisorOffline->services()->attach($service->id, ['status' => 'active', 'assigned_at' => now()]);
+
+    Lead::factory()->create(['service_id' => $service->id, 'assigned_to' => $advisorLow->id, 'inquiry_status' => 'new']);
+    Lead::factory()->create(['service_id' => $service->id, 'assigned_to' => $advisorHigh->id, 'inquiry_status' => 'new']);
+
+    $response = $this->actingAs($this->superAdmin)
+        ->getJson('/api/assignment-visualizer')
+        ->assertOk();
+
+    $advisors = $response->json('services.0.advisors');
+
+    // First advisor should be the one with lower workload (higher score)
+    expect($advisors[0]['id'])->toBe($advisorLow->id);
+    expect($advisors[0]['queue_position'])->toBe(1);
+    expect($advisors[0]['assignment_score'])->toBeGreaterThan($advisors[1]['assignment_score']);
+
+    // Second should be higher workload
+    expect($advisors[1]['id'])->toBe($advisorHigh->id);
+    expect($advisors[1]['queue_position'])->toBe(2);
+
+    // Offline advisor should have null queue_position
+    $offlineAdvisor = collect($advisors)->firstWhere('id', $advisorOffline->id);
+    expect($offlineAdvisor['queue_position'])->toBeNull();
+});
+
 test('API returns correct summary stats', function () {
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 
