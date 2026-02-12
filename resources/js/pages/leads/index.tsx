@@ -37,7 +37,7 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 import type { Lead, LeadActivity } from '@/types/lead';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { AnimatePresence } from 'motion/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import OptimizedLeadRow from './components/LeadRow';
@@ -56,6 +56,17 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface PendingDueTask {
+    id: number;
+    title: string;
+    type: string;
+    priority: string;
+    due_at: string | null;
+    is_overdue: boolean;
+    lead_id: string | null;
+    lead_name: string | null;
+}
+
 // Inertia page props interface
 interface LeadsPageProps {
     leads: Lead[] | { data: Lead[] };
@@ -70,6 +81,7 @@ interface LeadsPageProps {
         has_more: boolean;
     };
     filters: LeadFilters;
+    pendingDueTasks?: PendingDueTask[];
 }
 
 // Simple selection management
@@ -315,24 +327,7 @@ export default function LeadsInterface() {
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [showFilterBar, setShowFilterBar] = useState(true);
 
-    // Collect all pending follow-up activities
-    const pendingFollowUps = useMemo<LeadActivity[]>(() => {
-        if (!Array.isArray(leads) || leads.length === 0) {
-            return [];
-        }
-
-        const allActivities: LeadActivity[] = [];
-        for (const lead of leads) {
-            const activities = lead.activities?.data || [];
-            for (const activity of activities) {
-                if (activity.status === 'pending' && activity.type === 'follow_up') {
-                    allActivities.push({ ...activity, lead_id: lead.id });
-                }
-            }
-        }
-
-        return allActivities;
-    }, [leads]);
+    const pendingDueTasks = pageProps.pendingDueTasks || [];
 
     // Calculate most recent activity from all leads
     const lastActivity = useMemo<{ text: string; activity: LeadActivity | null }>(() => {
@@ -527,11 +522,13 @@ export default function LeadsInterface() {
                     {/* Main Content */}
                     <div className="flex-1 p-4">
                         {/* Follow-up Banner */}
-                        {pendingFollowUps.length > 0 && (
-                            <div className="mb-4">
-                                <FollowUpBanner activities={pendingFollowUps} />
-                            </div>
-                        )}
+                        <Deferred data="pendingDueTasks" fallback={null}>
+                            {pendingDueTasks.length > 0 && (
+                                <div className="mb-4">
+                                    <FollowUpBanner tasks={pendingDueTasks} />
+                                </div>
+                            )}
+                        </Deferred>
 
                         <div className="flex flex-col rounded-lg border bg-background shadow-sm">
                             {/* Toolbar */}

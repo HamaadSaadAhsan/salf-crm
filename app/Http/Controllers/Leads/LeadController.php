@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Leads;
 
+use App\Enums\TaskStatus;
 use App\Events\LeadRequalified;
 use App\Events\LeadStageChanged;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\LeadCase;
 use App\Models\Service;
+use App\Models\Task;
 use App\Services\AdvisorAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
@@ -103,6 +105,25 @@ class LeadController extends Controller
                 'bypass_reason' => $bypassCache ? 'real_time_required' : null,
                 'expires_at' => $cacheTTL ?? $this->cacheService->getTTL(),
             ],
+            'pendingDueTasks' => Inertia::defer(fn () => Task::query()
+                ->where('assigned_to_id', $user->id)
+                ->where('status', TaskStatus::PENDING)
+                ->where('due_at', '<=', now()->endOfDay())
+                ->with(['taskable:id,name'])
+                ->orderBy('due_at')
+                ->limit(10)
+                ->get()
+                ->map(fn (Task $task) => [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'type' => $task->type->value,
+                    'priority' => $task->priority->value,
+                    'due_at' => $task->due_at?->toIso8601String(),
+                    'is_overdue' => $task->due_at && $task->due_at->isPast(),
+                    'lead_id' => $task->taskable_type === Lead::class ? $task->taskable_id : null,
+                    'lead_name' => $task->taskable?->name,
+                ])
+            ),
         ]);
     }
 
