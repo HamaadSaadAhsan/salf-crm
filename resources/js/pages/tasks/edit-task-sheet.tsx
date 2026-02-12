@@ -259,7 +259,7 @@ export function EditTaskSheet({
                                     >
                                         <SelectValue placeholder="Select user..." />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[200]">
                                         {users.map((user) => (
                                             <SelectItem
                                                 key={user.id}
@@ -294,7 +294,7 @@ export function EditTaskSheet({
                                     >
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[200]">
                                         {priorityOptions.map((option) => (
                                             <SelectItem
                                                 key={option.value}
@@ -337,7 +337,7 @@ export function EditTaskSheet({
                                     >
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[200]">
                                         {statusOptions.map((option) => (
                                             <SelectItem
                                                 key={option.value}
