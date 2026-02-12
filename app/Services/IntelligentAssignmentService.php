@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\AssignmentQueueUpdated;
 use App\Events\LeadAssigned;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -281,6 +282,7 @@ class IntelligentAssignmentService
         $this->createAssignmentActivity($lead, $user, $assignmentType, $assignedBy);
 
         event(new LeadAssigned($lead, $user, $assignmentType, $assignedBy));
+        event(new AssignmentQueueUpdated('lead_assigned'));
 
         $this->clearAssignmentCache();
     }

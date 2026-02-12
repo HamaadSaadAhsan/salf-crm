@@ -102,7 +102,8 @@ const StatusFilter = memo(function StatusFilter({
     onChange: (value: string[] | undefined) => void;
 }) {
     const [open, setOpen] = useState(false);
-    const { statuses } = useStatuses();
+    const { statuses: allStatuses } = useStatuses();
+    const statuses = useMemo(() => allStatuses.filter((s) => !['assigned_to_advisor', 'assigned_to_cro'].includes(s.name)), [allStatuses]);
     const selected = useMemo(() => value || [], [value]);
 
     const toggle = useCallback(

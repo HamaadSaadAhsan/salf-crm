@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\TaskStatus;
+use App\Events\AssignmentQueueUpdated;
 use App\Events\LeadUpdated;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -242,6 +243,8 @@ class LeadObserver
                 'change_type' => 'status_change',
             ],
         ]);
+
+        event(new AssignmentQueueUpdated('status_changed'));
 
         // Create a follow-up activity for certain status changes
         $this->createFollowUpForStatusChange($lead, $newStatus, $userId);

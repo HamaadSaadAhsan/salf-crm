@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
-import type { NavItem } from '@/crm/config/types';
+import type { NavItem, NavSubItem } from '@/crm/config/types';
 import { Ellipsis, Pin, PinOff, Plus, StickyNote } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import {
   AccordionMenu,
   AccordionMenuItem,
+  AccordionMenuSub,
+  AccordionMenuSubContent,
+  AccordionMenuSubTrigger,
 } from '@/components/ui/accordion-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -292,17 +295,55 @@ export function SidebarDefaultNav() {
         }}
         collapsible
       >
-        {filteredNavItems.map((item) => (
-          <AccordionMenuItem key={item.id} asChild value={item.path || item.id}>
-            <div>
-              {sidebarCollapse ? (
-                <NavItemCollapsed item={item} />
-              ) : (
-                <NavItem item={item} />
-              )}
-            </div>
-          </AccordionMenuItem>
-        ))}
+        {filteredNavItems.map((item) => {
+          const hasSubItems = item.items && item.items.length > 0 && !sidebarCollapse;
+
+          if (hasSubItems) {
+            return (
+              <AccordionMenuSub key={item.id} value={item.path || item.id}>
+                <AccordionMenuSubTrigger>
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                </AccordionMenuSubTrigger>
+                <AccordionMenuSubContent
+                  parentValue={item.path || item.id}
+                  type="single"
+                  collapsible
+                >
+                  {item.items!.map((sub) => (
+                    <AccordionMenuItem
+                      key={sub.path}
+                      asChild
+                      value={sub.path}
+                    >
+                      <div>
+                        <Link
+                          href={sub.path}
+                          className="flex items-center grow gap-2.5 font-medium"
+                        >
+                          {sub.icon && <sub.icon />}
+                          <span>{sub.title}</span>
+                        </Link>
+                      </div>
+                    </AccordionMenuItem>
+                  ))}
+                </AccordionMenuSubContent>
+              </AccordionMenuSub>
+            );
+          }
+
+          return (
+            <AccordionMenuItem key={item.id} asChild value={item.path || item.id}>
+              <div>
+                {sidebarCollapse ? (
+                  <NavItemCollapsed item={item} />
+                ) : (
+                  <NavItem item={item} />
+                )}
+              </div>
+            </AccordionMenuItem>
+          );
+        })}
       </AccordionMenu>
     </div>
   );

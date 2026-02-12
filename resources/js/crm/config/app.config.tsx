@@ -102,6 +102,10 @@ export const MAIN_NAV: NavConfig = [
                     title: 'Permissions',
                     path: '#',
                 },
+                {
+                    title: 'Assignment Queue',
+                    path: '/settings/management/assignment-visualizer',
+                },
             ],
         },
         {

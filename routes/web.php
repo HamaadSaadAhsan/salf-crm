@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LeadActivityController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\Roles\PermissionController;
 use App\Http\Controllers\Api\Roles\RoleController;
+use App\Http\Controllers\AssignmentVisualizerController;
 use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
@@ -62,6 +63,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Services - viewable by all authenticated users
     Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
     Route::get('/services/{service}', [ServiceController::class, 'show'])->name('services.show');
+
+    // Assignment Visualizer (Super Admin only)
+    Route::get('/settings/management/assignment-visualizer', [AssignmentVisualizerController::class, 'page'])
+        ->middleware('role:super-admin')
+        ->name('assignment-visualizer');
+    Route::get('api/assignment-visualizer', [AssignmentVisualizerController::class, 'index'])
+        ->middleware('role:super-admin')
+        ->name('api.assignment-visualizer');
 
     // Management Routes (Super Admin only)
     Route::middleware('role:super-admin')->group(function () {
