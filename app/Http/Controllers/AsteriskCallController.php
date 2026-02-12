@@ -155,56 +155,87 @@ class AsteriskCallController extends Controller
                 // Agent extensions are short (2-4 digits like 201, 202), client numbers are longer
                 $isAgentExtension = $exten && strlen(preg_replace('/[^0-9]/', '', $exten)) <= 4;
 
-                if ($callSession && $isAgentExtension && ! $callSession->answered_at) {
-                    // Find who answered the call
+                if ($callSession && $isAgentExtension) {
+                    // Find who answered the call by extension
                     $answeredByUser = \App\Models\User::where('extension', $exten)->first();
                     $answeredByUserId = $answeredByUser?->id;
 
-                    // Check if this is a coverage call (answered by different user than intended)
-                    $isCoverageCall = false;
-                    if ($answeredByUserId && $callSession->intended_for_user_id) {
-                        $isCoverageCall = $answeredByUserId !== $callSession->intended_for_user_id;
+                    // Fallback: if no user for this extension (e.g. ring group 299),
+                    // refresh call session — Node.js server may have already set answered_by_user_id
+                    if (! $answeredByUserId) {
+                        $callSession->refresh();
+                        $answeredByUserId = $callSession->answered_by_user_id;
+                        if ($answeredByUserId) {
+                            $answeredByUser = \App\Models\User::find($answeredByUserId);
+                        }
                     }
 
-                    $callSession->update([
-                        'status' => 'answered',
-                        'answered_at' => now(),
-                        'answered_by_user_id' => $answeredByUserId,
-                        'is_coverage_call' => $isCoverageCall,
-                    ]);
+                    if ($answeredByUserId && ! $callSession->answered_at) {
+                        // Check if this is a coverage call (answered by different user than intended)
+                        $isCoverageCall = false;
+                        if ($callSession->intended_for_user_id) {
+                            $isCoverageCall = $answeredByUserId !== $callSession->intended_for_user_id;
+                        }
 
-                    // Log connect event to call_logs
-                    \App\Models\CallLog::createForSession(
-                        $callSession,
-                        'info',
-                        'answered',
-                        "Call answered by extension {$exten}",
-                        [
-                            'extension' => $exten,
-                            'user_id' => $answeredByUserId,
-                            'user_name' => $answeredByUser?->name,
-                            'uniqueid' => $validated['uniqueid'],
-                            'linkedid' => $validated['linkedid'] ?? null,
-                            'caller_number' => $validated['caller'] ?? null,
-                            'lead_id' => $lead?->id,
+                        $callSession->update([
+                            'status' => 'answered',
+                            'answered_at' => now(),
+                            'answered_by_user_id' => $answeredByUserId,
                             'is_coverage_call' => $isCoverageCall,
+                        ]);
+
+                        // Assign lead to the answering user if not already assigned
+                        if ($lead && ! $lead->assigned_to) {
+                            $lead->update([
+                                'assigned_to' => $answeredByUserId,
+                                'assigned_date' => now(),
+                            ]);
+
+                            Log::info('Lead assigned to answering user', [
+                                'lead_id' => $lead->id,
+                                'assigned_to' => $answeredByUserId,
+                                'extension' => $exten,
+                            ]);
+                        }
+
+                        // Log connect event to call_logs
+                        \App\Models\CallLog::createForSession(
+                            $callSession,
+                            'info',
+                            'answered',
+                            'Call answered by extension '.($answeredByUser?->extension ?? $exten),
+                            [
+                                'extension' => $answeredByUser?->extension ?? $exten,
+                                'user_id' => $answeredByUserId,
+                                'user_name' => $answeredByUser?->name,
+                                'uniqueid' => $validated['uniqueid'],
+                                'linkedid' => $validated['linkedid'] ?? null,
+                                'caller_number' => $validated['caller'] ?? null,
+                                'lead_id' => $lead?->id,
+                                'is_coverage_call' => $isCoverageCall,
+                                'intended_for_user_id' => $callSession->intended_for_user_id,
+                            ],
+                            'asterisk'
+                        );
+
+                        Log::info('Inbound call answered', [
+                            'call_session_id' => $callSession->id,
+                            'extension' => $answeredByUser?->extension ?? $exten,
+                            'lead_found' => $lead !== null,
+                            'answered_by_user_id' => $answeredByUserId,
                             'intended_for_user_id' => $callSession->intended_for_user_id,
-                        ],
-                        'asterisk'
-                    );
+                            'is_coverage_call' => $isCoverageCall,
+                        ]);
 
-                    Log::info('Inbound call answered', [
-                        'call_session_id' => $callSession->id,
-                        'extension' => $exten,
-                        'lead_found' => $lead !== null,
-                        'answered_by_user_id' => $answeredByUserId,
-                        'intended_for_user_id' => $callSession->intended_for_user_id,
-                        'is_coverage_call' => $isCoverageCall,
-                    ]);
-
-                    // Handle coverage call: create activities for the intended CRO
-                    if ($isCoverageCall && $lead && $callSession->intended_for_user_id) {
-                        $this->handleCoverageCall($callSession, $lead, $answeredByUser);
+                        // Handle coverage call: create activities for the intended CRO
+                        if ($isCoverageCall && $lead && $callSession->intended_for_user_id) {
+                            $this->handleCoverageCall($callSession, $lead, $answeredByUser);
+                        }
+                    } elseif (! $answeredByUserId) {
+                        Log::debug('Connect event skipped - no user found for extension', [
+                            'extension' => $exten,
+                            'uniqueid' => $validated['uniqueid'],
+                        ]);
                     }
                 }
             } elseif ($validated['event'] === 'hangup') {

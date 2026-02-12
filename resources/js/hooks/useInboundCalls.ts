@@ -245,22 +245,34 @@ export function useInboundCalls() {
             }
         }
 
-        const newCall: ActiveCall = {
-            ...data,
-            target_extension: targetExtension, // Ensure target_extension is always set
-            startTime: new Date(),
-            duration: 0,
-            isOwner: false, // No one owns the call during ring
-            isCoverageCall: false, // Not determined yet during ring
-        };
+        setActiveCall((prev) => {
+            // Don't let a late ring event override an already connected call for the same session
+            if (prev && prev.event === 'connect' && (prev.linkedid === data.linkedid || prev.uniqueid === data.uniqueid || prev.uniqueid === data.linkedid)) {
+                console.log('Ring event: Ignoring late ring for already connected call', {
+                    prevEvent: prev.event,
+                    prevExten: prev.exten,
+                    ringExten: data.exten,
+                });
+                return prev;
+            }
 
-        console.log('Ring event: Creating active call', {
-            targetExtension,
-            currentUserExtension,
-            uniqueid: data.uniqueid,
+            const newCall: ActiveCall = {
+                ...data,
+                target_extension: targetExtension, // Ensure target_extension is always set
+                startTime: new Date(),
+                duration: 0,
+                isOwner: false, // No one owns the call during ring
+                isCoverageCall: false, // Not determined yet during ring
+            };
+
+            console.log('Ring event: Creating active call', {
+                targetExtension,
+                currentUserExtension,
+                uniqueid: data.uniqueid,
+            });
+
+            return newCall;
         });
-
-        setActiveCall(newCall);
 
         // Play notification sound
         playNotificationSound('normal');
