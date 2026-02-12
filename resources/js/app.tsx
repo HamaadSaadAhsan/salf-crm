@@ -5,6 +5,7 @@ import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
+import ReactQueryProvider from './providers/react-query-provider';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -30,7 +31,11 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        root.render(
+            <ReactQueryProvider>
+                <App {...props} />
+            </ReactQueryProvider>
+        );
     },
     progress: {
         color: '#4B5563',

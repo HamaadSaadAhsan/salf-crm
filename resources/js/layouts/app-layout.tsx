@@ -4,7 +4,6 @@ import { Layout } from '@/crm/layout/components/layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type ReactNode, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
-import ReactQueryProvider from '@/providers/react-query-provider';
 import { CallContextComponent } from '@/providers/CallContextProvider';
 import { usePage } from '@inertiajs/react';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
@@ -85,24 +84,22 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
 
     return (
         <LayoutProvider sidebarNavItems={filteredNav}>
-            <ReactQueryProvider>
-                <AsteriskWebSocketProvider>
-                    <CallContextComponent user={auth.user}>
-                        {/* Impersonation Banner - shows when super admin is impersonating */}
-                        <ImpersonationBanner />
+            <AsteriskWebSocketProvider>
+                <CallContextComponent user={auth.user}>
+                    {/* Impersonation Banner - shows when super admin is impersonating */}
+                    <ImpersonationBanner />
 
-                        <Layout breadcrumbs={breadcrumbs}>
-                            {children}
-                        </Layout>
+                    <Layout breadcrumbs={breadcrumbs}>
+                        {children}
+                    </Layout>
 
-                        {/* Inbound Call Manager - handles incoming calls */}
-                        <InboundCallManager />
+                    {/* Inbound Call Manager - handles incoming calls */}
+                    <InboundCallManager />
 
-                        {/* Outbound Call Manager - handles outgoing calls */}
-                        <OutboundCallManager />
-                    </CallContextComponent>
-                </AsteriskWebSocketProvider>
-            </ReactQueryProvider>
+                    {/* Outbound Call Manager - handles outgoing calls */}
+                    <OutboundCallManager />
+                </CallContextComponent>
+            </AsteriskWebSocketProvider>
             <Toaster
                 richColors
                 position="bottom-right"
