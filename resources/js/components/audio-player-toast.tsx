@@ -7,9 +7,10 @@ interface AudioPlayerToastProps {
     audioUrl: string;
     title?: string;
     className?: string;
+    fallbackDuration?: number | null;
 }
 
-export function AudioPlayerToast({ audioUrl, title = 'Recording', className }: AudioPlayerToastProps) {
+export function AudioPlayerToast({ audioUrl, title = 'Recording', className, fallbackDuration }: AudioPlayerToastProps) {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -23,7 +24,12 @@ export function AudioPlayerToast({ audioUrl, title = 'Recording', className }: A
         audioRef.current = audio;
 
         const handleLoadedMetadata = () => {
-            setDuration(audio.duration);
+            const audioDuration = audio.duration;
+            if (isFinite(audioDuration) && audioDuration > 0) {
+                setDuration(audioDuration);
+            } else if (fallbackDuration && fallbackDuration > 0) {
+                setDuration(fallbackDuration);
+            }
             setIsLoading(false);
         };
 

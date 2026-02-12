@@ -516,7 +516,7 @@ class AsteriskCallController extends Controller
             if ($activity) {
                 $activity->update([
                     'notes' => $validated['notes'],
-                    'duration_minutes' => isset($validated['duration']) ? ceil($validated['duration'] / 60) : null,
+                    'duration_minutes' => $validated['duration'] ?? null,
                 ]);
             } else {
                 $activity = LeadActivity::create([
@@ -527,7 +527,7 @@ class AsteriskCallController extends Controller
                     'notes' => $validated['notes'],
                     'status' => 'completed',
                     'completed_at' => now(),
-                    'duration_minutes' => isset($validated['duration']) ? ceil($validated['duration'] / 60) : null,
+                    'duration_minutes' => $validated['duration'] ?? null,
                     'metadata' => [
                         'call_id' => $validated['uniqueid'],
                         'direction' => 'inbound',
@@ -1211,7 +1211,7 @@ class AsteriskCallController extends Controller
                                         'user_id' => $userId,
                                         'type' => 'call',
                                         'subject' => 'Lead contacted',
-                                        'description' => "CRO contacted lead via outbound call to {$validated['client']}",
+                                        'description' => "CRO contacted {$lead->name} via outbound call",
                                         'status' => 'completed',
                                         'completed_at' => now(),
                                         'metadata' => [
@@ -1352,7 +1352,7 @@ class AsteriskCallController extends Controller
                             $activity->update([
                                 'status' => 'completed',
                                 'completed_at' => now(),
-                                'duration_minutes' => $duration ? ceil($duration / 60) : null,
+                                'duration_minutes' => $duration ?: null,
                             ]);
                         }
                     }

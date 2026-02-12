@@ -170,7 +170,7 @@ export function LeadRecordsCalls({ leadId }: LeadRecordsCallsProps) {
         const callDate = new Date(call.started_at).toLocaleDateString();
         const title = `${callerName} - ${callDate}`;
 
-        toast(<AudioPlayerToast audioUrl={call.recording_url} title={title} />, {
+        toast(<AudioPlayerToast audioUrl={call.recording_url} title={title} fallbackDuration={call.duration} />, {
             duration: Infinity,
             closeButton: true,
             classNames: {

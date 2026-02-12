@@ -156,9 +156,13 @@ export function LeadRecordsNotes({ leadId }: LeadRecordsNotesProps) {
                                                         <Phone className="size-3" />
                                                         Call note
                                                     </Badge>
-                                                    {note.duration_minutes && (
+                                                    {note.duration_minutes != null && note.duration_minutes > 0 && (
                                                         <Badge variant="secondary" className="text-xs">
-                                                            {note.duration_minutes}m
+                                                            {note.duration_minutes >= 3600
+                                                                ? `${Math.floor(note.duration_minutes / 3600)}h ${Math.floor((note.duration_minutes % 3600) / 60)}m`
+                                                                : note.duration_minutes >= 60
+                                                                    ? `${Math.floor(note.duration_minutes / 60)}m ${note.duration_minutes % 60}s`
+                                                                    : `${note.duration_minutes}s`}
                                                         </Badge>
                                                     )}
                                                 </div>

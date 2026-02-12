@@ -72,16 +72,20 @@ export function LeadRecordsOverviewNotes({
         }
     };
 
-    const formatDuration = (minutes?: number | null) => {
-        if (!minutes) return null;
+    const formatDuration = (seconds?: number | null) => {
+        if (!seconds) return null;
 
-        if (minutes < 60) {
-            return `${minutes}m`;
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (hours > 0) {
+            return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
         }
-
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+        if (mins > 0) {
+            return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+        }
+        return `${secs}s`;
     };
 
     const getNoteContent = (activity: LeadActivity) => {
