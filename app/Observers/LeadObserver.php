@@ -59,7 +59,7 @@ class LeadObserver
             $oldValue = $original[$field] ?? null;
 
             // Skip certain fields that shouldn't create activities
-            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count', 'advisor_stage'])) {
+            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count', 'advisor_stage', 'phone'])) {
                 continue;
             }
 
