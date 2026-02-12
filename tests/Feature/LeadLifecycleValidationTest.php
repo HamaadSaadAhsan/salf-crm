@@ -16,6 +16,7 @@ beforeEach(function () {
     // Create roles
     $this->croRole = Role::create(['name' => 'support-agent']);
     $this->advisorRole = Role::create(['name' => 'sales-rep']);
+    Role::create(['name' => 'senior-sales-rep']);
     $this->adminRole = Role::create(['name' => 'super-admin']);
 
     // Create permissions and assign to roles
