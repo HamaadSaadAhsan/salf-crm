@@ -6,7 +6,6 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 class LeadRequalifiedNotification extends Notification implements ShouldQueue
@@ -24,7 +23,7 @@ class LeadRequalifiedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database'];
     }
 
     /**
@@ -45,27 +44,6 @@ class LeadRequalifiedNotification extends Notification implements ShouldQueue
             'action_url' => "/leads/{$this->lead->id}",
             'timestamp' => now()->toISOString(),
         ];
-    }
-
-    /**
-     * Get the broadcastable representation of the notification.
-     */
-    public function toBroadcast(object $notifiable): BroadcastMessage
-    {
-        return new BroadcastMessage([
-            'id' => $this->id,
-            'type' => 'lead_requalified',
-            'title' => $this->getTitle(),
-            'description' => $this->getMessage(),
-            'lead_id' => $this->lead->id,
-            'lead_name' => $this->lead->name,
-            'requalified_by_name' => $this->requalifiedBy->name,
-            'reason' => $this->reason,
-            'action_url' => "/leads/{$this->lead->id}",
-            'timestamp' => now()->diffForHumans(),
-            'created_at' => now()->toISOString(),
-            'read' => false,
-        ]);
     }
 
     private function getTitle(): string

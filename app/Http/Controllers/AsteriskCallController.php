@@ -446,7 +446,6 @@ class AsteriskCallController extends Controller
                 'completed_at' => now(),
                 'metadata' => [
                     'call_id' => $validated['uniqueid'],
-                    'caller' => $validated['caller'],
                     'direction' => $callDirection,
                 ],
                 'source_system' => 'asterisk',
@@ -656,7 +655,6 @@ class AsteriskCallController extends Controller
             'metadata' => [
                 'call_session_id' => $callSession->id,
                 'session_id' => $callSession->session_id,
-                'caller_number' => $callSession->caller_number,
                 'is_coverage_call' => true,
                 'answered_by_user_id' => $answeredByUser?->id,
                 'intended_for_user_id' => $intendedUserId,
@@ -680,7 +678,6 @@ class AsteriskCallController extends Controller
             'metadata' => [
                 'call_session_id' => $callSession->id,
                 'session_id' => $callSession->session_id,
-                'caller_number' => $callSession->caller_number,
                 'is_coverage_call' => true,
                 'answered_by_user_id' => $answeredByUser?->id,
                 'answered_by_name' => $answeredByName,
@@ -721,7 +718,6 @@ class AsteriskCallController extends Controller
                 'metadata' => [
                     'call_id' => $callData['uniqueid'],
                     'linked_id' => $callData['linkedid'] ?? null,
-                    'caller' => $callData['caller'],
                     'exten' => $exten,
                     'direction' => 'inbound',
                     'event' => $callData['event'],
@@ -1188,14 +1184,12 @@ class AsteriskCallController extends Controller
                                 'user_id' => $userId,
                                 'type' => 'call',
                                 'subject' => 'Outbound call connected',
-                                'description' => "Called {$validated['client']}",
+                                'description' => "Outbound call to {$lead->name}",
                                 'status' => 'pending',
                                 'scheduled_at' => now(),
                                 'metadata' => [
                                     'call_session_id' => $callSession->id,
                                     'session_id' => $callSession->session_id,
-                                    'agent' => $validated['agent'],
-                                    'client' => $validated['client'],
                                     'direction' => 'outbound',
                                 ],
                             ]
@@ -1222,8 +1216,6 @@ class AsteriskCallController extends Controller
                                         'metadata' => [
                                             'call_session_id' => $callSession->id,
                                             'session_id' => $callSession->session_id,
-                                            'agent' => $validated['agent'],
-                                            'client' => $validated['client'],
                                             'direction' => 'outbound',
                                             'auto_created' => true,
                                         ],
