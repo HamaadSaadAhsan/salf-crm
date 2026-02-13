@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
+import { api } from '@/lib/api';
 import {
     Bell,
     BellOff,
@@ -396,28 +397,19 @@ export default function NotificationsPage({
     const fetchNotifications = useCallback(async (filter: NotificationFilter, page: number = 1) => {
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/notifications?filter=${filter}&per_page=20&page=${page}`, {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            if (response.ok) {
-                const data = await response.json();
-                if (page === 1) {
-                    setNotifications(data.notifications.data);
-                } else {
-                    setNotifications((prev) => [...prev, ...data.notifications.data]);
-                }
-                setPagination({
-                    currentPage: data.notifications.current_page,
-                    lastPage: data.notifications.last_page,
-                    total: data.notifications.total,
-                });
-                setUnreadCount(data.unread_count);
-                setTotalCount(data.total_count);
+            const data = await api.get('/api/notifications', { filter, per_page: 20, page });
+            if (page === 1) {
+                setNotifications(data.notifications.data);
+            } else {
+                setNotifications((prev: Notification[]) => [...prev, ...data.notifications.data]);
             }
+            setPagination({
+                currentPage: data.notifications.current_page,
+                lastPage: data.notifications.last_page,
+                total: data.notifications.total,
+            });
+            setUnreadCount(data.unread_count);
+            setTotalCount(data.total_count);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
             toast.error('Failed to load notifications');
@@ -448,23 +440,11 @@ export default function NotificationsPage({
     // Handle mark as read
     const handleMarkAsRead = async (id: string) => {
         try {
-            const response = await fetch(`/api/notifications/${id}/mark-read`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (response.ok) {
-                setNotifications((prev) =>
-                    prev.map((n) => (n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n))
-                );
-                setUnreadCount((prev) => Math.max(0, prev - 1));
-            }
+            await api.post(`/api/notifications/${id}/mark-read`, {});
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n))
+            );
+            setUnreadCount((prev) => Math.max(0, prev - 1));
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
             toast.error('Failed to mark as read');
@@ -474,24 +454,12 @@ export default function NotificationsPage({
     // Handle mark all as read
     const handleMarkAllAsRead = async () => {
         try {
-            const response = await fetch('/api/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (response.ok) {
-                setNotifications((prev) =>
-                    prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() }))
-                );
-                setUnreadCount(0);
-                toast.success('All notifications marked as read');
-            }
+            await api.post('/api/notifications/mark-all-read', {});
+            setNotifications((prev) =>
+                prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() }))
+            );
+            setUnreadCount(0);
+            toast.success('All notifications marked as read');
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
             toast.error('Failed to mark all as read');
@@ -501,25 +469,14 @@ export default function NotificationsPage({
     // Handle delete
     const handleDelete = async (id: string) => {
         try {
-            const response = await fetch(`/api/notifications/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (response.ok) {
-                const deletedNotification = notifications.find((n) => n.id === id);
-                setNotifications((prev) => prev.filter((n) => n.id !== id));
-                setTotalCount((prev) => prev - 1);
-                if (deletedNotification && !deletedNotification.read) {
-                    setUnreadCount((prev) => Math.max(0, prev - 1));
-                }
-                toast.success('Notification deleted');
+            await api.delete(`/api/notifications/${id}`);
+            const deletedNotification = notifications.find((n) => n.id === id);
+            setNotifications((prev) => prev.filter((n) => n.id !== id));
+            setTotalCount((prev) => prev - 1);
+            if (deletedNotification && !deletedNotification.read) {
+                setUnreadCount((prev) => Math.max(0, prev - 1));
             }
+            toast.success('Notification deleted');
         } catch (error) {
             console.error('Failed to delete notification:', error);
             toast.error('Failed to delete notification');

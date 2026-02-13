@@ -34,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { PageProps } from '@/types/global';
+import { api } from '@/lib/api';
 
 // Types
 interface NotificationUser {
@@ -229,18 +230,9 @@ export function HeaderNotifications() {
     const fetchNotifications = useCallback(async (filter: string = 'all') => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/notifications?filter=${filter}&per_page=50`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            if (response.ok) {
-                const data: NotificationsResponse = await response.json();
-                setNotifications(data.notifications.data);
-                setUnreadCount(data.unread_count);
-            }
+            const data: NotificationsResponse = await api.get('/api/notifications', { filter, per_page: 50 });
+            setNotifications(data.notifications.data);
+            setUnreadCount(data.unread_count);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
@@ -251,17 +243,8 @@ export function HeaderNotifications() {
     // Fetch unread count only
     const fetchUnreadCount = useCallback(async () => {
         try {
-            const response = await fetch('/api/notifications/unread-count', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setUnreadCount(data.count);
-            }
+            const data = await api.get('/api/notifications/unread-count');
+            setUnreadCount(data.count);
         } catch (error) {
             console.error('Failed to fetch unread count:', error);
         }
@@ -302,23 +285,11 @@ export function HeaderNotifications() {
 
     const handleMarkAsRead = async (id: string) => {
         try {
-            const response = await fetch(`/api/notifications/${id}/mark-read`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (response.ok) {
-                setNotifications((prev) =>
-                    prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-                );
-                setUnreadCount((prev) => Math.max(0, prev - 1));
-            }
+            await api.post(`/api/notifications/${id}/mark-read`, {});
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+            );
+            setUnreadCount((prev) => Math.max(0, prev - 1));
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
         }
@@ -326,21 +297,9 @@ export function HeaderNotifications() {
 
     const handleMarkAllAsRead = async () => {
         try {
-            const response = await fetch('/api/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (response.ok) {
-                setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-                setUnreadCount(0);
-            }
+            await api.post('/api/notifications/mark-all-read', {});
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            setUnreadCount(0);
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
         }
