@@ -2,7 +2,7 @@
 
 use App\Models\Lead;
 use App\Models\User;
-use App\Services\IntelligentAssignmentService;
+use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -11,7 +11,7 @@ beforeEach(function () {
     // Disable all broadcasting to avoid Pusher/Reverb connection errors in tests
     config(['broadcasting.default' => 'null']);
 
-    $this->assignmentService = app(IntelligentAssignmentService::class);
+    $this->assignmentService = app(LeadAssignmentService::class);
 
     $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);

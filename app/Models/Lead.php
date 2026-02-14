@@ -715,7 +715,7 @@ class Lead extends Model
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnConversion($this->assignedTo);
+            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnConversion($this->assignedTo);
         }
 
         return $this;
@@ -731,11 +731,13 @@ class Lead extends Model
         $this->update([
             'inquiry_status' => 'requalify',
             'requalify_reason' => $reason,
+            'requalified_from_advisor_id' => $this->assigned_to,
             'assigned_to' => $this->qualified_by,
+            'advisor_stage' => null,
         ]);
 
         if ($previousAssignee) {
-            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($previousAssignee);
+            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($previousAssignee);
         }
 
         return $this;
@@ -752,7 +754,7 @@ class Lead extends Model
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
         }
 
         return $this;
@@ -769,7 +771,7 @@ class Lead extends Model
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\IntelligentAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
         }
 
         return $this;

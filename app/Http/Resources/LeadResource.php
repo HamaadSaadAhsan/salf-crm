@@ -63,6 +63,8 @@ class LeadResource extends JsonResource
                 fn () => UserResource::make($this->qualifiedBy)
             ),
             'qualified_at' => $this->qualified_at?->toISOString(),
+            'requalified_from_advisor_id' => $this->requalified_from_advisor_id,
+            'requalify_reason' => $this->requalify_reason,
 
             // Computed fields
             'days_since_created' => $this->days_since_created,

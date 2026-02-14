@@ -15,7 +15,7 @@ use App\Models\LeadActivity;
 use App\Models\LeadCase;
 use App\Models\Service;
 use App\Models\Task;
-use App\Services\AdvisorAssignmentService;
+use App\Services\LeadAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +33,7 @@ class LeadController extends Controller
 {
     public function __construct(
         private LeadCacheService $cacheService,
-        private AdvisorAssignmentService $advisorAssignmentService
+        private LeadAssignmentService $assignmentService
     ) {}
 
     public function index(LeadFilterRequest $request)
@@ -1286,23 +1286,45 @@ class LeadController extends Controller
             }
 
             // Auto-assign advisor when lead is qualified or assigned_to_advisor
-            if (($isQualifying || $isAutoAssigning) && ! $lead->assigned_to) {
-                $assigned = $this->advisorAssignmentService->assignAdvisor($lead);
-                if ($assigned) {
-                    // Refresh lead to get updated assignment
+            if ($isQualifying || $isAutoAssigning) {
+                if ($lead->requalified_from_advisor_id) {
+                    // Requalified lead: return to the original advisor
+                    $lead->assigned_to = $lead->requalified_from_advisor_id;
+                    $lead->assigned_date = now();
+                    $lead->inquiry_status = 'assigned_to_advisor';
+                    $lead->advisor_stage = 'new';
+                    $lead->save();
                     $lead->refresh();
-                    Log::info('Lead auto-assigned to advisor', [
+
+                    Log::info('Requalified lead returned to original advisor', [
                         'lead_id' => $lead->id,
-                        'advisor_id' => $lead->assigned_to,
-                        'service_id' => $lead->service_id,
-                        'city' => $lead->city,
+                        'advisor_id' => $lead->requalified_from_advisor_id,
                     ]);
-                } else {
-                    Log::warning('Failed to auto-assign advisor to lead', [
-                        'lead_id' => $lead->id,
-                        'service_id' => $lead->service_id,
-                        'city' => $lead->city,
-                    ]);
+                } elseif (! $lead->assigned_to) {
+                    // Fresh qualification: round-robin assignment
+                    if (! $lead->city) {
+                        Log::warning('Lead missing city for advisor assignment', [
+                            'lead_id' => $lead->id,
+                            'service_id' => $lead->service_id,
+                        ]);
+                    } else {
+                        $advisor = $this->assignmentService->assignToAdvisor($lead, $request->user());
+                        if ($advisor) {
+                            $lead->refresh();
+                            Log::info('Lead auto-assigned to advisor', [
+                                'lead_id' => $lead->id,
+                                'advisor_id' => $lead->assigned_to,
+                                'service_id' => $lead->service_id,
+                                'city' => $lead->city,
+                            ]);
+                        } else {
+                            Log::warning('Failed to auto-assign advisor to lead', [
+                                'lead_id' => $lead->id,
+                                'service_id' => $lead->service_id,
+                                'city' => $lead->city,
+                            ]);
+                        }
+                    }
                 }
             }
 

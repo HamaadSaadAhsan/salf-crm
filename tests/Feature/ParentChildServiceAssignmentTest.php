@@ -4,7 +4,7 @@ use App\Models\Lead;
 use App\Models\LeadServiceAssignment;
 use App\Models\Service;
 use App\Models\User;
-use App\Services\IntelligentAssignmentService;
+use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -12,7 +12,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
-    $this->assignmentService = app(IntelligentAssignmentService::class);
+    $this->assignmentService = app(LeadAssignmentService::class);
 
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 

@@ -31,6 +31,8 @@ export interface Lead {
     created_by?: User;
     qualified_by?: { data: User };
     qualified_at?: string;
+    requalified_from_advisor_id?: number;
+    requalify_reason?: string;
     owner?: User;
     days_since_created: number;
     is_hot_lead: boolean;

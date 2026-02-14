@@ -157,20 +157,11 @@ it('reassigns lead back to original advisor after multi-step requalification flo
     expect($lead->inquiry_status)->toBe('requalify');
     expect($lead->requalified_from_advisor_id)->toBe($this->advisor->id);
 
-    // Step 2: CRO moves lead to qualified (multi-step: requalify → qualified)
+    // Step 2: CRO qualifies the requalified lead — it should automatically
+    // go to assigned_to_advisor and return to the original advisor
     $this->actingAs($this->cro)
         ->putJson(route('leads.update', $lead), [
             'inquiry_status' => 'qualified',
-        ])
-        ->assertOk();
-
-    $lead->refresh();
-    expect($lead->inquiry_status)->toBe('qualified');
-
-    // Step 3: CRO assigns lead to advisor (qualified → assigned_to_advisor)
-    $this->actingAs($this->cro)
-        ->putJson(route('leads.update', $lead), [
-            'inquiry_status' => 'assigned_to_advisor',
         ])
         ->assertOk();
 

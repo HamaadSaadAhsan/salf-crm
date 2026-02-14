@@ -27,6 +27,7 @@ import {
     Phone,
     Mail,
     MoreVertical,
+    RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
@@ -114,8 +115,20 @@ export function PageHeader({ lead }: { lead: Lead }) {
                                 Assigned to Advisor
                             </Badge>
                         )}
+                        {lead.inquiry_status === 'requalify' && (
+                            <Badge variant="secondary" className="shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                <RefreshCw className="mr-1 h-3 w-3" />
+                                Requalify
+                            </Badge>
+                        )}
+                        {lead.requalified_from_advisor_id && lead.inquiry_status !== 'requalify' && (
+                            <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                <RefreshCw className="mr-1 h-3 w-3" />
+                                Requalified
+                            </Badge>
+                        )}
                     </div>
-                    {lead.inquiry_status !== 'assigned_to_advisor' && (
+                    {!['assigned_to_advisor', 'requalify'].includes(lead.inquiry_status) && (
                         <span className="truncate text-xs capitalize text-muted-foreground">
                             {lead.inquiry_status?.replace(/_/g, ' ')}
                         </span>

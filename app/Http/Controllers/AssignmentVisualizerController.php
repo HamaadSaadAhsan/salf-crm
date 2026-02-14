@@ -66,7 +66,7 @@ class AssignmentVisualizerController extends Controller
 
         $advisors = User::query()
             ->whereIn('id', $userIds)
-            ->whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['sales-rep', 'senior-sales-rep']))
             ->select(['id', 'name', 'email', 'avatar', 'current_lead_count', 'conversion_rate', 'performance_weight', 'availability', 'last_assignment_at'])
             ->get()
             ->keyBy('id');

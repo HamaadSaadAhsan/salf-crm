@@ -3,7 +3,7 @@
 use App\Events\LeadQualified;
 use App\Models\Lead;
 use App\Models\User;
-use App\Services\IntelligentAssignmentService;
+use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -14,7 +14,7 @@ beforeEach(function () {
     // Disable broadcasting to avoid Pusher/Reverb connection errors in tests
     config(['broadcasting.default' => 'null']);
 
-    $this->assignmentService = app(IntelligentAssignmentService::class);
+    $this->assignmentService = app(LeadAssignmentService::class);
 
     // Create roles
     $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);

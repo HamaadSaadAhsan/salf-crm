@@ -1,10 +1,11 @@
-import { Bot, LayoutGrid, PieChart, Settings2, Users, Phone, PhoneCall, Workflow } from 'lucide-react';
-
+import { LayoutGrid, PieChart, Settings2, Users, Phone, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks } from 'lucide-react';
 
 import { NavConfig } from '../types';
-import { dashboard } from '@/routes';
+import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
 import { IconTools } from '@tabler/icons-react';
 import { management } from '@/routes/settings';
+import { roles, permissions, leadSources, leadStatuses } from '@/routes/settings/management';
+import { page as usersPage } from '@/routes/users';
 
 export const MAIN_NAV: NavConfig = [
         {
@@ -14,28 +15,6 @@ export const MAIN_NAV: NavConfig = [
             icon: LayoutGrid,
             isActive: true,
             requiredPermission: 'view dashboard',
-            items: [
-                {
-                    title: 'Overview',
-                    path: dashboard().url,
-                },
-                {
-                    title: 'Analytics',
-                    path: '#',
-                    requiredPermission: 'view analytics',
-                },
-                {
-                    title: 'Reports',
-                    path: '#',
-                    requiredPermission: 'view reports',
-                },
-            ],
-        },
-        {
-            id: 'tasks',
-            title: 'Tasks',
-            path: '/tasks',
-            icon: Bot,
         },
         {
             id: 'leads',
@@ -43,24 +22,12 @@ export const MAIN_NAV: NavConfig = [
             path: '/leads',
             icon: Users,
             requiredPermission: 'view leads',
-            items: [
-                {
-                    title: 'All Leads',
-                    path: '/leads',
-                },
-                {
-                    title: 'New Leads',
-                    path: '#',
-                },
-                {
-                    title: 'Qualified',
-                    path: '#',
-                },
-                {
-                    title: 'Lost',
-                    path: '#',
-                },
-            ],
+        },
+        {
+            id: 'tasks',
+            title: 'Tasks',
+            path: '/tasks',
+            icon: ListChecks,
         },
         {
             id: 'workflows',
@@ -77,52 +44,60 @@ export const MAIN_NAV: NavConfig = [
                     title: 'Create New',
                     path: '/workflows/create',
                 },
-                {
-                    title: 'Templates',
-                    path: '/workflows/templates',
-                },
             ],
         },
         {
             id: 'management',
             title: 'Management',
             path: management.url(),
-            icon: Bot,
+            icon: Shield,
             superAdminOnly: true,
             items: [
                 {
+                    title: 'Overview',
+                    path: management.url(),
+                },
+                {
                     title: 'Users',
-                    path: '#',
+                    path: usersPage.url(),
                 },
                 {
                     title: 'Roles',
-                    path: '#',
+                    path: roles.url(),
                 },
                 {
                     title: 'Permissions',
-                    path: '#',
+                    path: permissions.url(),
+                },
+                {
+                    title: 'Lead Sources',
+                    path: leadSources.url(),
+                },
+                {
+                    title: 'Lead Statuses',
+                    path: leadStatuses.url(),
                 },
                 {
                     title: 'Assignment Queue',
-                    path: '/settings/management/assignment-visualizer',
+                    path: assignmentVisualizer.url(),
                 },
             ],
         },
         {
             id: 'integrations',
             title: 'Integrations',
-            path: '/integrations',
+            path: integrationsRoute.url(),
             icon: IconTools,
             requiredPermission: 'manage integrations',
             items: [
                 {
                     title: 'Overview',
-                    path: '/integrations',
+                    path: integrationsRoute.url(),
                     icon: PieChart,
                 },
                 {
                     title: 'Calendar',
-                    path: '/integrations/calendar',
+                    path: '/calendar',
                 },
                 {
                     title: 'Facebook',
@@ -144,10 +119,6 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'New Call',
                     path: '/calls/create',
-                },
-                {
-                    title: 'History',
-                    path: '/calls/history',
                 },
             ],
         },
@@ -180,16 +151,8 @@ export const MAIN_NAV: NavConfig = [
                 },
                 {
                     title: 'Management',
-                    path: '/settings/management',
+                    path: management.url(),
                     superAdminOnly: true,
-                },
-                {
-                    title: 'Security',
-                    path: '#',
-                },
-                {
-                    title: 'Integrations',
-                    path: '#',
                 },
             ],
         },

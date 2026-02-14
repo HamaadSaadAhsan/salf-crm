@@ -3,7 +3,7 @@
 namespace App\Listeners;
 
 use App\Models\Lead;
-use App\Services\IntelligentAssignmentService;
+use App\Services\LeadAssignmentService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Events\ModelCreated;
 use Illuminate\Queue\InteractsWithQueue;
@@ -17,7 +17,7 @@ class HandleLeadCreated implements ShouldQueue
      * Create the event listener.
      */
     public function __construct(
-        private IntelligentAssignmentService $assignmentService
+        private LeadAssignmentService $assignmentService
     ) {}
 
     /**

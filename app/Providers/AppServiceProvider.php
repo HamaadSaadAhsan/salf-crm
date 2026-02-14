@@ -2,10 +2,6 @@
 
 namespace App\Providers;
 
-use App\Events\LeadAssigned;
-use App\Events\LeadRequalified;
-use App\Listeners\SendLeadAssignedNotification;
-use App\Listeners\SendLeadRequalifiedNotification;
 use App\Models\CallSession;
 use App\Models\Lead;
 use App\Models\LeadActivity;
@@ -14,7 +10,6 @@ use App\Observers\LeadActivityObserver;
 use App\Observers\LeadObserver;
 use App\Observers\PermissionObserver;
 use App\Observers\RoleObserver;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
@@ -47,8 +42,6 @@ class AppServiceProvider extends ServiceProvider
         LeadActivity::observe(LeadActivityObserver::class);
         CallSession::observe(CallSessionObserver::class);
 
-        // Register event listeners for lead notifications
-        Event::listen(LeadAssigned::class, SendLeadAssignedNotification::class);
-        Event::listen(LeadRequalified::class, SendLeadRequalifiedNotification::class);
+        // Event listeners are auto-discovered by Laravel from app/Listeners
     }
 }
