@@ -207,7 +207,7 @@ class LeadAssignmentService
         }
 
         // 4. Last resort: any available advisor
-            return $baseQuery->with(['zone', 'services'])->get();
+        return $baseQuery->with(['zone', 'services'])->get();
     }
 
     /**
