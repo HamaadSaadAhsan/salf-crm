@@ -127,10 +127,15 @@ export function LeadDistribution() {
                             <ChartTooltip
                                 content={
                                     <ChartTooltipContent
-                                        formatter={(value: number, name, props) => [
-                                            `${value} (${props.payload.percentage.toFixed(1)}%)`,
-                                            props.payload.name,
-                                        ]}
+                                        className="p-3"
+                                        formatter={(value: number, _name, props) => (
+                                            <div className="flex w-full items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">{props.payload.name}</span>
+                                                <span className="font-mono font-medium tabular-nums">
+                                                    {value} ({props.payload.percentage.toFixed(1)}%)
+                                                </span>
+                                            </div>
+                                        )}
                                     />
                                 }
                             />

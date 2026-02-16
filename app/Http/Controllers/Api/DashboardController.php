@@ -83,17 +83,16 @@ class DashboardController extends Controller
         // Best lead source by conversion rate
         $bestLeadSource = $this->getBestLeadSource();
 
-        // Average lifecycle days (created_at to converted_at for won leads)
+        // Average lifecycle days (created_at to converted_at for won leads, fallback to updated_at)
         $avgLifecycleDays = Lead::where('inquiry_status', 'won')
-            ->whereNotNull('converted_at')
-            ->selectRaw('AVG(EXTRACT(EPOCH FROM (converted_at - created_at))/(24*3600)) as avg_days')
+            ->selectRaw('AVG(EXTRACT(EPOCH FROM (COALESCE(converted_at, updated_at) - created_at))/(24*3600)) as avg_days')
             ->value('avg_days');
 
         // Average lead score
         $avgLeadScore = Lead::whereNotNull('lead_score')->avg('lead_score');
 
-        // System adoption rate from daily metrics
-        $systemAdoptionRate = $dailyMetric?->system_adoption_rate ?? 0;
+        // System adoption rate (from daily metrics, or compute directly)
+        $systemAdoptionRate = $dailyMetric?->system_adoption_rate ?? $this->computeSystemAdoptionRate();
 
         // Avg leads per advisor per day
         $avgLeadsPerAdvisorPerDay = $this->getAvgLeadsPerAdvisorPerDay();
@@ -220,18 +219,44 @@ class DashboardController extends Controller
         return round($assignedLeads / ($advisorCount * $workingDays), 2);
     }
 
+    /**
+     * Compute system adoption rate directly from active users.
+     */
+    protected function computeSystemAdoptionRate(): float
+    {
+        $totalUsers = User::count();
+
+        if ($totalUsers === 0) {
+            return 0;
+        }
+
+        // Active users = users with any activity in the last 7 days
+        $activeUsers = LeadActivity::where('created_at', '>=', Carbon::now()->subDays(7))
+            ->distinct('user_id')
+            ->count('user_id');
+
+        return round(($activeUsers / $totalUsers) * 100, 2);
+    }
+
     public function getManagerDashboard(User $user): array
     {
         $today = Carbon::today();
         $dailyMetric = DailyMetric::whereDate('metric_date', $today->toDateString())->first();
 
+        // Compute directly from DB when DailyMetric is not available
+        $totalLeads = $dailyMetric?->total_leads ?? Lead::count();
+        $qualifiedLeads = $dailyMetric?->qualified_leads ?? Lead::whereNotNull('qualified_at')->count();
+        $convertedLeads = $dailyMetric?->converted_leads ?? Lead::where('inquiry_status', 'won')->count();
+        $conversionRate = $dailyMetric?->overall_conversion_rate
+            ?? ($totalLeads > 0 ? round(($convertedLeads / $totalLeads) * 100, 2) : 0);
+
         return [
             'role' => 'manager',
             'kpis' => [
-                'total_leads' => $dailyMetric?->total_leads ?? 0,
-                'conversion_rate' => $dailyMetric?->overall_conversion_rate ?? 0,
-                'qualified_leads' => $dailyMetric?->qualified_leads ?? 0,
-                'converted_leads' => $dailyMetric?->converted_leads ?? 0,
+                'total_leads' => $totalLeads,
+                'conversion_rate' => $conversionRate,
+                'qualified_leads' => $qualifiedLeads,
+                'converted_leads' => $convertedLeads,
             ],
             'team_performance' => $this->getTeamPerformance($today),
             'response_times' => [
@@ -618,7 +643,7 @@ class DashboardController extends Controller
             ['name' => 'New Leads', 'statuses' => ['new'], 'color' => '#3b82f6'],
             ['name' => 'Contacted', 'statuses' => ['contacted'], 'color' => '#8b5cf6'],
             ['name' => 'Qualified', 'statuses' => ['qualified'], 'color' => '#10b981'],
-            ['name' => 'Converted', 'statuses' => ['converted'], 'color' => '#f59e0b'],
+            ['name' => 'Won', 'statuses' => ['won'], 'color' => '#f59e0b'],
             ['name' => 'Lost', 'statuses' => ['lost'], 'color' => '#ef4444'],
         ];
 
@@ -681,7 +706,10 @@ class DashboardController extends Controller
             ->whereNotNull('qualified_at')
             ->count();
         $converted = Lead::where('created_at', '>=', $startDate)
-            ->whereNotNull('converted_at')
+            ->where(function ($q) {
+                $q->whereNotNull('converted_at')
+                    ->orWhere('inquiry_status', 'won');
+            })
             ->count();
 
         // Calculate conversion rates
@@ -735,21 +763,27 @@ class DashboardController extends Controller
 
         $request->validate([
             'dimension' => 'nullable|string|in:source,service,status',
+            'period' => 'nullable|integer|in:7,14,30,60,90',
         ]);
 
         $dimension = $request->input('dimension', 'source');
-        $cacheKey = "dashboard:lead_distribution:{$dimension}:".now()->format('Y-m-d');
+        $period = $request->input('period');
+        $cacheKey = "dashboard:lead_distribution:{$dimension}:{$period}:".now()->format('Y-m-d');
 
-        $data = $this->cacheService->remember($cacheKey, function () use ($dimension) {
-            return $this->getLeadDistributionData($dimension);
+        $data = $this->cacheService->remember($cacheKey, function () use ($dimension, $period) {
+            return $this->getLeadDistributionData($dimension, $period);
         }, self::CACHE_TTL);
 
         return response()->json($data);
     }
 
-    protected function getLeadDistributionData(string $dimension): array
+    protected function getLeadDistributionData(string $dimension, ?int $period = null): array
     {
         $query = Lead::query();
+
+        if ($period) {
+            $query->where('created_at', '>=', Carbon::now()->subDays($period));
+        }
 
         $distribution = match ($dimension) {
             'source' => $query->with('source:id,name')
@@ -914,7 +948,7 @@ class DashboardController extends Controller
             ->map(function ($leads, $serviceId) {
                 $service = $leads->first()->service;
                 $totalLeads = $leads->count();
-                $convertedLeads = $leads->where('inquiry_status', 'converted')->count();
+                $convertedLeads = $leads->where('inquiry_status', 'won')->count();
                 $conversionRate = $totalLeads > 0 ? ($convertedLeads / $totalLeads) * 100 : 0;
 
                 return [
@@ -1488,12 +1522,11 @@ class DashboardController extends Controller
                     ->value('avg') ?? 0,
             ],
             [
-                'stage' => 'Qualified → Converted',
+                'stage' => 'Qualified → Won',
                 'avg_days' => Lead::where('inquiry_status', 'won')
-                    ->whereNotNull('converted_at')
                     ->whereNotNull('qualified_at')
                     ->where('created_at', '>=', $startDate)
-                    ->selectRaw('AVG(EXTRACT(EPOCH FROM (converted_at - qualified_at))/(24*3600)) as avg')
+                    ->selectRaw('AVG(EXTRACT(EPOCH FROM (COALESCE(converted_at, updated_at) - qualified_at))/(24*3600)) as avg')
                     ->value('avg') ?? 0,
             ],
         ];
@@ -1511,9 +1544,8 @@ class DashboardController extends Controller
             ->count();
 
         $avgLifecycleDays = Lead::where('inquiry_status', 'won')
-            ->whereNotNull('converted_at')
             ->where('created_at', '>=', $startDate)
-            ->selectRaw('AVG(EXTRACT(EPOCH FROM (converted_at - created_at))/(24*3600)) as avg_days')
+            ->selectRaw('AVG(EXTRACT(EPOCH FROM (COALESCE(converted_at, updated_at) - created_at))/(24*3600)) as avg_days')
             ->value('avg_days');
 
         $velocity = $convertedLeads > 0 && $avgLifecycleDays > 0
@@ -1547,5 +1579,159 @@ class DashboardController extends Controller
         } else {
             return 'low';
         }
+    }
+
+    public function quarterlyPerformanceTrends(Request $request): JsonResponse
+    {
+        if (! (new DashboardPolicy)->viewDashboard($request->user())) {
+            abort(403, 'Unauthorized to view dashboard');
+        }
+
+        $request->validate([
+            'quarters' => 'nullable|integer|min:2|max:8',
+        ]);
+
+        $quarters = $request->input('quarters', 4);
+        $cacheKey = "dashboard:quarterly_performance_trends:{$quarters}:".now()->format('Y-m-d');
+
+        $data = $this->cacheService->remember($cacheKey, function () use ($quarters) {
+            return $this->getQuarterlyPerformanceTrendsData($quarters);
+        }, self::CACHE_TTL);
+
+        return response()->json($data);
+    }
+
+    /**
+     * @return array{trends: array, programs: string[]}
+     */
+    protected function getQuarterlyPerformanceTrendsData(int $quarters): array
+    {
+        $trends = [];
+        $programNames = [];
+
+        // Get child service IDs under CBI Programs and RBI Programs
+        $cbiRbiParentIds = Service::whereIn('name', ['CBI Programs', 'RBI Programs'])
+            ->pluck('id');
+        $childServiceIds = Service::whereIn('parent_id', $cbiRbiParentIds)
+            ->pluck('id');
+        // Include parent IDs too (leads can point directly to the parent)
+        $allServiceIds = $childServiceIds->merge($cbiRbiParentIds);
+
+        for ($i = $quarters - 1; $i >= 0; $i--) {
+            $quarterStart = Carbon::now()->subQuarters($i)->startOfQuarter();
+            $quarterEnd = Carbon::now()->subQuarters($i)->endOfQuarter();
+            $label = 'Q'.$quarterStart->quarter.' '.$quarterStart->year;
+
+            // Overall stats for this quarter
+            $totalLeads = Lead::whereBetween('created_at', [$quarterStart, $quarterEnd])->count();
+            $wonLeads = Lead::where('inquiry_status', 'won')
+                ->whereBetween('created_at', [$quarterStart, $quarterEnd])
+                ->count();
+            $conversionRate = $totalLeads > 0 ? round(($wonLeads / $totalLeads) * 100, 2) : 0;
+
+            // Per child-service breakdown
+            $programData = Lead::selectRaw('
+                    services.name as program_name,
+                    COUNT(leads.id) as total_leads,
+                    SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END) as won_leads
+                ')
+                ->join('services', 'leads.service_id', '=', 'services.id')
+                ->whereIn('services.id', $allServiceIds)
+                ->whereBetween('leads.created_at', [$quarterStart, $quarterEnd])
+                ->groupBy('services.name')
+                ->get();
+
+            $quarterEntry = [
+                'quarter' => $label,
+                'total_leads' => $totalLeads,
+                'won_leads' => $wonLeads,
+                'conversion_rate' => $conversionRate,
+            ];
+
+            foreach ($programData as $program) {
+                $name = $program->program_name;
+                $programNames[] = $name;
+                $quarterEntry['programs'][$name] = [
+                    'total_leads' => (int) $program->total_leads,
+                    'won_leads' => (int) $program->won_leads,
+                    'conversion_rate' => $program->total_leads > 0
+                        ? round(($program->won_leads / $program->total_leads) * 100, 2)
+                        : 0,
+                ];
+            }
+
+            $trends[] = $quarterEntry;
+        }
+
+        return [
+            'trends' => $trends,
+            'programs' => array_values(array_unique($programNames)),
+        ];
+    }
+
+    /**
+     * Ad source won-leads time series — monthly breakdown per lead source.
+     */
+    public function adSourceTimeSeries(Request $request): JsonResponse
+    {
+        if (! (new DashboardPolicy)->viewDashboard($request->user())) {
+            abort(403, 'Unauthorized to view dashboard');
+        }
+
+        $request->validate([
+            'months' => 'nullable|integer|min:3|max:12',
+        ]);
+
+        $months = $request->input('months', 6);
+        $cacheKey = "dashboard:ad_source_time_series:{$months}:".now()->format('Y-m-d');
+
+        $data = $this->cacheService->remember($cacheKey, function () use ($months) {
+            return $this->getAdSourceTimeSeriesData($months);
+        }, self::CACHE_TTL);
+
+        return response()->json($data);
+    }
+
+    /**
+     * @return array{series: array, sources: string[]}
+     */
+    protected function getAdSourceTimeSeriesData(int $months): array
+    {
+        $series = [];
+        $sourceNames = [];
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthStart = Carbon::now()->subMonths($i)->startOfMonth();
+            $monthEnd = Carbon::now()->subMonths($i)->endOfMonth();
+            $label = $monthStart->format('M Y');
+
+            $sourceData = Lead::selectRaw('
+                    lead_sources.name as source_name,
+                    COUNT(leads.id) as total_leads,
+                    SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END) as won_leads
+                ')
+                ->join('lead_sources', 'leads.lead_source_id', '=', 'lead_sources.id')
+                ->whereBetween('leads.created_at', [$monthStart, $monthEnd])
+                ->groupBy('lead_sources.name')
+                ->get();
+
+            $entry = ['month' => $label];
+
+            foreach ($sourceData as $source) {
+                $name = $source->source_name;
+                $sourceNames[] = $name;
+                $entry['sources'][$name] = [
+                    'total_leads' => (int) $source->total_leads,
+                    'won_leads' => (int) $source->won_leads,
+                ];
+            }
+
+            $series[] = $entry;
+        }
+
+        return [
+            'series' => $series,
+            'sources' => array_values(array_unique($sourceNames)),
+        ];
     }
 }

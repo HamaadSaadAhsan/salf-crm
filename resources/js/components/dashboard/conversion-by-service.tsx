@@ -134,13 +134,16 @@ export function ConversionByService() {
                             <ChartTooltip
                                 content={
                                     <ChartTooltipContent
+                                        className="p-3"
                                         labelFormatter={(value) => `Service: ${value}`}
-                                        formatter={(value: number, name, props) => [
-                                            <>
-                                                {value.toFixed(1)}% ({props.payload.converted_leads}/{props.payload.total_leads} leads)
-                                            </>,
-                                            'Conversion Rate',
-                                        ]}
+                                        formatter={(value: number, _name, props) => (
+                                            <div className="flex w-full items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">Conversion Rate</span>
+                                                <span className="font-mono font-medium tabular-nums">
+                                                    {value.toFixed(1)}% ({props.payload.converted_leads}/{props.payload.total_leads} leads)
+                                                </span>
+                                            </div>
+                                        )}
                                     />
                                 }
                             />

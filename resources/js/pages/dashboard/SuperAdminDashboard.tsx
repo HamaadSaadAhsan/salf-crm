@@ -2,13 +2,16 @@ import { DashboardOverview, useDailyMetrics, useSystemAdoption } from '@/hooks/u
 import { StatMetricCard } from '@/components/dashboard/StatMetricCard';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProgramSalesCard } from '@/components/dashboard/ProgramSalesCard';
-import { RevenuePipeline } from '@/components/dashboard/revenue-pipeline';
+import { AdSourcesChart } from '@/components/dashboard/ad-sources-chart';
 import { LeadLifecycleFunnel } from '@/components/dashboard/lead-lifecycle-funnel';
-import { ActivityHeatmap } from '@/components/dashboard/activity-heatmap';
+
 import { ExportButton } from '@/components/dashboard/export-button';
+import { AdSourceConversions } from '@/components/dashboard/ad-source-conversions';
+import { ProgramWonDistribution } from '@/components/dashboard/program-won-distribution';
+import { QuarterlyPerformanceTrends } from '@/components/dashboard/quarterly-performance-trends';
 import { LeadSourcePerformance } from '@/components/dashboard/lead-source-performance';
 import { ProgramPerformance } from '@/components/dashboard/program-performance';
-import { TaskCompletionAnalysis } from '@/components/dashboard/task-completion-analysis';
+
 import { LeadLifecycleAnalysis } from '@/components/dashboard/lead-lifecycle-analysis';
 import { formatNumber, formatPercent } from '@/lib/dashboard-utils';
 import { CHART_COLORS, CHART_PRESETS } from '@/lib/dashboard-colors';
@@ -59,6 +62,14 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
         new: metric.new_leads_today || 0,
     })) || [];
 
+    const totalLeadsSparkData = dailyMetrics?.map((metric: any) => ({
+        value: metric.total_leads || 0,
+    })) || [];
+
+    const avgLeadScoreSparkData = dailyMetrics?.map((metric: any) => ({
+        value: Number(metric.lead_conversion_score) || 0,
+    })) || [];
+
     const conversionChartConfig = {
         rate: {
             label: 'Conversion Rate (%)',
@@ -95,12 +106,18 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     positive={(kpis.leads_delta || 0) >= 0}
                     isLoading={isLoading}
                     icon={Users}
+                    iconColor="text-blue-600 dark:text-blue-400"
+                    sparkData={totalLeadsSparkData.length > 1 ? totalLeadsSparkData : undefined}
+                    sparkColor="hsl(217, 91%, 60%)"
                 />
                 <StatMetricCard
                     title="Avg Lead Score"
                     value={kpis.avg_lead_score ?? 0}
                     isLoading={isLoading}
                     icon={Target}
+                    iconColor="text-emerald-600 dark:text-emerald-400"
+                    sparkData={avgLeadScoreSparkData.length > 1 ? avgLeadScoreSparkData : undefined}
+                    sparkColor="hsl(142, 71%, 45%)"
                 />
                 <ProgramSalesCard
                     programSales={kpis.program_sales}
@@ -195,7 +212,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                         <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                                         <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                        <ChartTooltip content={<ChartTooltipContent className="p-3" />} />
                                         <Area
                                             type="monotone"
                                             dataKey="new"
@@ -241,7 +258,21 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                         <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                                         <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                        <ChartTooltip
+                                            content={
+                                                <ChartTooltipContent
+                                                    className="p-3"
+                                                    formatter={(value) => (
+                                                        <div className="flex w-full items-center justify-between gap-4">
+                                                            <span className="text-muted-foreground">Conversion Rate</span>
+                                                            <span className="font-mono font-medium tabular-nums">
+                                                                {Number(value).toFixed(1)}%
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                />
+                                            }
+                                        />
                                         <Line
                                             type="monotone"
                                             dataKey="rate"
@@ -261,11 +292,20 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     </Card>
                 </div>
 
-                {/* Revenue Pipeline + Lifecycle Funnel */}
+                {/* Ad Sources + Lifecycle Funnel */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <RevenuePipeline />
+                    <AdSourcesChart />
                     <LeadLifecycleFunnel />
                 </div>
+
+                {/* Ad Source Conversions + Program Won Distribution */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <AdSourceConversions />
+                    <ProgramWonDistribution />
+                </div>
+
+                {/* Quarterly Performance Trends */}
+                <QuarterlyPerformanceTrends />
 
                 {/* Lead Source Performance + Program Performance */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -274,17 +314,8 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 </div>
             </div>
 
-            {/* ===== Section 3: Activity & Tasks ===== */}
-            <div className="space-y-6">
-                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Activity & Tasks</h2>
-
-                <ActivityHeatmap />
-
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <TaskCompletionAnalysis />
-                    <LeadLifecycleAnalysis />
-                </div>
-            </div>
+            {/* ===== Section 3: Lifecycle Analysis ===== */}
+            <LeadLifecycleAnalysis />
         </div>
     );
 }

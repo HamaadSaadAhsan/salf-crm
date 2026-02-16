@@ -191,6 +191,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/program-performance', [DashboardController::class, 'programPerformance'])->name('dashboard.program-performance');
         Route::get('/task-completion-analysis', [DashboardController::class, 'taskCompletionAnalysis'])->name('dashboard.task-completion-analysis');
         Route::get('/lead-lifecycle-analysis', [DashboardController::class, 'leadLifecycleAnalysis'])->name('dashboard.lead-lifecycle-analysis');
+        Route::get('/quarterly-performance-trends', [DashboardController::class, 'quarterlyPerformanceTrends'])->name('dashboard.quarterly-performance-trends');
+        Route::get('/ad-source-time-series', [DashboardController::class, 'adSourceTimeSeries'])->name('dashboard.ad-source-time-series');
     });
 
     Route::prefix('api/metrics')->middleware('role_or_permission:super-admin|view analytics')->group(function () {

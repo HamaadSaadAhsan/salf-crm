@@ -83,8 +83,8 @@ export function LeadLifecycleAnalysis() {
 
     const getSeverityBadge = (severity: string) => {
         if (severity === 'critical') return <Badge variant="destructive">Critical</Badge>;
-        if (severity === 'high') return <Badge variant="default" className="bg-orange-500">High</Badge>;
-        if (severity === 'medium') return <Badge variant="default" className="bg-yellow-500">Medium</Badge>;
+        if (severity === 'high') return <Badge className="bg-orange-500">High</Badge>;
+        if (severity === 'medium') return <Badge className="bg-yellow-500">Medium</Badge>;
         return <Badge variant="secondary">Low</Badge>;
     };
 
@@ -102,7 +102,7 @@ export function LeadLifecycleAnalysis() {
         const stageMap: Record<string, string> = {
             'New → Contacted': '#3b82f6',
             'Contacted → Qualified': '#10b981',
-            'Qualified → Converted': '#f59e0b',
+            'Qualified → Won': '#f59e0b',
         };
         return stageMap[stage] || '#6b7280';
     };
@@ -174,7 +174,7 @@ export function LeadLifecycleAnalysis() {
                 {/* Stage Duration Chart */}
                 <div className="mb-6">
                     <h4 className="text-sm font-semibold mb-3">Average Stage Duration</h4>
-                    <ChartContainer config={chartConfig} className="h-[300px]">
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stageDurationData}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -188,11 +188,16 @@ export function LeadLifecycleAnalysis() {
                                 <ChartTooltip
                                     content={
                                         <ChartTooltipContent
+                                            className="p-3"
                                             labelFormatter={(value) => `Stage: ${value}`}
-                                            formatter={(value: number) => [
-                                                `${value.toFixed(1)} days`,
-                                                'Average Duration',
-                                            ]}
+                                            formatter={(value: any) => (
+                                                <div className="flex w-full items-center justify-between gap-4">
+                                                    <span className="text-muted-foreground">Average Duration</span>
+                                                    <span className="font-mono font-medium tabular-nums">
+                                                        {value.toFixed(1)} days
+                                                    </span>
+                                                </div>
+                                            )}
                                         />
                                     }
                                 />

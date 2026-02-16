@@ -101,7 +101,7 @@ class LeadResource extends JsonResource
                         'name' => $task->assignedTo->name,
                         'email' => $task->assignedTo->email,
                     ] : null,
-                    'created_at' => $task->created_at->toISOString(),
+                    'created_at' => $task->created_at?->toISOString(),
                 ];
             }),
 

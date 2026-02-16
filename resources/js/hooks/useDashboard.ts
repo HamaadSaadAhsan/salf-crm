@@ -270,12 +270,12 @@ export interface LeadDistributionData {
     dimension: string;
 }
 
-export function useLeadDistribution(dimension: 'source' | 'service' | 'status' = 'source') {
+export function useLeadDistribution(dimension: 'source' | 'service' | 'status' = 'source', period?: number) {
     return useQuery<LeadDistributionData>({
-        queryKey: ['dashboard', 'lead-distribution', dimension],
+        queryKey: ['dashboard', 'lead-distribution', dimension, period],
         queryFn: async () => {
             const response = await axios.get('/api/dashboard/lead-distribution', {
-                params: { dimension },
+                params: { dimension, period },
             });
             return response.data;
         },
@@ -521,6 +521,64 @@ export function useLeadLifecycleAnalysis(period: 7 | 14 | 30 | 60 | 90 | 180 = 9
         queryFn: async () => {
             const response = await axios.get('/api/dashboard/lead-lifecycle-analysis', {
                 params: { period },
+            });
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
+export interface QuarterlyPerformanceTrendsData {
+    trends: Array<{
+        quarter: string;
+        total_leads: number;
+        won_leads: number;
+        conversion_rate: number;
+        programs?: Record<
+            string,
+            {
+                total_leads: number;
+                won_leads: number;
+                conversion_rate: number;
+            }
+        >;
+    }>;
+    programs: string[];
+}
+
+export function useQuarterlyPerformanceTrends(quarters: number = 4) {
+    return useQuery<QuarterlyPerformanceTrendsData>({
+        queryKey: ['dashboard', 'quarterly-performance-trends', quarters],
+        queryFn: async () => {
+            const response = await axios.get('/api/dashboard/quarterly-performance-trends', {
+                params: { quarters },
+            });
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
+export interface AdSourceTimeSeriesData {
+    series: Array<{
+        month: string;
+        sources?: Record<
+            string,
+            {
+                total_leads: number;
+                won_leads: number;
+            }
+        >;
+    }>;
+    sources: string[];
+}
+
+export function useAdSourceTimeSeries(months: number = 6) {
+    return useQuery<AdSourceTimeSeriesData>({
+        queryKey: ['dashboard', 'ad-source-time-series', months],
+        queryFn: async () => {
+            const response = await axios.get('/api/dashboard/ad-source-time-series', {
+                params: { months },
             });
             return response.data;
         },

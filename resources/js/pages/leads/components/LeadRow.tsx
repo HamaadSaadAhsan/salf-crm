@@ -1,36 +1,30 @@
-import { LeadTag } from '@/components/tag-selector';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { Lead } from '@/types/lead';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Lead, LeadStatus } from '@/types/lead';
 import { IconBrandFacebook, IconBrandGoogle, IconBrandLinkedin } from '@tabler/icons-react';
 import {
     Activity,
-    Archive,
-    ChevronDownCircleIcon,
-    ChevronRightCircleIcon,
-    ChevronUpCircleIcon,
-    CircleArrowOutUpRightIcon,
-    Clock,
+    CalendarClock,
+    DollarSign,
     FlameIcon,
     Globe,
     HelpCircle,
+    ListTodo,
     Mail,
     Mailbox,
-    MessageSquare,
-    MoreHorizontal,
-    Paperclip,
+    MapPin,
     Phone,
+    PhoneMissed,
+    RefreshCw,
     Search,
-    Star,
-    Trash2,
+    User,
     UserPlus,
 } from 'lucide-react';
 import React, { memo, useCallback, useMemo } from 'react';
 import type { ListChildComponentProps } from 'react-window';
 
-// Icon mapping for better performance - computed once
+// Source icon mapping
 const SOURCE_ICONS = {
     'cold-call': Phone,
     'direct-mail': Mailbox,
@@ -55,21 +49,31 @@ const SOURCE_ICON_COLORS = {
     'website-contact-form': 'text-cyan-500',
 } as const;
 
-const PRIORITY_ICONS = {
-    urgent: CircleArrowOutUpRightIcon,
-    high: ChevronUpCircleIcon,
-    medium: ChevronRightCircleIcon,
-    low: ChevronDownCircleIcon,
+// Priority bars configuration: 1 bar = low, 2 = medium, 3 = high, 4 = urgent
+const PRIORITY_BAR_CONFIG = {
+    low: { bars: 1, color: 'bg-cyan-400', label: 'Low' },
+    medium: { bars: 2, color: 'bg-green-500', label: 'Medium' },
+    high: { bars: 3, color: 'bg-orange-500', label: 'High' },
+    urgent: { bars: 4, color: 'bg-red-500', label: 'Urgent' },
 } as const;
 
-const PRIORITY_COLORS = {
-    urgent: 'text-red-500',
-    high: 'text-orange-500',
-    medium: 'text-green-500',
-    low: 'text-cyan-400',
-} as const;
+// Status badge configuration
+type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive';
 
-// Helper to extract source data from either format
+const STATUS_CONFIG: Record<LeadStatus, { label: string; variant: BadgeVariant; appearance: 'light' | 'outline' }> = {
+    new: { label: 'New', variant: 'primary', appearance: 'light' },
+    contacted: { label: 'Contacted', variant: 'info', appearance: 'light' },
+    qualified: { label: 'Qualified', variant: 'success', appearance: 'light' },
+    assigned_to_advisor: { label: 'With Advisor', variant: 'primary', appearance: 'outline' },
+    requalify: { label: 'Requalify', variant: 'warning', appearance: 'light' },
+    proposal: { label: 'Proposal', variant: 'info', appearance: 'outline' },
+    won: { label: 'Won', variant: 'success', appearance: 'outline' },
+    lost: { label: 'Lost', variant: 'destructive', appearance: 'light' },
+    nurturing: { label: 'Nurturing', variant: 'secondary', appearance: 'light' },
+    converted: { label: 'Converted', variant: 'success', appearance: 'light' },
+};
+
+// Helper to extract source data
 function getSourceData(source?: { data?: { slug: string; name: string } } | { slug: string; name: string }) {
     if (!source) return null;
     if ('data' in source) return source.data || null;
@@ -77,7 +81,29 @@ function getSourceData(source?: { data?: { slug: string; name: string } } | { sl
     return null;
 }
 
-// Memoized source icon component
+// Priority bars component (1-4 bars)
+const PriorityBars = memo(({ priority }: { priority?: string }) => {
+    if (!priority) return <span className="inline-flex h-4 w-[18px]" />;
+    const config = PRIORITY_BAR_CONFIG[priority as keyof typeof PRIORITY_BAR_CONFIG];
+    if (!config) return <span className="inline-flex h-4 w-[18px]" />;
+
+    return (
+        <div className="flex items-end gap-[2px]" style={{ height: '16px' }}>
+            {[1, 2, 3, 4].map((bar) => (
+                <div
+                    key={bar}
+                    className={`w-[3px] rounded-sm transition-colors ${
+                        bar <= config.bars ? config.color : 'bg-muted-foreground/20'
+                    }`}
+                    style={{ height: `${bar * 3 + 2}px` }}
+                />
+            ))}
+        </div>
+    );
+});
+PriorityBars.displayName = 'PriorityBars';
+
+// Source icon component
 const SourceIcon = memo(({ source }: { source?: { data?: { slug: string; name: string } } | { slug: string; name: string } }) => {
     const sourceData = getSourceData(source);
     const IconComponent = sourceData?.slug ? SOURCE_ICONS[sourceData.slug as keyof typeof SOURCE_ICONS] : null;
@@ -91,191 +117,64 @@ const SourceIcon = memo(({ source }: { source?: { data?: { slug: string; name: s
 });
 SourceIcon.displayName = 'SourceIcon';
 
-// Memoized priority icon component
-const PriorityIcon = memo(({ priority }: { priority?: string }) => {
-    if (!priority) return null;
-
-    const IconComponent = PRIORITY_ICONS[priority as keyof typeof PRIORITY_ICONS];
-    const colorClass = PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS];
-
-    if (!IconComponent) return null;
+// Status badge component
+const StatusBadge = memo(({ status, isRequalified }: { status: LeadStatus; isRequalified?: boolean }) => {
+    const config = STATUS_CONFIG[status];
+    if (!config) return null;
 
     return (
-        <div className="flex items-center-safe gap-1">
-            <IconComponent size={16} className={colorClass} />
+        <div className="flex items-center gap-1">
+            <Badge variant={config.variant} appearance={config.appearance} size="xs">
+                {status === 'requalify' && <RefreshCw className="h-2.5 w-2.5" />}
+                {config.label}
+            </Badge>
+            {isRequalified && status !== 'requalify' && (
+                <Badge variant="warning" appearance="light" size="xs">
+                    <RefreshCw className="h-2.5 w-2.5" />
+                </Badge>
+            )}
         </div>
     );
 });
-PriorityIcon.displayName = 'PriorityIcon';
+StatusBadge.displayName = 'StatusBadge';
 
-// Memoized star button component
-const StarButton = memo(({ isHotLead, onToggleStar }: { isHotLead: boolean; onToggleStar: (e: React.MouseEvent) => void }) => {
-    const starClass = useMemo(
-        () => `h-4 w-4 transition-colors duration-75 ${isHotLead ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`,
-        [isHotLead],
-    );
-
-    return (
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleStar}
-            className="cursor-pointer rounded-full transition-colors duration-75"
-            aria-label={isHotLead ? 'Remove from hot leads' : 'Add to hot leads'}
-        >
-            <Star className={starClass} />
-        </Button>
-    );
-});
-StarButton.displayName = 'StarButton';
-
-// Memoized labels component
-const LeadLabels = memo(({ hasAttachment, labels }: { hasAttachment: boolean | undefined; labels?: LeadTag[] }) => {
-    if (!hasAttachment && (!labels || labels.length === 0)) {
-        return null;
-    }
-
-    return (
-        <div className="flex items-center gap-2">
-            {hasAttachment && <Paperclip className="h-4 w-4" />}
-            {labels &&
-                labels.map((tag, idx) => (
-                    <Badge key={idx} variant="outline" className="border-dashed">
-                        {tag.label}
-                    </Badge>
-                ))}
-        </div>
-    );
-});
-LeadLabels.displayName = 'LeadLabels';
-
-// Memoized hover actions component
-const HoverActions = memo(() => {
-    const actions = useMemo(
-        () => [
-            { Icon: Phone, label: 'Call' },
-            { Icon: Archive, label: 'Archive' },
-            { Icon: Trash2, label: 'Delete' },
-            { Icon: Clock, label: 'Snooze' },
-            { Icon: MoreHorizontal, label: 'More options' },
-        ],
-        [],
-    );
-
-    return (
-        <div className="absolute top-1/2 right-0 z-50 flex -translate-y-1/2 gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 shadow-lg dark:bg-gray-900">
-            {actions.map(({ Icon, label }, index) => (
-                <Tooltip key={index}>
-                    <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" aria-label={label} className="h-8 w-8 hover:bg-muted dark:hover:bg-gray-800">
-                            <Icon className="h-4 w-4" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" align="center" className="z-50" sideOffset={5}>
-                        <p>{label}</p>
-                    </TooltipContent>
-                </Tooltip>
-            ))}
-        </div>
-    );
-});
-HoverActions.displayName = 'HoverActions';
-
-// Loading skeleton component
+// Loading skeleton
 const LoadingSkeleton = memo(({ style }: { style: React.CSSProperties }) => (
     <div
         style={style}
-        className="grid grid-cols-[28px_28px_28px_1fr_1fr] items-center border-b px-4 py-3 md:grid-cols-[28px_28px_28px_28px_160px_1fr_auto_auto_60px_auto_auto]"
+        className="flex items-center gap-2 border-b px-3 py-1.5"
     >
-        <div className="animate-pulse space-y-1">
-            {/* Checkbox */}
-            <div className="h-4 w-4 rounded bg-primary-foreground"></div>
+        <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-[18px] animate-pulse rounded bg-muted" />
+        <div className="flex-1 space-y-1.5">
+            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-48 animate-pulse rounded bg-muted" />
         </div>
-        <div className="animate-pulse space-y-1">
-            {/* Star */}
-            <div className="h-4 w-4 rounded bg-primary-foreground"></div>
-        </div>
-        <div className="animate-pulse space-y-1">
-            {/* Priority */}
-            <div className="h-4 w-4 rounded bg-primary-foreground"></div>
-        </div>
-        {/* Source - hidden on mobile */}
-        <div className="hidden animate-pulse space-y-1 md:block">
-            <div className="h-4 w-4 rounded bg-primary-foreground"></div>
-        </div>
-        <div className="animate-pulse space-y-1">
-            {/* Name */}
-            <div className="h-4 w-20 rounded bg-primary-foreground md:w-32"></div>
-        </div>
-        <div className="animate-pulse space-y-1">
-            {/* Details */}
-            <div className="h-4 w-16 rounded bg-primary-foreground md:w-full"></div>
-        </div>
-        {/* Service - hidden on mobile */}
-        <div className="hidden animate-pulse space-y-1 md:block">
-            <div className="h-4 w-16 rounded bg-primary-foreground"></div>
-        </div>
-        {/* Labels - hidden on mobile */}
-        <div className="hidden animate-pulse space-y-1 md:block">
-            <div className="h-4 w-12 rounded bg-primary-foreground"></div>
-        </div>
-        {/* Message count - hidden on mobile */}
-        <div className="hidden animate-pulse space-y-1 md:block">
-            <div className="h-4 w-8 rounded bg-primary-foreground"></div>
-        </div>
-        {/* Time - hidden on mobile */}
-        <div className="hidden animate-pulse space-y-1 md:block">
-            <div className="h-4 w-16 rounded bg-primary-foreground"></div>
-        </div>
+        <div className="h-5 w-16 animate-pulse rounded bg-muted" />
+        <div className="hidden h-4 w-20 animate-pulse rounded bg-muted lg:block" />
     </div>
 ));
 LoadingSkeleton.displayName = 'LoadingSkeleton';
 
-// Main lead row component - heavily optimized
+// Main lead row component
 const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
-    const { leads, selectedLeads, hoveredLead, onSelectLead, onHoverLead, onToggleStar, onLeadClick } = data;
-
-    // Get the lead (might be undefined)
+    const { leads, selectedLeads, onSelectLead, onLeadClick } = data;
     const lead = leads[index] as Lead | undefined;
 
-    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    // Memoized computed values (with fallbacks for undefined lead)
     const isSelected = useMemo(() => (lead ? selectedLeads.has(lead.id) : false), [selectedLeads, lead?.id]);
-    const isHovered = useMemo(() => (lead ? hoveredLead === lead.id : false), [hoveredLead, lead?.id]);
-    const isUnread = useMemo(() => (lead ? lead.last_activity_at === null : false), [lead?.last_activity_at]);
 
-    // Memoized row classes for performance with responsive grid
     const rowClasses = useMemo(() => {
-        const baseClasses =
-            'grid items-center px-4 py-1 border-b cursor-pointer duration-75 transition-all hover:shadow-md relative ' +
-            // Mobile/tablet: checkbox, star, priority, name, description
-            'grid-cols-[28px_28px_28px_1fr_1fr] md:grid-cols-[28px_28px_28px_28px_160px_1fr_auto_auto_60px_auto_auto]';
-
-        let classes = baseClasses;
-        if (isUnread) classes += ' font-semibold';
-        if (isSelected) classes += ' bg-[#c2dbff] dark:bg-[#003569] border-none';
-        else if (isHovered)
-            classes +=
-                ' bg-gray-50 dark:bg-black/80 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.06)] dark:shadow-[inset_0_2px_4px_0_rgba(255,255,255,0.06)]';
-
+        let classes =
+            'flex items-center gap-2 border-b px-3 py-1.5 cursor-pointer transition-colors duration-75 hover:bg-muted/50';
+        if (isSelected) classes += ' bg-[#c2dbff] dark:bg-[#003569]';
         return classes;
-    }, [isSelected, isHovered, isUnread]);
+    }, [isSelected]);
 
-    // Optimized event handlers (with null checks)
     const handleClick = useCallback(
         (e: React.MouseEvent) => {
             if (!lead) return;
-
-            // Prevent event if clicking on interactive elements
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) {
-                return;
-            }
-
             const target = e.target as HTMLElement;
-            if (target.closest('button') || target.closest('input')) {
-                return;
-            }
-
+            if (target.closest('button') || target.closest('input')) return;
             if (onLeadClick) {
                 onLeadClick(lead.id);
             } else {
@@ -285,75 +184,64 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
         [onSelectLead, onLeadClick, lead],
     );
 
-    const handleMouseEnter = useCallback(() => {
-        if (lead) {
-            onHoverLead(lead.id);
-        }
-    }, [onHoverLead, lead]);
-
-    const handleMouseLeave = useCallback(() => {
-        onHoverLead(null);
-    }, [onHoverLead]);
-
-    const handleStarClick = useCallback(
-        (e: React.MouseEvent) => {
-            if (!lead) return;
-
-            e.stopPropagation();
-            e.preventDefault();
-            onToggleStar(lead.id);
-        },
-        [onToggleStar, lead],
-    );
-
-    // Handle checkbox change - use the correct event type and prop
     const handleCheckboxChange = useCallback(
-        (checked: boolean | 'indeterminate') => {
-            if (lead) {
-                onSelectLead(lead.id);
-            }
+        (_checked: boolean | 'indeterminate') => {
+            if (lead) onSelectLead(lead.id);
         },
         [onSelectLead, lead],
     );
 
-    // Handle checkbox click to prevent row click
     const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
     }, []);
 
-    // NOW we can do conditional returns after all hooks are called
     if (!lead) {
         return <LoadingSkeleton style={style} />;
     }
+
+    const serviceName = lead.service?.data?.name;
+    const serviceHierarchy = lead.service?.data?.full_hierarchy || serviceName;
+    const country = lead.country;
+    const isRequalified = !!lead.requalified_from_advisor_id;
+    const sourceData = getSourceData(lead.source);
+    const activities = lead.activities?.data || [];
+    const activityCount = activities.length;
+    const callActivities = activities.filter((a) => a.type === 'call');
+    const totalCalls = callActivities.length;
+    const missedCalls = callActivities.filter((a) => a.status === 'no_answer' || a.status === 'busy').length;
+    const pendingTasks = lead.tasks?.data?.filter((t) => t.status?.value === 'pending' || t.status?.value === 'in_progress') || [];
+    const pendingTaskCount = pendingTasks.length;
+    const hasDueTask = pendingTasks.some((t) => !!t.due_at);
+    const hasOverdueTask = pendingTasks.some((t) => t.is_overdue);
+    const hasFollowUp = !!lead.next_follow_up_at;
+    const assignedUser = lead.assigned_to?.data;
 
     return (
         <div
             style={style}
             className={rowClasses}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             onClick={handleClick}
             role="row"
             aria-selected={isSelected}
             tabIndex={0}
         >
             {/* Checkbox */}
-            <div className="flex items-center justify-center" role="gridcell">
+            <div className="shrink-0">
                 <Checkbox
                     checked={isSelected}
                     onCheckedChange={handleCheckboxChange}
                     onClick={handleCheckboxClick}
-                    aria-label={`Select lead ${lead.name}`}
+                    aria-label={`Select ${lead.name}`}
                 />
             </div>
 
-            {/* Priority */}
-            <div className="flex items-center justify-center" role="gridcell">
+            {/* Priority Bars */}
+            <div className="shrink-0">
                 {lead.priority ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex">
-                                <PriorityIcon priority={lead.priority} />
+                                <PriorityBars priority={lead.priority} />
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="capitalize">
@@ -361,89 +249,193 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                         </TooltipContent>
                     </Tooltip>
                 ) : (
-                    <PriorityIcon priority={lead.priority} />
+                    <PriorityBars />
                 )}
             </div>
 
-            {/* Star */}
-            <div className="flex items-center justify-center" role="gridcell">
-                <StarButton isHotLead={lead.is_hot_lead} onToggleStar={handleStarClick} />
-            </div>
-
-            {/* Source Icon - Hidden on mobile/tablet */}
-            <div className="hidden items-center justify-center md:flex" role="gridcell">
-                {(() => {
-                    const sourceData = getSourceData(lead.source);
-                    if (sourceData?.name) {
-                        return (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="inline-flex">
-                                        <SourceIcon source={lead.source} />
-                                    </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">{sourceData.name}</TooltipContent>
-                            </Tooltip>
-                        );
-                    }
-                    return <SourceIcon source={lead.source} />;
-                })()}
-            </div>
-
-            {/* Name */}
-            <div className="flex items-center gap-1 overflow-hidden pr-2 text-sm text-ellipsis whitespace-nowrap md:pr-4" role="gridcell">
-                <span className="truncate">{lead.name}</span>
-                {lead.is_hot_lead && <FlameIcon className="flex-shrink-0 text-orange-400" size={16} />}
-            </div>
-
-            {/* Details */}
-            <div className="flex min-w-0 overflow-hidden text-sm text-ellipsis whitespace-nowrap" role="gridcell">
-                <span className="truncate font-medium text-gray-600 dark:text-gray-300">{lead.detail}</span>
-            </div>
-
-            {/* Service - Hidden on mobile/tablet */}
-            <div
-                className="hidden min-w-0 items-center-safe justify-start overflow-hidden px-2 text-left text-sm text-ellipsis whitespace-nowrap md:flex"
-                role="gridcell"
-            >
-                {lead.service?.data?.name ? (
+            {/* Source Icon - desktop only */}
+            <div className="hidden shrink-0 md:flex">
+                {sourceData?.name ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="truncate text-gray-600 dark:text-gray-400">
-                                {lead.service.data.full_hierarchy || lead.service.data.name}
+                            <span className="inline-flex">
+                                <SourceIcon source={lead.source} />
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{sourceData.name}</TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <SourceIcon source={lead.source} />
+                )}
+            </div>
+
+            {/* Name + Detail column — constrained width on desktop */}
+            <div className="min-w-0 flex-1 md:max-w-[220px] lg:max-w-[260px] xl:max-w-[280px]">
+                <div className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium">{lead.name}</span>
+                    {lead.is_hot_lead && <FlameIcon className="shrink-0 text-orange-400" size={14} />}
+                    {hasFollowUp && (
+                        <Badge variant="warning" appearance="light" size="xs" className="shrink-0">
+                            <CalendarClock className="h-2.5 w-2.5" />
+                            Follow-up
+                        </Badge>
+                    )}
+                    {hasDueTask && !hasFollowUp && (
+                        <Badge variant={hasOverdueTask ? 'destructive' : 'info'} appearance="light" size="xs" className="shrink-0">
+                            <ListTodo className="h-2.5 w-2.5" />
+                            {hasOverdueTask ? 'Overdue' : 'Due Task'}
+                        </Badge>
+                    )}
+                </div>
+                {/* Second line: detail (+ service on mobile) */}
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {lead.detail && (
+                        <span className="truncate">{lead.detail}</span>
+                    )}
+                    {serviceName && (
+                        <span className="flex shrink-0 items-center gap-1 md:hidden">
+                            {lead.detail && <span className="text-muted-foreground/50">·</span>}
+                            <span className="truncate font-medium">{serviceName}</span>
+                            {lead.formatted_budget && (
+                                <>
+                                    <span className="text-muted-foreground/50">·</span>
+                                    <span>{lead.formatted_budget}</span>
+                                </>
+                            )}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Desktop: Service + Budget column — takes remaining space */}
+            <div className="hidden min-w-0 flex-1 md:block">
+                {serviceName ? (
+                    <div>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="truncate text-sm text-muted-foreground">
+                                    {serviceHierarchy}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                {serviceHierarchy}
+                            </TooltipContent>
+                        </Tooltip>
+                        {lead.formatted_budget && (
+                            <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground/70">
+                                <DollarSign size={10} />
+                                <span>{lead.formatted_budget}</span>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <span className="text-sm text-muted-foreground/50">--</span>
+                )}
+            </div>
+
+            {/* Call stats — xl only */}
+            <div className="hidden shrink-0 items-center gap-2.5 xl:flex" style={{ minWidth: '80px' }}>
+                {totalCalls > 0 ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                                <Phone size={12} />
+                                {totalCalls}
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">
-                            {lead.service.data.full_hierarchy || lead.service.data.name}
+                            {totalCalls} {totalCalls === 1 ? 'call' : 'calls'}
                         </TooltipContent>
                     </Tooltip>
                 ) : (
-                    <span className="text-gray-600 dark:text-gray-400">-</span>
+                    <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/40">
+                        <Phone size={12} />
+                        0
+                    </span>
+                )}
+                {missedCalls > 0 && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-xs text-red-500">
+                                <PhoneMissed size={12} />
+                                {missedCalls}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            {missedCalls} missed {missedCalls === 1 ? 'call' : 'calls'}
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
 
-            {/* Labels and Attachments - Hidden on mobile/tablet */}
-            <div className="hidden items-center gap-2 px-4 md:flex" role="gridcell">
-                <LeadLabels hasAttachment={lead.has_attachment} labels={lead.tags} />
+            {/* Metadata indicators - desktop only */}
+            <div className="hidden shrink-0 items-center gap-1.5 md:flex">
+                {/* Activity count */}
+                {activityCount > 0 && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                                <Activity size={12} />
+                                {activityCount}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            {activityCount} {activityCount === 1 ? 'activity' : 'activities'}
+                            {lead.last_activity_at && <div className="text-xs opacity-75">{lead.last_activity_at}</div>}
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                {/* Pending tasks */}
+                {pendingTaskCount > 0 && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-xs text-orange-500">
+                                <ListTodo size={12} />
+                                {pendingTaskCount}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            {pendingTaskCount} pending {pendingTaskCount === 1 ? 'task' : 'tasks'}
+                        </TooltipContent>
+                    </Tooltip>
+                )}
             </div>
 
-            {/* Activity Count - Hidden on mobile/tablet */}
-            <div className="hidden items-center justify-center gap-1 md:flex" role="gridcell">
-                <Activity className="text-gray-500" size={14} />
-                <span className="text-xs text-gray-500">{lead.activities?.data?.length || 0}</span>
-            </div>
-
-            {/* Time - Hidden on mobile/tablet */}
-            <div className="hidden text-right text-xs text-gray-500 md:block" role="gridcell">
-                {lead.created_at}
-            </div>
-
-            {/* Hover Actions - Hidden on mobile for a better touch experience */}
-            {isHovered && (
-                <div className="hidden md:block">
-                    <HoverActions />
+            {/* Assigned user — xl only */}
+            {assignedUser && (
+                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '90px' }}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <User size={12} />
+                                <span className="max-w-[70px] truncate">{assignedUser.name.split(' ')[0]}</span>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{assignedUser.name}</TooltipContent>
+                    </Tooltip>
                 </div>
             )}
+
+            {/* Status badge - always visible */}
+            <div className="shrink-0">
+                <StatusBadge
+                    status={lead.inquiry_status}
+                    isRequalified={isRequalified}
+                />
+            </div>
+
+            {/* Country - desktop only */}
+            {country && (
+                <div className="hidden shrink-0 items-center gap-1 lg:flex">
+                    <MapPin size={12} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{country}</span>
+                </div>
+            )}
+
+            {/* Created date - desktop only */}
+            <div className="hidden shrink-0 text-right text-xs text-muted-foreground lg:block" style={{ minWidth: '70px' }}>
+                {lead.created_at}
+            </div>
         </div>
     );
 });

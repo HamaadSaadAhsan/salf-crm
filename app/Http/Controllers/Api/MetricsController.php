@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DailyMetric;
 use App\Models\DepartmentHandoffMetric;
+use App\Models\Lead;
 use App\Models\LeadConversionMetric;
 use App\Models\SystemAdoptionMetric;
 use App\Models\UserPerformanceSnapshot;
@@ -12,6 +13,7 @@ use App\Policies\DashboardPolicy;
 use App\Services\BusinessPerformanceMetricsService;
 use App\Services\CacheService;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -185,11 +187,50 @@ class MetricsController extends Controller
         $cacheKey = "metrics:daily:{$startDate}:{$endDate}";
 
         $data = $this->cacheService->remember($cacheKey, function () use ($startDate, $endDate) {
-            return DailyMetric::whereBetween('metric_date', [$startDate, $endDate])
+            $metrics = DailyMetric::whereBetween('metric_date', [$startDate, $endDate])
                 ->orderBy('metric_date')
                 ->get();
+
+            // Fallback: compute on-the-fly when DailyMetric table is empty
+            if ($metrics->isEmpty()) {
+                return $this->computeDailyMetricsFallback($startDate, $endDate);
+            }
+
+            return $metrics;
         }, self::CACHE_TTL);
 
         return response()->json($data);
+    }
+
+    /**
+     * Compute daily metrics on-the-fly when no pre-calculated data exists.
+     */
+    protected function computeDailyMetricsFallback(string $startDate, string $endDate): array
+    {
+        $period = CarbonPeriod::create($startDate, $endDate);
+        $metrics = [];
+
+        foreach ($period as $date) {
+            $dateStr = $date->toDateString();
+            $totalLeads = Lead::whereDate('created_at', '<=', $dateStr)->count();
+            $newLeadsToday = Lead::whereDate('created_at', $dateStr)->count();
+            $wonLeads = Lead::where('inquiry_status', 'won')
+                ->whereDate('created_at', '<=', $dateStr)
+                ->count();
+            $conversionRate = $totalLeads > 0 ? round(($wonLeads / $totalLeads) * 100, 2) : 0;
+
+            $metrics[] = [
+                'metric_date' => $dateStr,
+                'total_leads' => $totalLeads,
+                'new_leads_today' => $newLeadsToday,
+                'overall_conversion_rate' => $conversionRate,
+                'qualified_leads' => Lead::whereNotNull('qualified_at')
+                    ->whereDate('qualified_at', '<=', $dateStr)
+                    ->count(),
+                'converted_leads' => $wonLeads,
+            ];
+        }
+
+        return $metrics;
     }
 }

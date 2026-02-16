@@ -199,6 +199,12 @@ class LeadController extends Controller
                     ->latest()
                     ->limit(5);
             },
+            'tasks' => function ($query) {
+                $query->select('id', 'taskable_type', 'taskable_id', 'title', 'description', 'status', 'priority', 'type', 'due_at', 'completed_at', 'assigned_to_id', 'created_at', 'updated_at')
+                    ->whereIn('status', [TaskStatus::PENDING, TaskStatus::IN_PROGRESS])
+                    ->orderBy('due_at')
+                    ->limit(5);
+            },
         ])
             ->whereIn('id', $leadIds)
             ->get()
@@ -447,6 +453,12 @@ class LeadController extends Controller
                 'activities' => function ($query) {
                     $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'subject', 'created_at', 'description', 'attachments')
                         ->latest()
+                        ->limit(5);
+                },
+                'tasks' => function ($query) {
+                    $query->select('id', 'taskable_type', 'taskable_id', 'title', 'description', 'status', 'priority', 'type', 'due_at', 'completed_at', 'assigned_to_id', 'created_at', 'updated_at')
+                        ->whereIn('status', [TaskStatus::PENDING, TaskStatus::IN_PROGRESS])
+                        ->orderBy('due_at')
                         ->limit(5);
                 },
             ])
@@ -1007,6 +1019,7 @@ class LeadController extends Controller
 
             if ($newStage === 'won') {
                 $lead->inquiry_status = 'won';
+                $lead->converted_at = now();
             }
 
             if ($newStage === 'lost') {

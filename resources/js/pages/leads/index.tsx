@@ -1,22 +1,13 @@
 import {
-    Archive,
-    CheckCheck,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    Clock,
     CommandIcon,
     Filter,
-    Folder,
-    Info,
-    Mail,
-    MoreVertical,
     Plus,
     RefreshCw,
     Search,
     Settings,
-    Tag,
-    Trash2,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -30,30 +21,23 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FollowUpBanner } from '@/components/follow-up-banner';
 import { useLeadFilters, type LeadFilters } from '@/hooks/useLeadFilters';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
-import type { Lead, LeadActivity } from '@/types/lead';
+import type { Lead } from '@/types/lead';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { AnimatePresence } from 'motion/react';
-import { formatDistanceToNow, parseISO } from 'date-fns';
 import OptimizedLeadRow from './components/LeadRow';
 import LeadFilterBar from './components/LeadFilterBar';
+import LeadQuickViewSheet from './components/LeadQuickViewSheet';
 import { NewLeadSheet } from './components/NewLeadSheet';
 import SavedFiltersDialog from './components/SavedFiltersDialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
-    {
-        title: 'Leads',
-        href: '/leads',
-    },
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Leads', href: '/leads' },
 ];
 
 interface PendingDueTask {
@@ -67,7 +51,6 @@ interface PendingDueTask {
     lead_name: string | null;
 }
 
-// Inertia page props interface
 interface LeadsPageProps {
     leads: Lead[] | { data: Lead[] };
     data?: Lead[];
@@ -84,7 +67,7 @@ interface LeadsPageProps {
     pendingDueTasks?: PendingDueTask[];
 }
 
-// Simple selection management
+// Selection management
 const useSelection = () => {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
@@ -121,55 +104,7 @@ const useSelection = () => {
     };
 };
 
-// Memoized action buttons to prevent re-renders
-const ActionButtons = React.memo(({ selectedCount, onRefresh, onMarkAllAsRead }: { selectedCount: number; onRefresh: () => void; onMarkAllAsRead: () => void }) => {
-    const handleRefreshClick = useCallback(
-        (e: React.MouseEvent) => {
-            e.preventDefault();
-            onRefresh();
-        },
-        [onRefresh],
-    );
-
-    if (selectedCount > 0) {
-        return (
-            <div className="flex items-center gap-1">
-                {[Archive, Info, Trash2, Mail, Clock, Folder, Tag, MoreVertical].map((Icon, i) => (
-                    <Button variant="ghost" key={i} size="icon" className="h-8 w-8 cursor-pointer">
-                        <Icon className="h-4 w-4" />
-                    </Button>
-                ))}
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handleRefreshClick} className="rounded transition-colors duration-75">
-                <RefreshCw className="h-4 w-4" />
-            </Button>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={onMarkAllAsRead}>
-                        <CheckCheck className="h-4 w-4 mr-2" />
-                        Mark all as read
-                    </DropdownMenuItem>
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground select-none">
-                        Select leads to see more actions
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-    );
-});
-ActionButtons.displayName = 'ActionButtons';
-
-// Memoized pagination controls
+// Pagination controls
 const ALL_PAGE_SIZES = [25, 50, 100, 200];
 
 const PaginationControls = React.memo(({ meta, onPagination, onPageSizeChange }: { meta: LeadsPageProps['meta']; onPagination: (direction: string) => void; onPageSizeChange: (size: number) => void }) => {
@@ -178,7 +113,6 @@ const PaginationControls = React.memo(({ meta, onPagination, onPageSizeChange }:
 
     const formatNumber = (num: number) => num.toLocaleString();
 
-    // Only show page sizes that make sense given the total
     const pageSizes = useMemo(() => {
         const total = meta.total || 0;
         const sizes = ALL_PAGE_SIZES.filter((size, i) => {
@@ -228,7 +162,7 @@ const PaginationControls = React.memo(({ meta, onPagination, onPageSizeChange }:
 });
 PaginationControls.displayName = 'PaginationControls';
 
-// Memoized search input
+// Search input
 const SearchInput = React.memo(
     ({
         searchInput,
@@ -283,12 +217,10 @@ const SearchInput = React.memo(
 );
 SearchInput.displayName = 'SearchInput';
 
-// Main leads interface using Inertia
+// Main leads interface
 export default function LeadsInterface() {
-
     const pageProps = usePage<LeadsPageProps & Record<string, unknown>>().props;
 
-    // Handle both direct array and nested data structure
     const leads = useMemo(
         () => (Array.isArray(pageProps.leads) ? pageProps.leads : pageProps.leads?.data || pageProps.data || []),
         [pageProps.leads, pageProps.data],
@@ -308,7 +240,6 @@ export default function LeadsInterface() {
         [pageProps.meta],
     );
 
-    // Use centralized filter management
     const {
         filters,
         searchInput,
@@ -326,55 +257,12 @@ export default function LeadsInterface() {
     const [isNewLeadSheetOpen, setIsNewLeadSheetOpen] = useState(false);
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [showFilterBar, setShowFilterBar] = useState(true);
+    const [quickViewLead, setQuickViewLead] = useState<Lead | null>(null);
 
     const pendingDueTasks = pageProps.pendingDueTasks || [];
 
-    // Calculate most recent activity from all leads
-    const lastActivity = useMemo<{ text: string; activity: LeadActivity | null }>(() => {
-        if (!Array.isArray(leads) || leads.length === 0) {
-            return { text: 'No recent activity', activity: null };
-        }
-
-        let mostRecentActivity: LeadActivity | null = null;
-        let mostRecentTime: Date | null = null;
-        const now = new Date();
-
-        for (const lead of leads) {
-            const activities = lead.activities?.data || [];
-
-            for (const activity of activities) {
-                try {
-                    const activityTime = parseISO(activity.created_at);
-
-                    if (activityTime <= now) {
-                        if (!mostRecentTime || activityTime > mostRecentTime) {
-                            mostRecentTime = activityTime;
-                            mostRecentActivity = activity;
-                        }
-                    }
-                } catch {
-                    continue;
-                }
-            }
-        }
-
-        if (!mostRecentActivity || !mostRecentTime) {
-            return { text: 'No recent activity', activity: null };
-        }
-
-        try {
-            const text = formatDistanceToNow(mostRecentTime, { addSuffix: true });
-            return { text, activity: mostRecentActivity };
-        } catch {
-            return { text: 'No recent activity', activity: null };
-        }
-    }, [leads]);
-
     // Selection management
     const { selectedItems, toggleItem, toggleAll, clearSelection, selectedCount } = useSelection();
-
-    // Hover state
-    const [hoveredLead, setHoveredLead] = useState<string | null>(null);
 
     // Detect Mac
     useEffect(() => {
@@ -386,14 +274,6 @@ export default function LeadsInterface() {
             toggleAll(leads);
         }
     }, [toggleAll, leads]);
-
-    const handleHover = useCallback((leadId: string | null) => {
-        setHoveredLead(leadId);
-    }, []);
-
-    const handleToggleStar = useCallback((leadId: string) => {
-        console.log('Toggle star for:', leadId);
-    }, []);
 
     const handlePagination = useCallback(
         (direction: string) => {
@@ -414,15 +294,9 @@ export default function LeadsInterface() {
     );
 
     const handleRefresh = useCallback(() => {
-        router.reload({
-            only: ['leads', 'meta'],
-        });
+        router.reload({ only: ['leads', 'meta'] });
         clearSelection();
     }, [clearSelection]);
-
-    const handleMarkAllAsRead = useCallback(() => {
-        console.log('Mark all as read');
-    }, []);
 
     const handlePageSizeChange = useCallback(
         (size: number) => {
@@ -432,8 +306,11 @@ export default function LeadsInterface() {
     );
 
     const handleLeadClick = useCallback((leadId: string) => {
-        router.visit(`/leads/${leadId}`);
-    }, []);
+        const lead = Array.isArray(leads) ? leads.find((l) => l.id === leadId) : undefined;
+        if (lead) {
+            setQuickViewLead(lead);
+        }
+    }, [leads]);
 
     const handleApplyPreset = useCallback(
         (presetFilters: LeadFilters) => {
@@ -463,7 +340,7 @@ export default function LeadsInterface() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Leads" />
             <div className="flex flex-col font-sans">
-                {/* Lead Grid Header */}
+                {/* Header */}
                 <header className="flex h-16 items-center border-b bg-background px-4">
                     <SearchInput searchInput={searchInput} onSearchChange={setSearchInput} isMac={isMac} inputRef={searchInputRef} />
                     <div className="ml-4 flex items-center gap-2">
@@ -519,7 +396,6 @@ export default function LeadsInterface() {
                 </AnimatePresence>
 
                 <div className="flex flex-1">
-                    {/* Main Content */}
                     <div className="flex-1 p-4">
                         {/* Follow-up Banner */}
                         <Deferred data="pendingDueTasks" fallback={null}>
@@ -533,16 +409,19 @@ export default function LeadsInterface() {
                         <div className="flex flex-col rounded-lg border bg-background shadow-sm">
                             {/* Toolbar */}
                             <div className="flex items-center justify-between border-b px-4 py-2">
-                                <div className="flex items-center">
-                                    <div className="mr-2 flex items-center">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center">
                                         <Checkbox checked={selectAllChecked} onCheckedChange={handleSelectAll} />
                                         <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
                                             <ChevronDown className="h-3 w-3" />
                                         </Button>
-                                        {selectedCount > 0 && <span className="ml-2 text-sm">{selectedCount} selected</span>}
                                     </div>
-
-                                    <ActionButtons selectedCount={selectedCount} onRefresh={handleRefresh} onMarkAllAsRead={handleMarkAllAsRead} />
+                                    {selectedCount > 0 && (
+                                        <span className="text-sm text-muted-foreground">{selectedCount} selected</span>
+                                    )}
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh}>
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
                                 </div>
 
                                 <PaginationControls meta={meta} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
@@ -550,87 +429,50 @@ export default function LeadsInterface() {
 
                             {/* Leads List */}
                             <div>
-                                <div>
-                                    {!Array.isArray(leads) || leads.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                                            <Search className="mb-3 h-10 w-10 opacity-30" />
-                                            <span className="text-sm">
-                                                {!Array.isArray(leads) ? 'Loading...' : 'No leads found'}
-                                            </span>
-                                            {activeFilterCount > 0 && (
-                                                <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={clearAll}>
-                                                    Clear all filters
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {leads.map((lead: Lead, index: number) => (
-                                                <OptimizedLeadRow
-                                                    key={lead.id}
-                                                    index={index}
-                                                    data={{
-                                                        leads,
-                                                        selectedLeads: selectedItems,
-                                                        hoveredLead,
-                                                        onSelectLead: toggleItem,
-                                                        onHoverLead: handleHover,
-                                                        onToggleStar: handleToggleStar,
-                                                        onLeadClick: handleLeadClick,
-                                                    }}
-                                                    style={{}}
-                                                />
-                                            ))}
-                                        </>
-                                    )}
-                                </div>
+                                {!Array.isArray(leads) || leads.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                        <Search className="mb-3 h-10 w-10 opacity-30" />
+                                        <span className="text-sm">
+                                            {!Array.isArray(leads) ? 'Loading...' : 'No leads found'}
+                                        </span>
+                                        {activeFilterCount > 0 && (
+                                            <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={clearAll}>
+                                                Clear all filters
+                                            </Button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        {leads.map((lead: Lead, index: number) => (
+                                            <OptimizedLeadRow
+                                                key={lead.id}
+                                                index={index}
+                                                data={{
+                                                    leads,
+                                                    selectedLeads: selectedItems,
+                                                    onSelectLead: toggleItem,
+                                                    onLeadClick: handleLeadClick,
+                                                }}
+                                                style={{}}
+                                            />
+                                        ))}
+                                    </>
+                                )}
                             </div>
 
-                            {/* Status bar */}
-                            <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-4">
-                                    <span>Page size: {meta.per_page}</span>
-                                    {selectedCount > 0 && <span>{selectedCount} selected</span>}
-                                    {activeFilterCount > 0 && (
-                                        <span>{activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active</span>
-                                    )}
+                            {/* Bottom pagination */}
+                            {Array.isArray(leads) && leads.length > 0 && (
+                                <div className="flex items-center justify-between border-t px-4 py-2">
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span>{meta.total?.toLocaleString() || 0} leads</span>
+                                        {selectedCount > 0 && <span>{selectedCount} selected</span>}
+                                        {activeFilterCount > 0 && (
+                                            <span>{activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active</span>
+                                        )}
+                                    </div>
+                                    <PaginationControls meta={meta} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
                                 </div>
-                                <div className="flex items-center">
-                                    {lastActivity.activity ? (
-                                        <TooltipProvider delayDuration={300}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button type="button" className="cursor-help text-xs hover:underline">
-                                                        Last activity: {lastActivity.text}
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="top" className="max-w-xs z-50">
-                                                    <div className="space-y-1">
-                                                        <div className="font-semibold">{lastActivity.activity.subject}</div>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            Type: {lastActivity.activity.type}
-                                                        </div>
-                                                        {lastActivity.activity.description && (
-                                                            <div className="text-xs">{lastActivity.activity.description}</div>
-                                                        )}
-                                                        {lastActivity.activity.user && (
-                                                            <div className="text-xs text-muted-foreground">
-                                                                By: {'data' in lastActivity.activity.user && lastActivity.activity.user.data
-                                                                    ? lastActivity.activity.user.data.name
-                                                                    : 'name' in lastActivity.activity.user
-                                                                        ? lastActivity.activity.user.name
-                                                                        : 'Unknown'}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    ) : (
-                                        <span className="text-xs">Last activity: {lastActivity.text}</span>
-                                    )}
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -646,6 +488,12 @@ export default function LeadsInterface() {
                 onOpenChange={setIsSettingsDialogOpen}
                 currentFilters={filters}
                 onApplyPreset={handleApplyPreset}
+            />
+
+            <LeadQuickViewSheet
+                lead={quickViewLead}
+                open={!!quickViewLead}
+                onOpenChange={(isOpen) => { if (!isOpen) setQuickViewLead(null); }}
             />
         </AppLayout>
     );

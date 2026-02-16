@@ -92,9 +92,9 @@ export function LeadSourcePerformance() {
     }));
 
     const getQualityBadge = (score: number) => {
-        if (score >= 80) return <Badge variant="default" className="bg-green-500">Excellent</Badge>;
-        if (score >= 60) return <Badge variant="default" className="bg-blue-500">Good</Badge>;
-        if (score >= 40) return <Badge variant="default" className="bg-orange-500">Fair</Badge>;
+        if (score >= 80) return <Badge className="bg-green-500">Excellent</Badge>;
+        if (score >= 60) return <Badge className="bg-blue-500">Good</Badge>;
+        if (score >= 40) return <Badge className="bg-orange-500">Fair</Badge>;
         return <Badge variant="destructive">Needs Attention</Badge>;
     };
 
@@ -138,7 +138,7 @@ export function LeadSourcePerformance() {
             </CardHeader>
             <CardContent className="p-6">
                 {/* Chart */}
-                <ChartContainer config={chartConfig} className="h-[350px]">
+                <ChartContainer config={chartConfig} className="h-[350px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" />
@@ -164,7 +164,7 @@ export function LeadSourcePerformance() {
                                 content={
                                     <ChartTooltipContent
                                         labelFormatter={(value) => `Source: ${value}`}
-                                        formatter={(value: number, name, props) => {
+                                        formatter={(value: any, name, props) => {
                                             if (name === 'conversion_rate') {
                                                 return [
                                                     <>

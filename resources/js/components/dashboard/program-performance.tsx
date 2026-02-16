@@ -99,9 +99,9 @@ export function ProgramPerformance() {
     }));
 
     const getPerformanceBadge = (rate: number) => {
-        if (rate >= 40) return <Badge variant="default" className="bg-green-500">Excellent</Badge>;
-        if (rate >= 25) return <Badge variant="default" className="bg-blue-500">Good</Badge>;
-        if (rate >= 15) return <Badge variant="default" className="bg-orange-500">Fair</Badge>;
+        if (rate >= 40) return <Badge className="bg-green-500">Excellent</Badge>;
+        if (rate >= 25) return <Badge className="bg-blue-500">Good</Badge>;
+        if (rate >= 15) return <Badge className="bg-orange-500">Fair</Badge>;
         return <Badge variant="destructive">Needs Improvement</Badge>;
     };
 
@@ -154,7 +154,7 @@ export function ProgramPerformance() {
                 {/* Conversion Rate Comparison Chart */}
                 <div className="mb-6">
                     <h4 className="text-sm font-semibold mb-3">Conversion Rate Comparison</h4>
-                    <ChartContainer config={chartConfig} className="h-[300px]">
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -172,7 +172,7 @@ export function ProgramPerformance() {
                                     content={
                                         <ChartTooltipContent
                                             labelFormatter={(value) => `Program: ${value}`}
-                                            formatter={(value: number, name, props) => {
+                                            formatter={(value: any, name, props) => {
                                                 if (name === 'conversion_rate') {
                                                     return [
                                                         <>
