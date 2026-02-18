@@ -445,9 +445,11 @@ export function useOptimisticLeadUpdate() {
                 });
             }
 
-            // Show error notification
+            // Show error notification with actual validation message
+            const axiosError = err as { response?: { data?: { message?: string } } };
+            const message = axiosError.response?.data?.message || err.message || 'Something went wrong while updating the lead.';
             toast.error('Failed to update lead', {
-                description: err.message || 'Something went wrong while updating the lead.',
+                description: message,
             });
         },
         onSuccess: (_data: unknown, variables: MutationVariables) => {
@@ -689,6 +691,36 @@ export function useBulkLeadOperations(): BulkOperationsResult {
     };
 }
 
+// CREATE COMMENT MUTATION
+export function useCreateComment(leadId: string | null) {
+    const apiClient = useApiClient();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (payload: { description: string; metadata?: { mentions?: Array<{ user_id: number; name: string }>; task_refs?: Array<{ task_id: string; title: string }> } }) => {
+            if (!leadId || !apiClient) throw new Error('Lead ID and API client required');
+
+            const response = await axios.post(`${apiClient.baseURL}/lead-activities`, {
+                lead_id: leadId,
+                type: 'comment',
+                description: payload.description,
+                metadata: payload.metadata,
+            });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-activities', 'comments', leadId] });
+            void queryClient.invalidateQueries({ queryKey: ['lead-activities', 'all', leadId] });
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error('Failed to post comment', {
+                description: axiosError.response?.data?.message || err.message,
+            });
+        },
+    });
+}
+
 // INFINITE LEAD ACTIVITIES HOOKS - SEPARATE FOR COMMENTS AND ALL ACTIVITIES
 export function useInfiniteLeadComments(leadId: string | null) {
     const apiClient = useApiClient();
@@ -705,7 +737,7 @@ export function useInfiniteLeadComments(leadId: string | null) {
                     lead_id: leadId,
                     page: pageParam,
                     per_page: 10,
-                    type: 'note',
+                    type: 'comment',
                 },
             });
             return response.data;
