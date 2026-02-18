@@ -36,3 +36,10 @@ Schedule::command('cache:warm-dashboards')
     ->name('warm-dashboard-caches')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Check for upcoming and overdue meeting reminders every 5 minutes
+Schedule::command('meetings:check-reminders')
+    ->everyFiveMinutes()
+    ->name('check-meeting-reminders')
+    ->withoutOverlapping()
+    ->runInBackground();

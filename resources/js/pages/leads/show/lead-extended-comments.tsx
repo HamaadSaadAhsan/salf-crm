@@ -509,8 +509,8 @@ export function LeadExtendedComments({ lead }: { lead: Lead }) {
                     position={popupPosition}
                 />
 
-                <div className="flex items-end gap-2">
-                    <Avatar className="mb-1 h-7 w-7 shrink-0">
+                <div className="flex items-start gap-2">
+                    <Avatar className=" h-7 w-7 shrink-0">
                         {auth.user.avatar && <AvatarImage src={auth.user.avatar} />}
                         <AvatarFallback className="bg-primary/10 text-xs">{getInitials(auth.user.name)}</AvatarFallback>
                     </Avatar>
@@ -531,21 +531,14 @@ export function LeadExtendedComments({ lead }: { lead: Lead }) {
                     </div>
                     <Button
                         size="icon"
-                        className="mb-0.5 h-8 w-8 shrink-0"
+                        className="h-8 w-8 shrink-0"
                         onClick={handleSubmit}
                         disabled={!text.trim() || createComment.isPending}
                     >
                         {createComment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                 </div>
-                <div className="mt-1.5 flex items-center gap-3 px-9 text-[11px] text-muted-foreground">
-                    <span>
-                        <kbd className="rounded border border-border px-1 py-0.5 text-[10px] font-mono">
-                            {navigator.platform?.includes('Mac') ? 'Cmd' : 'Ctrl'}+Enter
-                        </kbd>{' '}
-                        to send
-                    </span>
-                </div>
+
             </div>
         </div>
     );

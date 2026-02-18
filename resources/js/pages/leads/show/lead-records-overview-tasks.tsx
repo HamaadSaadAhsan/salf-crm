@@ -155,7 +155,7 @@ export function LeadRecordsOverviewTasks({
                     <Button
                         size="sm"
                         variant="ghost"
-                        className="text-semibold min-h-[44px] ps-1.5 text-sm hover:bg-accent [&:not(:hover)[data-state=open]]:bg-transparent"
+                        className="text-semibold ps-1.5 text-sm hover:bg-accent [&:not(:hover)[data-state=open]]:bg-transparent"
                     >
                         <ListTodo />
                         Tasks {pendingTasks.length > 0 && `(${pendingTasks.length})`}
@@ -168,7 +168,7 @@ export function LeadRecordsOverviewTasks({
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCompleted(!showCompleted)}
-                            className="min-h-[44px] text-xs"
+                            className="text-xs"
                         >
                             {showCompleted ? 'Hide' : 'Show'} completed ({completedTasks.length})
                         </Button>
@@ -176,7 +176,7 @@ export function LeadRecordsOverviewTasks({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" mode="icon" className="min-h-[44px] min-w-[44px]" onClick={handleAddTask}>
+                                <Button variant="ghost" size="sm" mode="icon"  onClick={handleAddTask}>
                                     <Plus />
                                 </Button>
                             </TooltipTrigger>
@@ -230,9 +230,18 @@ export function LeadRecordsOverviewTasks({
                                                 >
                                                     {task.title}
                                                 </span>
-                                                {task.is_completed && (
-                                                    <Badge variant="success" size="sm">
-                                                        Completed
+                                                {task.status && (
+                                                    <Badge
+                                                        variant={
+                                                            task.status.value === 'completed' ? 'success'
+                                                            : task.status.value === 'in_progress' ? 'info'
+                                                            : task.status.value === 'cancelled' ? 'destructive'
+                                                            : 'secondary'
+                                                        }
+                                                        appearance="light"
+                                                        size="sm"
+                                                    >
+                                                        {task.status.label}
                                                     </Badge>
                                                 )}
                                                 {task.is_overdue && (

@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { Activity, ChevronRight } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import { formatDistanceToNow, parseISO, isToday, isThisWeek, isThisMonth, isThisYear, format } from 'date-fns';
+import { formatDistanceToNow, parseISO, isToday, isThisWeek, isThisMonth, isThisYear, format, isTomorrow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -55,6 +56,17 @@ export function LeadRecordsOverviewActivity({
     const formatTimeAgo = (dateString: string) => {
         try {
             return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
+        } catch {
+            return dateString;
+        }
+    };
+
+    const formatScheduledDate = (dateString: string) => {
+        try {
+            const date = parseISO(dateString);
+            if (isToday(date)) return 'Today ' + format(date, 'h:mm a');
+            if (isTomorrow(date)) return 'Tomorrow ' + format(date, 'h:mm a');
+            return format(date, 'MMM d, h:mm a');
         } catch {
             return dateString;
         }
@@ -139,11 +151,11 @@ export function LeadRecordsOverviewActivity({
 
     return (
         <Collapsible
-            className="space-y-2 relative"
+            className="space-y-2"
             open={isActivityOpen}
             onOpenChange={setIsActivityOpen}
         >
-            <div className="flex items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <CollapsibleTrigger asChild>
                     <Button
                         size="sm"
@@ -152,15 +164,13 @@ export function LeadRecordsOverviewActivity({
                     >
                         <Activity />
                         Activity
-                        <ChevronRight className="[[data-state=open]_&]:rotate-90" />
+                        <ChevronRight className="in-data-[state=open]:rotate-90" />
                     </Button>
                 </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
                 <Tabs
                     value={timeFilter}
                     onValueChange={(value) => setTimeFilter(value as TimeFilter)}
-                    className="text-sm text-muted-foreground end-0 top-0 absolute z-1"
+                    className="text-sm text-muted-foreground"
                 >
                     <TabsList
                         variant="button"
@@ -173,6 +183,8 @@ export function LeadRecordsOverviewActivity({
                         <TabsTrigger value="year">Year</TabsTrigger>
                     </TabsList>
                 </Tabs>
+            </div>
+            <CollapsibleContent>
 
                 <Card className="shadow-none">
                     <CardContent className="space-y-3 p-3.5">
@@ -208,8 +220,8 @@ export function LeadRecordsOverviewActivity({
                                                 {visibleActivities.map((activity) => {
                                                     const user = getUserData(activity);
                                                     return (
-                                                        <li key={activity.id} className="flex items-center gap-1.5 text-sm">
-                                                            <Avatar className="size-6">
+                                                        <li key={activity.id} className="flex items-start gap-1.5 text-sm">
+                                                            <Avatar className="size-6 shrink-0 mt-0.5">
                                                                 {user?.avatar && (
                                                                     <AvatarImage
                                                                         src={user.avatar}
@@ -220,23 +232,27 @@ export function LeadRecordsOverviewActivity({
                                                                     {user ? getInitials(user.name) : '?'}
                                                                 </AvatarFallback>
                                                             </Avatar>
-                                                            <div className="flex items-center gap-1 min-w-0 flex-1">
-                                                                <Link href="#" className="font-medium hover:text-primary shrink-0">
-                                                                    {user?.name || 'Unknown'}
-                                                                </Link>
-                                                                <span className="text-muted-foreground shrink-0">
-                                                                    {getActivityAction(activity.type)}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                                                                    <Link href="#" className="font-medium hover:text-primary shrink-0">
+                                                                        {user?.name || 'Unknown'}
+                                                                    </Link>
+                                                                    <span className="text-muted-foreground shrink-0">
+                                                                        {getActivityAction(activity.type)}
+                                                                    </span>
+                                                                    <span className="font-medium truncate">
+                                                                        {activity.subject || activity.type}
+                                                                    </span>
+                                                                    {activity.type === 'meeting' && activity.scheduled_at && (
+                                                                        <Badge size="sm" variant="outline" className="shrink-0">
+                                                                            {formatScheduledDate(activity.scheduled_at)}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {formatTimeAgo(activity.created_at)}
                                                                 </span>
-                                                                <Link
-                                                                    href="#"
-                                                                    className="text-mono font-medium hover:text-primary truncate"
-                                                                >
-                                                                    {activity.subject || activity.type}
-                                                                </Link>
                                                             </div>
-                                                            <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
-                                                                {formatTimeAgo(activity.created_at)}
-                                                            </span>
                                                         </li>
                                                     );
                                                 })}

@@ -1,4 +1,4 @@
-import type { Lead } from '@/types/lead';
+import type { Lead, LeadActivity } from '@/types/lead';
 import { LeadRecordsOverviewActivity } from './lead-records-overview-activity';
 import { LeadRecordsOverviewHighlights } from './lead-records-overview-highlights';
 import { LeadRecordsOverviewNotes } from './lead-records-overview-notes';
@@ -26,7 +26,7 @@ export function LeadRecordsOverview({ lead, users = [], onViewAllActivity, onVie
     // CROs (support-agent) should not see advisor-related activities
     const isCRO = user?.roles?.some(role => role.name === 'support-agent' || role.name === 'senior-support-agent');
     const activities = isCRO
-        ? allActivities.filter(activity => activity.type !== 'assignment_change')
+        ? allActivities.filter((activity: LeadActivity) => activity.type !== 'assignment_change')
         : allActivities;
 
     const userRole = user?.roles?.[0]?.name as UserRole | undefined;

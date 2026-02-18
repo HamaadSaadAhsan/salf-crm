@@ -104,6 +104,29 @@ class LeadResource extends JsonResource
                     'created_at' => $task->created_at?->toISOString(),
                 ];
             }),
+            'next_meeting' => $this->whenLoaded('meetings', function () {
+                $meeting = $this->meetings
+                    ->whereIn('status', ['pending', 'overdue'])
+                    ->sortBy('scheduled_at')
+                    ->first();
+
+                if (! $meeting) {
+                    return null;
+                }
+
+                return [
+                    'id' => $meeting->id,
+                    'subject' => $meeting->subject,
+                    'scheduled_at' => $meeting->scheduled_at?->toISOString(),
+                    'due_at' => $meeting->due_at?->toISOString(),
+                    'duration_minutes' => $meeting->duration_minutes,
+                    'user' => $meeting->user ? [
+                        'id' => $meeting->user->id,
+                        'name' => $meeting->user->name,
+                        'email' => $meeting->user->email,
+                    ] : null,
+                ];
+            }),
 
             // URLs for frontend routing
             'urls' => [

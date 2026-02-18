@@ -6,7 +6,7 @@ import {
     Users,
 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
-import { toAbsoluteUrl } from '@/lib/helpers';
+import { getInitials, toAbsoluteUrl } from '@/lib/helpers';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,14 +35,6 @@ type TasksByDate = {
     lastWeek: Task[];
     older: Task[];
 };
-
-function getInitials(name: string) {
-    return name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase();
-}
 
 function isToday(date: Date): boolean {
     const today = new Date();
@@ -154,20 +146,42 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
         return (
             <div
                 key={task.id}
-                className={`flex items-center ps-6 py-1 gap-1 ${task.is_completed ? 'opacity-60' : ''}`}
+                className={`flex items-start gap-1.5 ps-2 sm:ps-6 py-1.5 cursor-pointer hover:bg-muted/50 rounded ${task.is_completed ? 'opacity-60' : ''}`}
+                onClick={() => {
+                    setSelectedTask(task);
+                    setShowTaskSheet(true);
+                }}
             >
-                <Checkbox
-                    size="sm"
-                    className="mt-[1px] me-1"
-                    checked={task.is_completed}
-                    onCheckedChange={() => handleToggleCompletion(task.id)}
-                />
-                <Link href="#" className="font-medium hover:text-primary">
-                    {task.created_by?.name || 'Team'}
-                </Link>
-                <span className="text-muted-foreground">{task.title}</span>
-                <div className="ms-auto flex items-center gap-2">
-                    {assignees.length > 1 ? (
+                <span onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
+                    <Checkbox
+                        size="sm"
+                        checked={task.is_completed}
+                        onCheckedChange={() => handleToggleCompletion(task.id)}
+                    />
+                </span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                        <Link href="#" className="font-medium hover:text-primary shrink-0">
+                            {task.created_by?.name || 'Team'}
+                        </Link>
+                        <span className="text-muted-foreground truncate">{task.title}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {task.status && (
+                            <Badge
+                                variant={
+                                    task.status.value === 'completed' ? 'success'
+                                    : task.status.value === 'in_progress' ? 'info'
+                                    : task.status.value === 'cancelled' ? 'destructive'
+                                    : 'secondary'
+                                }
+                                appearance="light"
+                                size="sm"
+                            >
+                                {task.status.label}
+                            </Badge>
+                        )}
+                        {assignees.length > 1 ? (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -237,18 +251,19 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
                             </Tooltip>
                         </TooltipProvider>
                     ) : null}
-                    {task.due_at_formatted && (
-                        <Badge
-                            variant={task.is_overdue ? 'destructive' : 'secondary'}
-                            appearance="light"
-                            size="sm"
-                        >
-                            <CalendarIcon
-                                className={`size-3.5 ${task.is_completed ? 'opacity-60' : ''}`}
-                            />
-                            {task.due_at_formatted}
-                        </Badge>
-                    )}
+                        {task.due_at_formatted && (
+                            <Badge
+                                variant={task.is_overdue ? 'destructive' : 'secondary'}
+                                appearance="light"
+                                size="sm"
+                            >
+                                <CalendarIcon
+                                    className={`size-3.5 ${task.is_completed ? 'opacity-60' : ''}`}
+                                />
+                                {task.due_at_formatted}
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             </div>
         );

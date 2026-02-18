@@ -1,6 +1,7 @@
 import { Activity } from 'lucide-react';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isTomorrow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
 type ActivityUser = {
@@ -27,6 +28,7 @@ export type ActivityItem = {
     description: string | null;
     user: ActivityUser;
     attachments?: ActivityAttachment[];
+    scheduled_at?: string;
     created_at: string;
 };
 
@@ -48,6 +50,17 @@ function formatFileSize(bytes: number): string {
 function formatMimeType(mimeType: string): string {
     const parts = mimeType.split('/');
     return parts[parts.length - 1].toUpperCase();
+}
+
+function formatScheduledDate(dateString: string): string {
+    try {
+        const date = parseISO(dateString);
+        if (isToday(date)) return 'Today ' + format(date, 'h:mm a');
+        if (isTomorrow(date)) return 'Tomorrow ' + format(date, 'h:mm a');
+        return format(date, 'MMM d, h:mm a');
+    } catch {
+        return dateString;
+    }
 }
 
 function getActivityDescription(activity: ActivityItem): string {
@@ -136,6 +149,11 @@ export function ActivityList({
                                                     <span className="font-medium truncate">
                                                         {activity.subject}
                                                     </span>
+                                                )}
+                                                {activity.type === 'meeting' && activity.scheduled_at && (
+                                                    <Badge size="sm" variant="outline" className="shrink-0">
+                                                        {formatScheduledDate(activity.scheduled_at)}
+                                                    </Badge>
                                                 )}
                                                 {activity.attachments && activity.attachments.length > 0 && (() => {
                                                     const attachment = activity.attachments[0];

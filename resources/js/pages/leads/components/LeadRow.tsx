@@ -394,8 +394,19 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                                 {pendingTaskCount}
                             </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top">
-                            {pendingTaskCount} pending {pendingTaskCount === 1 ? 'task' : 'tasks'}
+                        <TooltipContent side="top" className="max-w-[250px]">
+                            <div className="space-y-1">
+                                {pendingTasks.slice(0, 3).map((t) => (
+                                    <div key={t.id} className="flex items-center gap-1.5 text-xs">
+                                        <span className={`size-1.5 shrink-0 rounded-full ${t.status?.value === 'in_progress' ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                                        <span className="truncate">{t.title}</span>
+                                        <span className="shrink-0 opacity-70">{t.status?.label}</span>
+                                    </div>
+                                ))}
+                                {pendingTaskCount > 3 && (
+                                    <div className="text-xs opacity-70">+{pendingTaskCount - 3} more</div>
+                                )}
+                            </div>
                         </TooltipContent>
                     </Tooltip>
                 )}

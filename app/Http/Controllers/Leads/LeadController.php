@@ -816,6 +816,11 @@ class LeadController extends Controller
                                 ->orderBy('completed_at', 'desc')
                                 ->limit(10);
                         },
+                        'meetings' => function ($query) {
+                            $query->with('user:id,name,email')
+                                ->whereIn('status', ['pending', 'overdue'])
+                                ->orderBy('scheduled_at');
+                        },
                     ])->find($lead->id);
 
                 return (new LeadResource($leadData))->toArray(request());
@@ -1537,6 +1542,13 @@ class LeadController extends Controller
                                     ->whereNotNull('due_at')
                                     ->with(['assignedTo:id,name,email', 'createdBy:id,name,email'])
                                     ->orderBy('due_at')
+                                    ->limit(1);
+                            },
+                            'meetings' => function ($query) {
+                                $query->with('user:id,name,email')
+                                    ->where('status', 'pending')
+                                    ->where('scheduled_at', '>=', now())
+                                    ->orderBy('scheduled_at')
                                     ->limit(1);
                             },
                         ])->find($lead->id);
