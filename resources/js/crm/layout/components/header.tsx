@@ -4,6 +4,7 @@ import { HeaderBrand } from './header-brand';
 import { HeaderHelp } from './header-help';
 import { HeaderNew } from './header-new';
 import { HeaderNotifications } from './header-notifications';
+import { HeaderSearchTrigger } from './header-search-trigger';
 
 export function Header() {
     return (
@@ -12,7 +13,9 @@ export function Header() {
                 <div className="flex items-center gap-4">
                     <HeaderBrand />
                 </div>
-                <div className="flex items-center gap-2"></div>
+                <div className="flex items-center gap-2">
+                    <HeaderSearchTrigger />
+                </div>
                 <div className="flex items-center gap-2">
                     <HeaderNew />
                     <Separator orientation="vertical" className="mx-1 h-4 bg-zinc-600" />

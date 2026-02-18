@@ -87,3 +87,18 @@ export interface NavItem {
 
 export type NavConfig = NavItem[];
 
+export interface GlobalSearchResult {
+    id: string | number;
+    label: string;
+    meta?: string;
+    url: string;
+}
+
+export interface GlobalSearchResults {
+    leads: GlobalSearchResult[];
+    tasks: GlobalSearchResult[];
+    users: GlobalSearchResult[];
+    services: GlobalSearchResult[];
+    activities: GlobalSearchResult[];
+}
+

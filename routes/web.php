@@ -140,6 +140,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Mention Users (lightweight search for @mentions)
     Route::get('api/mention-users', MentionUserController::class)->name('api.mention-users');
 
+    // Global Search (command palette)
+    Route::get('api/global-search', \App\Http\Controllers\Api\GlobalSearchController::class)->name('api.global-search');
+
     // Tasks Management
     Route::resource('tasks', TaskController::class)->names('tasks');
 

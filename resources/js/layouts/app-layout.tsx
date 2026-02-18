@@ -5,6 +5,7 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type ReactNode, useMemo } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { CallContextComponent } from '@/providers/CallContextProvider';
+import { GlobalSearchProvider } from '@/providers/GlobalSearchProvider';
 import { usePage } from '@inertiajs/react';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
 import { useTaskReminderListener } from '@/hooks/useTaskReminderListener';
@@ -83,28 +84,30 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
     });
 
     return (
-        <LayoutProvider sidebarNavItems={filteredNav}>
-            <AsteriskWebSocketProvider>
-                <CallContextComponent user={auth.user}>
-                    {/* Impersonation Banner - shows when super admin is impersonating */}
-                    <ImpersonationBanner />
+        <GlobalSearchProvider>
+            <LayoutProvider sidebarNavItems={filteredNav}>
+                <AsteriskWebSocketProvider>
+                    <CallContextComponent user={auth.user}>
+                        {/* Impersonation Banner - shows when super admin is impersonating */}
+                        <ImpersonationBanner />
 
-                    <Layout breadcrumbs={breadcrumbs}>
-                        {children}
-                    </Layout>
+                        <Layout breadcrumbs={breadcrumbs}>
+                            {children}
+                        </Layout>
 
-                    {/* Inbound Call Manager - handles incoming calls */}
-                    <InboundCallManager />
+                        {/* Inbound Call Manager - handles incoming calls */}
+                        <InboundCallManager />
 
-                    {/* Outbound Call Manager - handles outgoing calls */}
-                    <OutboundCallManager />
-                </CallContextComponent>
-            </AsteriskWebSocketProvider>
-            <Toaster
-                richColors
-                position="bottom-right"
-                closeButton
-            />
-        </LayoutProvider>
+                        {/* Outbound Call Manager - handles outgoing calls */}
+                        <OutboundCallManager />
+                    </CallContextComponent>
+                </AsteriskWebSocketProvider>
+                <Toaster
+                    richColors
+                    position="bottom-right"
+                    closeButton
+                />
+            </LayoutProvider>
+        </GlobalSearchProvider>
     );
 };
