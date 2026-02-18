@@ -76,12 +76,18 @@ class LeadActivityNotification extends Notification implements ShouldQueue
             'created' => "New {$activityType} for {$this->lead->name}",
             'completed' => "{$activityType} completed for {$this->lead->name}",
             'overdue' => "{$activityType} is overdue for {$this->lead->name}",
+            'upcoming' => "{$activityType} starting soon for {$this->lead->name}",
+            'mentioned' => "You were mentioned in a comment on {$this->lead->name}",
             default => "{$activityType} updated for {$this->lead->name}",
         };
     }
 
     private function getMessage(): string
     {
+        if ($this->action === 'mentioned') {
+            return $this->activity->description ?? 'You were mentioned in a comment';
+        }
+
         return $this->activity->subject ?? $this->activity->description ?? '';
     }
 }
