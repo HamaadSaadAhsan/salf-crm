@@ -33,13 +33,22 @@ import { useState } from 'react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { useOutboundCalls } from '@/hooks/useOutboundCalls';
 import { usePage } from '@inertiajs/react';
-import { type SharedData } from '@/types';
+import { type SharedData, type User } from '@/types';
 import type { Lead } from '@/types/lead';
 import { toast } from 'sonner';
+import { NewNoteSheet } from './new-note-sheet';
+import { LeadTaskSheet } from '@/components/lead-task-sheet';
 
-export function PageHeader({ lead }: { lead: Lead }) {
+interface PageHeaderProps {
+    lead: Lead;
+    users?: User[];
+}
+
+export function PageHeader({ lead, users = [] }: PageHeaderProps) {
     const [isFavorite, setIsFavorite] = useState(false);
     const [isCalling, setIsCalling] = useState(false);
+    const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+    const [taskSheetOpen, setTaskSheetOpen] = useState(false);
     const { state, actions } = useAsteriskWebSocket();
     const { startOutboundCall } = useOutboundCalls();
     const { auth } = usePage<SharedData>().props;
@@ -194,22 +203,6 @@ export function PageHeader({ lead }: { lead: Lead }) {
                                 </TooltipContent>
                             </Tooltip>
                         )}
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                    <FilePlus className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>New note</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                    <SquareCheckBig className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>New task</TooltipContent>
-                        </Tooltip>
                     </div>
                 </TooltipProvider>
 
@@ -221,7 +214,16 @@ export function PageHeader({ lead }: { lead: Lead }) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[230px]">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
+                            <FilePlus className="h-4 w-4" />
+                            New Note
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
+                            <SquareCheckBig className="h-4 w-4" />
+                            New Task
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
                             <BarChart2 className="h-4 w-4" />
@@ -234,11 +236,6 @@ export function PageHeader({ lead }: { lead: Lead }) {
                         <DropdownMenuItem>
                             <Share className="h-4 w-4" />
                             Share Lead
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-muted-foreground">
-                            <Info className="h-4 w-4" />
-                            Learn more
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -289,11 +286,11 @@ export function PageHeader({ lead }: { lead: Lead }) {
                             />
                             {isFavorite ? 'Remove favorite' : 'Add to favorites'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
                             <FilePlus className="h-4 w-4" />
                             New note
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
                             <SquareCheckBig className="h-4 w-4" />
                             New task
                         </DropdownMenuItem>
@@ -314,6 +311,22 @@ export function PageHeader({ lead }: { lead: Lead }) {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            <NewNoteSheet
+                open={noteSheetOpen}
+                onOpenChange={setNoteSheetOpen}
+                leadId={lead.id}
+                onSuccess={() => setNoteSheetOpen(false)}
+            />
+
+            <LeadTaskSheet
+                open={taskSheetOpen}
+                onOpenChange={setTaskSheetOpen}
+                leadId={lead.id}
+                users={users}
+                currentUserId={auth.user.id}
+                userRole={auth.user.role as any}
+            />
         </div>
     );
 }

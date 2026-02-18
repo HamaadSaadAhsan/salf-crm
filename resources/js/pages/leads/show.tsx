@@ -22,7 +22,7 @@ export default function LeadShow({ lead, users = [] }: Props) {
             <Head title={`Lead - ${lead.name}`} />
 
             <div className="flex flex-col h-full">
-                <PageHeader lead={lead} />
+                <PageHeader lead={lead} users={users} />
                 <div className="flex-1 overflow-hidden">
                     <LeadComponent lead={lead} users={users} />
                 </div>
