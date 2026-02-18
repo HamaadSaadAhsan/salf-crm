@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useGlobalSearchContext } from '@/providers/GlobalSearchProvider';
 import { Search } from 'lucide-react';
 
@@ -18,5 +19,22 @@ export function HeaderSearchTrigger() {
                 {isMac ? '⌘K' : 'Ctrl+K'}
             </kbd>
         </button>
+    );
+}
+
+export function HeaderMobileSearchTrigger() {
+    const { openSearch } = useGlobalSearchContext();
+
+    return (
+        <Button
+            variant="ghost"
+            mode="icon"
+            size="md"
+            onClick={openSearch}
+            aria-label="Open global search"
+            className="sm:hidden text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+        >
+            <Search className="size-5" />
+        </Button>
     );
 }
