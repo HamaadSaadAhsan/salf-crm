@@ -52,8 +52,21 @@ class LeadController extends Controller
         $user = auth()->user();
         $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
         $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+        $subordinateRoleMap = [
+            'senior-support-agent' => 'support-agent',
+            'senior-sales-rep' => 'sales-rep',
+        ];
 
-        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
+        $isSeniorManaging = ! $user->hasAnyRole($adminRoles) && $user->hasPermissionTo('manage team agents');
+
+        if ($isSeniorManaging) {
+            $seniorRole = $user->getRoleNames()->first();
+            $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
+            $subordinateIds = $subordinateRole
+                ? \App\Models\User::role($subordinateRole)->pluck('id')->toArray()
+                : [];
+            $filters['assigned_to_in'] = array_unique(array_merge([$user->id], $subordinateIds));
+        } elseif ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
         }
 
@@ -526,6 +539,11 @@ class LeadController extends Controller
             $query->where('assigned_to', $filters['assigned_to']);
         }
 
+        // Assigned to multiple users filter (used by senior agents to see their team's leads)
+        if (! empty($filters['assigned_to_in'])) {
+            $query->whereIn('assigned_to', $filters['assigned_to_in']);
+        }
+
         // Source filter
         if (! empty($filters['source_id'])) {
             if (is_array($filters['source_id'])) {
@@ -753,9 +771,22 @@ class LeadController extends Controller
         $user = auth()->user();
         $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
         $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
+        $subordinateRoleMap = [
+            'senior-support-agent' => 'support-agent',
+            'senior-sales-rep' => 'sales-rep',
+        ];
 
         if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
-            if ($lead->assigned_to !== $user->id) {
+            $isSeniorManaging = $user->hasPermissionTo('manage team agents');
+
+            if ($isSeniorManaging) {
+                $seniorRole = $user->getRoleNames()->first();
+                $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
+                $assignee = $lead->assigned_to ? \App\Models\User::find($lead->assigned_to) : null;
+                $isOwn = $lead->assigned_to === $user->id;
+                $isTeamMember = $assignee && $subordinateRole && $assignee->hasRole($subordinateRole);
+                abort_unless($isOwn || $isTeamMember, 403, 'You are not authorized to view this lead.');
+            } elseif ($lead->assigned_to !== $user->id) {
                 abort(403, 'You are not authorized to view this lead.');
             }
         }
@@ -1095,7 +1126,29 @@ class LeadController extends Controller
         $user = $request->user();
         $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
         $adminRoles = ['super-admin', 'admin', 'manager', 'team-lead'];
-        $isCRO = $user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles);
+        $subordinateRoleMap = [
+            'senior-support-agent' => 'support-agent',
+            'senior-sales-rep' => 'sales-rep',
+        ];
+
+        $isSeniorManaging = $user->hasAnyRole($restrictedRoles)
+            && ! $user->hasAnyRole($adminRoles)
+            && $user->hasPermissionTo('manage team agents');
+
+        $isCRO = ! $isSeniorManaging
+            && $user->hasAnyRole($restrictedRoles)
+            && ! $user->hasAnyRole($adminRoles);
+
+        // Senior managers can reassign leads belonging to their team members
+        if ($isSeniorManaging && $request->has('assigned_to')) {
+            $seniorRole = $user->getRoleNames()->first();
+            $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
+            $currentAssignee = $lead->assigned_to ? \App\Models\User::find($lead->assigned_to) : null;
+
+            if ($currentAssignee && ! ($subordinateRole && $currentAssignee->hasRole($subordinateRole))) {
+                abort(403, 'You can only reassign leads that belong to your team members.');
+            }
+        }
 
         // CROs cannot edit lead details when lead is assigned to an advisor
         if ($isCRO && $lead->inquiry_status === 'assigned_to_advisor') {

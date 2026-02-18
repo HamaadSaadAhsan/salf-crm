@@ -74,6 +74,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:super-admin')
         ->name('api.assignment-visualizer');
 
+    // Users Management — accessible by super-admin AND roles with manage team agents permission
+    Route::middleware('role_or_permission:super-admin|manage team agents')->group(function () {
+        Route::get('/users', [UserController::class, 'page'])->name('users.page');
+        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.detail');
+
+        Route::prefix('api')->group(function () {
+            Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
+            Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
+        });
+    });
+
     // Management Routes (Super Admin only)
     Route::middleware('role:super-admin')->group(function () {
         // Services/Programs Management (create, update, delete)
@@ -82,19 +93,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/services/{service}', [ServiceController::class, 'update']);
         Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
 
-        // Users Management Page
-        Route::get('/users', [UserController::class, 'page'])->name('users.page');
-        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.detail');
-
-        // Users API Resource
+        // Users API Resource (full CRUD — super-admin only)
         Route::prefix('api')->group(function () {
             Route::apiResource('users', UserController::class)->except(['create', 'edit'])->names('api.users');
             Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
-            Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
             Route::patch('users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.update-permissions');
-            Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
         });
 
         // Zones Management

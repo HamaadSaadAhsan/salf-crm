@@ -15,7 +15,7 @@ export function ImpersonationBanner() {
     };
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-950 py-2 px-4">
+        <div className="fixed top-0 left-0 right-0 z-[100] h-[var(--banner-height,40px)] flex items-center bg-amber-500 text-amber-950 px-4">
             <div className="container mx-auto flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <UserCog className="h-5 w-5" />

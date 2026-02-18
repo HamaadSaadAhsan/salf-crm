@@ -82,6 +82,7 @@ interface Props {
   roles: Role[];
   zones: Zone[];
   offices: Office[];
+  isSuperAdmin: boolean;
 }
 
 const profileSchema = z.object({
@@ -101,7 +102,7 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-export function UserProfileSection({ user, roles, zones, offices }: Props) {
+export function UserProfileSection({ user, roles, zones, offices, isSuperAdmin }: Props) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isZoneDialogOpen, setIsZoneDialogOpen] = useState(false);
   const [isOfficeDialogOpen, setIsOfficeDialogOpen] = useState(false);
@@ -276,10 +277,12 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
             <CardTitle className="text-base">Profile Information</CardTitle>
             <CardDescription>User account details and settings</CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
-            <Edit className="size-4 mr-2" />
-            Edit Profile
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="size-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -323,18 +326,22 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
               <dt className="text-muted-foreground">Zone</dt>
               <dd className="font-medium mt-1 flex items-center gap-2">
                 {user.zone?.name || <span className="text-muted-foreground">No zone</span>}
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setIsZoneDialogOpen(true)}>
-                  <Edit className="size-3" />
-                </Button>
+                {isSuperAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setIsZoneDialogOpen(true)}>
+                    <Edit className="size-3" />
+                  </Button>
+                )}
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Office</dt>
               <dd className="font-medium mt-1 flex items-center gap-2">
                 {user.office?.name || <span className="text-muted-foreground">No office</span>}
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setIsOfficeDialogOpen(true)}>
-                  <Edit className="size-3" />
-                </Button>
+                {isSuperAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setIsOfficeDialogOpen(true)}>
+                    <Edit className="size-3" />
+                  </Button>
+                )}
               </dd>
             </div>
             <div>
@@ -416,65 +423,69 @@ export function UserProfileSection({ user, roles, zones, offices }: Props) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password <span className="text-xs text-muted-foreground font-normal">(leave empty to keep current)</span></FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" placeholder="Enter new password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password_confirmation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" placeholder="Confirm new password" autoComplete="new-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="roles"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Roles</FormLabel>
-                    <div className="space-y-2 rounded-md border p-3 max-h-[200px] overflow-y-auto">
-                      {roles.map((role) => (
-                        <div key={role.id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`role-${role.id}`}
-                            checked={form.watch('roles')?.includes(role.name) ?? false}
-                            onCheckedChange={(checked) => {
-                              const current = form.getValues('roles') || [];
-                              form.setValue(
-                                'roles',
-                                checked
-                                  ? [...current, role.name]
-                                  : current.filter((r) => r !== role.name),
-                                { shouldDirty: true }
-                              );
-                            }}
-                          />
-                          <label htmlFor={`role-${role.id}`} className="text-sm cursor-pointer">
-                            {role.name}
-                          </label>
+              {isSuperAdmin && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password <span className="text-xs text-muted-foreground font-normal">(leave empty to keep current)</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} type="password" placeholder="Enter new password" autoComplete="new-password" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password_confirmation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="password" placeholder="Confirm new password" autoComplete="new-password" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="roles"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel>Roles</FormLabel>
+                        <div className="space-y-2 rounded-md border p-3 max-h-[200px] overflow-y-auto">
+                          {roles.map((role) => (
+                            <div key={role.id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`role-${role.id}`}
+                                checked={form.watch('roles')?.includes(role.name) ?? false}
+                                onCheckedChange={(checked) => {
+                                  const current = form.getValues('roles') || [];
+                                  form.setValue(
+                                    'roles',
+                                    checked
+                                      ? [...current, role.name]
+                                      : current.filter((r) => r !== role.name),
+                                    { shouldDirty: true }
+                                  );
+                                }}
+                              />
+                              <label htmlFor={`role-${role.id}`} className="text-sm cursor-pointer">
+                                {role.name}
+                              </label>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
