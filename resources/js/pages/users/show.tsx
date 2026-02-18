@@ -14,6 +14,7 @@ import { UserProfileSection } from './show/user-profile-section';
 import { UserPermissionsSection } from './show/user-permissions-section';
 import { UserServicesSection } from './show/user-services-section';
 import { UserStatsSection } from './show/user-stats-section';
+import { UserPerformanceBoard } from './show/user-performance-board';
 import { UserActionsSection } from './show/user-actions-section';
 import { UserActivityHeatmap } from './show/user-activity-heatmap';
 
@@ -249,8 +250,14 @@ export default function UserShow({ user, roles, zones, offices, services, allPer
 
           {/* Right column - Stats and Actions */}
           <div className="space-y-6">
-            {/* Stats Section */}
-            <UserStatsSection user={user} />
+            {/* Performance Board for CRO/Advisor, Stats for others */}
+            {user.roles?.some((role) =>
+              ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'].includes(role.name),
+            ) ? (
+              <UserPerformanceBoard userId={user.id} />
+            ) : (
+              <UserStatsSection user={user} />
+            )}
 
             {/* Recent Leads */}
             {user.leads && user.leads.length > 0 && (
