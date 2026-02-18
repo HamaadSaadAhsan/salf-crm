@@ -13,8 +13,9 @@ import {
     Loader2,
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isTomorrow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -36,8 +37,19 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
     const [additionalActivities, setAdditionalActivities] = useState<Record<string, LeadActivity[]>>({});
 
     // Fetch activities grouped by month via API
-    const { data: monthSummary, isLoading, error } = useLeadActivitiesMonthSummary(leadId, 5);
+    const { data: monthSummary, isLoading, error } = useLeadActivitiesMonthSummary(leadId, 20);
     const loadMoreMutation = useLoadMoreMonthActivities(leadId);
+
+    const formatScheduledDate = (dateString: string) => {
+        try {
+            const date = parseISO(dateString);
+            if (isToday(date)) return 'Today ' + format(date, 'h:mm a');
+            if (isTomorrow(date)) return 'Tomorrow ' + format(date, 'h:mm a');
+            return format(date, 'MMM d, h:mm a');
+        } catch {
+            return dateString;
+        }
+    };
 
     const getInitials = (name: string) => {
         return name
@@ -285,6 +297,11 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                             <span className="font-semibold text-sm">
                                                                 {activity.subject}
                                                             </span>
+                                                        )}
+                                                        {activity.type === 'meeting' && activity.scheduled_at && (
+                                                            <Badge size="sm" variant="outline" className="shrink-0">
+                                                                {formatScheduledDate(activity.scheduled_at)}
+                                                            </Badge>
                                                         )}
                                                     </div>
 

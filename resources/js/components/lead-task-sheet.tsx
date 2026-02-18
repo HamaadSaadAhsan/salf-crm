@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getInitials } from '@/lib/helpers';
 import { Calendar } from '@/components/ui/calendar';
 import {
     Command,
@@ -277,7 +278,7 @@ export function LeadTaskSheet({
                                         <SelectTrigger id="type">
                                             <SelectValue placeholder="Select type (optional)" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-150">
                                             <SelectGroup>
                                                 <SelectLabel>Types</SelectLabel>
                                                 {TASK_TYPES.map((type) => {
@@ -302,7 +303,7 @@ export function LeadTaskSheet({
                                         <SelectTrigger id="priority">
                                             <SelectValue placeholder="Select priority" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-150">
                                             {PRIORITY_OPTIONS.map((priority) => (
                                                 <SelectItem key={priority.value} value={priority.value}>
                                                     <span className="flex items-center gap-2">
@@ -334,7 +335,7 @@ export function LeadTaskSheet({
                                             {dueDate ? `${format(dueDate, 'PPP')} at ${dueTime}` : 'Pick date and time'}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <PopoverContent className="z-150 w-auto p-0" align="start">
                                         <div className="flex max-sm:flex-col">
                                             <Calendar
                                                 mode="single"
@@ -381,7 +382,7 @@ export function LeadTaskSheet({
                                         <SelectTrigger id="status">
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-150">
                                             {STATUS_OPTIONS.map((status) => (
                                                 <SelectItem key={status.value} value={status.value}>
                                                     <span className="flex items-center gap-2">
@@ -406,7 +407,7 @@ export function LeadTaskSheet({
                                         <SelectTrigger id="assigned_to">
                                             <SelectValue placeholder="Select user" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-150">
                                             {users.map((user) => (
                                                 <SelectItem key={user.id} value={user.id.toString()}>
                                                     {user.name}
@@ -434,7 +435,7 @@ export function LeadTaskSheet({
                                                         className="gap-1.5 pe-1.5"
                                                     >
                                                         <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
-                                                            {user.name.charAt(0).toUpperCase()}
+                                                            {getInitials(user.name)}
                                                         </span>
                                                         {user.name}
                                                         <button
@@ -498,7 +499,7 @@ export function LeadTaskSheet({
                                                                             isMobile ? 'size-7 text-xs' : 'size-5 text-[10px]',
                                                                         )}
                                                                     >
-                                                                        {user.name.charAt(0).toUpperCase()}
+                                                                        {getInitials(user.name)}
                                                                     </span>
                                                                     <span className="flex-1">{user.name}</span>
                                                                     <Check

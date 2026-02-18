@@ -35,7 +35,7 @@ class TaskResource extends JsonResource
                 'icon' => $this->type?->icon(),
             ],
             'due_at' => $this->due_at?->toISOString(),
-            'due_at_formatted' => $this->due_at?->format('M d, Y'),
+            'due_at_formatted' => $this->due_at?->format('M d, Y h:i A'),
             'completed_at' => $this->completed_at?->toISOString(),
             'completed_at_formatted' => $this->completed_at?->format('M d, Y'),
             'is_completed' => $this->completed_at !== null,

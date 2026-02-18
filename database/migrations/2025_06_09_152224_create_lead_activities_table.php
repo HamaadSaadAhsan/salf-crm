@@ -17,7 +17,7 @@ return new class extends Migration
             // Activity details
             $table->enum('type', [
                 'call', 'email', 'meeting', 'note', 'message', 'task',
-                'follow_up', 'status_change', 'assignment_change',
+                'follow_up', 'status_change', 'assignment_change', 'comment'
             ])->index();
 
             $table->enum('status', ['pending', 'completed', 'cancelled', 'overdue'])
