@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('call_session_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('sip_account_id')->nullable()->constrained()->nullOnDelete();
             $table->string('participant_type'); // caller, callee, conference_member
             $table->string('status'); // invited, ringing, joined, left, muted, unmuted
             $table->timestamp('joined_at')->nullable();

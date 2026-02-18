@@ -236,19 +236,6 @@ export function CallContextComponent({ children, user }: CallProviderProps) {
         }
     });
 
-    // SIP registration events
-    useEcho(channelName, '.sip.account.registered', (event: any) => {
-        toast.success('SIP Account Registered', {
-            description: `Account ${event.username} is now online`,
-        });
-    });
-
-    useEcho(channelName, '.sip.account.registration.failed', (event: any) => {
-        toast.error('SIP Registration Failed', {
-            description: event.error,
-        });
-    });
-
     // ——————————————————————————————————————————————————————————
     // Actions
     // ——————————————————————————————————————————————————————————
@@ -387,7 +374,6 @@ export function CallContextComponent({ children, user }: CallProviderProps) {
             // TODO: Replace with actual API call to backend
             // const response = await axios.post('/api/calls/initiate', {
             //     callee_id: number,
-            //     caller_sip_account_id: selectedSipAccount,
             //     call_type: 'voice',
             // });
 

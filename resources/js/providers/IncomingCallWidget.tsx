@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { getInitials } from '@/lib/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
@@ -176,7 +177,7 @@ export function IncomingCallWidget({
                             <Avatar className="mx-auto h-24 w-24 ring-4 ring-green-500 ring-offset-2">
                                 <AvatarImage src={displayUser.avatar} />
                                 <AvatarFallback className="bg-green-100 text-2xl text-green-800 dark:bg-green-900 dark:text-green-200">
-                                    {displayUser.name.charAt(0).toUpperCase()}
+                                    {getInitials(displayUser.name)}
                                 </AvatarFallback>
                             </Avatar>
                             <h2 className="text-xl font-semibold">{displayUser.name}</h2>
@@ -209,7 +210,7 @@ export function IncomingCallWidget({
                                 <div className="flex items-center space-x-2">
                                     <Avatar className="h-8 w-8">
                                         <AvatarImage src={displayUser.avatar} />
-                                        <AvatarFallback className="bg-primary/10 text-xs">{displayUser.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                        <AvatarFallback className="bg-primary/10 text-xs">{getInitials(displayUser.name)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-medium">{displayUser.name}</p>

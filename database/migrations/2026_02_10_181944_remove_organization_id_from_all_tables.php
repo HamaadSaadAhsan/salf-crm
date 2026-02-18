@@ -25,7 +25,6 @@ return new class extends Migration
         'saved_filters',
         'service_user',
         'services',
-        'sip_accounts',
         'statuses',
         'tasks',
         'workflows',

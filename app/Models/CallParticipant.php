@@ -24,7 +24,6 @@ class CallParticipant extends Model
     protected $fillable = [
         'call_session_id',
         'user_id',
-        'sip_account_id',
         'participant_type',
         'status',
         'joined_at',
@@ -42,11 +41,6 @@ class CallParticipant extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function sipAccount(): BelongsTo
-    {
-        return $this->belongsTo(SipAccount::class);
     }
 
     public function join(): void
