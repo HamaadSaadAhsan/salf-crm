@@ -3,9 +3,11 @@
 use App\Http\Controllers\Api\CallSessionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LeadActivityController;
+use App\Http\Controllers\Api\MentionUserController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\Roles\PermissionController;
 use App\Http\Controllers\Api\Roles\RoleController;
+use App\Http\Controllers\Api\UserPerformanceController;
 use App\Http\Controllers\AssignmentVisualizerController;
 use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
@@ -135,6 +137,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 
+    // Mention Users (lightweight search for @mentions)
+    Route::get('api/mention-users', MentionUserController::class)->name('api.mention-users');
+
     // Tasks Management
     Route::resource('tasks', TaskController::class)->names('tasks');
 
@@ -155,6 +160,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
         Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
     });
+
+    // User Performance Board (authorization handled in controller)
+    Route::get('api/users/{user}/performance-board', [UserPerformanceController::class, 'show'])->name('users.performance-board');
 
     // Saved Filters
     Route::prefix('api')->group(function () {
@@ -290,14 +298,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 
-    // SIP/Call Management Routes
+    // Call Management Routes
     Route::middleware('role_or_permission:super-admin|make calls')->group(function () {
-        Route::resource('sip-accounts', \App\Http\Controllers\SipAccountController::class)->names('sip-accounts');
-        Route::post('sip-accounts/{sip_account}/register', [\App\Http\Controllers\SipAccountController::class, 'register'])->name('sip-accounts.register');
-        Route::post('sip-accounts/{sip_account}/toggle', [\App\Http\Controllers\SipAccountController::class, 'toggle'])->name('sip-accounts.toggle');
-
         Route::resource('calls', \App\Http\Controllers\CallController::class)->except(['edit', 'update', 'destroy'])->names('calls');
-        //    Route::get('calls/history', [\App\Http\Controllers\CallController::class, 'history'])->name('calls.history');
     });
 
     Route::middleware('role:super-admin')->group(function () {
