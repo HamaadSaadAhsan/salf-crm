@@ -7,6 +7,7 @@ use App\Http\Resources\LeadActivityResource;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Notifications\LeadActivityNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -40,14 +41,22 @@ class LeadActivityController extends Controller
     {
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
-            'type' => ['nullable', Rule::in(['call', 'email', 'meeting', 'note', 'message', 'task', 'follow_up', 'status_change', 'assignment_change'])],
+            'type' => ['nullable', Rule::in(['call', 'email', 'meeting', 'note', 'comment', 'message', 'task', 'follow_up', 'status_change', 'assignment_change'])],
             'description' => 'required_without:attachments|string|max:1000',
             'subject' => 'nullable|string|max:255',
             'priority' => ['nullable', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'scheduled_at' => 'nullable|date',
             'due_at' => 'nullable|date',
+            'duration_minutes' => 'nullable|integer|min:1',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|max:10240', // Max 10MB per file
+            'metadata' => 'nullable|array',
+            'metadata.mentions' => 'nullable|array',
+            'metadata.mentions.*.user_id' => 'required_with:metadata.mentions|integer|exists:users,id',
+            'metadata.mentions.*.name' => 'required_with:metadata.mentions|string',
+            'metadata.task_refs' => 'nullable|array',
+            'metadata.task_refs.*.task_id' => 'required_with:metadata.task_refs|string',
+            'metadata.task_refs.*.title' => 'required_with:metadata.task_refs|string',
         ]);
 
         $lead = Lead::findOrFail($request->lead_id);
@@ -55,8 +64,26 @@ class LeadActivityController extends Controller
         // Default to 'note' type if no type is provided (treated as comment)
         $activityType = $request->type ?: 'note';
 
+        // Only one meeting per lead per day
+        if ($activityType === 'meeting' && $request->scheduled_at) {
+            $scheduledDate = \Carbon\Carbon::parse($request->scheduled_at)->toDateString();
+
+            $existingMeeting = LeadActivity::where('lead_id', $request->lead_id)
+                ->where('type', 'meeting')
+                ->whereIn('status', ['pending', 'overdue'])
+                ->whereDate('scheduled_at', $scheduledDate)
+                ->exists();
+
+            if ($existingMeeting) {
+                return response()->json([
+                    'message' => 'A meeting is already scheduled for this lead on this date.',
+                    'errors' => ['scheduled_at' => ['A meeting is already scheduled for this lead on this date.']],
+                ], 422);
+            }
+        }
+
         // Auto-complete note/comment type activities
-        $isNoteType = in_array($activityType, ['note', 'message']);
+        $isNoteType = in_array($activityType, ['note', 'comment', 'message']);
 
         // Handle file attachments
         $attachmentData = [];
@@ -85,13 +112,40 @@ class LeadActivityController extends Controller
             'priority' => $request->priority ?? 'medium',
             'scheduled_at' => $request->scheduled_at,
             'due_at' => $request->due_at,
+            'duration_minutes' => $request->duration_minutes,
             'status' => $isNoteType ? 'completed' : 'pending',
             'completed_at' => $isNoteType ? now() : null,
             'attachments' => ! empty($attachmentData) ? $attachmentData : null,
+            'metadata' => $request->input('metadata'),
         ]);
 
         // Update lead's last activity timestamp
         $lead->touch('last_activity_at');
+
+        // Notify the lead's assigned user about the new meeting
+        if ($activityType === 'meeting' && $lead->assigned_to) {
+            $assignedUser = \App\Models\User::find($lead->assigned_to);
+            if ($assignedUser && $assignedUser->id !== Auth::id()) {
+                $assignedUser->notify(new LeadActivityNotification($activity, $lead, 'created'));
+            }
+        }
+
+        // Notify mentioned users
+        $mentions = $request->input('metadata.mentions', []);
+        if (! empty($mentions)) {
+            $mentionedUserIds = collect($mentions)
+                ->pluck('user_id')
+                ->filter(fn ($id) => $id !== Auth::id())
+                ->unique();
+
+            $mentionedUsers = \App\Models\User::whereIn('id', $mentionedUserIds)->get();
+            foreach ($mentionedUsers as $mentionedUser) {
+                $mentionedUser->notify(new LeadActivityNotification($activity, $lead, 'mentioned'));
+            }
+        }
+
+        // Invalidate the lead's detail cache so fresh data is served
+        cache()->tags(["lead:{$lead->id}"])->flush();
 
         return $this->buildActivityResponse($request, $activity);
     }
@@ -155,7 +209,7 @@ class LeadActivityController extends Controller
             'per_month' => 'nullable|integer|min:1|max:20',
         ]);
 
-        $perMonth = $request->get('per_month', 5);
+        $perMonth = $request->get('per_month', 20);
 
         // Get all activities grouped by month
         $activities = LeadActivity::where('lead_id', $lead->id)
