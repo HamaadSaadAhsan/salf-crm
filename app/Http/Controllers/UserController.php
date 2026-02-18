@@ -26,12 +26,30 @@ class UserController extends Controller
         private CacheService $cacheService
     ) {}
 
+    private function getSubordinateRole(User $user): ?string
+    {
+        return match (true) {
+            $user->hasRole('senior-support-agent') => 'support-agent',
+            $user->hasRole('senior-sales-rep') => 'sales-rep',
+            default => null,
+        };
+    }
+
     /**
      * Display the users management page
      */
     public function page(UserFilterRequest $request): Response
     {
         $filters = $request->validated();
+
+        $authUser = auth()->user();
+        if (! $authUser->hasRole('super-admin') && $authUser->hasPermissionTo('manage team agents')) {
+            $subordinateRole = $this->getSubordinateRole($authUser);
+            if ($subordinateRole) {
+                $filters['role'] = $subordinateRole;
+            }
+        }
+
         $result = $this->buildUsersQuery($filters);
 
         // Load zones, offices, and services for edit dialogs
@@ -440,6 +458,16 @@ class UserController extends Controller
      */
     public function showPage(User $user): Response
     {
+        $authUser = auth()->user();
+        if (! $authUser->hasRole('super-admin') && $authUser->hasPermissionTo('manage team agents')) {
+            $subordinateRole = $this->getSubordinateRole($authUser);
+            abort_unless(
+                $subordinateRole && $user->hasRole($subordinateRole),
+                403,
+                'You can only view profiles of your team members.'
+            );
+        }
+
         $user->load([
             'roles',
             'permissions',
@@ -702,6 +730,17 @@ class UserController extends Controller
      */
     public function updateAvailability(User $user, \Illuminate\Http\Request $request): JsonResponse
     {
+        $authUser = auth()->user();
+        if (! $authUser->hasRole('super-admin')) {
+            abort_unless($authUser->hasPermissionTo('manage team agents'), 403, 'Unauthorized.');
+            $subordinateRole = $this->getSubordinateRole($authUser);
+            abort_unless(
+                $subordinateRole && $user->hasRole($subordinateRole),
+                403,
+                'You can only manage availability of your team members.'
+            );
+        }
+
         try {
             $validated = $request->validate([
                 'availability' => 'required|boolean',

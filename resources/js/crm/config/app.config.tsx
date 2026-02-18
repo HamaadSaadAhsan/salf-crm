@@ -49,37 +49,44 @@ export const MAIN_NAV: NavConfig = [
         {
             id: 'management',
             title: 'Management',
-            path: management.url(),
+            path: usersPage.url(),
             icon: Shield,
-            superAdminOnly: true,
+            requiredPermission: 'view users',
             items: [
                 {
                     title: 'Overview',
                     path: management.url(),
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Users',
                     path: usersPage.url(),
+                    requiredPermission: 'view users',
                 },
                 {
                     title: 'Roles',
                     path: roles.url(),
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Permissions',
                     path: permissions.url(),
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Lead Sources',
                     path: leadSources.url(),
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Lead Statuses',
                     path: leadStatuses.url(),
+                    superAdminOnly: true,
                 },
                 {
                     title: 'Assignment Queue',
                     path: assignmentVisualizer.url(),
+                    superAdminOnly: true,
                 },
             ],
         },
@@ -151,8 +158,8 @@ export const MAIN_NAV: NavConfig = [
                 },
                 {
                     title: 'Management',
-                    path: management.url(),
-                    superAdminOnly: true,
+                    path: usersPage.url(),
+                    requiredPermission: 'view users',
                 },
             ],
         },

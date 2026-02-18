@@ -157,17 +157,6 @@ function CroBoard({ metrics }: { metrics: CroMetrics }) {
                 description="Qualified-to-Contacted ratio. Percentage of contacted leads that were qualified."
             />
             <MetricCard
-                label="Capacity"
-                value={`${metrics.capacity.current}/${metrics.capacity.max}`}
-                icon={Gauge}
-                color={capacityColor}
-                bgColor={capacityBgColor}
-                description="Current workload vs maximum capacity."
-            >
-                <Progress value={metrics.capacity.percentage} className="mt-2 h-1.5" />
-                <span className="mt-1 text-xs text-muted-foreground">{metrics.capacity.percentage}% utilized</span>
-            </MetricCard>
-            <MetricCard
                 label="Requalification"
                 value={metrics.requalification_score}
                 icon={RefreshCcw}
@@ -192,14 +181,6 @@ function CroBoard({ metrics }: { metrics: CroMetrics }) {
                 description="Percentage of assigned leads still open (not won or lost)."
             />
             <MetricCard
-                label="OTC Lost"
-                value={`${metrics.otc_lost_ratio}%`}
-                icon={XCircle}
-                color="text-red-600"
-                bgColor="bg-red-50"
-                description="Percentage of assigned leads that were lost."
-            />
-            <MetricCard
                 label="Pending Follow-ups"
                 value={metrics.pending_follow_ups}
                 icon={ListChecks}
@@ -213,6 +194,17 @@ function CroBoard({ metrics }: { metrics: CroMetrics }) {
                         {metrics.overdue_follow_ups} overdue
                     </div>
                 )}
+            </MetricCard>
+            <MetricCard
+                label="Capacity"
+                value={`${metrics.capacity.current}/${metrics.capacity.max}`}
+                icon={Gauge}
+                color={capacityColor}
+                bgColor={capacityBgColor}
+                description="Current workload vs maximum capacity."
+            >
+                <Progress value={metrics.capacity.percentage} className="mt-2 h-1.5" />
+                <span className="mt-1 text-xs text-muted-foreground">{metrics.capacity.percentage}% utilized</span>
             </MetricCard>
             <div className="col-span-2">
                 <MetricCard

@@ -23,9 +23,24 @@ class UserPerformanceController extends Controller
     public function show(Request $request, User $user): JsonResponse
     {
         $authUser = auth()->user();
+        $isOwnProfile = $authUser->id === $user->id;
+        $isSuperAdmin = $authUser->hasRole('super-admin');
 
-        if (! $authUser->hasRole('super-admin') && $authUser->id !== $user->id) {
-            abort(403, 'Unauthorized to view this performance board.');
+        if (! $isSuperAdmin && ! $isOwnProfile) {
+            if ($authUser->hasPermissionTo('manage team agents')) {
+                $subordinateRole = match (true) {
+                    $authUser->hasRole('senior-support-agent') => 'support-agent',
+                    $authUser->hasRole('senior-sales-rep') => 'sales-rep',
+                    default => null,
+                };
+                abort_unless(
+                    $subordinateRole && $user->hasRole($subordinateRole),
+                    403,
+                    'Unauthorized to view this performance board.'
+                );
+            } else {
+                abort(403, 'Unauthorized to view this performance board.');
+            }
         }
 
         $filters = $request->only(['date_from', 'date_to', 'service_id']);
