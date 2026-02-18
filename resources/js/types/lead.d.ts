@@ -38,6 +38,14 @@ export interface Lead {
     is_hot_lead: boolean;
     next_follow_up_at?: string;
     next_task?: Task | null;
+    next_meeting?: {
+        id: string;
+        subject: string;
+        scheduled_at: string;
+        due_at?: string;
+        duration_minutes?: number;
+        user?: { id: number; name: string; email: string };
+    } | null;
     tasks?: { data: Task[] };
     last_activity_at?: string;
     viewed_at?: string;
@@ -136,7 +144,11 @@ export interface LeadActivity {
     due_at?: string;
     scheduled_at?: string;
     user?: User | { data?: User };
-    metadata?: Record<string, any>;
+    metadata?: {
+        mentions?: Array<{ user_id: number; name: string }>;
+        task_refs?: Array<{ task_id: string; title: string }>;
+        [key: string]: any;
+    };
     attachments?: Array<{
         original_name: string;
         file_name: string;
