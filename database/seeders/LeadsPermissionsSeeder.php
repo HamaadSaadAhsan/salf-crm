@@ -166,7 +166,6 @@ class LeadsPermissionsSeeder extends Seeder
             'send sms',
             'make calls',
             'schedule meetings',
-            'view phone numbers',
             'view tasks',
             'create tasks',
             'edit tasks',
