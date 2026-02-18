@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\SipAccount;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -265,47 +264,6 @@ class AsteriskService
                 'error' => $e->getMessage(),
             ]);
             throw $e;
-        }
-    }
-
-    public function registerSipAccount(SipAccount $sipAccount, bool $forceReregister = false): array
-    {
-        try {
-            // Check if already registered
-            if ($sipAccount->isRegistered() && ! $forceReregister) {
-                return ['success' => true, 'message' => 'Already registered'];
-            }
-
-            // Configure SIP peer via Asterisk Manager Interface or ARI
-            $peerConfig = [
-                'username' => $sipAccount->username,
-                'secret' => $sipAccount->password,
-                'domain' => $sipAccount->domain,
-                'port' => $sipAccount->port,
-                'transport' => strtolower($sipAccount->transport),
-                'context' => 'default',
-                'allow' => $sipAccount->codec_priority ?? 'ulaw,alaw,gsm',
-            ];
-
-            // In a real implementation, you would use AMI (Asterisk Manager Interface)
-            // or configure through Asterisk configuration files
-            // For this example, we'll simulate the registration
-
-            Log::info('SIP account registration attempted', [
-                'username' => $sipAccount->username,
-                'domain' => $sipAccount->domain,
-            ]);
-
-            return ['success' => true, 'message' => 'SIP account registered successfully'];
-
-        } catch (\Exception $e) {
-            Log::error('SIP account registration failed', [
-                'username' => $sipAccount->username,
-                'domain' => $sipAccount->domain,
-                'error' => $e->getMessage(),
-            ]);
-
-            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 

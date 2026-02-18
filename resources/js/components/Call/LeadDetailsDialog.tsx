@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Badge } from '@/Components/ui/badge';
+import { getInitials } from '@/lib/helpers';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
@@ -226,7 +227,7 @@ export function LeadDetailsDialog({ lead, open, onOpenChange, callSession }: Lea
                                     <div className="flex items-center space-x-4">
                                         <Avatar className="h-16 w-16">
                                             <AvatarImage src={lead.avatar} />
-                                            <AvatarFallback className="text-lg">{lead.name ? lead.name.charAt(0).toUpperCase() : '?'}</AvatarFallback>
+                                            <AvatarFallback className="text-lg">{getInitials(lead.name) || '?'}</AvatarFallback>
                                         </Avatar>
                                         <div className="space-y-1">
                                             <h3 className="text-xl font-semibold">{lead.name || 'Unknown'}</h3>

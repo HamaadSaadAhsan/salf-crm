@@ -6,8 +6,6 @@ use App\Http\Requests\InitiateCallRequest;
 use App\Jobs\ProcessCallInitiation;
 use App\Jobs\ProcessCallTermination;
 use App\Models\CallSession;
-use App\Models\SipAccount;
-use App\Models\User;
 use App\Services\CallRecordingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -80,49 +78,17 @@ class CallController extends Controller
         ]);
     }
 
-    //    public function create(): Response
-    //    {
-    //        $sipAccounts = auth()->user()->sipAccounts()
-    //            ->where('is_enabled', true)
-    //            ->where('status', 'registered')
-    //            ->get();
-    //
-    //        $users = User::where('id', '!=', auth()->id())
-    //            ->with('sipAccounts')
-    //            ->get();
-    //
-    //        return Inertia::render('calls/create', [
-    //            'sipAccounts' => $sipAccounts,
-    //            'users' => $users,
-    //        ]);
-    //    }
-
     public function store(InitiateCallRequest $request): RedirectResponse
     {
-        $callerSipAccount = SipAccount::findOrFail($request->caller_sip_account_id);
-        $this->authorize('view', $callerSipAccount);
-
-        $callee = User::findOrFail($request->callee_id);
-        $calleeSipAccount = $callee->sipAccounts()
-            ->where('is_enabled', true)
-            ->where('status', 'registered')
-            ->first();
-
-        if (! $calleeSipAccount) {
-            return back()->withErrors(['callee_id' => 'The selected user does not have an active SIP account.']);
-        }
-
         $callSession = CallSession::create([
             'session_id' => Str::uuid(),
             'caller_id' => auth()->id(),
             'callee_id' => $request->callee_id,
-            'caller_sip_account_id' => $request->caller_sip_account_id,
-            'callee_sip_account_id' => $calleeSipAccount->id,
             'call_direction' => 'outbound',
             'call_type' => $request->call_type ?? 'voice',
             'status' => 'initiated',
-            'caller_number' => $callerSipAccount->username,
-            'callee_number' => $calleeSipAccount->username,
+            'caller_number' => $request->caller_number ?? '',
+            'callee_number' => $request->callee_number ?? '',
             'started_at' => now(),
         ]);
 
@@ -138,8 +104,6 @@ class CallController extends Controller
         $callSession->load([
             'caller',
             'lead',
-            'callerSipAccount',
-            'calleeSipAccount',
             'callLogs' => fn ($query) => $query->latest(),
             'participants.user',
         ]);

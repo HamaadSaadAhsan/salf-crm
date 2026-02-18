@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Lead;
-use App\Models\SipAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -20,15 +19,10 @@ class CallSessionFactory extends Factory
      */
     public function definition(): array
     {
-        $caller = User::factory()->create();
-        $callerSipAccount = SipAccount::factory()->create(['user_id' => $caller->id]);
-
         return [
             'session_id' => Str::uuid(),
-            'caller_id' => $caller->id,
+            'caller_id' => User::factory(),
             'lead_id' => null,
-            'caller_sip_account_id' => $callerSipAccount->id,
-            'callee_sip_account_id' => null,
             'call_direction' => fake()->randomElement(['inbound', 'outbound']),
             'call_type' => fake()->randomElement(['voice', 'video']),
             'status' => 'initiated',

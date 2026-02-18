@@ -1,6 +1,7 @@
 import { AudioPlayerToast } from '@/components/audio-player-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { getInitials } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -307,7 +308,7 @@ function IndexContent({ callSessions, stats, filters }: Props) {
                                                     <div className="flex items-center space-x-3">
                                                         <Avatar className="h-8 w-8">
                                                             <AvatarImage src={call.caller.avatar} />
-                                                            <AvatarFallback>{call.caller.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                                            <AvatarFallback>{getInitials(call.caller.name)}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="min-w-0">
                                                             <p className="truncate text-sm font-medium">

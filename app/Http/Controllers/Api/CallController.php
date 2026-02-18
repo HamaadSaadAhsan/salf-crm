@@ -50,7 +50,7 @@ class CallController extends Controller
                 'success' => true,
                 'message' => 'Call initiated successfully',
                 'data' => [
-                    'call_session' => $callSession->load(['caller', 'callee', 'sipAccount']),
+                    'call_session' => $callSession->load(['caller', 'callee']),
                 ],
             ], 201);
         } catch (\Exception $e) {
@@ -459,7 +459,7 @@ class CallController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $callSession = CallSession::with(['caller', 'callee', 'sipAccount', 'participants'])
+            $callSession = CallSession::with(['caller', 'callee', 'participants'])
                 ->findOrFail($id);
 
             // Verify user is participant

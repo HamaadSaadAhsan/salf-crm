@@ -16,8 +16,6 @@ return new class extends Migration
             $table->uuid('session_id')->unique();
             $table->foreignId('caller_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('callee_id')->nullable()->constrained('users')->cascadeOnDelete();
-            $table->foreignId('caller_sip_account_id')->nullable()->constrained('sip_accounts')->nullOnDelete();
-            $table->foreignId('callee_sip_account_id')->nullable()->constrained('sip_accounts')->nullOnDelete();
             $table->string('call_direction'); // inbound, outbound
             $table->string('call_type')->default('voice'); // voice, video
             $table->string('status'); // initiated, ringing, answered, ended, failed, busy, cancelled

@@ -407,12 +407,6 @@ class User extends Authenticatable
             ->where('facebook_token_expires_at', '<', now()->addHours($hours));
     }
 
-    // SIP/Call related relationships
-    public function sipAccounts(): HasMany
-    {
-        return $this->hasMany(SipAccount::class);
-    }
-
     public function callerSessions(): HasMany
     {
         return $this->hasMany(CallSession::class, 'caller_id');
@@ -421,14 +415,6 @@ class User extends Authenticatable
     public function callParticipations(): HasMany
     {
         return $this->hasMany(CallParticipant::class);
-    }
-
-    public function activeSipAccount(): HasOne
-    {
-        return $this->hasOne(SipAccount::class)
-            ->where('is_enabled', true)
-            ->where('status', 'registered')
-            ->latest();
     }
 
     public function serviceAssignments(): HasMany

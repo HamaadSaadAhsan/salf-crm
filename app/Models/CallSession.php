@@ -32,8 +32,6 @@ class CallSession extends Model
         'intended_for_user_id',
         'is_coverage_call',
         'lead_id',
-        'caller_sip_account_id',
-        'callee_sip_account_id',
         'call_direction',
         'call_type',
         'status',
@@ -104,16 +102,6 @@ class CallSession extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class, 'lead_id');
-    }
-
-    public function callerSipAccount(): BelongsTo
-    {
-        return $this->belongsTo(SipAccount::class, 'caller_sip_account_id');
-    }
-
-    public function calleeSipAccount(): BelongsTo
-    {
-        return $this->belongsTo(SipAccount::class, 'callee_sip_account_id');
     }
 
     public function callLogs(): HasMany
