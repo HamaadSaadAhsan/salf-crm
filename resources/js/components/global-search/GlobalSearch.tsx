@@ -190,10 +190,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     const showLoading = query.length >= 2 && isLoading;
     const showIdle = query.length < 2;
 
-    // Flat navigation actions from MAIN_NAV
+    // Flat navigation actions from MAIN_NAV, deduplicated by path
     const navActions = MAIN_NAV.flatMap((item) => {
-        const base = item.path ? [{ title: item.title ?? '', path: item.path }] : [];
         const children = (item.items ?? []).map((sub) => ({ title: `${item.title} › ${sub.title}`, path: sub.path ?? '' }));
+        const childPaths = new Set(children.map((c) => c.path));
+        const base = item.path && !childPaths.has(item.path) ? [{ title: item.title ?? '', path: item.path }] : [];
         return [...base, ...children];
     }).filter((a) => a.path && a.path !== '#');
 

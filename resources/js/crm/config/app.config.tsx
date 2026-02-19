@@ -1,4 +1,4 @@
-import { LayoutGrid, PieChart, Settings2, Users, Phone, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks } from 'lucide-react';
+import { LayoutGrid, PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks } from 'lucide-react';
 
 import { NavConfig } from '../types';
 import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
@@ -126,23 +126,6 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'New Call',
                     path: '/calls/create',
-                },
-            ],
-        },
-        {
-            id: 'sip-accounts',
-            title: 'SIP Accounts',
-            path: '/sip-accounts',
-            icon: Phone,
-            superAdminOnly: true,
-            items: [
-                {
-                    title: 'All Accounts',
-                    path: '/sip-accounts',
-                },
-                {
-                    title: 'Create',
-                    path: '/sip-accounts/create',
                 },
             ],
         },

@@ -131,7 +131,7 @@ class GlobalSearchController extends Controller
             'id' => $service->id,
             'label' => $service->name,
             'meta' => $service->country_name ?? '',
-            'url' => '#',
+            'url' => '/services',
         ])->values()->all();
     }
 
