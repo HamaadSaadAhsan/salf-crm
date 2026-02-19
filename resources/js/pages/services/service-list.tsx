@@ -40,19 +40,32 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { Briefcase, Edit, FileText, GitBranch, Search, Trash2, Users, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Service } from './index';
 
 interface ServiceListProps {
     services?: Service[];
     onEditService?: (service: Service) => void;
+    initialSearch?: string;
 }
 
-const ServiceList = ({ services, onEditService }: ServiceListProps) => {
+const ServiceList = ({ services, onEditService, initialSearch = '' }: ServiceListProps) => {
     const servicesList = Array.isArray(services) ? services : [];
     const [searchQuery, setSearchQuery] = useState('');
     const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
+        initialSearch ? [{ id: 'name', value: initialSearch }] : [],
+    );
+
+    useEffect(() => {
+        if (initialSearch) {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('search')) {
+                url.searchParams.delete('search');
+                window.history.replaceState({}, '', url.toString());
+            }
+        }
+    }, []);
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
     const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
         left: ['select', 'name'],

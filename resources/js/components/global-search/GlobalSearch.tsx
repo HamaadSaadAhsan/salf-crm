@@ -98,7 +98,7 @@ function ResultGroup({
     entity: string;
     heading: string;
     results: GlobalSearchResult[];
-    onSelect: (result: GlobalSearchResult) => void;
+    onSelect: (result: GlobalSearchResult, entity: string) => void;
     showSeparator: boolean;
 }) {
     if (results.length === 0) {
@@ -112,7 +112,7 @@ function ResultGroup({
                     <CommandItem
                         key={result.id}
                         value={`${entity}-${result.id}`}
-                        onSelect={() => onSelect(result)}
+                        onSelect={() => onSelect(result, entity)}
                         className="flex items-center gap-3 rounded-md px-2 py-2"
                     >
                         <EntityIcon entity={entity} />
@@ -138,14 +138,24 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     const { auth } = usePage<SharedData>().props;
 
     const handleSelect = useCallback(
-        (result: GlobalSearchResult) => {
-            if (result.url && result.url !== '#') {
+        (result: GlobalSearchResult, entity: string) => {
+            const listEntities: Record<string, string> = {
+                leads: '/leads',
+                services: '/services',
+                users: '/users',
+            };
+            const basePath = listEntities[entity];
+            const targetUrl = basePath
+                ? `${basePath}?search=${encodeURIComponent(result.label)}`
+                : result.url;
+
+            if (targetUrl && targetUrl !== '#') {
                 if (query.trim()) {
                     add(query.trim());
                 }
                 onOpenChange(false);
                 setQuery('');
-                router.visit(result.url);
+                router.visit(targetUrl);
             }
         },
         [query, add, onOpenChange],
