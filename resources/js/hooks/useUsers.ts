@@ -2,8 +2,8 @@
 
 import { UsersAPI } from '@/lib/api/users';
 import axios from '@/lib/axios';
-import { PaginationMeta, User, UserFilters, UserSortField, UserWithRelations } from '@/types/user.d';
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PaginationMeta, ServiceAssignmentData, User, UserFilters, UserListResponse, UserSortField, UserWithRelations } from '@/types/user.d';
+import { InfiniteData, keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // STRATEGY 1: Standard Pagination (for lists < 1000 items)
@@ -24,14 +24,14 @@ export function useUsers(filters: UserFilters = {}) {
         gcTime: 10 * 60 * 1000, // 10 minutes
         refetchOnWindowFocus: false,
         placeholderData: keepPreviousData, // Keep previous data while loading
-        retry: (failureCount, error: any) => {
-            if (error?.status >= 400 && error?.status < 500) return false;
-            return failureCount < 2; // Reduced retry count for faster feedback
+        retry: (failureCount: number, error: unknown) => {
+            const status = (error as { status?: number })?.status;
+            if (status !== undefined && status >= 400 && status < 500) return false;
+            return failureCount < 2;
         },
         enabled: !!apiClient,
-        // Add select to transform data immediately
         select: useCallback(
-            (data: any) => ({
+            (data: UserListResponse) => ({
                 ...data,
                 data: data.data || [],
             }),
@@ -73,14 +73,12 @@ export function useInfiniteUsers(filters: UserFilters = {}) {
         staleTime: 5 * 60 * 1000,
         gcTime: 15 * 60 * 1000,
         enabled: !!apiClient,
-        select: useCallback((data: any) => {
-            const allUsers = data.pages.flatMap((page: any) => page.data || []);
+        select: useCallback((data: InfiniteData<UserListResponse, number>) => {
+            const allUsers = data.pages.flatMap((page) => page.data || []);
             const lastPage = data.pages[data.pages.length - 1];
             return {
                 data: allUsers,
                 meta: lastPage?.meta,
-                hasNextPage: data.hasNextPage,
-                isFetchingNextPage: data.isFetchingNextPage,
             };
         }, []),
     });
@@ -88,17 +86,16 @@ export function useInfiniteUsers(filters: UserFilters = {}) {
 
 // STRATEGY 3: Windowed/Virtual Scrolling (for lists > 10000 items)
 export function useVirtualizedUsers(filters: UserFilters = {}) {
-    const { data, ...rest } = useInfiniteUsers(filters);
+    const { data, hasNextPage, isFetchingNextPage, ...rest } = useInfiniteUsers(filters);
 
-    // Memoize the flat data array to prevent unnecessary re-renders
     const virtualizedData = useMemo(() => {
         return {
             items: data?.data || [],
             totalCount: data?.meta?.total || 0,
-            hasMore: data?.hasNextPage || false,
-            isLoading: rest.isFetchingNextPage,
+            hasMore: hasNextPage || false,
+            isLoading: isFetchingNextPage,
         };
-    }, [data?.data, data?.meta?.total, data?.hasNextPage, rest.isFetchingNextPage]);
+    }, [data?.data, data?.meta?.total, hasNextPage, isFetchingNextPage]);
 
     return {
         ...rest,
@@ -178,9 +175,9 @@ export function useDebouncedSearch(initialValue = '', delay = 500) {
 
 // SELECTION MANAGEMENT FOR LARGE LISTS
 export const useOptimizedUserSelection = () => {
-    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
-    const toggleItem = useCallback((id: string) => {
+    const toggleItem = useCallback((id: number) => {
         setSelectedItems((prev) => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id);
@@ -190,10 +187,10 @@ export const useOptimizedUserSelection = () => {
     }, []);
 
     const toggleAll = useCallback((users: UserWithRelations[]) => {
-        setSelectedItems((prev) => (prev.size === users.length ? new Set() : new Set(users.map((user) => user.id))));
+        setSelectedItems((prev) => (prev.size === users.length ? new Set<number>() : new Set(users.map((user) => user.id))));
     }, []);
 
-    const selectMultiple = useCallback((ids: string[]) => {
+    const selectMultiple = useCallback((ids: number[]) => {
         setSelectedItems((prev) => {
             const newSet = new Set(prev);
             ids.forEach((id) => newSet.add(id));
@@ -201,7 +198,7 @@ export const useOptimizedUserSelection = () => {
         });
     }, []);
 
-    const deselectMultiple = useCallback((ids: string[]) => {
+    const deselectMultiple = useCallback((ids: number[]) => {
         setSelectedItems((prev) => {
             const newSet = new Set(prev);
             ids.forEach((id) => newSet.delete(id));
@@ -213,7 +210,7 @@ export const useOptimizedUserSelection = () => {
         setSelectedItems(new Set());
     }, []);
 
-    const isSelected = useCallback((id: string) => selectedItems.has(id), [selectedItems]);
+    const isSelected = useCallback((id: number) => selectedItems.has(id), [selectedItems]);
 
     const getSelectedUsers = useCallback(
         (users: UserWithRelations[]) => {
@@ -421,51 +418,44 @@ export function useOptimisticUserUpdate() {
     const apiClient = useApiClient();
 
     return useMutation({
-        mutationFn: async ({ id, updates }: { id: string; updates: Partial<User> }) => {
-            const response = await axios.patch(`${apiClient?.baseURL}/users/${id}`, updates);
+        mutationFn: async ({ id, updates }: { id: number; updates: Partial<User> }) => {
+            const response = await axios.patch(`${apiClient?.baseURL}/api/users/${id}`, updates);
             return response.data;
         },
         onMutate: async ({ id, updates }) => {
-            // Cancel outgoing refetches
             await queryClient.cancelQueries({ queryKey: ['users'] });
 
-            // Get all current user queries
             const previousData = queryClient.getQueriesData({ queryKey: ['users'] });
 
-            // Optimistically update all queries that contain this user
-            queryClient.setQueriesData({ queryKey: ['users'] }, (oldData: any) => {
-                if (!oldData) return oldData;
+            queryClient.setQueriesData({ queryKey: ['users'] }, (oldData: unknown) => {
+                if (!oldData || typeof oldData !== 'object') return oldData;
+                const d = oldData as Record<string, unknown>;
 
-                // Handle different data structures (standard vs infinite)
-                if (oldData.pages) {
-                    // Infinite query structure
+                if (d.pages && Array.isArray(d.pages)) {
                     return {
-                        ...oldData,
-                        pages: oldData.pages.map((page: any) => ({
-                            ...page,
-                            data: page.data?.map((user: UserWithRelations) => (user.id === id ? { ...user, ...updates } : user)),
-                        })),
+                        ...d,
+                        pages: d.pages.map((page: unknown) => {
+                            const p = page as { data?: UserWithRelations[] };
+                            return { ...p, data: p.data?.map((user) => (user.id === id ? { ...user, ...updates } : user)) };
+                        }),
                     };
-                } else if (oldData.data) {
-                    // Standard query structure
+                } else if (d.data && Array.isArray(d.data)) {
                     return {
-                        ...oldData,
-                        data: oldData.data.map((user: UserWithRelations) => (user.id === id ? { ...user, ...updates } : user)),
+                        ...d,
+                        data: (d.data as UserWithRelations[]).map((user) => (user.id === id ? { ...user, ...updates } : user)),
                     };
                 }
 
                 return oldData;
             });
 
-            // Also update single user cache
-            queryClient.setQueryData(['users', id], (oldData: any) => {
-                return oldData ? { ...oldData, ...updates } : oldData;
+            queryClient.setQueryData(['users', id], (oldData: unknown) => {
+                return oldData && typeof oldData === 'object' ? { ...oldData, ...updates } : oldData;
             });
 
             return { previousData };
         },
-        onError: (err, variables, context) => {
-            // Rollback optimistic updates
+        onError: (_err, _variables, context) => {
             if (context?.previousData) {
                 context.previousData.forEach(([queryKey, data]) => {
                     queryClient.setQueryData(queryKey, data);
@@ -485,7 +475,7 @@ export function useUserServiceMutations() {
     const apiClient = useApiClient();
 
     const assignService = useMutation({
-        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: any }) => {
+        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: ServiceAssignmentData }) => {
             return apiClient?.assignUserToService(userId, serviceId, data);
         },
         onSuccess: (_, { userId }) => {
@@ -505,7 +495,7 @@ export function useUserServiceMutations() {
     });
 
     const updateServiceAssignment = useMutation({
-        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: any }) => {
+        mutationFn: async ({ userId, serviceId, data }: { userId: number; serviceId: number; data: ServiceAssignmentData }) => {
             return apiClient?.updateUserServiceAssignment(userId, serviceId, data);
         },
         onSuccess: (_, { userId }) => {
@@ -527,7 +517,7 @@ export function useBulkUserOperations() {
     const apiClient = useApiClient();
 
     const bulkAssignServices = useMutation({
-        mutationFn: async ({ userIds, serviceIds, data }: { userIds: number[]; serviceIds: number[]; data?: any }) => {
+        mutationFn: async ({ userIds, serviceIds, data }: { userIds: number[]; serviceIds: number[]; data?: ServiceAssignmentData }) => {
             return apiClient?.bulkAssignServices(userIds, serviceIds, data);
         },
         onSuccess: () => {

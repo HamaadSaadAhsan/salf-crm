@@ -31,7 +31,7 @@ interface ServicesPageProps {
 export default function ServicesPage({ services }: ServicesPageProps) {
     const [showServiceSheet, setShowServiceSheet] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const initialSearch = new URLSearchParams(window.location.search).get('search') || '';
+    const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
 
     const handleNewService = () => {
         setSelectedService(null);

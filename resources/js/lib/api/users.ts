@@ -51,12 +51,12 @@ export class UsersAPI {
         });
 
         const query = params.toString();
-        return this.request<UserListResponse>(`/users${query ? `?${query}` : ''}`);
+        return this.request<UserListResponse>(`/api/users${query ? `?${query}` : ''}`);
     }
 
     // GET /api/users/{id} - Get single user
     async getUser(id: number): Promise<UserWithRelations> {
-        return this.request<UserWithRelations>(`/users/${id}`);
+        return this.request<UserWithRelations>(`/api/users/${id}`);
     }
 
     // POST /api/users - Create user
@@ -68,7 +68,7 @@ export class UsersAPI {
         service_ids?: number[];
         service_assignment_data?: ServiceAssignmentData;
     }): Promise<UserWithRelations> {
-        return this.request<UserWithRelations>('/users', {
+        return this.request<UserWithRelations>('/api/users', {
             method: 'POST',
             body: JSON.stringify(data),
         });
@@ -76,7 +76,7 @@ export class UsersAPI {
 
     // PATCH /api/users/{id} - Update user
     async updateUser(id: number, updates: Partial<User>): Promise<UserWithRelations> {
-        return this.request<UserWithRelations>(`/users/${id}`, {
+        return this.request<UserWithRelations>(`/api/users/${id}`, {
             method: 'PATCH',
             body: JSON.stringify(updates),
         });
@@ -84,7 +84,7 @@ export class UsersAPI {
 
     // DELETE /api/users/{id} - Delete user
     async deleteUser(id: number): Promise<void> {
-        return this.request<void>(`/users/${id}`, {
+        return this.request<void>(`/api/users/${id}`, {
             method: 'DELETE',
         });
     }
@@ -96,7 +96,7 @@ export class UsersAPI {
 
     // POST /api/users/{userId}/services/{serviceId} - Assign service to user
     async assignUserToService(userId: number, serviceId: number, data: ServiceAssignmentData = {}): Promise<any> {
-        return this.request(`/users/${userId}/services/${serviceId}`, {
+        return this.request(`/api/users/${userId}/services/${serviceId}`, {
             method: 'POST',
             body: JSON.stringify(data),
         });
@@ -104,14 +104,14 @@ export class UsersAPI {
 
     // DELETE /api/users/{userId}/services/{serviceId} - Unassign service from user
     async unassignUserFromService(userId: number, serviceId: number): Promise<void> {
-        return this.request<void>(`/users/${userId}/services/${serviceId}`, {
+        return this.request<void>(`/api/users/${userId}/services/${serviceId}`, {
             method: 'DELETE',
         });
     }
 
     // PATCH /api/users/{userId}/services/{serviceId} - Update service assignment
     async updateUserServiceAssignment(userId: number, serviceId: number, data: ServiceAssignmentData): Promise<any> {
-        return this.request(`/users/${userId}/services/${serviceId}`, {
+        return this.request(`/api/users/${userId}/services/${serviceId}`, {
             method: 'PATCH',
             body: JSON.stringify(data),
         });
@@ -132,12 +132,12 @@ export class UsersAPI {
         });
 
         const query = params.toString();
-        return this.request<UserStats>(`/users/stats${query ? `?${query}` : ''}`);
+        return this.request<UserStats>(`/api/users/stats${query ? `?${query}` : ''}`);
     }
 
     // POST /api/users/bulk/assign-services - Bulk assign services
     async bulkAssignServices(userIds: number[], serviceIds: number[], data: ServiceAssignmentData = {}): Promise<any> {
-        return this.request('/users/bulk/assign-services', {
+        return this.request('/api/users/bulk/assign-services', {
             method: 'POST',
             body: JSON.stringify({
                 user_ids: userIds,
@@ -149,7 +149,7 @@ export class UsersAPI {
 
     // PATCH /api/users/bulk/update - Bulk update users
     async bulkUpdateUsers(userIds: number[], updates: Partial<User>): Promise<any> {
-        return this.request('/users/bulk/update', {
+        return this.request('/api/users/bulk/update', {
             method: 'PATCH',
             body: JSON.stringify({
                 user_ids: userIds,
@@ -160,7 +160,7 @@ export class UsersAPI {
 
     // DELETE /api/users/bulk/delete - Bulk delete users
     async bulkDeleteUsers(userIds: number[]): Promise<void> {
-        return this.request<void>('/users/bulk/delete', {
+        return this.request<void>('/api/users/bulk/delete', {
             method: 'DELETE',
             body: JSON.stringify({
                 user_ids: userIds,
@@ -185,7 +185,7 @@ export class UsersAPI {
         params.append('format', format);
         const query = params.toString();
 
-        const response = await fetch(`${this.baseURL}/users/export${query ? `?${query}` : ''}`);
+        const response = await fetch(`${this.baseURL}/api/users/export${query ? `?${query}` : ''}`);
 
         if (!response.ok) {
             throw new Error(`Export failed: ${response.statusText}`);
@@ -211,7 +211,7 @@ export class UsersAPI {
         formData.append('file', file);
         formData.append('options', JSON.stringify(options));
 
-        const response = await fetch(`${this.baseURL}/users/import`, {
+        const response = await fetch(`${this.baseURL}/api/users/import`, {
             method: 'POST',
             body: formData,
         });
@@ -254,7 +254,7 @@ export class UsersAPI {
         });
 
         const query = params.toString();
-        return this.request(`/users/${id}/leads${query ? `?${query}` : ''}`);
+        return this.request(`/api/users/${id}/leads${query ? `?${query}` : ''}`);
     }
 
     // PUT /api/users/{id}/roles - Update user roles
@@ -287,6 +287,6 @@ export class UsersAPI {
             params.append('include_inactive', '1');
         }
 
-        return this.request<UserWithRelations[]>(`/users/search?${params.toString()}`);
+        return this.request<UserWithRelations[]>(`/api/users/search?${params.toString()}`);
     }
 }

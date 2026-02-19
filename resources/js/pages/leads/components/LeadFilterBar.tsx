@@ -220,9 +220,8 @@ const AssignedToFilter = memo(function AssignedToFilter({
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const { data } = useUsers({ per_page: 50, search: search || undefined, role: roleFilter });
+    const { data } = useUsers({ per_page: 50, search: search || undefined, role: roleFilter ? [roleFilter] : undefined });
     const users = data?.data || [];
-
     return (
         <FilterShell
             open={open}
@@ -1258,7 +1257,7 @@ const MobileFilterDrawer = memo(function MobileFilterDrawer({
 export default memo(function LeadFilterBar({ filters, activeFilterCount, onSetFilter, onClearFilter, onClearAll }: LeadFilterBarProps) {
     const { auth } = usePage<SharedData>().props;
     const isSuperAdmin = auth.isSuperAdmin;
-    const canManageTeam = !isSuperAdmin && auth.permissions?.includes('manage team agents');
+    const canManageTeam = !isSuperAdmin && (auth.permissions ?? []).includes('manage team agents');
     const [assignedToName, setAssignedToName] = useState<string | undefined>();
 
     const chips = useFilterChips(filters, assignedToName, isSuperAdmin);

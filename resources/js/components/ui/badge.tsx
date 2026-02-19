@@ -34,6 +34,7 @@ const badgeVariants = cva(
         outline:
           'bg-transparent border border-border text-secondary-foreground',
         destructive: 'bg-destructive text-destructive-foreground',
+        mono: 'bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900',
       },
       appearance: {
         default: '',
@@ -123,6 +124,22 @@ const badgeVariants = cva(
         appearance: 'outline',
         className:
           'text-[var(--color-destructive-accent,var(--color-red-700))] border-[var(--color-destructive-soft,var(--color-red-100))] bg-[var(--color-destructive-soft,var(--color-red-50))] dark:bg-[var(--color-destructive-soft,var(--color-red-950))] dark:border-[var(--color-destructive-soft,var(--color-red-900))] dark:text-[var(--color-destructive-soft,var(--color-red-600))]',
+      },
+      /* Mono */
+      {
+        variant: 'mono',
+        appearance: 'light',
+        className: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+      },
+      {
+        variant: 'mono',
+        appearance: 'outline',
+        className: 'bg-transparent border-zinc-300 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300',
+      },
+      {
+        variant: 'mono',
+        appearance: 'ghost',
+        className: 'text-zinc-700 dark:text-zinc-300',
       },
       /* Ghost */
       {
