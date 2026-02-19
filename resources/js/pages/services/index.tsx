@@ -31,6 +31,7 @@ interface ServicesPageProps {
 export default function ServicesPage({ services }: ServicesPageProps) {
     const [showServiceSheet, setShowServiceSheet] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
 
     const handleNewService = () => {
         setSelectedService(null);
@@ -53,7 +54,7 @@ export default function ServicesPage({ services }: ServicesPageProps) {
         <AppLayout>
             <Head title="Program Management" />
             <PageHeader onNewService={handleNewService} />
-            <ServiceList services={servicesList} onEditService={handleEditService} />
+            <ServiceList services={servicesList} onEditService={handleEditService} initialSearch={initialSearch} />
 
             <ServiceSheet open={showServiceSheet} onOpenChange={handleCloseSheet} service={selectedService} />
         </AppLayout>

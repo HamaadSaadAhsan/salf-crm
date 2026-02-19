@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Cell,
   ColumnDef,
@@ -145,16 +145,27 @@ interface UserListProps {
   offices?: Office[];
   services?: Service[];
   filter?: 'all' | 'active' | 'inactive';
+  initialSearch?: string;
 }
 
-const UserList = ({ users, zones = [], offices = [], services = [] }: UserListProps) => {
+const UserList = ({ users, zones = [], offices = [], services = [], initialSearch = '' }: UserListProps) => {
   // Ensure users is always an array
   const usersList = Array.isArray(users) ? users : [];
   const { auth } = usePage<SharedData>().props;
   const isSuperAdmin = auth.isSuperAdmin;
   const currentUserId = auth.user.id;
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+
+  useEffect(() => {
+    if (initialSearch) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('search')) {
+        url.searchParams.delete('search');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, []);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<

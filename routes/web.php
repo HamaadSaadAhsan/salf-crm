@@ -82,19 +82,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/services/{service}', [ServiceController::class, 'update']);
         Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
 
-        // Users Management Page
-        Route::get('/users', [UserController::class, 'page'])->name('users.page');
-        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.detail');
-
-        // Users API Resource
+        // Users API - Super Admin only (CRUD, permissions, office/zone/services)
         Route::prefix('api')->group(function () {
-            Route::apiResource('users', UserController::class)->except(['create', 'edit'])->names('api.users');
+            Route::apiResource('users', UserController::class)->only(['store', 'show', 'update', 'destroy'])->names('api.users');
             Route::patch('users/{user}/office', [UserController::class, 'updateOffice'])->name('users.update-office');
             Route::patch('users/{user}/zone', [UserController::class, 'updateZone'])->name('users.update-zone');
             Route::patch('users/{user}/services', [UserController::class, 'updateServices'])->name('users.update-services');
-            Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
             Route::patch('users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.update-permissions');
-            Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
         });
 
         // Zones Management
@@ -126,6 +120,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/cities', [\App\Http\Controllers\CityController::class, 'store'])->name('cities.store');
         Route::put('/cities/{city}', [\App\Http\Controllers\CityController::class, 'update'])->name('cities.update');
         Route::delete('/cities/{city}', [\App\Http\Controllers\CityController::class, 'destroy'])->name('cities.destroy');
+    });
+
+    // Users - accessible by super-admin or senior agents with manage team agents permission
+    Route::middleware('role_or_permission:super-admin|manage team agents')->group(function () {
+        Route::get('/users', [UserController::class, 'page'])->name('users.page');
+        Route::get('/users/{user}', [UserController::class, 'showPage'])->name('users.detail');
+        Route::prefix('api')->group(function () {
+            Route::get('users', [UserController::class, 'index'])->name('api.users.index');
+            Route::patch('users/{user}/availability', [UserController::class, 'updateAvailability'])->name('users.update-availability');
+            Route::get('users/{user}/activity-heatmap', [UserController::class, 'activityHeatmap'])->name('users.activity-heatmap');
+        });
     });
 
     Route::middleware('role:super-admin|support-agent|senior-support-agent|sales-rep')->group(function () {

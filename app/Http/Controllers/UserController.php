@@ -71,6 +71,17 @@ class UserController extends Controller
     public function index(UserFilterRequest $request): JsonResponse
     {
         $filters = $request->validated();
+        $authUser = auth()->user();
+
+        // Senior agents can only see their subordinates + themselves
+        if (! $authUser->hasRole('super-admin') && $authUser->hasPermissionTo('manage team agents')) {
+            $subordinateRole = $this->getSubordinateRole($authUser);
+            $subordinateIds = $subordinateRole ? User::role($subordinateRole)->pluck('id')->toArray() : [];
+            $allowedIds = array_unique(array_merge($subordinateIds, [$authUser->id]));
+            $filters['allowed_ids'] = $allowedIds;
+            unset($filters['role']); // Role scoping is handled by allowed_ids
+        }
+
         $cacheKey = User::getListCacheKey($filters);
 
         // Try to get from the cache first
@@ -160,8 +171,22 @@ class UserController extends Controller
     /**
      * Apply filters to a query
      */
+    private function getSubordinateRole(User $user): ?string
+    {
+        return match (true) {
+            $user->hasRole('senior-support-agent') => 'support-agent',
+            $user->hasRole('senior-sales-rep') => 'sales-rep',
+            default => null,
+        };
+    }
+
     private function applyFilters($query, array $filters): void
     {
+        // Restrict to allowed IDs (used for team-scoped access)
+        if (! empty($filters['allowed_ids'])) {
+            $query->whereIn('id', $filters['allowed_ids']);
+        }
+
         // Email verification status filter
         if (! empty($filters['email_verified'])) {
             if ($filters['email_verified'] === 'verified') {

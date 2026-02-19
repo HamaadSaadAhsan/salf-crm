@@ -211,16 +211,17 @@ const AssignedToFilter = memo(function AssignedToFilter({
     value,
     selectedName,
     onChange,
+    roleFilter,
 }: {
     value: number | undefined;
     selectedName: string | undefined;
     onChange: (value: number | undefined, name: string | undefined) => void;
+    roleFilter?: string;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const { data } = useUsers({ per_page: 50, search: search || undefined });
+    const { data } = useUsers({ per_page: 50, search: search || undefined, role: roleFilter ? [roleFilter] : undefined });
     const users = data?.data || [];
-
     return (
         <FilterShell
             open={open}
@@ -1256,6 +1257,7 @@ const MobileFilterDrawer = memo(function MobileFilterDrawer({
 export default memo(function LeadFilterBar({ filters, activeFilterCount, onSetFilter, onClearFilter, onClearAll }: LeadFilterBarProps) {
     const { auth } = usePage<SharedData>().props;
     const isSuperAdmin = auth.isSuperAdmin;
+    const canManageTeam = !isSuperAdmin && (auth.permissions ?? []).includes('manage team agents');
     const [assignedToName, setAssignedToName] = useState<string | undefined>();
 
     const chips = useFilterChips(filters, assignedToName, isSuperAdmin);
@@ -1310,11 +1312,12 @@ export default memo(function LeadFilterBar({ filters, activeFilterCount, onSetFi
             <div className="flex flex-wrap items-center gap-2 px-4 py-2">
                 <StatusFilter value={filters.status} onChange={handleStatusChange} />
                 <PriorityFilter value={filters.priority} onChange={handlePriorityChange} />
-                {isSuperAdmin && (
+                {(isSuperAdmin || canManageTeam) && (
                     <AssignedToFilter
                         value={filters.assigned_to}
                         selectedName={assignedToName}
                         onChange={handleAssignedToChange}
+                        roleFilter={canManageTeam ? 'support-agent' : undefined}
                     />
                 )}
                 <ServiceFilter value={filters.service_id} onChange={handleServiceChange} />

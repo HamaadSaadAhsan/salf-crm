@@ -76,6 +76,7 @@ interface UsersPageProps {
 
 export default function UsersPage({ users, zones = [], offices = [], services = [] }: UsersPageProps) {
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
+  const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
 
   const handleNewUser = () => {
     setShowNewUserDialog(true);
@@ -96,6 +97,7 @@ export default function UsersPage({ users, zones = [], offices = [], services = 
               zones={zones}
               offices={offices}
               services={services}
+              initialSearch={initialSearch}
             />
           </div>
         </Content>
