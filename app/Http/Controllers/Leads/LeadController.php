@@ -1145,8 +1145,21 @@ class LeadController extends Controller
             $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
             $currentAssignee = $lead->assigned_to ? \App\Models\User::find($lead->assigned_to) : null;
 
+            // The lead must currently be assigned to a subordinate
             if ($currentAssignee && ! ($subordinateRole && $currentAssignee->hasRole($subordinateRole))) {
                 abort(403, 'You can only reassign leads that belong to your team members.');
+            }
+
+            // The new assignee must be a subordinate or the senior themselves
+            $newAssignedToId = is_array($request->input('assigned_to'))
+                ? ($request->input('assigned_to.id') ?? null)
+                : $request->input('assigned_to');
+
+            if ($newAssignedToId) {
+                $newAssignedToId = (int) $newAssignedToId;
+                $isSelf = $newAssignedToId === $user->id;
+                $newAssignee = $isSelf ? $user : \App\Models\User::find($newAssignedToId);
+                abort_unless($newAssignee && ($isSelf || ($subordinateRole && $newAssignee->hasRole($subordinateRole))), 403, 'You can only assign leads to your team members.');
             }
         }
 
