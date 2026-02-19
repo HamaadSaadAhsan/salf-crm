@@ -34,7 +34,7 @@ export function HeaderBrand() {
       {isMobile && (
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="dim" mode="icon" className="hover:text-white">
+            <Button variant="dim" mode="icon" className="hover:text-foreground">
               <Menu />
             </Button>
           </SheetTrigger>

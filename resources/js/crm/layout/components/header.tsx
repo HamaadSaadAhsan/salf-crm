@@ -8,7 +8,7 @@ import { HeaderMobileSearchTrigger, HeaderSearchTrigger } from './header-search-
 
 export function Header() {
     return (
-        <header className="fixed start-0 end-0 top-[var(--banner-height,0px)] z-[10] flex h-[var(--header-height)] items-center justify-between border-b border-zinc-950 bg-zinc-950 pe-[var(--removed-body-scroll-bar-size,0px)] transition-[top,start] duration-200 ease-in-out dark:border-border">
+        <header className="fixed start-0 end-0 top-[var(--banner-height,0px)] z-[10] flex h-[var(--header-height)] items-center justify-between border-b border-border bg-background pe-[var(--removed-body-scroll-bar-size,0px)] transition-[top,start] duration-200 ease-in-out">
             <div className="container-fluid flex items-stretch justify-between lg:gap-4">
                 <div className="flex items-center gap-4">
                     <HeaderBrand />
@@ -18,7 +18,7 @@ export function Header() {
                 </div>
                 <div className="flex items-center gap-2">
                     <HeaderNew />
-                    <Separator orientation="vertical" className="mx-1 h-4 bg-zinc-600" />
+                    <Separator orientation="vertical" className="mx-1 h-4 bg-border" />
                     <HeaderMobileSearchTrigger />
                     <AiChatSheet />
                     <HeaderNotifications />

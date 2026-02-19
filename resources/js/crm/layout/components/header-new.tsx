@@ -7,9 +7,9 @@ export function HeaderNew() {
       <Button
         variant="ghost"
         size="sm"
-        className="text-white hover:text-white hover:bg-zinc-800 hover:border-zinc-800"
+        className="text-muted-foreground hover:text-foreground hover:bg-accent hover:border-accent"
       >
-        <CirclePlus className="size-4 text-white" />
+        <CirclePlus className="size-4" />
         New
       </Button>
     </div>

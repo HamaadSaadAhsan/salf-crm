@@ -8,7 +8,7 @@ export function HeaderUsers() {
         <AvatarImage
           src={toAbsoluteUrl('/media/avatars/300-1.png')}
           alt="user"
-          className="border-2 border-zinc-950 hover:z-10"
+          className="border-2 border-background hover:z-10"
         />
         <AvatarFallback>CH</AvatarFallback>
       </Avatar>
@@ -16,7 +16,7 @@ export function HeaderUsers() {
         <AvatarImage
           src={toAbsoluteUrl('/media/avatars/300-3.png')}
           alt="user"
-          className="border-2 border-zinc-950 hover:z-10"
+          className="border-2 border-background hover:z-10"
         />
         <AvatarFallback>CH</AvatarFallback>
       </Avatar>
@@ -24,7 +24,7 @@ export function HeaderUsers() {
         <AvatarImage
           src={toAbsoluteUrl('/media/avatars/300-4.png')}
           alt="user"
-          className="border-2 border-zinc-950 hover:z-10"
+          className="border-2 border-background hover:z-10"
         />
         <AvatarFallback>CH</AvatarFallback>
       </Avatar>

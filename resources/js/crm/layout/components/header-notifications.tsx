@@ -323,8 +323,8 @@ export function HeaderNotifications() {
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <div className="relative">
-                    <Button variant="ghost" size="sm" mode="icon" className="text-white hover:border-zinc-800 hover:bg-zinc-800 hover:text-white">
-                        <Bell className="size-4 text-white" />
+                    <Button variant="ghost" size="sm" mode="icon" className="text-muted-foreground hover:border-accent hover:bg-accent hover:text-foreground">
+                        <Bell className="size-4" />
                     </Button>
                     {unreadCount > 0 && (
                         <Badge

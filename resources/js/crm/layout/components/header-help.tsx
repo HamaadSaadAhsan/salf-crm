@@ -8,9 +8,9 @@ export function HeaderHelp() {
         variant="ghost"
         size="sm"
         mode="icon"
-        className="text-white hover:text-white hover:bg-zinc-800 hover:border-zinc-800"
+        className="text-muted-foreground hover:text-foreground hover:bg-accent hover:border-accent"
       >
-        <CircleHelp className="size-4 text-white" />
+        <CircleHelp className="size-4" />
       </Button>
     </div>
   );
