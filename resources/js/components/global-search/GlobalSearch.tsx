@@ -199,17 +199,16 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="overflow-hidden p-0 shadow-lg sm:max-w-2xl" aria-describedby={undefined}>
+            <DialogContent
+                className="**:data-[slot=dialog-close]: overflow-hidden p-0 shadow-lg sm:max-w-2xl **:data-[slot=dialog-close]:top-4"
+                aria-describedby={undefined}
+            >
                 <DialogTitle className="sr-only">Global Search</DialogTitle>
                 <Command
                     shouldFilter={false}
-                    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/70 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]_svg]:pointer-events-none"
+                    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/70 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]_svg]:pointer-events-none"
                 >
-                    <CommandInput
-                        placeholder="Search leads, tasks, users..."
-                        value={query}
-                        onValueChange={setQuery}
-                    />
+                    <CommandInput placeholder="Search leads, tasks, users..." value={query} onValueChange={setQuery} />
                     <CommandList className="max-h-[480px]">
                         {showLoading && <SkeletonRows />}
 
@@ -229,13 +228,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
                         {showResults && (
                             <>
-                                <ResultGroup
-                                    entity="leads"
-                                    heading="Leads"
-                                    results={data.leads}
-                                    onSelect={handleSelect}
-                                    showSeparator={false}
-                                />
+                                <ResultGroup entity="leads" heading="Leads" results={data.leads} onSelect={handleSelect} showSeparator={false} />
                                 <ResultGroup
                                     entity="tasks"
                                     heading="Tasks"
@@ -257,11 +250,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                                     heading="Services"
                                     results={data.services}
                                     onSelect={handleSelect}
-                                    showSeparator={
-                                        data.leads.length > 0 ||
-                                        data.tasks.length > 0 ||
-                                        (auth.isSuperAdmin && data.users.length > 0)
-                                    }
+                                    showSeparator={data.leads.length > 0 || data.tasks.length > 0 || (auth.isSuperAdmin && data.users.length > 0)}
                                 />
                                 <ResultGroup
                                     entity="activities"
@@ -296,7 +285,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                                                 <button
                                                     type="button"
                                                     onClick={(e) => handleRemoveRecent(e, term)}
-                                                    className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-muted group-data-[selected=true]:opacity-100"
+                                                    className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity group-data-[selected=true]:opacity-100 hover:bg-muted"
                                                     aria-label={`Remove "${term}" from recent searches`}
                                                 >
                                                     <X className="size-3 text-muted-foreground" />
