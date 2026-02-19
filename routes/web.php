@@ -28,7 +28,7 @@ use Inertia\Inertia;
 Route::get('/health', HealthController::class)->name('health');
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return redirect(route('dashboard'));
 })->name('home');
 
 // Facebook Webhook - needs to be publicly accessible
