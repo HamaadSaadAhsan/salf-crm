@@ -186,18 +186,6 @@ class UserController extends Controller
         ];
     }
 
-    /**
-     * Apply filters to a query
-     */
-    private function getSubordinateRole(User $user): ?string
-    {
-        return match (true) {
-            $user->hasRole('senior-support-agent') => 'support-agent',
-            $user->hasRole('senior-sales-rep') => 'sales-rep',
-            default => null,
-        };
-    }
-
     private function applyFilters($query, array $filters): void
     {
         // Restrict to allowed IDs (used for team-scoped access)
