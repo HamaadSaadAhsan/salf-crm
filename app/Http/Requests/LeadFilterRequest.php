@@ -19,6 +19,7 @@ class LeadFilterRequest extends FormRequest
             'priority' => 'array',
             'priority.*' => 'string|in:low,medium,high,urgent',
             'assigned_to' => 'integer|exists:users,id',
+            'qualified_by' => 'integer|exists:users,id',
             'source_id' => 'array',
             'source_id.*' => 'integer|exists:lead_sources,id',
             'service_id' => 'array',

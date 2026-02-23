@@ -33,6 +33,15 @@ class LeadController extends Controller
 
         if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
+            // Always include leads the user qualified (they get reassigned to advisors after qualification)
+            $filters['qualified_by'] = $user->id;
+
+            // For CROs, "qualified" status means "leads I qualified" regardless of current inquiry_status
+            $statusFilter = $filters['status'] ?? [];
+            if (in_array('qualified', $statusFilter)) {
+                $filters['cro_qualified_filter'] = true;
+                $filters['status'] = array_values(array_diff($statusFilter, ['qualified']));
+            }
         }
 
         $cacheKey = Lead::getListCacheKey($filters);
@@ -145,24 +154,40 @@ class LeadController extends Controller
     {
         $filterConditions = [];
 
-        // Status filter
-        if (! empty($filters['status'])) {
-            if (is_array($filters['status'])) {
-                $statusFilter = 'inquiry_status IN ['.implode(', ', array_map(fn ($s) => '"'.$s.'"', $filters['status'])).']';
-                $filterConditions[] = $statusFilter;
+        // CRO "qualified" filter: show leads qualified by user (any status) + leads matching other statuses
+        if (! empty($filters['cro_qualified_filter'])) {
+            $remainingStatuses = $filters['status'] ?? [];
+
+            if (empty($remainingStatuses)) {
+                $filterConditions[] = 'qualified_by = '.$filters['qualified_by'];
             } else {
-                $filterConditions[] = 'inquiry_status = "'.$filters['status'].'"';
+                $statusList = implode(', ', array_map(fn ($s) => '"'.$s.'"', (array) $remainingStatuses));
+                $filterConditions[] = '(qualified_by = '.$filters['qualified_by'].' OR ((assigned_to = '.$filters['assigned_to'].' OR qualified_by = '.$filters['qualified_by'].') AND inquiry_status IN ['.$statusList.']))';
+            }
+        } else {
+            // Normal status filter
+            if (! empty($filters['status'])) {
+                if (is_array($filters['status'])) {
+                    $statusFilter = 'inquiry_status IN ['.implode(', ', array_map(fn ($s) => '"'.$s.'"', $filters['status'])).']';
+                    $filterConditions[] = $statusFilter;
+                } else {
+                    $filterConditions[] = 'inquiry_status = "'.$filters['status'].'"';
+                }
+            }
+
+            // Normal assigned user filter (OR qualified_by for CROs who need to see reassigned leads)
+            if (! empty($filters['assigned_to']) && ! empty($filters['qualified_by'])) {
+                $filterConditions[] = '(assigned_to = '.$filters['assigned_to'].' OR qualified_by = '.$filters['qualified_by'].')';
+            } elseif (! empty($filters['assigned_to'])) {
+                $filterConditions[] = 'assigned_to = '.$filters['assigned_to'];
+            } elseif (! empty($filters['qualified_by'])) {
+                $filterConditions[] = 'qualified_by = '.$filters['qualified_by'];
             }
         }
 
         // Priority filter
         if (! empty($filters['priority'])) {
             $filterConditions[] = 'priority = "'.$filters['priority'].'"';
-        }
-
-        // Assigned user filter
-        if (! empty($filters['assigned_to'])) {
-            $filterConditions[] = 'assigned_to = '.$filters['assigned_to'];
         }
 
         // Source filter
@@ -286,9 +311,9 @@ class LeadController extends Controller
             $filterConditions[] = 'days_in_current_status >= '.$filters['min_days_in_status'];
         }
 
-        // Apply all filters
+        // Apply all filters via Meilisearch raw filter option
         if (! empty($filterConditions)) {
-            $query->where(implode(' AND ', $filterConditions));
+            $query->options(['filter' => implode(' AND ', $filterConditions)]);
         }
     }
 
@@ -380,23 +405,49 @@ class LeadController extends Controller
      */
     private function applyDatabaseFilters($query, array $filters): void
     {
-        // Status filter
-        if (! empty($filters['status'])) {
-            if (is_array($filters['status'])) {
-                $query->whereIn('inquiry_status', $filters['status']);
+        // CRO "qualified" filter: show leads qualified by user (any status) + leads matching other statuses
+        if (! empty($filters['cro_qualified_filter'])) {
+            $remainingStatuses = $filters['status'] ?? [];
+
+            if (empty($remainingStatuses)) {
+                $query->where('qualified_by', $filters['qualified_by']);
             } else {
-                $query->where('inquiry_status', $filters['status']);
+                $query->where(function ($mainQ) use ($filters, $remainingStatuses) {
+                    $mainQ->where('qualified_by', $filters['qualified_by'])
+                        ->orWhere(function ($subQ) use ($filters, $remainingStatuses) {
+                            $subQ->where(function ($q) use ($filters) {
+                                $q->where('assigned_to', $filters['assigned_to'])
+                                    ->orWhere('qualified_by', $filters['qualified_by']);
+                            })->whereIn('inquiry_status', (array) $remainingStatuses);
+                        });
+                });
+            }
+        } else {
+            // Normal status filter
+            if (! empty($filters['status'])) {
+                if (is_array($filters['status'])) {
+                    $query->whereIn('inquiry_status', $filters['status']);
+                } else {
+                    $query->where('inquiry_status', $filters['status']);
+                }
+            }
+
+            // Normal assigned user filter (OR qualified_by for CROs who need to see reassigned leads)
+            if (! empty($filters['assigned_to']) && ! empty($filters['qualified_by'])) {
+                $query->where(function ($q) use ($filters) {
+                    $q->where('assigned_to', $filters['assigned_to'])
+                        ->orWhere('qualified_by', $filters['qualified_by']);
+                });
+            } elseif (! empty($filters['assigned_to'])) {
+                $query->where('assigned_to', $filters['assigned_to']);
+            } elseif (! empty($filters['qualified_by'])) {
+                $query->where('qualified_by', $filters['qualified_by']);
             }
         }
 
         // Priority filter
         if (! empty($filters['priority'])) {
             $query->where('priority', $filters['priority']);
-        }
-
-        // Assigned user filter
-        if (! empty($filters['assigned_to'])) {
-            $query->where('assigned_to', $filters['assigned_to']);
         }
 
         // Source filter

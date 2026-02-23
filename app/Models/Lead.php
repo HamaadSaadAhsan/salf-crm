@@ -111,6 +111,7 @@ class Lead extends Model
             'service_id' => $this->service_id,
             'lead_source_id' => $this->lead_source_id,
             'assigned_to' => $this->assigned_to,
+            'qualified_by' => $this->qualified_by,
             'created_by' => $this->created_by,
             'ticket_id' => $this->ticket_id,
             // Budget handling
@@ -181,6 +182,7 @@ class Lead extends Model
                 'service_id',
                 'lead_source_id',
                 'assigned_to',
+                'qualified_by',
                 'created_by',
                 'city',
                 'country',

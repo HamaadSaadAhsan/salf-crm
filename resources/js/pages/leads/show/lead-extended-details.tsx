@@ -560,11 +560,19 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             inquiry_status: patch.inquiry_status ?? model.inquiry_status,
         };
 
+        // When qualifying or requalifying, the current user loses access to this lead
+        // (lead gets reassigned to advisor/CRO), so redirect to /leads
+        const losesAccess = patch.inquiry_status === 'qualified' || patch.inquiry_status === 'requalify';
+
         router.put(`/leads/${model.id}`, payload, {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['lead'],
+            preserveScroll: !losesAccess,
+            preserveState: !losesAccess,
+            only: losesAccess ? undefined : ['lead'],
             onSuccess: (page) => {
+                if (losesAccess) {
+                    router.visit('/leads');
+                    return;
+                }
                 const leadData = (page.props as { lead?: Lead }).lead;
                 if (leadData) {
                     setModel(leadData);
@@ -597,6 +605,13 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
             }
             await axios.put(updateLead.url(model.id), payload);
             toast.success(pendingStatusChange === 'lost' ? 'Lead marked as lost' : 'Lead sent back for requalification');
+
+            // Requalify reassigns lead to CRO, so current user loses access
+            if (pendingStatusChange === 'requalify') {
+                router.visit('/leads');
+                return;
+            }
+
             reloadLead();
         } catch (error: unknown) {
             if (axios.isAxiosError(error) && error.response?.data?.message) {

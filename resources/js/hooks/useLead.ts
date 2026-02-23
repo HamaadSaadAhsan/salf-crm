@@ -473,6 +473,14 @@ export function useOptimisticLeadUpdate() {
             void queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
             void queryClient.invalidateQueries({ queryKey: ['leads'] });
 
+            // When a lead is qualified or requalified, the current user loses access
+            // (lead gets reassigned to advisor/CRO), so redirect to /leads
+            const statusChanged = variables.updates.inquiry_status;
+            if (statusChanged === 'qualified' || statusChanged === 'requalify') {
+                router.visit('/leads');
+                return;
+            }
+
             // Refresh Inertia page data to update the table and lead detail
             router.reload({
                 only: ['leads', 'lead', 'meta'],

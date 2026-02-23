@@ -25,7 +25,7 @@ const croTransitions: Record<string, string[]> = {
     contacted: ['qualified', 'nurturing', 'lost'],
     qualified: ['assigned_to_advisor', 'nurturing', 'lost'],
     requalify: ['contacted', 'qualified', 'nurturing', 'lost'],
-    nurturing: ['contacted', 'lost'],
+    nurturing: ['contacted', 'qualified', 'lost'],
     assigned_to_advisor: ['requalify', 'won', 'lost'],
 };
 
