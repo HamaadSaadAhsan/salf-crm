@@ -211,6 +211,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/ad-source-time-series', [DashboardController::class, 'adSourceTimeSeries'])->name('dashboard.ad-source-time-series');
     });
 
+    // Reports (Inertia Pages + API)
+    Route::middleware('role_or_permission:super-admin|view reports')->group(function () {
+        Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{type}', [\App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
+    });
+
+    Route::prefix('api/reports')->middleware('role_or_permission:super-admin|view reports')->group(function () {
+        Route::get('/leads-overall', [\App\Http\Controllers\Api\ReportController::class, 'leadsOverall'])->name('reports.leads-overall');
+        Route::get('/leads-by-office', [\App\Http\Controllers\Api\ReportController::class, 'leadsByOffice'])->name('reports.leads-by-office');
+        Route::get('/leads-by-support-agent', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySupportAgent'])->name('reports.leads-by-support-agent');
+        Route::get('/leads-by-sales-rep', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySalesRep'])->name('reports.leads-by-sales-rep');
+        Route::get('/leads-by-source', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySource'])->name('reports.leads-by-source');
+        Route::get('/leads-by-service', [\App\Http\Controllers\Api\ReportController::class, 'leadsByService'])->name('reports.leads-by-service');
+        Route::get('/leads-conversion', [\App\Http\Controllers\Api\ReportController::class, 'leadsConversion'])->name('reports.leads-conversion');
+        Route::get('/leads-lost', [\App\Http\Controllers\Api\ReportController::class, 'leadsLost'])->name('reports.leads-lost');
+    });
+
     Route::prefix('api/metrics')->middleware('role_or_permission:super-admin|view analytics')->group(function () {
         Route::get('/conversion', [MetricsController::class, 'conversion'])->name('metrics.conversion');
         Route::get('/business-performance', [MetricsController::class, 'businessPerformance'])->name('metrics.business-performance');

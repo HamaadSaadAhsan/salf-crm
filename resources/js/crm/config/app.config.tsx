@@ -30,6 +30,51 @@ export const MAIN_NAV: NavConfig = [
             icon: ListChecks,
         },
         {
+            id: 'reports',
+            title: 'Reports',
+            path: '/reports',
+            icon: BarChart3,
+            requiredPermission: 'view reports',
+            items: [
+                {
+                    title: 'Overview',
+                    path: '/reports',
+                },
+                {
+                    title: 'Leads Overall',
+                    path: '/reports/leads-overall',
+                },
+                {
+                    title: 'By Office',
+                    path: '/reports/leads-by-office',
+                },
+                {
+                    title: 'By Support Agent',
+                    path: '/reports/leads-by-support-agent',
+                },
+                {
+                    title: 'By Sales Rep',
+                    path: '/reports/leads-by-sales-rep',
+                },
+                {
+                    title: 'By Source',
+                    path: '/reports/leads-by-source',
+                },
+                {
+                    title: 'By Service',
+                    path: '/reports/leads-by-service',
+                },
+                {
+                    title: 'Conversions',
+                    path: '/reports/leads-conversion',
+                },
+                {
+                    title: 'Lost Leads',
+                    path: '/reports/leads-lost',
+                },
+            ],
+        },
+        {
             id: 'workflows',
             title: 'Workflows',
             path: '/workflows',
@@ -122,10 +167,6 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'All Calls',
                     path: '/calls',
-                },
-                {
-                    title: 'New Call',
-                    path: '/calls/create',
                 },
             ],
         },
