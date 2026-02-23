@@ -11,6 +11,8 @@ import {
     TrendingUp,
     Target,
     Activity,
+    Trophy,
+    XCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +93,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <StatCard
                     label="Assigned Leads"
                     value={formatNumber(myLeads.assigned)}
@@ -111,6 +113,20 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                     value={formatNumber(myLeads.qualified_today)}
                     icon={CheckCircle}
                     color="green"
+                />
+                <StatCard
+                    label="Won Leads"
+                    value={formatNumber(myLeads.won)}
+                    icon={Trophy}
+                    color="green"
+                    onClick={() => router.visit('/leads?status[]=won')}
+                />
+                <StatCard
+                    label="Lost Leads"
+                    value={formatNumber(myLeads.lost)}
+                    icon={XCircle}
+                    color="red"
+                    onClick={() => router.visit('/leads?status[]=lost')}
                 />
                 <StatCard
                     label="Overdue Tasks"

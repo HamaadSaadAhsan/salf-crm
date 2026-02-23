@@ -283,6 +283,12 @@ class DashboardController extends Controller
                 'qualified_today' => Lead::where('qualified_by', $user->id)
                     ->whereDate('qualified_at', $today)
                     ->count(),
+                'won' => Lead::where('qualified_by', $user->id)
+                    ->where('inquiry_status', 'won')
+                    ->count(),
+                'lost' => Lead::where('assigned_to', $user->id)
+                    ->where('inquiry_status', 'lost')
+                    ->count(),
             ],
             'my_tasks' => [
                 'today' => Task::where('assigned_to_id', $user->id)
@@ -367,15 +373,57 @@ class DashboardController extends Controller
 
     protected function getPersonalPerformance(User $user, Carbon $date): array
     {
-        $snapshot = UserPerformanceSnapshot::where('user_id', $user->id)
-            ->whereDate('snapshot_date', $date->toDateString())
+        // Compute metrics in real-time instead of relying on scheduled snapshots
+        // Use union of assigned_to + qualified_by as the total pool (CROs lose assigned_to after qualification)
+        $qualifiedLeads = Lead::where('qualified_by', $user->id)->count();
+        $convertedLeads = Lead::where('assigned_to', $user->id)->where('inquiry_status', 'won')->count();
+        $totalWorkedLeads = Lead::where('assigned_to', $user->id)
+            ->orWhere('qualified_by', $user->id)
+            ->count();
+
+        $qualificationRate = $totalWorkedLeads > 0
+            ? round(($qualifiedLeads / $totalWorkedLeads) * 100, 2)
+            : 0;
+
+        $conversionRate = $totalWorkedLeads > 0
+            ? round(($convertedLeads / $totalWorkedLeads) * 100, 2)
+            : 0;
+
+        $totalTasks = Task::where('assigned_to_id', $user->id)->count();
+        $completedTasks = Task::where('assigned_to_id', $user->id)->where('status', 'completed')->count();
+        $taskCompletionAccuracy = $totalTasks > 0
+            ? round(($completedTasks / $totalTasks) * 100, 2)
+            : 0;
+
+        $totalActivities = LeadActivity::where('user_id', $user->id)
+            ->whereDate('created_at', $date)
+            ->count();
+
+        // Compare against yesterday's snapshot for deltas
+        $yesterday = UserPerformanceSnapshot::where('user_id', $user->id)
+            ->whereDate('snapshot_date', $date->copy()->subDay()->toDateString())
             ->first();
 
+        $lastConversion = $yesterday?->conversion_rate ?? 0;
+        $lastQualification = $yesterday?->qualification_rate ?? 0;
+        $lastTask = $yesterday?->task_completion_accuracy ?? 0;
+        $lastActivities = $yesterday?->total_activities ?? 0;
+
         return [
-            'conversion_rate' => $snapshot?->conversion_rate ?? 0,
-            'qualification_rate' => $snapshot?->qualification_rate ?? 0,
-            'task_completion_accuracy' => $snapshot?->task_completion_accuracy ?? 0,
-            'total_activities' => $snapshot?->total_activities ?? 0,
+            'conversion_rate' => $conversionRate,
+            'qualification_rate' => $qualificationRate,
+            'task_completion_accuracy' => $taskCompletionAccuracy,
+            'total_activities' => $totalActivities,
+            'conversion_delta' => round($conversionRate - $lastConversion, 2),
+            'last_conversion_rate' => $lastConversion,
+            'qualification_delta' => round($qualificationRate - $lastQualification, 2),
+            'last_qualification_rate' => $lastQualification,
+            'task_delta' => round($taskCompletionAccuracy - $lastTask, 2),
+            'last_task_completion' => $lastTask,
+            'activities_delta' => $lastActivities > 0
+                ? round((($totalActivities - $lastActivities) / $lastActivities) * 100, 2)
+                : 0,
+            'last_activities' => $lastActivities,
         ];
     }
 

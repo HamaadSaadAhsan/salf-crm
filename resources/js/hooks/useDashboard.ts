@@ -35,6 +35,8 @@ export interface DashboardOverview {
         qualified_assigned?: number;
         in_proposal?: number;
         converted_today?: number;
+        won?: number;
+        lost?: number;
     };
     my_tasks?: {
         today?: number;
@@ -47,6 +49,14 @@ export interface DashboardOverview {
         qualification_rate?: number;
         task_completion_accuracy?: number;
         total_activities?: number;
+        conversion_delta?: number;
+        last_conversion_rate?: number;
+        qualification_delta?: number;
+        last_qualification_rate?: number;
+        task_delta?: number;
+        last_task_completion?: number;
+        activities_delta?: number;
+        last_activities?: number;
     };
     response_times?: {
         avg_first_response?: number | null;
