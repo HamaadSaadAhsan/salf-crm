@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getInitials } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Calendar, Clock, Download, Filter, Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { PageHeader } from '@/pages/calls/pager-header';
+import { Content } from '@/layouts/components/content';
 
 interface CallSession {
     id: string;
@@ -143,255 +145,217 @@ function IndexContent({ callSessions, stats, filters }: Props) {
     };
 
     return (
-        <Card className="border-0">
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-xl leading-tight font-semibold text-gray-800 dark:text-gray-200">Call Sessions</h2>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">View and manage your call history and active sessions</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Link href="/calls/history">
-                            <Button variant="outline">
-                                <Calendar className="mr-2 h-4 w-4" />
-                                History
+        <div className="mx-auto max-w-7xl space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Total Calls</p>
+                                <p className="text-2xl font-bold">{stats.total_calls}</p>
+                            </div>
+                            <Phone className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Active Calls</p>
+                                <p className="text-2xl font-bold text-green-600">{stats.active_calls}</p>
+                            </div>
+                            <PhoneCall className="h-8 w-8 text-green-600" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">This Month</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                    {
+                                        callSessions.data.filter((call) => {
+                                            const callDate = new Date(call.started_at);
+                                            const now = new Date();
+                                            return callDate.getMonth() === now.getMonth() && callDate.getFullYear() === now.getFullYear();
+                                        }).length
+                                    }
+                                </p>
+                            </div>
+                            <Clock className="h-8 w-8 text-blue-600" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filters */}
+            <Card>
+                <CardContent className="p-4">
+                    <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
+                        <div className="min-w-64 flex-1">
+                            <div className="relative">
+                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name, number, or session ID..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+                        </div>
+
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="All Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="answered">Answered</SelectItem>
+                                <SelectItem value="ended">Ended</SelectItem>
+                                <SelectItem value="failed">Failed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={directionFilter} onValueChange={setDirectionFilter}>
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="All Direction" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Direction</SelectItem>
+                                <SelectItem value="inbound">Inbound</SelectItem>
+                                <SelectItem value="outbound">Outbound</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Button type="submit">
+                            <Filter className="mr-2 h-4 w-4" />
+                            Filter
+                        </Button>
+
+                        {(searchTerm || statusFilter !== 'all' || directionFilter !== 'all') && (
+                            <Button variant="outline" onClick={clearFilters}>
+                                Clear
                             </Button>
-                        </Link>
-                        <Link href="/calls/create">
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Make Call
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="mx-auto max-w-7xl space-y-6">
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Total Calls</p>
-                                        <p className="text-2xl font-bold">{stats.total_calls}</p>
-                                    </div>
-                                    <Phone className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        )}
+                    </form>
+                </CardContent>
+            </Card>
 
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Active Calls</p>
-                                        <p className="text-2xl font-bold text-green-600">{stats.active_calls}</p>
-                                    </div>
-                                    <PhoneCall className="h-8 w-8 text-green-600" />
-                                </div>
-                            </CardContent>
-                        </Card>
+            {/* Calls Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Recent Calls</CardTitle>
+                    <CardDescription>A list of your recent call sessions with details and controls.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {callSessions.data.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <Phone className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                            <h3 className="mb-2 text-lg font-semibold">No calls found</h3>
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Participants</TableHead>
+                                    <TableHead>Direction</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Started</TableHead>
+                                    <TableHead>Duration</TableHead>
+                                    <TableHead>Recording</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {callSessions.data.map((call) => (
+                                    <TableRow key={call.id}>
+                                        <TableCell>
+                                            <div className="flex items-center space-x-3">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={call.caller.avatar} />
+                                                    <AvatarFallback>{getInitials(call.caller.name)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-medium">
+                                                        {call.caller.name} → {call.lead?.name || call.callee_number}
+                                                    </p>
+                                                    <p className="font-mono text-xs text-muted-foreground">
+                                                        {call.caller_number} → {call.callee_number}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center space-x-1">
+                                                {getDirectionIcon(call.call_direction)}
+                                                <span className="text-sm capitalize">{call.call_direction}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge className={getStatusColor(call.status)}>{call.status}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-sm">{new Date(call.started_at).toLocaleString()}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-mono text-sm">{formatDuration(call.duration)}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {call.recording_url ? (
+                                                <div className="flex items-center space-x-1">
+                                                    <Button variant="ghost" size="sm" onClick={() => playRecording(call)} title="Play recording">
+                                                        <Play className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => window.open(call.recording_url, '_blank')}
+                                                        title="Download recording"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">No recording</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Link href={`/calls/${call.id}`}>
+                                                <Button variant="ghost" size="sm">
+                                                    View Details
+                                                </Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
 
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">This Month</p>
-                                        <p className="text-2xl font-bold text-blue-600">
-                                            {
-                                                callSessions.data.filter((call) => {
-                                                    const callDate = new Date(call.started_at);
-                                                    const now = new Date();
-                                                    return callDate.getMonth() === now.getMonth() && callDate.getFullYear() === now.getFullYear();
-                                                }).length
-                                            }
-                                        </p>
-                                    </div>
-                                    <Clock className="h-8 w-8 text-blue-600" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Filters */}
-                    <Card>
-                        <CardContent className="p-4">
-                            <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
-                                <div className="min-w-64 flex-1">
-                                    <div className="relative">
-                                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search by name, number, or session ID..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="pl-10"
-                                        />
-                                    </div>
-                                </div>
-
-                                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                    <SelectTrigger className="w-40">
-                                        <SelectValue placeholder="All Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Status</SelectItem>
-                                        <SelectItem value="answered">Answered</SelectItem>
-                                        <SelectItem value="ended">Ended</SelectItem>
-                                        <SelectItem value="failed">Failed</SelectItem>
-                                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                                    <SelectTrigger className="w-40">
-                                        <SelectValue placeholder="All Direction" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Direction</SelectItem>
-                                        <SelectItem value="inbound">Inbound</SelectItem>
-                                        <SelectItem value="outbound">Outbound</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                <Button type="submit">
-                                    <Filter className="mr-2 h-4 w-4" />
-                                    Filter
-                                </Button>
-
-                                {(searchTerm || statusFilter !== 'all' || directionFilter !== 'all') && (
-                                    <Button variant="outline" onClick={clearFilters}>
-                                        Clear
-                                    </Button>
-                                )}
-                            </form>
-                        </CardContent>
-                    </Card>
-
-                    {/* Calls Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Recent Calls</CardTitle>
-                            <CardDescription>A list of your recent call sessions with details and controls.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {callSessions.data.length === 0 ? (
-                                <div className="py-12 text-center">
-                                    <Phone className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                                    <h3 className="mb-2 text-lg font-semibold">No calls found</h3>
-                                    <p className="mb-4 text-muted-foreground">Get started by making your first call or adjust your filters.</p>
-                                    <Link href="/calls/create">
-                                        <Button>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Make Call
-                                        </Button>
-                                    </Link>
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Participants</TableHead>
-                                            <TableHead>Direction</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Started</TableHead>
-                                            <TableHead>Duration</TableHead>
-                                            <TableHead>Recording</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {callSessions.data.map((call) => (
-                                            <TableRow key={call.id}>
-                                                <TableCell>
-                                                    <div className="flex items-center space-x-3">
-                                                        <Avatar className="h-8 w-8">
-                                                            <AvatarImage src={call.caller.avatar} />
-                                                            <AvatarFallback>{getInitials(call.caller.name)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="min-w-0">
-                                                            <p className="truncate text-sm font-medium">
-                                                                {call.caller.name} → {call.lead?.name || call.callee_number}
-                                                            </p>
-                                                            <p className="font-mono text-xs text-muted-foreground">
-                                                                {call.caller_number} → {call.callee_number}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center space-x-1">
-                                                        {getDirectionIcon(call.call_direction)}
-                                                        <span className="text-sm capitalize">{call.call_direction}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge className={getStatusColor(call.status)}>{call.status}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-sm">{new Date(call.started_at).toLocaleString()}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="font-mono text-sm">{formatDuration(call.duration)}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {call.recording_url ? (
-                                                        <div className="flex items-center space-x-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => playRecording(call)}
-                                                                title="Play recording"
-                                                            >
-                                                                <Play className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => window.open(call.recording_url, '_blank')}
-                                                                title="Download recording"
-                                                            >
-                                                                <Download className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">No recording</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Link href={`/calls/${call.id}`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            View Details
-                                                        </Button>
-                                                    </Link>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-
-                            {/* Pagination */}
-                            {callSessions.links && callSessions.links.length > 3 && (
-                                <div className="mt-4 flex justify-center space-x-1">
-                                    {callSessions.links.map((link: any, index: number) => (
-                                        <Button
-                                            key={index}
-                                            variant={link.active ? 'primary' : 'outline'}
-                                            size="sm"
-                                            onClick={() => link.url && router.get(link.url)}
-                                            disabled={!link.url}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </CardContent>
-        </Card>
+                    {/* Pagination */}
+                    {callSessions.links && callSessions.links.length > 3 && (
+                        <div className="mt-4 flex justify-center space-x-1">
+                            {callSessions.links.map((link: any, index: number) => (
+                                <Button
+                                    key={index}
+                                    variant={link.active ? 'primary' : 'outline'}
+                                    size="sm"
+                                    onClick={() => link.url && router.get(link.url)}
+                                    disabled={!link.url}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
@@ -399,7 +363,10 @@ export default function Index({ callSessions, stats, filters }: Props) {
     return (
         <AppLayout>
             <Head title="Call Sessions" />
-            <IndexContent callSessions={callSessions} stats={stats} filters={filters} />
+            <PageHeader />
+            <Content className="px-5 md:px-0 lg-px-0">
+                <IndexContent callSessions={callSessions} stats={stats} filters={filters} />
+            </Content>
         </AppLayout>
     );
 }
