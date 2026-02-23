@@ -342,71 +342,56 @@ const OfficeList = ({ offices, onEditOffice }: OfficeListProps) => {
   };
 
   return (
-    <DataGrid table={table} recordCount={officesList.length}>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="flex flex-1 items-center space-x-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search offices..."
-                value={
-                  (table.getColumn('name')?.getFilterValue() as string) ?? ''
-                }
-                onChange={(event) =>
-                  table.getColumn('name')?.setFilterValue(event.target.value)
-                }
-                className="pl-9 h-9"
-              />
-            </div>
-            {table.getColumn('name')?.getFilterValue() && (
-              <Button
-                variant="ghost"
-                onClick={() => table.getColumn('name')?.setFilterValue('')}
-                className="h-9 px-2 lg:px-3"
-              >
-                Reset
-                <X className="ml-2 h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <DataGridColumnVisibility table={table} />
-          </div>
-        </CardHeader>
-        <CardTable>
-          <DataGridTable table={table} columns={columns} />
-        </CardTable>
-        <CardFooter className="pt-4">
-          <DataGridPagination table={table} />
-        </CardFooter>
-      </Card>
+      <DataGrid table={table} recordCount={officesList.length}>
+          <Card className="border-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <div className="flex flex-1 items-center space-x-2">
+                      <div className="relative max-w-sm flex-1">
+                          <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                              placeholder="Search offices..."
+                              value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+                              onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
+                              className="h-9 pl-9"
+                          />
+                      </div>
+                      {table.getColumn('name')?.getFilterValue() && (
+                          <Button variant="ghost" onClick={() => table.getColumn('name')?.setFilterValue('')} className="h-9 px-2 lg:px-3">
+                              Reset
+                              <X className="ml-2 h-4 w-4" />
+                          </Button>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <DataGridColumnVisibility table={table} trigger={undefined} />
+                  </div>
+              </CardHeader>
+              <CardTable>
+                  <DataGridTable />
+              </CardTable>
+              <CardFooter className="pt-4">
+                  <DataGridPagination />
+              </CardFooter>
+          </Card>
 
-      <AlertDialog
-        open={!!deleteOffice}
-        onOpenChange={() => setDeleteOffice(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Office</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteOffice?.name}"? This
-              action cannot be undone. This office has {deleteOffice?.users_count}{' '}
-              users assigned.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </DataGrid>
+          <AlertDialog open={!!deleteOffice} onOpenChange={() => setDeleteOffice(null)}>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Office</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          Are you sure you want to delete "{deleteOffice?.name}"? This action cannot be undone. This office has{' '}
+                          {deleteOffice?.users_count} users assigned.
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+      </DataGrid>
   );
 };
 

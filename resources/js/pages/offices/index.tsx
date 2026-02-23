@@ -67,9 +67,7 @@ export default function OfficesPage({ offices, zones }: OfficesPageProps) {
         <Head title="Offices Management" />
         <PageHeader onNewOffice={handleNewOffice} />
         <Content className="px-0">
-          <div className="py-4">
-            <OfficeList offices={officesList} onEditOffice={handleEditOffice} />
-          </div>
+          <OfficeList offices={officesList} onEditOffice={handleEditOffice} />
         </Content>
       </AppLayout>
 
