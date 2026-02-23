@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Laravel\Scout\Builder;
 use Throwable;
@@ -68,6 +69,15 @@ class LeadController extends Controller
             $filters['assigned_to_in'] = array_unique(array_merge([$user->id], $subordinateIds));
         } elseif ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
+            // Always include leads the user qualified (they get reassigned to advisors after qualification)
+            $filters['qualified_by'] = $user->id;
+
+            // For CROs, "qualified" status means "leads I qualified" regardless of current inquiry_status
+            $statusFilter = $filters['status'] ?? [];
+            if (in_array('qualified', $statusFilter)) {
+                $filters['cro_qualified_filter'] = true;
+                $filters['status'] = array_values(array_diff($statusFilter, ['qualified']));
+            }
         }
 
         // Expand parent service IDs to include their children (single query, done once)
@@ -257,29 +267,37 @@ class LeadController extends Controller
     {
         $filterConditions = [];
 
-        // Status filter
-        if (! empty($filters['status'])) {
-            if (is_array($filters['status'])) {
-                $statusFilter = 'inquiry_status IN ['.implode(', ', array_map(fn ($s) => '"'.$s.'"', $filters['status'])).']';
-                $filterConditions[] = $statusFilter;
-            } else {
-                $filterConditions[] = 'inquiry_status = "'.$filters['status'].'"';
-            }
-        }
+        // CRO "qualified" filter: show leads qualified by user (any status) + leads matching other statuses
+        if (! empty($filters['cro_qualified_filter'])) {
+            $remainingStatuses = $filters['status'] ?? [];
 
-        // Priority filter
-        if (! empty($filters['priority'])) {
-            if (is_array($filters['priority'])) {
-                $priorityFilter = 'priority IN ['.implode(', ', array_map(fn ($p) => '"'.$p.'"', $filters['priority'])).']';
-                $filterConditions[] = $priorityFilter;
+            if (empty($remainingStatuses)) {
+                // Only "qualified" selected — show all leads this CRO qualified
+                $filterConditions[] = 'qualified_by = '.$filters['qualified_by'];
             } else {
-                $filterConditions[] = 'priority = "'.$filters['priority'].'"';
+                // "qualified" + other statuses: leads CRO qualified OR leads matching other statuses
+                $statusList = implode(', ', array_map(fn ($s) => '"'.$s.'"', (array) $remainingStatuses));
+                $filterConditions[] = '(qualified_by = '.$filters['qualified_by'].' OR ((assigned_to = '.$filters['assigned_to'].' OR qualified_by = '.$filters['qualified_by'].') AND inquiry_status IN ['.$statusList.']))';
             }
-        }
+        } else {
+            // Normal status filter
+            if (! empty($filters['status'])) {
+                if (is_array($filters['status'])) {
+                    $statusFilter = 'inquiry_status IN ['.implode(', ', array_map(fn ($s) => '"'.$s.'"', $filters['status'])).']';
+                    $filterConditions[] = $statusFilter;
+                } else {
+                    $filterConditions[] = 'inquiry_status = "'.$filters['status'].'"';
+                }
+            }
 
-        // Assigned user filter
-        if (! empty($filters['assigned_to'])) {
-            $filterConditions[] = 'assigned_to = '.$filters['assigned_to'];
+            // Normal assigned user filter (OR qualified_by for CROs who need to see reassigned leads)
+            if (! empty($filters['assigned_to']) && ! empty($filters['qualified_by'])) {
+                $filterConditions[] = '(assigned_to = '.$filters['assigned_to'].' OR qualified_by = '.$filters['qualified_by'].')';
+            } elseif (! empty($filters['assigned_to'])) {
+                $filterConditions[] = 'assigned_to = '.$filters['assigned_to'];
+            } elseif (! empty($filters['qualified_by'])) {
+                $filterConditions[] = 'qualified_by = '.$filters['qualified_by'];
+            }
         }
 
         // Source filter
@@ -408,9 +426,9 @@ class LeadController extends Controller
             $filterConditions[] = 'days_in_current_status >= '.$filters['min_days_in_status'];
         }
 
-        // Apply all filters
+        // Apply all filters via Meilisearch raw filter option
         if (! empty($filterConditions)) {
-            $query->where(implode(' AND ', $filterConditions));
+            $query->options(['filter' => implode(' AND ', $filterConditions)]);
         }
     }
 
@@ -463,6 +481,7 @@ class LeadController extends Controller
                 'source:id,name,slug',
                 'assignedTo:id,name,email',
                 'createdBy:id,name',
+                'qualifiedBy:id,name,email',
                 'activities' => function ($query) {
                     $query->select('id', 'lead_id', 'user_id', 'type', 'status', 'subject', 'created_at', 'description', 'attachments')
                         ->latest()
@@ -480,6 +499,7 @@ class LeadController extends Controller
                 'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
                 'inquiry_status', 'priority', 'inquiry_type', 'inquiry_country',
                 'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',
+                'qualified_by', 'qualified_at',
                 'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
                 'last_activity_at', 'next_follow_up_at', 'tags',
             ]);
@@ -516,27 +536,46 @@ class LeadController extends Controller
      */
     private function applyDatabaseFilters($query, array $filters): void
     {
-        // Status filter
-        if (! empty($filters['status'])) {
-            if (is_array($filters['status'])) {
-                $query->whereIn('inquiry_status', $filters['status']);
-            } else {
-                $query->where('inquiry_status', $filters['status']);
-            }
-        }
+        // CRO "qualified" filter: show leads qualified by user (any status) + leads matching other statuses
+        if (! empty($filters['cro_qualified_filter'])) {
+            $remainingStatuses = $filters['status'] ?? [];
 
-        // Priority filter
-        if (! empty($filters['priority'])) {
-            if (is_array($filters['priority'])) {
-                $query->whereIn('priority', $filters['priority']);
+            if (empty($remainingStatuses)) {
+                // Only "qualified" was selected — show all leads this CRO qualified
+                $query->where('qualified_by', $filters['qualified_by']);
             } else {
-                $query->where('priority', $filters['priority']);
+                // "qualified" + other statuses: leads CRO qualified OR leads matching other statuses
+                $query->where(function ($mainQ) use ($filters, $remainingStatuses) {
+                    $mainQ->where('qualified_by', $filters['qualified_by'])
+                        ->orWhere(function ($subQ) use ($filters, $remainingStatuses) {
+                            $subQ->where(function ($q) use ($filters) {
+                                $q->where('assigned_to', $filters['assigned_to'])
+                                    ->orWhere('qualified_by', $filters['qualified_by']);
+                            })->whereIn('inquiry_status', (array) $remainingStatuses);
+                        });
+                });
             }
-        }
+        } else {
+            // Normal status filter
+            if (! empty($filters['status'])) {
+                if (is_array($filters['status'])) {
+                    $query->whereIn('inquiry_status', $filters['status']);
+                } else {
+                    $query->where('inquiry_status', $filters['status']);
+                }
+            }
 
-        // Assigned user filter
-        if (! empty($filters['assigned_to'])) {
-            $query->where('assigned_to', $filters['assigned_to']);
+            // Normal assigned user filter (OR qualified_by for CROs who need to see reassigned leads)
+            if (! empty($filters['assigned_to']) && ! empty($filters['qualified_by'])) {
+                $query->where(function ($q) use ($filters) {
+                    $q->where('assigned_to', $filters['assigned_to'])
+                        ->orWhere('qualified_by', $filters['qualified_by']);
+                });
+            } elseif (! empty($filters['assigned_to'])) {
+                $query->where('assigned_to', $filters['assigned_to']);
+            } elseif (! empty($filters['qualified_by'])) {
+                $query->where('qualified_by', $filters['qualified_by']);
+            }
         }
 
         // Assigned to multiple users filter (used by senior agents to see their team's leads)
@@ -1188,99 +1227,98 @@ class LeadController extends Controller
             abort(403, 'You cannot reassign a lead that is assigned to an advisor.');
         }
 
+        // Build allowed inquiry statuses — transition rules enforced separately for CROs
+        $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'assigned_to_advisor', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|max:255',
+            'phone' => 'sometimes|string|max:50',
+            'occupation' => 'sometimes|string|max:100',
+            'city' => 'sometimes|nullable|string|max:100',
+            'country' => 'sometimes|nullable|string|max:100',
+            'detail' => 'sometimes|nullable|string',
+            'priority' => 'sometimes|nullable|string|in:low,medium,high,urgent',
+            'status' => 'sometimes|string|in:new,contacted,qualified,lost,converted',
+            'inquiry_status' => ['sometimes', 'string', Rule::in($allowedStatuses)], // Note: assigned_to_advisor is auto-assigned by system, only allowed if already set
+
+            // Validate IDs for relations
+            'service_id' => 'sometimes|nullable|exists:services,id',
+            'lead_source_id' => 'sometimes|nullable|exists:lead_sources,id',
+
+            // Validate nested objects (for backward compatibility)
+            'service' => 'sometimes|nullable|array',
+            'service.id' => 'required_with:service|exists:services,id',
+
+            'lead_source' => 'sometimes|nullable|array',
+            'lead_source.id' => 'required_with:lead_source|exists:lead_sources,id',
+
+            // assigned_to can be: integer ID, object {id: X}, or null
+            'assigned_to' => 'sometimes|nullable',
+            'assigned_to.id' => 'sometimes|exists:users,id',
+            'next_follow_up_at' => 'sometimes|nullable|date',
+
+            'loss_reason' => 'sometimes|nullable|string|max:1000',
+            'requalify_reason' => 'sometimes|nullable|string|max:1000',
+
+            'custom_fields' => 'sometimes|nullable|array',
+
+            // Validate budget
+            'budget' => 'sometimes|nullable|array',
+            'budget.amount' => 'required_with:budget|numeric|min:0',
+            'budget.currency' => 'sometimes|string|max:3',
+
+            // Validate tags (accept objects or strings)
+            'tags' => 'sometimes|array',
+            'tags.*' => 'nullable',
+            'tags.*.label' => 'sometimes|string',
+            'tags.*.value' => 'sometimes|string',
+            'tags.*.color' => 'nullable|string',
+        ]);
+
+        // Validate CRO status transitions - enforce valid workflow order
+        // Thrown before try/catch so Laravel's exception handler returns proper 422 for both JSON and Inertia
+        if ($isCRO && isset($validated['inquiry_status']) && $validated['inquiry_status'] !== $lead->inquiry_status) {
+            $croTransitions = [
+                'new' => ['contacted', 'nurturing', 'lost'],
+                'contacted' => ['qualified', 'nurturing', 'lost'],
+                'qualified' => ['assigned_to_advisor', 'nurturing', 'lost'],
+                'requalify' => ['contacted', 'qualified', 'nurturing', 'lost'],
+                'nurturing' => ['contacted', 'qualified', 'lost'],
+                'assigned_to_advisor' => ['requalify', 'won', 'lost'],
+            ];
+
+            $currentStatus = $lead->inquiry_status;
+            $newStatus = $validated['inquiry_status'];
+            $allowedNext = $croTransitions[$currentStatus] ?? [];
+
+            if (! in_array($newStatus, $allowedNext, true)) {
+                throw ValidationException::withMessages([
+                    'inquiry_status' => "Cannot transition from '{$currentStatus}' to '{$newStatus}'.",
+                ]);
+            }
+        }
+
+        // Require loss_reason when marking as lost
+        if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'lost') {
+            if (empty($request->input('loss_reason'))) {
+                throw ValidationException::withMessages([
+                    'loss_reason' => 'A reason is required when marking a lead as lost.',
+                ]);
+            }
+            $validated['loss_reason'] = $request->input('loss_reason');
+        }
+
+        // Require requalify_reason when sending lead back for requalification
+        if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'requalify') {
+            if (empty($request->input('requalify_reason'))) {
+                throw ValidationException::withMessages([
+                    'requalify_reason' => 'A reason is required when requalifying a lead.',
+                ]);
+            }
+        }
+
         try {
-            // Build allowed inquiry statuses — transition rules enforced separately for CROs
-            $allowedStatuses = ['new', 'assigned_to_cro', 'contacted', 'qualified', 'assigned_to_advisor', 'proposal', 'converted', 'won', 'lost', 'unqualified', 'requalify', 'nurturing'];
-
-            $validated = $request->validate([
-                'name' => 'sometimes|string|max:255',
-                'email' => 'sometimes|email|max:255',
-                'phone' => 'sometimes|string|max:50',
-                'occupation' => 'sometimes|string|max:100',
-                'city' => 'sometimes|nullable|string|max:100',
-                'country' => 'sometimes|nullable|string|max:100',
-                'detail' => 'sometimes|nullable|string',
-                'priority' => 'sometimes|nullable|string|in:low,medium,high,urgent',
-                'status' => 'sometimes|string|in:new,contacted,qualified,lost,converted',
-                'inquiry_status' => ['sometimes', 'string', Rule::in($allowedStatuses)], // Note: assigned_to_advisor is auto-assigned by system, only allowed if already set
-
-                // Validate IDs for relations
-                'service_id' => 'sometimes|nullable|exists:services,id',
-                'lead_source_id' => 'sometimes|nullable|exists:lead_sources,id',
-
-                // Validate nested objects (for backward compatibility)
-                'service' => 'sometimes|nullable|array',
-                'service.id' => 'required_with:service|exists:services,id',
-
-                'lead_source' => 'sometimes|nullable|array',
-                'lead_source.id' => 'required_with:lead_source|exists:lead_sources,id',
-
-                // assigned_to can be: integer ID, object {id: X}, or null
-                'assigned_to' => 'sometimes|nullable',
-                'assigned_to.id' => 'sometimes|exists:users,id',
-                'next_follow_up_at' => 'sometimes|nullable|date',
-
-                'loss_reason' => 'sometimes|nullable|string|max:1000',
-                'requalify_reason' => 'sometimes|nullable|string|max:1000',
-
-                'custom_fields' => 'sometimes|nullable|array',
-
-                // Validate budget
-                'budget' => 'sometimes|nullable|array',
-                'budget.amount' => 'required_with:budget|numeric|min:0',
-                'budget.currency' => 'sometimes|string|max:3',
-
-                // Validate tags (accept objects or strings)
-                'tags' => 'sometimes|array',
-                'tags.*' => 'nullable',
-                'tags.*.label' => 'sometimes|string',
-                'tags.*.value' => 'sometimes|string',
-                'tags.*.color' => 'nullable|string',
-            ]);
-
-            // Validate CRO status transitions - enforce valid workflow order
-            if ($isCRO && isset($validated['inquiry_status']) && $validated['inquiry_status'] !== $lead->inquiry_status) {
-                $croTransitions = [
-                    'new' => ['contacted', 'nurturing', 'lost'],
-                    'contacted' => ['qualified', 'nurturing', 'lost'],
-                    'qualified' => ['assigned_to_advisor', 'nurturing', 'lost'],
-                    'requalify' => ['contacted', 'qualified', 'nurturing', 'lost'],
-                    'nurturing' => ['contacted', 'lost'],
-                    'assigned_to_advisor' => ['requalify', 'won', 'lost'],
-                ];
-
-                $currentStatus = $lead->inquiry_status;
-                $newStatus = $validated['inquiry_status'];
-                $allowedNext = $croTransitions[$currentStatus] ?? [];
-
-                if (! in_array($newStatus, $allowedNext, true)) {
-                    return response()->json([
-                        'message' => "Cannot transition from '{$currentStatus}' to '{$newStatus}'.",
-                    ], 422);
-                }
-            }
-
-            // Require loss_reason when marking as lost
-            if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'lost') {
-                if (empty($request->input('loss_reason'))) {
-                    return response()->json([
-                        'message' => 'A reason is required when marking a lead as lost.',
-                        'errors' => ['loss_reason' => ['A reason is required when marking a lead as lost.']],
-                    ], 422);
-                }
-                $validated['loss_reason'] = $request->input('loss_reason');
-            }
-
-            // Require requalify_reason when sending lead back for requalification
-            if (isset($validated['inquiry_status']) && $validated['inquiry_status'] === 'requalify') {
-                if (empty($request->input('requalify_reason'))) {
-                    return response()->json([
-                        'message' => 'A reason is required when requalifying a lead.',
-                        'errors' => ['requalify_reason' => ['A reason is required when requalifying a lead.']],
-                    ], 422);
-                }
-            }
-
             DB::beginTransaction();
 
             $originalStatus = $lead->inquiry_status;

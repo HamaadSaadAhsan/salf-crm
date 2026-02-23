@@ -31,7 +31,6 @@ import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { AnimatePresence } from 'motion/react';
 import OptimizedLeadRow from './components/LeadRow';
 import LeadFilterBar from './components/LeadFilterBar';
-import LeadQuickViewSheet from './components/LeadQuickViewSheet';
 import { NewLeadSheet } from './components/NewLeadSheet';
 import SavedFiltersDialog from './components/SavedFiltersDialog';
 
@@ -257,7 +256,6 @@ export default function LeadsInterface() {
     const [isNewLeadSheetOpen, setIsNewLeadSheetOpen] = useState(false);
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [showFilterBar, setShowFilterBar] = useState(true);
-    const [quickViewLead, setQuickViewLead] = useState<Lead | null>(null);
 
     const pendingDueTasks = pageProps.pendingDueTasks || [];
 
@@ -308,7 +306,7 @@ export default function LeadsInterface() {
     const handleLeadClick = useCallback((leadId: string) => {
         const lead = Array.isArray(leads) ? leads.find((l) => l.id === leadId) : undefined;
         if (lead) {
-            setQuickViewLead(lead);
+            router.visit(lead.urls.show);
         }
     }, [leads]);
 
@@ -490,11 +488,6 @@ export default function LeadsInterface() {
                 onApplyPreset={handleApplyPreset}
             />
 
-            <LeadQuickViewSheet
-                lead={quickViewLead}
-                open={!!quickViewLead}
-                onOpenChange={(isOpen) => { if (!isOpen) setQuickViewLead(null); }}
-            />
         </AppLayout>
     );
 }

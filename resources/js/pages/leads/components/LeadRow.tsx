@@ -18,6 +18,7 @@ import {
     PhoneMissed,
     RefreshCw,
     Search,
+    ShieldCheck,
     User,
     UserPlus,
 } from 'lucide-react';
@@ -215,6 +216,8 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
     const hasOverdueTask = pendingTasks.some((t) => t.is_overdue);
     const hasFollowUp = !!lead.next_follow_up_at;
     const assignedUser = lead.assigned_to?.data;
+    const qualifiedByUser = lead.qualified_by?.data;
+    const qualifiedAt = lead.qualified_at;
 
     return (
         <div
@@ -423,6 +426,26 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">{assignedUser.name}</TooltipContent>
+                    </Tooltip>
+                </div>
+            )}
+
+            {/* Qualified by — xl only */}
+            {qualifiedByUser && (
+                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '100px' }}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <ShieldCheck size={12} className="text-emerald-500" />
+                                <span className="max-w-[80px] truncate">{qualifiedByUser.name.split(' ')[0]}</span>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            <div>Qualified by {qualifiedByUser.name}</div>
+                            {qualifiedAt && (
+                                <div className="text-xs opacity-75">{new Date(qualifiedAt).toLocaleDateString()}</div>
+                            )}
+                        </TooltipContent>
                     </Tooltip>
                 </div>
             )}
