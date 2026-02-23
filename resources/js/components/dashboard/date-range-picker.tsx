@@ -95,7 +95,7 @@ export function DateRangePicker({
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select preset" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[250]">
                   {presets.map((preset) => (
                     <SelectItem key={preset.label} value={preset.label}>
                       {preset.label}
