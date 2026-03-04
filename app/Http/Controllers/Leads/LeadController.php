@@ -1203,7 +1203,7 @@ class LeadController extends Controller
     public function update(Request $request, Lead $lead)
     {
         if (! $request->user()->hasPermissionTo('edit leads')) {
-            abort(403, 'Unauthorized');
+            redirect(route('leads.index'));
         }
 
         $user = $request->user();
@@ -1276,7 +1276,7 @@ class LeadController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|max:255',
+            'email' => 'nullable|email|max:255',
             'phone' => 'sometimes|string|max:50',
             'occupation' => 'sometimes|string|max:100',
             'city' => 'sometimes|nullable|string|max:100',
@@ -1362,6 +1362,39 @@ class LeadController extends Controller
             }
         }
 
+        // Check if status is changing to 'qualified' to trigger event
+        // Computed before try/catch so pre-qualification ValidationException returns proper 422
+        $isQualifying = isset($validated['inquiry_status']) &&
+            $validated['inquiry_status'] === 'qualified' &&
+            $lead->inquiry_status !== 'qualified';
+
+        // Pre-qualification validation: require city, service, and matching advisor
+        // Thrown before try/catch so Laravel's exception handler returns proper 422 for both JSON and Inertia
+        if ($isQualifying && ! $lead->requalified_from_advisor_id) {
+            $effectiveCity = $validated['city'] ?? $lead->city;
+            $effectiveServiceId = $validated['service_id'] ?? ($validated['service']['id'] ?? $lead->service_id);
+
+            if (! $effectiveCity) {
+                throw ValidationException::withMessages([
+                    'city' => ['Lead must have a city before qualifying.'],
+                ]);
+            }
+
+            if (! $effectiveServiceId) {
+                throw ValidationException::withMessages([
+                    'service_id' => ['Lead must have a service before qualifying.'],
+                ]);
+            }
+
+            // Check if a matching advisor exists for this service + city/zone
+            $checkLead = new Lead(['city' => $effectiveCity, 'service_id' => $effectiveServiceId]);
+            if (! $this->assignmentService->hasAvailableAdvisor($checkLead)) {
+                throw ValidationException::withMessages([
+                    'inquiry_status' => ['No advisor available for this service and city/zone combination. Please check the lead\'s service and city.'],
+                ]);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -1371,42 +1404,11 @@ class LeadController extends Controller
             // Track changed fields for tiered cache invalidation
             $changedFields = array_keys(collect($validated)->except(['_method', '_token'])->toArray());
 
-            // Check if status is changing to 'qualified' to trigger event
-            $isQualifying = isset($validated['inquiry_status']) &&
-                $validated['inquiry_status'] === 'qualified' &&
-                $lead->inquiry_status !== 'qualified';
-
             // Check if status is changing to 'assigned_to_advisor' (auto-assignment)
             $isAutoAssigning = isset($validated['inquiry_status']) &&
                 $validated['inquiry_status'] === 'assigned_to_advisor' &&
                 $lead->inquiry_status !== 'assigned_to_advisor' &&
                 ! isset($validated['assigned_to']); // Only auto-assign if not manually assigned
-
-            // Pre-qualification validation: require city, service, and matching advisor
-            if ($isQualifying && ! $lead->requalified_from_advisor_id) {
-                $effectiveCity = $validated['city'] ?? $lead->city;
-                $effectiveServiceId = $validated['service_id'] ?? ($validated['service']['id'] ?? $lead->service_id);
-
-                if (! $effectiveCity) {
-                    throw ValidationException::withMessages([
-                        'city' => ['Lead must have a city before qualifying.'],
-                    ]);
-                }
-
-                if (! $effectiveServiceId) {
-                    throw ValidationException::withMessages([
-                        'service_id' => ['Lead must have a service before qualifying.'],
-                    ]);
-                }
-
-                // Check if a matching advisor exists for this service + city/zone
-                $checkLead = new Lead(['city' => $effectiveCity, 'service_id' => $effectiveServiceId]);
-                if (! $this->assignmentService->hasAvailableAdvisor($checkLead)) {
-                    throw ValidationException::withMessages([
-                        'inquiry_status' => ['No advisor available for this service and city/zone combination. Please check the lead\'s service and city.'],
-                    ]);
-                }
-            }
 
             // Update the lead with validated data
             $updateData = collect($validated)->except(['service', 'lead_source', 'assigned_to'])->toArray();

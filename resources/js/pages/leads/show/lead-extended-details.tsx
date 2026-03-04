@@ -238,10 +238,13 @@ function AdvisorStageProgression({ lead, onStageUpdated }: { lead: Lead; onStage
             toast.success(`Stage updated to ${ADVISOR_STAGE_LABELS[stage] ?? stage}`);
             onStageUpdated();
         } catch (error: unknown) {
+            console.error('Error updating stage:', error);
             const message = error instanceof Error ? error.message : 'Failed to update stage';
             if (axios.isAxiosError(error) && error.response?.data?.message) {
+                console.log('error.response.data.message: ', error.response.data.message);
                 toast.error(error.response.data.message);
             } else {
+                console.log('else error: ', message);
                 toast.error(message);
             }
         } finally {
@@ -554,32 +557,57 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
         }
     }, [canChangeAssignment]);
 
-    const save = (patch: Partial<Lead>) => {
+    const save = async (patch: Partial<Lead>) => {
         const payload = {
             name: patch.name ?? model.name,
             email: patch.email ?? model.email,
             inquiry_status: patch.inquiry_status ?? model.inquiry_status,
         };
 
-        // When qualifying or requalifying, the current user loses access to this lead
-        // (lead gets reassigned to advisor/CRO), so redirect to /leads
-        const losesAccess = patch.inquiry_status === 'qualified' || patch.inquiry_status === 'requalify';
+        // When qualifying, the current user loses access (lead gets reassigned to advisor),
+        // so use axios for direct error handling then redirect on success.
+        const losesAccess = patch.inquiry_status === 'qualified';
+
+        if (losesAccess) {
+            try {
+                await axios.put(updateLead.url(model.id), payload);
+                router.visit('/leads');
+            } catch (error: unknown) {
+                if (axios.isAxiosError(error)) {
+                    const errors = error.response?.data?.errors;
+                    const message =
+                        errors?.inquiry_status?.[0] ||
+                        errors?.city?.[0] ||
+                        errors?.service_id?.[0] ||
+                        error.response?.data?.message ||
+                        'Failed to update status';
+                    toast.error(message);
+                } else {
+                    toast.error('Failed to update status');
+                }
+            }
+            return;
+        }
 
         router.put(`/leads/${model.id}`, payload, {
-            preserveScroll: !losesAccess,
-            preserveState: !losesAccess,
-            ...(losesAccess ? {} : { only: ['lead'] }),
+            preserveScroll: true,
+            preserveState: true,
+            only: ['lead'],
             onSuccess: (page) => {
-                if (losesAccess) {
-                    router.visit('/leads');
-                    return;
-                }
                 const leadData = (page.props as { lead?: Lead }).lead;
                 if (leadData) {
                     setModel(leadData);
                 } else {
                     setModel((prev) => ({ ...prev, ...patch }));
                 }
+            },
+            onError: (errors) => {
+                const message =
+                    errors.inquiry_status ||
+                    errors.city ||
+                    errors.service_id ||
+                    Object.values(errors)[0];
+                toast.error(typeof message === 'string' ? message : String(message));
             },
         });
     };

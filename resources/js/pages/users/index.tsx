@@ -61,6 +61,11 @@ interface Service {
     children?: Service[];
 }
 
+interface Role {
+    id: number;
+    name: string;
+}
+
 interface UsersPageProps {
     users: {
         data: User[];
@@ -74,6 +79,7 @@ interface UsersPageProps {
     zones?: Zone[];
     offices?: Office[];
     services?: Service[];
+    roles?: Role[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -87,7 +93,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function UsersPage({ users, zones = [], offices = [], services = [] }: UsersPageProps) {
+export default function UsersPage({ users, zones = [], offices = [], services = [], roles = [] }: UsersPageProps) {
     const [showNewUserDialog, setShowNewUserDialog] = useState(false);
     const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
 
@@ -109,7 +115,7 @@ export default function UsersPage({ users, zones = [], offices = [], services = 
             </AppLayout>
 
             {/* New User Sheet - Rendered outside AppLayout for proper overlay */}
-            <NewUserSheet open={showNewUserDialog} onOpenChange={setShowNewUserDialog} />
+            <NewUserSheet open={showNewUserDialog} onOpenChange={setShowNewUserDialog} roles={roles} />
         </>
     );
 }
