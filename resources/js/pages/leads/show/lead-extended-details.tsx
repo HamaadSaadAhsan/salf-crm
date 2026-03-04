@@ -568,7 +568,7 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
         router.put(`/leads/${model.id}`, payload, {
             preserveScroll: !losesAccess,
             preserveState: !losesAccess,
-            only: losesAccess ? undefined : ['lead'],
+            ...(losesAccess ? {} : { only: ['lead'] }),
             onSuccess: (page) => {
                 if (losesAccess) {
                     router.visit('/leads');

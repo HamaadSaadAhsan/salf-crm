@@ -1382,6 +1382,32 @@ class LeadController extends Controller
                 $lead->inquiry_status !== 'assigned_to_advisor' &&
                 ! isset($validated['assigned_to']); // Only auto-assign if not manually assigned
 
+            // Pre-qualification validation: require city, service, and matching advisor
+            if ($isQualifying && ! $lead->requalified_from_advisor_id) {
+                $effectiveCity = $validated['city'] ?? $lead->city;
+                $effectiveServiceId = $validated['service_id'] ?? ($validated['service']['id'] ?? $lead->service_id);
+
+                if (! $effectiveCity) {
+                    throw ValidationException::withMessages([
+                        'city' => ['Lead must have a city before qualifying.'],
+                    ]);
+                }
+
+                if (! $effectiveServiceId) {
+                    throw ValidationException::withMessages([
+                        'service_id' => ['Lead must have a service before qualifying.'],
+                    ]);
+                }
+
+                // Check if a matching advisor exists for this service + city/zone
+                $checkLead = new Lead(['city' => $effectiveCity, 'service_id' => $effectiveServiceId]);
+                if (! $this->assignmentService->hasAvailableAdvisor($checkLead)) {
+                    throw ValidationException::withMessages([
+                        'inquiry_status' => ['No advisor available for this service and city/zone combination. Please check the lead\'s service and city.'],
+                    ]);
+                }
+            }
+
             // Update the lead with validated data
             $updateData = collect($validated)->except(['service', 'lead_source', 'assigned_to'])->toArray();
 
@@ -1467,29 +1493,16 @@ class LeadController extends Controller
                         'advisor_id' => $lead->requalified_from_advisor_id,
                     ]);
                 } elseif (! $lead->assigned_to) {
-                    // Fresh qualification: round-robin assignment
-                    if (! $lead->city) {
-                        Log::warning('Lead missing city for advisor assignment', [
+                    // Fresh qualification: round-robin assignment (pre-validated above)
+                    $advisor = $this->assignmentService->assignToAdvisor($lead, $request->user());
+                    if ($advisor) {
+                        $lead->refresh();
+                        Log::info('Lead auto-assigned to advisor', [
                             'lead_id' => $lead->id,
+                            'advisor_id' => $lead->assigned_to,
                             'service_id' => $lead->service_id,
+                            'city' => $lead->city,
                         ]);
-                    } else {
-                        $advisor = $this->assignmentService->assignToAdvisor($lead, $request->user());
-                        if ($advisor) {
-                            $lead->refresh();
-                            Log::info('Lead auto-assigned to advisor', [
-                                'lead_id' => $lead->id,
-                                'advisor_id' => $lead->assigned_to,
-                                'service_id' => $lead->service_id,
-                                'city' => $lead->city,
-                            ]);
-                        } else {
-                            Log::warning('Failed to auto-assign advisor to lead', [
-                                'lead_id' => $lead->id,
-                                'service_id' => $lead->service_id,
-                                'city' => $lead->city,
-                            ]);
-                        }
                     }
                 }
             }
@@ -1734,6 +1747,9 @@ class LeadController extends Controller
 
             return back()->with($responseData);
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lead update failed: '.$e->getMessage());

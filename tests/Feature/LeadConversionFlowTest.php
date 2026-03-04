@@ -1,7 +1,10 @@
 <?php
 
+use App\Models\City;
 use App\Models\Lead;
+use App\Models\Service;
 use App\Models\User;
+use App\Models\Zone;
 use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -15,6 +18,17 @@ beforeEach(function () {
 
     $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+
+    // Create city, zone, and service for strict matching
+    $this->city = City::factory()->create(['name' => 'Dubai']);
+    $this->zone = Zone::factory()->create(['name' => 'UAE Zone']);
+    $this->zone->cities()->attach($this->city);
+    $this->service = Service::create([
+        'name' => 'Test Service',
+        'detail' => 'Test service for conversion flow',
+        'sort_order' => 1,
+        'status' => 'active',
+    ]);
 
     $this->cro = User::factory()->create([
         'availability' => true,
@@ -35,8 +49,10 @@ beforeEach(function () {
         'converted_leads_count' => 0,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.2,
+        'zone_id' => $this->zone->id,
     ]);
     $this->advisor->assignRole($salesRepRole);
+    $this->service->assignToUser($this->advisor);
 });
 
 it('can assign a new lead to a CRO automatically', function () {
@@ -64,6 +80,8 @@ it('can qualify a lead and trigger advisor assignment', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -80,6 +98,8 @@ it('assigns qualified lead to an advisor automatically', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -95,6 +115,8 @@ it('updates CRO metrics when lead is qualified', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);

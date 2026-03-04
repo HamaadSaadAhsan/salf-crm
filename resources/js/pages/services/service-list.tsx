@@ -323,7 +323,7 @@ const ServiceList = ({ services, onEditService, initialSearch = '' }: ServiceLis
                 columnsMovable: true,
             }}
         >
-            <Card className="border-0">
+            <Card className="border-0 bg-background">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <div className="flex flex-1 items-center space-x-2">
                         <div className="relative max-w-sm flex-1">

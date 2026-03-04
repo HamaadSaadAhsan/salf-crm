@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\City;
 use App\Models\Lead;
 use App\Models\LeadServiceAssignment;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\Zone;
 use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -16,6 +18,11 @@ beforeEach(function () {
 
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 
+    // Create city and zone for strict matching
+    $this->city = City::factory()->create(['name' => 'Dubai']);
+    $this->zone = Zone::factory()->create(['name' => 'UAE Zone']);
+    $this->zone->cities()->attach($this->city);
+
     $this->advisor = User::factory()->create([
         'availability' => true,
         'active' => true,
@@ -23,6 +30,7 @@ beforeEach(function () {
         'total_leads_assigned' => 10,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.2,
+        'zone_id' => $this->zone->id,
     ]);
     $this->advisor->assignRole($salesRepRole);
 
@@ -64,12 +72,16 @@ beforeEach(function () {
         'sort_order' => 3,
         'status' => 'active',
     ]);
+
+    // Assign parent service to advisor (covers all children via hierarchy matching)
+    $this->parentService->assignToUser($this->advisor);
 });
 
 it('creates service assignment for parent and all child services when lead is assigned with parent service', function () {
     $lead = Lead::factory()->create([
         'service_id' => $this->parentService->id,
         'inquiry_status' => 'new',
+        'city' => $this->city->name,
     ]);
 
     // Assign the lead to the advisor
@@ -104,10 +116,10 @@ it('creates service assignment for parent and all child services when lead is as
 });
 
 it('can track how many of each child service were assigned to an advisor', function () {
-    // Create multiple leads with parent service
-    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id]);
-    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id]);
-    $lead3 = Lead::factory()->create(['service_id' => $this->parentService->id]);
+    // Create multiple leads with parent service and matching city
+    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
+    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
+    $lead3 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
 
     // Assign all leads to the same advisor
     $this->assignmentService->assignToAdvisor($lead1, null);
@@ -138,9 +150,9 @@ it('can track how many of each child service were assigned to an advisor', funct
 });
 
 it('can get breakdown of child service assignments for an advisor', function () {
-    // Create leads with parent service
-    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id]);
-    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id]);
+    // Create leads with parent service and matching city
+    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
+    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
 
     // Assign to advisor
     $this->assignmentService->assignToAdvisor($lead1, null);
@@ -159,10 +171,14 @@ it('can get breakdown of child service assignments for an advisor', function () 
 });
 
 it('assigns child service correctly when lead is directly assigned to a child service', function () {
-    // Create lead with child service (not parent)
+    // Also assign child service to advisor for direct match
+    $this->dominicaService->assignToUser($this->advisor);
+
+    // Create lead with child service (not parent) and matching city
     $lead = Lead::factory()->create([
         'service_id' => $this->dominicaService->id,
         'inquiry_status' => 'new',
+        'city' => $this->city->name,
     ]);
 
     $assignedAdvisor = $this->assignmentService->assignToAdvisor($lead, null);
@@ -195,13 +211,13 @@ it('assigns child service correctly when lead is directly assigned to a child se
 });
 
 it('matches advisors assigned to parent service with leads of child services', function () {
-    // Assign advisor to parent service
-    $this->parentService->assignToUser($this->advisor);
+    // Advisor is already assigned to parent service via beforeEach
 
-    // Create lead with child service
+    // Create lead with child service and matching city
     $lead = Lead::factory()->create([
         'service_id' => $this->dominicaService->id,
         'inquiry_status' => 'new',
+        'city' => $this->city->name,
     ]);
 
     // The advisor should be matched because they're assigned to the parent service
@@ -232,8 +248,8 @@ it('can get all descendants of a parent service', function () {
 });
 
 it('creates separate assignments for multiple leads with same parent service', function () {
-    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id]);
-    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id]);
+    $lead1 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
+    $lead2 = Lead::factory()->create(['service_id' => $this->parentService->id, 'city' => $this->city->name]);
 
     $this->assignmentService->assignToAdvisor($lead1, null);
     $this->assignmentService->assignToAdvisor($lead2, null);

@@ -111,6 +111,14 @@ class LeadAssignmentService
     }
 
     /**
+     * Check if any advisor is available for the given lead's service + city/zone.
+     */
+    public function hasAvailableAdvisor(Lead $lead): bool
+    {
+        return $this->getAvailableAdvisors($lead)->isNotEmpty();
+    }
+
+    /**
      * Select the best Advisor for a lead using city/zone/hierarchy matching.
      */
     private function selectBestAdvisor(Lead $lead): ?User
@@ -134,13 +142,10 @@ class LeadAssignmentService
     }
 
     /**
-     * Get available advisors with hierarchical service + city/zone matching.
+     * Get available advisors with strict Service + City/Zone matching.
      *
-     * Fallback chain:
-     * 1. Service + City/Zone match
-     * 2. City/Zone match only
-     * 3. Service match only
-     * 4. Any available advisor
+     * Only returns advisors that match both the lead's service (hierarchy-aware)
+     * AND the lead's city/zone. Returns empty collection if no exact match exists.
      */
     private function getAvailableAdvisors(Lead $lead): Collection
     {
@@ -161,53 +166,22 @@ class LeadAssignmentService
                 ->first();
         }
 
-        // Base query: available advisors with sales-rep or senior-sales-rep role
-        $baseQuery = User::query()
+        // Require both service and city/zone for matching
+        if (empty($serviceIds) || ! $city) {
+            return collect();
+        }
+
+        // Strict match: Service + City/Zone
+        return User::query()
             ->where('availability', true)
             ->where('active', true)
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['sales-rep', 'senior-sales-rep']))
             ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super-admin', 'admin', 'manager', 'team-lead']))
-            ->where('current_lead_count', '<', self::MAX_ADVISOR_WORKLOAD);
-
-        // 1. Service + City/Zone match (most specific)
-        if (! empty($serviceIds) && $city) {
-            $advisors = (clone $baseQuery)
-                ->whereHas('services', fn ($q) => $q->whereIn('services.id', $serviceIds)->where('service_user.status', 'active'))
-                ->whereHas('zone', fn ($q) => $q->whereHas('cities', fn ($cq) => $cq->where('cities.id', $city->id)))
-                ->with(['zone', 'services'])
-                ->get();
-
-            if ($advisors->isNotEmpty()) {
-                return $advisors;
-            }
-        }
-
-        // 2. City/Zone match only
-        if ($city) {
-            $advisors = (clone $baseQuery)
-                ->whereHas('zone', fn ($q) => $q->whereHas('cities', fn ($cq) => $cq->where('cities.id', $city->id)))
-                ->with(['zone', 'services'])
-                ->get();
-
-            if ($advisors->isNotEmpty()) {
-                return $advisors;
-            }
-        }
-
-        // 3. Service match only (no zone filter)
-        if (! empty($serviceIds)) {
-            $advisors = (clone $baseQuery)
-                ->whereHas('services', fn ($q) => $q->whereIn('services.id', $serviceIds)->where('service_user.status', 'active'))
-                ->with(['zone', 'services'])
-                ->get();
-
-            if ($advisors->isNotEmpty()) {
-                return $advisors;
-            }
-        }
-
-        // 4. Last resort: any available advisor
-        return $baseQuery->with(['zone', 'services'])->get();
+            ->where('current_lead_count', '<', self::MAX_ADVISOR_WORKLOAD)
+            ->whereHas('services', fn ($q) => $q->whereIn('services.id', $serviceIds)->where('service_user.status', 'active'))
+            ->whereHas('zone', fn ($q) => $q->whereHas('cities', fn ($cq) => $cq->where('cities.id', $city->id)))
+            ->with(['zone', 'services'])
+            ->get();
     }
 
     /**

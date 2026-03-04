@@ -1,8 +1,11 @@
 <?php
 
 use App\Events\LeadQualified;
+use App\Models\City;
 use App\Models\Lead;
+use App\Models\Service;
 use App\Models\User;
+use App\Models\Zone;
 use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -20,6 +23,17 @@ beforeEach(function () {
     $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
     $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
 
+    // Create city, zone, and service for strict matching
+    $this->city = City::factory()->create(['name' => 'Dubai']);
+    $this->zone = Zone::factory()->create(['name' => 'UAE Zone']);
+    $this->zone->cities()->attach($this->city);
+    $this->service = Service::create([
+        'name' => 'Test Service',
+        'detail' => 'Test service for assignment',
+        'sort_order' => 1,
+        'status' => 'active',
+    ]);
+
     // Create a CRO (Chief Revenue Officer)
     $this->cro = User::factory()->create([
         'availability' => true,
@@ -32,7 +46,7 @@ beforeEach(function () {
     ]);
     $this->cro->assignRole($supportAgentRole);
 
-    // Create an advisor (Sales Rep)
+    // Create an advisor (Sales Rep) with matching zone and service
     $this->advisor = User::factory()->create([
         'availability' => true,
         'active' => true,
@@ -42,8 +56,10 @@ beforeEach(function () {
         'converted_leads_count' => 2,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.2,
+        'zone_id' => $this->zone->id,
     ]);
     $this->advisor->assignRole($salesRepRole);
+    $this->service->assignToUser($this->advisor);
 });
 
 it('fires LeadQualified event when lead is qualified', function () {
@@ -52,6 +68,8 @@ it('fires LeadQualified event when lead is qualified', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -68,6 +86,8 @@ it('automatically assigns qualified lead to available advisor', function () {
         'inquiry_status' => 'assigned_to_cro',
         'qualified_by' => null,
         'qualified_at' => null,
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     // Qualify the lead - this triggers the HandleLeadQualified listener
@@ -91,6 +111,8 @@ it('updates CRO qualified_leads_count metric when lead is qualified', function (
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -109,6 +131,8 @@ it('updates advisor current_lead_count when qualified lead is assigned', functio
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -126,7 +150,7 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
     // Remove default advisor to ensure clean test
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
-    // Create a high-performing advisor with low workload
+    // Create a high-performing advisor with low workload and matching zone/service
     $bestAdvisor = User::factory()->create([
         'availability' => true,
         'active' => true,
@@ -136,10 +160,12 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
         'conversion_rate' => 40.0,  // High conversion rate
         'performance_weight' => 2.0,  // High performance weight
         'last_assignment_at' => now()->subHours(5),  // Not recently assigned
+        'zone_id' => $this->zone->id,
     ]);
     $bestAdvisor->assignRole('sales-rep');
+    $this->service->assignToUser($bestAdvisor);
 
-    // Create a low-performing advisor with high workload
+    // Create a low-performing advisor with high workload and matching zone/service
     $lowAdvisor = User::factory()->create([
         'availability' => true,
         'active' => true,
@@ -149,12 +175,16 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
         'conversion_rate' => 10.0,  // Low conversion rate
         'performance_weight' => 0.8,  // Low performance weight
         'last_assignment_at' => now()->subMinutes(5),  // Recently assigned
+        'zone_id' => $this->zone->id,
     ]);
     $lowAdvisor->assignRole('sales-rep');
+    $this->service->assignToUser($lowAdvisor);
 
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -170,18 +200,22 @@ it('assigns to best advisor based on weighted round-robin algorithm', function (
 });
 
 it('does not assign to unavailable advisors', function () {
-    // Remove all advisors and create only an unavailable one
+    // Remove all advisors and create only an unavailable one with matching zone/service
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $unavailableAdvisor = User::factory()->create([
         'availability' => false,
         'active' => true,
+        'zone_id' => $this->zone->id,
     ]);
     $unavailableAdvisor->assignRole('sales-rep');
+    $this->service->assignToUser($unavailableAdvisor);
 
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -198,18 +232,22 @@ it('does not assign to unavailable advisors', function () {
 });
 
 it('does not assign to inactive advisors', function () {
-    // Remove all advisors and create only an inactive one
+    // Remove all advisors and create only an inactive one with matching zone/service
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $inactiveAdvisor = User::factory()->create([
         'availability' => true,
         'active' => false,
+        'zone_id' => $this->zone->id,
     ]);
     $inactiveAdvisor->assignRole('sales-rep');
+    $this->service->assignToUser($inactiveAdvisor);
 
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -226,19 +264,23 @@ it('does not assign to inactive advisors', function () {
 });
 
 it('does not assign to advisors at max capacity (30 leads)', function () {
-    // Remove all advisors and create only one at max capacity
+    // Remove all advisors and create only one at max capacity with matching zone/service
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
     $maxCapacityAdvisor = User::factory()->create([
         'availability' => true,
         'active' => true,
         'current_lead_count' => 30,
+        'zone_id' => $this->zone->id,
     ]);
     $maxCapacityAdvisor->assignRole('sales-rep');
+    $this->service->assignToUser($maxCapacityAdvisor);
 
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -262,6 +304,8 @@ it('handles gracefully when no advisors are available', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -282,6 +326,8 @@ it('creates activity log when lead is qualified and assigned', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -312,7 +358,7 @@ it('distributes leads fairly across multiple advisors', function () {
     // Remove default advisor to control the test
     User::whereHas('roles', fn ($q) => $q->where('name', 'sales-rep'))->delete();
 
-    // Create 3 advisors with similar stats
+    // Create 3 advisors with similar stats and matching zone/service
     $advisor1 = User::factory()->create([
         'availability' => true,
         'active' => true,
@@ -320,8 +366,10 @@ it('distributes leads fairly across multiple advisors', function () {
         'total_leads_assigned' => 10,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.0,
+        'zone_id' => $this->zone->id,
     ]);
     $advisor1->assignRole('sales-rep');
+    $this->service->assignToUser($advisor1);
 
     $advisor2 = User::factory()->create([
         'availability' => true,
@@ -330,8 +378,10 @@ it('distributes leads fairly across multiple advisors', function () {
         'total_leads_assigned' => 10,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.0,
+        'zone_id' => $this->zone->id,
     ]);
     $advisor2->assignRole('sales-rep');
+    $this->service->assignToUser($advisor2);
 
     $advisor3 = User::factory()->create([
         'availability' => true,
@@ -340,14 +390,18 @@ it('distributes leads fairly across multiple advisors', function () {
         'total_leads_assigned' => 10,
         'conversion_rate' => 20.0,
         'performance_weight' => 1.0,
+        'zone_id' => $this->zone->id,
     ]);
     $advisor3->assignRole('sales-rep');
+    $this->service->assignToUser($advisor3);
 
-    // Qualify 9 leads
+    // Qualify 9 leads with matching city/service
     for ($i = 0; $i < 9; $i++) {
         $lead = Lead::factory()->create([
             'assigned_to' => $this->cro->id,
             'inquiry_status' => 'assigned_to_cro',
+            'city' => $this->city->name,
+            'service_id' => $this->service->id,
         ]);
 
         $lead->qualifyLead($this->cro);
@@ -371,6 +425,8 @@ it('updates advisor last_assignment_at timestamp', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -392,6 +448,8 @@ it('dispatches LeadQualified event that triggers async listener', function () {
     $lead = Lead::factory()->create([
         'assigned_to' => $this->cro->id,
         'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $lead->qualifyLead($this->cro);
@@ -406,11 +464,13 @@ it('maintains data integrity when qualifying multiple leads simultaneously', fun
     $initialCroQualifiedCount = $this->cro->qualified_leads_count;
     $initialAdvisorCount = $this->advisor->current_lead_count;
 
-    // Create and qualify 3 leads
+    // Create and qualify 3 leads with matching city/service
     $leads = collect([1, 2, 3])->map(function () {
         return Lead::factory()->create([
             'assigned_to' => $this->cro->id,
             'inquiry_status' => 'assigned_to_cro',
+            'city' => $this->city->name,
+            'service_id' => $this->service->id,
         ]);
     });
 
@@ -427,4 +487,44 @@ it('maintains data integrity when qualifying multiple leads simultaneously', fun
     // Verify metrics are updated correctly
     expect($this->cro->qualified_leads_count)->toBe($initialCroQualifiedCount + 3)
         ->and($this->advisor->current_lead_count)->toBe($initialAdvisorCount + 3);
+});
+
+it('does not assign when lead has no matching city/zone', function () {
+    $lead = Lead::factory()->create([
+        'assigned_to' => $this->cro->id,
+        'inquiry_status' => 'assigned_to_cro',
+        'city' => 'Nonexistent City',
+        'service_id' => $this->service->id,
+    ]);
+
+    $lead->qualifyLead($this->cro);
+
+    sleep(1);
+
+    $lead->refresh();
+
+    // Lead should remain qualified but not assigned to advisor
+    expect($lead->qualified_by)->toBe($this->cro->id)
+        ->and($lead->inquiry_status)->toBe('qualified')
+        ->and($lead->assigned_to)->toBe($this->cro->id);
+});
+
+it('does not assign when lead has no service', function () {
+    $lead = Lead::factory()->create([
+        'assigned_to' => $this->cro->id,
+        'inquiry_status' => 'assigned_to_cro',
+        'city' => $this->city->name,
+        'service_id' => null,
+    ]);
+
+    $lead->qualifyLead($this->cro);
+
+    sleep(1);
+
+    $lead->refresh();
+
+    // Lead should remain qualified but not assigned to advisor
+    expect($lead->qualified_by)->toBe($this->cro->id)
+        ->and($lead->inquiry_status)->toBe('qualified')
+        ->and($lead->assigned_to)->toBe($this->cro->id);
 });
