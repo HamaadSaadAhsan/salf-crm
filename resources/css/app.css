@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+}
+
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
@@ -10,114 +18,134 @@
 
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
-  --background: var(--color-white);
-  --foreground: var(--color-zinc-950);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-950);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-blue-500);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-100);
-  --secondary-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-500);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: oklch(94% 0.004 286.32); /* between --color-zinc-100 and --color-zinc-200 */
-  --input: var(--color-zinc-200);
-  --ring: var(--color-zinc-400);
-  --radius: 0.5rem;
+    --background: var(--color-white);
+    --foreground: var(--color-zinc-950);
+    --card: var(--color-white);
+    --card-foreground: var(--color-zinc-950);
+    --popover: var(--color-white);
+    --popover-foreground: var(--color-zinc-950);
+    --primary: var(--color-blue-500);
+    --primary-foreground: var(--color-white);
+    --secondary: var(--color-zinc-100);
+    --secondary-foreground: var(--color-zinc-900);
+    --muted: var(--color-zinc-100);
+    --muted-foreground: var(--color-zinc-500);
+    --accent: var(--color-zinc-100);
+    --accent-foreground: var(--color-zinc-900);
+    --destructive: var(--color-red-600);
+    --destructive-foreground: var(--color-white);
+    --chart-1: var(--color-blue-500);
+    --chart-2: var(--color-green-500);
+    --chart-3: var(--color-yellow-500);
+    --chart-4: var(--color-red-500);
+    --chart-5: var(--color-purple-500);
+    --border: oklch(94% 0.004 286.32); /* between --color-zinc-100 and --color-zinc-200 */
+    --input: var(--color-zinc-200);
+    --ring: var(--color-zinc-400);
+    --sidebar: var(--color-zinc-50);
+    --sidebar-foreground: var(--color-zinc-900);
+    --radius: 0.5rem;
+    --create-dialog-outer-bg: rgba(228, 228, 231, 0.6);
+    --create-dialog-inner-bg: var(--background);
+    --create-dialog-inner-ring: rgba(0, 0, 0, 0.06);
+    --create-dialog-header-bg: rgba(255, 255, 255, 0.8);
+    --button-shadow: inset 0px 0px 0px 1px rgba(255, 255, 255, 0.1), 0px 2px 4px -2px rgba(78, 140, 252, 0.12), 0px 3px 6px -2px rgba(78, 140, 252, 0.08)
 }
 
 .dark {
-  --background: var(--color-zinc-950);
-  --foreground: var(--color-zinc-50);
-  --card: var(--color-zinc-950);
-  --card-foreground: var(--color-zinc-50);
-  --popover: var(--color-zinc-950);
-  --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-blue-600);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-800);
-  --secondary-foreground: var(--color-zinc-50);
-  --muted: var(--color-zinc-900);
-  --muted-foreground: var(--color-zinc-500);
-  --accent: var(--color-zinc-900);
-  --accent-foreground: var(--color-zinc-50);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: var(--color-zinc-800);
-  --input: var(--color-zinc-800);
-  --ring: var(--color-zinc-600);
+    --background: #1A1D21; /* Attio body bg: rgb(26, 29, 33) */
+    --foreground: #EEEFF1; /* Attio primary text: rgb(238, 239, 241) */
+    --card: #1F2125; /* Attio card bg: rgb(31, 33, 37) */
+    --card-foreground: #EEEFF1;
+    --popover: #1F2125; /* Attio dropdown bg */
+    --popover-foreground: #EEEFF1;
+    --primary: var(--color-blue-600);
+    --primary-foreground: var(--color-white);
+    --secondary: #2A2D31; /* Slightly lighter than card */
+    --secondary-foreground: #EEEFF1;
+    --muted: #23262A; /* Between bg and card */
+    --muted-foreground: rgba(255, 255, 255, 0.55); /* Attio muted text */
+    --accent: #2A2D31;
+    --accent-foreground: #EEEFF1;
+    --destructive: var(--color-red-600);
+    --destructive-foreground: var(--color-white);
+    --chart-1: var(--color-blue-500);
+    --chart-2: var(--color-green-500);
+    --chart-3: var(--color-yellow-500);
+    --chart-4: var(--color-red-500);
+    --chart-5: var(--color-purple-500);
+    --border: #2F3033; /* Attio separator: rgb(47, 48, 51) */
+    --input: #2F3033;
+    --ring: #4E8CFC; /* Attio selection blue */
+    --sidebar: #15181C; /* Darker than background */
+    --sidebar-foreground: #EEEFF1;
+    --create-dialog-outer-bg: rgba(30, 34, 39, 0.6);
+    --create-dialog-inner-bg: rgb(26, 29, 33);
+    --create-dialog-inner-ring: rgba(255, 255, 255, 0.07);
+    --create-dialog-header-bg: rgba(21, 24, 28, 0.8);
 }
 
 /** Theme Setup **/
 @theme inline {
-  /** Base Colors **/
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+    /** Base Colors **/
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
 
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
 
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-mono: var(--mono);
-  --color-mono-foreground: var(--mono-foreground);
+    --color-mono: var(--mono);
+    --color-mono-foreground: var(--mono-foreground);
 
-  /** Base Styles **/
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
 
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+    /** Base Styles **/
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
 }
 
 /** Custom Font Size **/
 @theme {
-  --text-2sm: 0.8125rem;
-  --text-2sm--line-height: calc(1.075 / 0.8125);
+    --text-2sm: 0.8125rem;
+    --text-2sm--line-height: calc(1.075 / 0.8125);
 
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: calc(0.825 / 0.6875);
+    --text-2xs: 0.6875rem;
+    --text-2xs--line-height: calc(0.825 / 0.6875);
 }
 
 /** Global Styles **/
 @layer base {
     * {
         @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
     }
 
     *:focus-visible {
@@ -130,16 +158,23 @@
     ::-webkit-scrollbar {
         width: 5px;
     }
+
     ::-webkit-scrollbar-track {
         background: transparent;
     }
+
     ::-webkit-scrollbar-thumb {
         background: var(--input);
         border-radius: 5px;
     }
+
     * {
         scrollbar-width: thin;
         scrollbar-color: var(--input) transparent;
+    }
+
+    .dark ::selection {
+        background-color: rgba(78, 140, 252, 0.2);
     }
 }
 

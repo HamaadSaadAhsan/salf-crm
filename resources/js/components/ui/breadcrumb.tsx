@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronRight, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Slot as SlotPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        'flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground',
+        'flex flex-wrap items-center gap-1 break-words text-sm font-medium tracking-[-0.01em] text-[rgb(162,164,167)]',
         className,
       )}
       {...props}
@@ -28,7 +28,7 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<'li'>) {
   return (
     <li
       data-slot="breadcrumb-item"
-      className={cn('inline-flex items-center gap-1.5', className)}
+      className={cn('inline-flex items-center gap-1', className)}
       {...props}
     />
   );
@@ -46,7 +46,7 @@ function BreadcrumbLink({
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn('transition-colors hover:text-foreground', className)}
+      className={cn('inline-flex items-center gap-1 rounded px-1 py-0.5 transition-[color,background-color] duration-[140ms] hover:text-foreground hover:bg-white/[0.06]', className)}
       {...props}
     />
   );
@@ -59,7 +59,7 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<'span'>) {
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn('font-normal text-foreground', className)}
+      className={cn('inline-flex items-center gap-1 rounded px-1 py-0.5 text-[rgb(238,239,241)] max-w-[400px] truncate', className)}
       {...props}
     />
   );
@@ -74,10 +74,10 @@ const BreadcrumbSeparator = ({
     data-slot="breadcrumb-separator"
     role="presentation"
     aria-hidden="true"
-    className={cn('[&>svg]:w-3.5 [&>svg]:h-3.5', className)}
+    className={cn('text-[rgb(162,164,167)]', className)}
     {...props}
   >
-    {children ?? <ChevronRight className="rtl:rotate-180" />}
+    {children ?? '/'}
   </li>
 );
 
