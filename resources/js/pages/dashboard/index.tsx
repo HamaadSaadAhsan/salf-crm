@@ -6,6 +6,7 @@ import { CRODashboard } from './CRODashboard';
 import { AdvisorDashboard } from './AdvisorDashboard';
 import { ManagerDashboard } from './ManagerDashboard';
 import { BasicDashboard } from './BasicDashboard';
+import { ProcessingDashboard } from './ProcessingDashboard';
 
 export default function Dashboard() {
     const { data, isLoading, error } = useDashboardOverview();
@@ -40,6 +41,10 @@ export default function Dashboard() {
 
     if (role === 'advisor') {
         return <AdvisorDashboard data={data} isLoading={isLoading} />;
+    }
+
+    if (role === 'processing') {
+        return <ProcessingDashboard data={data} isLoading={isLoading} />;
     }
 
     return <BasicDashboard data={data} isLoading={isLoading} />;

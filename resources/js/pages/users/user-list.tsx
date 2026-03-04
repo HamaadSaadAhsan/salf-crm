@@ -233,6 +233,7 @@ const UserList = ({ users, zones = [], offices = [], services = [], initialSearc
       ),
       enableSorting: false,
       enableHiding: false,
+      enableResizing: false,
     },
     {
       accessorKey: 'name',
@@ -623,6 +624,7 @@ const UserList = ({ users, zones = [], offices = [], services = [], initialSearc
 
   return (
     <DataGrid
+      className="py-0"
       table={table}
       recordCount={filteredUsers.length}
       tableLayout={{
@@ -633,8 +635,8 @@ const UserList = ({ users, zones = [], offices = [], services = [], initialSearc
         columnsVisibility: true,
       }}
     >
-      <Card className="border-none shadow-none">
-        <CardHeader className="container-fluid py-3 -mt-4">
+      <Card className="border-none shadow-none bg-background py-0">
+        <CardHeader className="container-fluid ">
           <div className="flex items-center flex-wrap gap-2 justify-between w-full">
             <div className="flex items-center gap-2">
               {/* Search */}
@@ -645,7 +647,7 @@ const UserList = ({ users, zones = [], offices = [], services = [], initialSearc
                   placeholder="Search users..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="ps-9 w-48 rounded-lg border-gray-300 focus:border-blue-500"
+                  className="ps-9 w-48 rounded-lg focus:border-blue-500"
                 />
                 {searchQuery.length > 0 && (
                   <Button

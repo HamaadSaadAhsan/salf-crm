@@ -274,13 +274,12 @@ export function UserProfileSection({ user, roles, zones, offices, isSuperAdmin }
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base">Profile Information</CardTitle>
-            <CardDescription>User account details and settings</CardDescription>
+            <CardTitle className="text-md">Profile Information</CardTitle>
+            <CardDescription className="text-xs">User account details and settings</CardDescription>
           </div>
           {isSuperAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
-              <Edit className="size-4 mr-2" />
-              Edit Profile
+            <Button className="shadow-(--button-shadow)" variant="primary" size="sm" onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="size-4" />
             </Button>
           )}
         </CardHeader>
@@ -376,7 +375,7 @@ export function UserProfileSection({ user, roles, zones, offices, isSuperAdmin }
 
       {/* Edit Profile Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="ring-4 ring-muted">
           <DialogHeader>
             <DialogTitle>Edit User Profile</DialogTitle>
             <DialogDescription>Update the user's basic information</DialogDescription>

@@ -53,9 +53,9 @@ export function UserStatsSection({ user }: Props) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="gap-0">
         <CardTitle className="text-base">Performance Stats</CardTitle>
-        <CardDescription>User activity and performance metrics</CardDescription>
+        <CardDescription className="text-xs">User activity and performance metrics</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
