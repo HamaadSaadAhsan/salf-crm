@@ -69,6 +69,11 @@ export interface DashboardOverview {
     team_performance?: Record<string, unknown>;
     hot_leads?: Array<unknown>;
     upcoming_meetings?: Array<unknown>;
+    leads_to_process?: {
+        total?: number;
+        new_today?: number;
+        by_stage?: Record<string, number>;
+    };
 }
 
 export function useDashboardOverview() {

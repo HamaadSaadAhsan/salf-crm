@@ -1,8 +1,8 @@
-import { LayoutGrid, PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks } from 'lucide-react';
+import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy } from 'lucide-react';
 
 import { NavConfig } from '../types';
 import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
-import { IconTools } from '@tabler/icons-react';
+import { IconBell, IconSmartHome, IconTools } from '@tabler/icons-react';
 import { management } from '@/routes/settings';
 import { roles, permissions, leadSources, leadStatuses } from '@/routes/settings/management';
 import { page as usersPage } from '@/routes/users';
@@ -12,7 +12,7 @@ export const MAIN_NAV: NavConfig = [
             id: 'dashboard',
             title: 'Dashboard',
             path: dashboard().url,
-            icon: LayoutGrid,
+            icon: IconSmartHome,
             isActive: true,
             requiredPermission: 'view dashboard',
         },
@@ -22,6 +22,13 @@ export const MAIN_NAV: NavConfig = [
             path: '/leads',
             icon: Users,
             requiredPermission: 'view leads',
+        },
+        {
+            id: 'notifications',
+            title: 'Notifications',
+            path: '/notifications',
+            icon: BellIcon,
+            requiredPermission: 'view notifications',
         },
         {
             id: 'tasks',
@@ -167,6 +174,27 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'All Calls',
                     path: '/calls',
+                },
+            ],
+        },
+        {
+            id: 'support',
+            title: 'Support',
+            path: '/support',
+            icon: LifeBuoy,
+            items: [
+                {
+                    title: 'My Tickets',
+                    path: '/support',
+                },
+                {
+                    title: 'New Ticket',
+                    path: '/support/create',
+                },
+                {
+                    title: 'All Tickets',
+                    path: '/admin/tickets',
+                    superAdminOnly: true,
                 },
             ],
         },

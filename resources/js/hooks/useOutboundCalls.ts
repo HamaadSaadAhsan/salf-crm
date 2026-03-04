@@ -151,7 +151,7 @@ export function useOutboundCalls() {
     // Helper to convert Echo OutboundCallData to OutboundCall format
     const convertEchoDataToOutboundCall = useCallback((data: OutboundCallData): OutboundCall => {
         const currentCall = activeOutboundCallRef.current;
-        
+
         // Map Echo event to OutboundCall status
         let status: OutboundCall['status'] = 'ringing';
         if (data.event === 'connect') {

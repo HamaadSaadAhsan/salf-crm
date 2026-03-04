@@ -1,10 +1,34 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { NavConfig } from '@/crm/config/types';
+
+const SIDEBAR_WIDTH_KEY = 'sidebar-width';
+const DEFAULT_SIDEBAR_WIDTH = 250;
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 350;
+
+function getInitialSidebarWidth(): number {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    if (stored) {
+      const parsed = Number(stored);
+      if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= MAX_SIDEBAR_WIDTH) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_SIDEBAR_WIDTH;
+}
 
 // Define the shape of the layout state
 interface LayoutState {
   sidebarCollapse: boolean;
   setSidebarCollapse: (open: boolean) => void;
+  sidebarPeeking: boolean;
+  setSidebarPeeking: (peeking: boolean) => void;
+  sidebarWidth: number;
+  setSidebarWidth: (width: number) => void;
+  isSidebarResizing: boolean;
+  setIsSidebarResizing: (resizing: boolean) => void;
   sidebarPinnedNavItems: string[];
   pinSidebarNavItem: (id: string) => void;
   unpinSidebarNavItem: (id: string) => void;
@@ -26,6 +50,17 @@ export function LayoutProvider({
   sidebarNavItems,
 }: LayoutProviderProps) {
   const [sidebarCollapse, setSidebarCollapse] = useState(false);
+  const [sidebarPeeking, setSidebarPeeking] = useState(false);
+  const [sidebarWidth, setSidebarWidthState] = useState(getInitialSidebarWidth);
+  const [isSidebarResizing, setIsSidebarResizing] = useState(false);
+
+  const setSidebarWidth = useCallback((width: number) => {
+    const clamped = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width));
+    setSidebarWidthState(clamped);
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
+    } catch {}
+  }, []);
   const initialPinned = sidebarNavItems
     .filter((item) => item.pinned)
     .map((item) => item.id);
@@ -66,6 +101,12 @@ export function LayoutProvider({
       value={{
         sidebarCollapse,
         setSidebarCollapse,
+        sidebarPeeking,
+        setSidebarPeeking,
+        sidebarWidth,
+        setSidebarWidth,
+        isSidebarResizing,
+        setIsSidebarResizing,
         sidebarPinnedNavItems,
         getSidebarNavItems,
         pinSidebarNavItem,

@@ -16,14 +16,16 @@ import { AsteriskWebSocketProvider } from '@/contexts/AsteriskWebSocketContext';
 import { InboundCallManager } from '@/components/inbound-calls/InboundCallManager';
 import { OutboundCallManager } from '@/components/outbound-calls/OutboundCallManager';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { CreateDialogProvider } from '@/providers/CreateDialogProvider';
 import { type NavConfig } from '@/crm/types';
 
 interface AppLayoutProps {
     children: ReactNode;
     breadcrumbs?: BreadcrumbItem[];
+    hideContentHeader?: boolean;
 }
 
-export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
+export default ({ children, breadcrumbs = [], hideContentHeader = false }: AppLayoutProps) => {
     const { auth } = usePage<SharedData>().props;
     const isSuperAdmin = auth.isSuperAdmin;
     const userPermissions = auth.permissions ?? [];
@@ -34,7 +36,7 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
 
         const isItemAllowed = (item: { superAdminOnly?: boolean; requiredPermission?: string; requiredRole?: string }) => {
             if (item.superAdminOnly && !isSuperAdmin) return false;
-            if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false;
+            if (!isSuperAdmin && item.requiredPermission && !hasPermission(item.requiredPermission)) return false;
             return true;
         };
 
@@ -88,23 +90,25 @@ export default ({ children, breadcrumbs = [] }: AppLayoutProps) => {
             <LayoutProvider sidebarNavItems={filteredNav}>
                 <AsteriskWebSocketProvider>
                     <CallContextComponent user={auth.user}>
-                        {/* Impersonation Banner - shows when super admin is impersonating */}
-                        <ImpersonationBanner />
+                        <CreateDialogProvider>
+                            {/* Impersonation Banner - shows when super admin is impersonating */}
+                            <ImpersonationBanner />
 
-                        <Layout breadcrumbs={breadcrumbs}>
-                            {children}
-                        </Layout>
+                            <Layout breadcrumbs={breadcrumbs} hideContentHeader={hideContentHeader}>
+                                {children}
+                            </Layout>
 
-                        {/* Inbound Call Manager - handles incoming calls */}
-                        <InboundCallManager />
+                            {/* Inbound Call Manager - handles incoming calls */}
+                            <InboundCallManager />
 
-                        {/* Outbound Call Manager - handles outgoing calls */}
-                        <OutboundCallManager />
+                            {/* Outbound Call Manager - handles outgoing calls */}
+                            <OutboundCallManager />
+                        </CreateDialogProvider>
                     </CallContextComponent>
                 </AsteriskWebSocketProvider>
                 <Toaster
                     richColors
-                    position="bottom-right"
+                    position="top-right"
                     closeButton
                 />
             </LayoutProvider>

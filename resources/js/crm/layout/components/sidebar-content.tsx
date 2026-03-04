@@ -1,8 +1,5 @@
-import { SidebarDefault } from './sidebar-default';
+import { SidebarAttio } from './sidebar-attio';
 
 export function SidebarContent() {
-
-  return (
-    <SidebarDefault />
-  );
+  return <SidebarAttio />;
 }
