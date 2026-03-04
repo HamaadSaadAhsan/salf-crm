@@ -52,6 +52,7 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
     const { state, actions } = useAsteriskWebSocket();
     const { startOutboundCall } = useOutboundCalls();
     const { auth } = usePage<SharedData>().props;
+    const canEdit = auth.permissions.includes('edit leads');
 
     const handleCall = async () => {
         if (!lead.phone) {
@@ -80,7 +81,7 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
                 email: lead.email,
                 city: lead.city,
                 country: lead.country,
-                service: lead.service,
+                service: lead.service?.data,
                 inquiry_status: lead.inquiry_status,
                 priority: lead.priority,
                 detail: lead.detail,
@@ -106,227 +107,201 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
     };
 
     return (
-        <div className="flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4">
-            {/* Lead info section */}
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                <Avatar className="h-8 w-8 shrink-0 sm:h-9 sm:w-9">
-                    <AvatarFallback className="bg-primary/10 text-sm text-primary sm:text-base">
-                        {lead.name[0]?.toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
-                <div className="flex min-w-0 flex-col">
-                    <div className="flex items-center gap-2">
-                        <span className="truncate text-base font-semibold sm:text-xl">
-                            {lead.name}
-                        </span>
-                        {lead.inquiry_status === 'assigned_to_advisor' && (
-                            <Badge variant="secondary" className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                Assigned to Advisor
-                            </Badge>
-                        )}
-                        {lead.inquiry_status === 'requalify' && (
-                            <Badge variant="secondary" className="shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
-                                <RefreshCw className="mr-1 h-3 w-3" />
-                                Requalify
-                            </Badge>
-                        )}
-                        {lead.requalified_from_advisor_id && lead.inquiry_status !== 'requalify' && (
-                            <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                <RefreshCw className="mr-1 h-3 w-3" />
-                                Requalified
-                            </Badge>
-                        )}
+        <>
+            <div className="grid shrink-0 grid-cols-[1fr_1fr] gap-3 overflow-hidden border-b border-border">
+                {/* Left column: Lead info */}
+                <div className="flex shrink-0 flex-col items-center justify-start gap-1 px-2.5 py-2 w-full">
+                    <div className="flex w-full items-center gap-2">
+                        <Avatar className="h-8 w-8 shrink-0 sm:h-9 sm:w-9">
+                            <AvatarFallback className="bg-primary/10 text-sm text-primary sm:text-base">{lead.name[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex min-w-0 flex-col">
+                            <div className="flex items-center gap-2">
+                                <span className="truncate text-base font-semibold sm:text-xl">{lead.name}</span>
+                                {lead.inquiry_status === 'assigned_to_advisor' && (
+                                    <Badge variant="secondary" className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                        Assigned to Advisor
+                                    </Badge>
+                                )}
+                                {lead.inquiry_status === 'requalify' && (
+                                    <Badge variant="secondary" className="shrink-0 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                        <RefreshCw className="mr-1 h-3 w-3" />
+                                        Requalify
+                                    </Badge>
+                                )}
+                                {lead.requalified_from_advisor_id && lead.inquiry_status !== 'requalify' && (
+                                    <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                        <RefreshCw className="mr-1 h-3 w-3" />
+                                        Requalified
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="hidden shrink-0 sm:flex" onClick={() => setIsFavorite(!isFavorite)}>
+                                        <Star className={`h-4 w-4 ${isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Mark as favorite</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
-                    {!['assigned_to_advisor', 'requalify'].includes(lead.inquiry_status) && (
-                        <span className="truncate text-xs capitalize text-muted-foreground">
-                            {lead.inquiry_status?.replace(/_/g, ' ')}
-                        </span>
-                    )}
                 </div>
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hidden shrink-0 sm:flex"
-                                onClick={() => setIsFavorite(!isFavorite)}
-                            >
-                                <Star
-                                    className={`h-4 w-4 ${
-                                        isFavorite
-                                            ? 'fill-yellow-500 text-yellow-500'
-                                            : ''
-                                    }`}
-                                />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Mark as favorite</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
 
-            {/* Desktop actions */}
-            <div className="hidden items-center gap-2 md:flex">
-                <TooltipProvider>
-                    <div className="flex items-center gap-1">
-                        {lead.email && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                        <Mail className="h-4 w-4" />
-                                        Email
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    Send email to {lead.email}
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
-                        {lead.phone && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleCall}
-                                        disabled={isCalling || state.connectionStatus !== 'connected'}
-                                    >
-                                        <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
-                                        {isCalling ? 'Calling...' : 'Call'}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    {state.connectionStatus !== 'connected'
-                                        ? 'Call server not connected'
-                                        : 'Call client'}
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
+                {/* Right column: Actions */}
+                {canEdit && (
+                <div className="flex shrink-0 flex-col items-end justify-start gap-1 px-2.5 py-2 w-full">
+                    {/* Desktop actions */}
+                    <div className="hidden items-center gap-2 md:flex">
+                        <TooltipProvider>
+                            <div className="flex items-center gap-1">
+                                {lead.email && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="sm">
+                                                <Mail className="h-4 w-4" />
+                                                Email
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Send email to {lead.email}</TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {lead.phone && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleCall}
+                                                disabled={isCalling || state.connectionStatus !== 'connected'}
+                                            >
+                                                <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
+                                                {isCalling ? 'Calling...' : 'Call'}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            {state.connectionStatus !== 'connected' ? 'Call server not connected' : 'Call client'}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </div>
+                        </TooltipProvider>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <FileCheck2 className="h-4 w-4" />
+                                    Actions
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[230px]">
+                                <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
+                                    <FilePlus className="h-4 w-4" />
+                                    New Note
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
+                                    <SquareCheckBig className="h-4 w-4" />
+                                    New Task
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                    <BarChart2 className="h-4 w-4" />
+                                    Generate Report
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Download className="h-4 w-4" />
+                                    Export as CSV
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Share className="h-4 w-4" />
+                                    Share Lead
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                </TooltipProvider>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            <FileCheck2 className="h-4 w-4" />
-                            Actions
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[230px]">
-                        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
-                            <FilePlus className="h-4 w-4" />
-                            New Note
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
-                            <SquareCheckBig className="h-4 w-4" />
-                            New Task
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <BarChart2 className="h-4 w-4" />
-                            Generate Report
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <Download className="h-4 w-4" />
-                            Export as CSV
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <Share className="h-4 w-4" />
-                            Share Lead
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                    {/* Mobile/Tablet actions */}
+                    <div className="flex items-center gap-1 md:hidden">
+                        {lead.phone && (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={handleCall}
+                                disabled={isCalling || state.connectionStatus !== 'connected'}
+                            >
+                                <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
+                                <span className="sr-only">Call</span>
+                            </Button>
+                        )}
+                        {lead.email && (
+                            <Button variant="outline" size="icon" className="h-9 w-9">
+                                <Mail className="h-4 w-4" />
+                                <span className="sr-only">Email</span>
+                            </Button>
+                        )}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-9 w-9">
+                                    <MoreVertical className="h-4 w-4" />
+                                    <span className="sr-only">More actions</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                                <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setIsFavorite(!isFavorite)}>
+                                    <Star className={`h-4 w-4 ${isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                                    {isFavorite ? 'Remove favorite' : 'Add to favorites'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
+                                    <FilePlus className="h-4 w-4" />
+                                    New note
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
+                                    <SquareCheckBig className="h-4 w-4" />
+                                    New task
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>More</DropdownMenuLabel>
+                                <DropdownMenuItem>
+                                    <BarChart2 className="h-4 w-4" />
+                                    Generate Report
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Download className="h-4 w-4" />
+                                    Export as CSV
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Share className="h-4 w-4" />
+                                    Share Lead
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+                )}
             </div>
 
-            {/* Mobile/Tablet actions */}
-            <div className="flex items-center gap-1 md:hidden">
-                {/* Primary actions visible on mobile */}
-                {lead.phone && (
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={handleCall}
-                        disabled={isCalling || state.connectionStatus !== 'connected'}
-                    >
-                        <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
-                        <span className="sr-only">Call</span>
-                    </Button>
-                )}
-                {lead.email && (
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                    >
-                        <Mail className="h-4 w-4" />
-                        <span className="sr-only">Email</span>
-                    </Button>
-                )}
+            {canEdit && (
+                <>
+                    <NewNoteSheet open={noteSheetOpen} onOpenChange={setNoteSheetOpen} leadId={lead.id} onSuccess={() => setNoteSheetOpen(false)} />
 
-                {/* More actions dropdown for mobile */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-9 w-9">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">More actions</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[200px]">
-                        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsFavorite(!isFavorite)}>
-                            <Star
-                                className={`h-4 w-4 ${
-                                    isFavorite ? 'fill-yellow-500 text-yellow-500' : ''
-                                }`}
-                            />
-                            {isFavorite ? 'Remove favorite' : 'Add to favorites'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setNoteSheetOpen(true)}>
-                            <FilePlus className="h-4 w-4" />
-                            New note
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setTaskSheetOpen(true)}>
-                            <SquareCheckBig className="h-4 w-4" />
-                            New task
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>More</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                            <BarChart2 className="h-4 w-4" />
-                            Generate Report
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <Download className="h-4 w-4" />
-                            Export as CSV
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <Share className="h-4 w-4" />
-                            Share Lead
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            <NewNoteSheet
-                open={noteSheetOpen}
-                onOpenChange={setNoteSheetOpen}
-                leadId={lead.id}
-                onSuccess={() => setNoteSheetOpen(false)}
-            />
-
-            <LeadTaskSheet
-                open={taskSheetOpen}
-                onOpenChange={setTaskSheetOpen}
-                leadId={lead.id}
-                users={users}
-                currentUserId={auth.user.id}
-                userRole={auth.user.role as any}
-            />
-        </div>
+                    <LeadTaskSheet
+                        open={taskSheetOpen}
+                        onOpenChange={setTaskSheetOpen}
+                        leadId={lead.id}
+                        users={users}
+                        currentUserId={auth.user.id}
+                        userRole={auth.user.role as any}
+                    />
+                </>
+            )}
+        </>
     );
 }

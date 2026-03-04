@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { ChevronRight, GalleryVerticalEnd, Phone, Plus } from 'lucide-react';
+import { ChevronRight, GalleryVerticalEnd, Plus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -18,10 +17,16 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { LeadActivity } from '@/types/lead';
+import { BadgeCount } from '@/components/ui/badge-count';
+import { usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { useCreateDialog } from '@/providers/CreateDialogProvider';
 
 interface LeadRecordsOverviewNotesProps {
     activities?: LeadActivity[];
     leadId: string;
+    leadName?: string;
+    leadUrl?: string;
     onAddNote?: () => void;
     onViewAll?: () => void;
 }
@@ -29,14 +34,31 @@ interface LeadRecordsOverviewNotesProps {
 export function LeadRecordsOverviewNotes({
     activities = [],
     leadId,
+    leadName,
+    leadUrl,
     onAddNote,
     onViewAll,
 }: LeadRecordsOverviewNotesProps) {
-    const [isNotesOpen, setIsNotesOpen] = React.useState(true);
+    const { auth } = usePage<SharedData>().props;
+    const canAddNotes = auth.permissions.includes('add lead notes');
+    const [isNotesOpen, setIsNotesOpen] = React.useState(false);
+    const { openExisting } = useCreateDialog();
 
-    // Filter activities to only show notes and call notes
+    const handleOpenNote = (noteId: string) => {
+        openExisting(noteId, 'note', {
+            type: 'lead',
+            id: leadId,
+            name: leadName || '',
+            url: leadUrl,
+        });
+    };
+
+    // Show only user-created notes — exclude system activities (field changes, tag changes, status changes, assignments)
     const noteActivities = activities.filter(
-        (activity) => activity.type === 'note' || activity.type === 'call'
+        (activity) =>
+            activity.type === 'note' &&
+            activity.category !== 'system' &&
+            activity.category !== 'tag_change'
     );
 
     // Sort by most recent first
@@ -72,35 +94,6 @@ export function LeadRecordsOverviewNotes({
         }
     };
 
-    const formatDuration = (seconds?: number | null) => {
-        if (!seconds) return null;
-
-        const hours = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-
-        if (hours > 0) {
-            return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-        }
-        if (mins > 0) {
-            return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-        }
-        return `${secs}s`;
-    };
-
-    const getNoteContent = (activity: LeadActivity) => {
-        // For call notes, use the 'notes' field if available
-        if (activity.type === 'call') {
-            return activity.notes || activity.description || 'No call notes recorded';
-        }
-        // For regular notes, use description
-        return activity.description || 'This note has no content';
-    };
-
-    const isCallNote = (activity: LeadActivity) => {
-        return activity.type === 'call';
-    };
-
     return (
         <Collapsible
             className="space-y-2"
@@ -115,21 +108,23 @@ export function LeadRecordsOverviewNotes({
                         className="text-sm text-semibold [&:not(:hover)[data-state=open]]:bg-transparent hover:bg-accent ps-1.5"
                     >
                         <GalleryVerticalEnd />
-                        Notes
+                        Notes { noteActivities.length > 0 && <BadgeCount count={noteActivities.length} /> }
                         <ChevronRight className="[[data-state=open]_&]:rotate-90" />
                     </Button>
                 </CollapsibleTrigger>
 
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger>
-                            <Button variant="ghost" size="sm" mode="icon" onClick={onAddNote}>
-                                <Plus />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Add note</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                {canAddNotes && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Button variant="ghost" size="sm" mode="icon" onClick={onAddNote}>
+                                    <Plus />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">Add note</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
             </div>
 
             <CollapsibleContent>
@@ -144,8 +139,6 @@ export function LeadRecordsOverviewNotes({
                                 <ul className="flex flex-col gap-2.5">
                                     {sortedNotes.map((activity) => {
                                         const user = getUserData(activity);
-                                        const callNote = isCallNote(activity);
-                                        const duration = formatDuration(activity.duration_minutes);
 
                                         return (
                                             <li key={activity.id} className="flex items-start gap-1.5 text-sm">
@@ -170,39 +163,21 @@ export function LeadRecordsOverviewNotes({
                                                             {user?.name || 'Unknown'}
                                                         </Link>
 
-                                                        {callNote && (
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="gap-1 text-xs shrink-0"
-                                                            >
-                                                                <Phone className="size-3" />
-                                                                Call note
-                                                            </Badge>
-                                                        )}
-
-                                                        {duration && (
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="text-xs shrink-0"
-                                                            >
-                                                                {duration}
-                                                            </Badge>
-                                                        )}
-
                                                         <span className="ml-auto text-xs text-muted-foreground shrink-0">
                                                             {formatTimeAgo(activity.created_at)}
                                                         </span>
                                                     </div>
 
                                                     <div className="text-muted-foreground break-words">
-                                                        <Link
-                                                            href="#"
-                                                            className="font-medium text-foreground hover:text-primary"
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenNote(activity.id)}
+                                                            className="font-medium text-foreground hover:text-primary cursor-pointer"
                                                         >
-                                                            {activity.subject || (callNote ? 'Call note' : 'Note')}
-                                                        </Link>
+                                                            {activity.subject || 'Note'}
+                                                        </button>
                                                         {' - '}
-                                                        {getNoteContent(activity)}
+                                                        {activity.description || 'This note has no content'}
                                                     </div>
                                                 </div>
                                             </li>

@@ -7,6 +7,7 @@ export interface Auth {
     readonly user: User;
     readonly permissions: readonly string[];
     readonly isSuperAdmin: boolean;
+    readonly openTicketsCount: number;
 }
 
 export interface Impersonation {
@@ -20,6 +21,7 @@ export interface Impersonation {
 export interface BreadcrumbItem {
     title: string;
     href: string;
+    icon?: React.ReactNode;
 }
 
 export interface NavGroup {
@@ -34,12 +36,21 @@ export interface NavItem {
     isActive?: boolean;
 }
 
+export interface SidebarCounts {
+    leads: number;
+    notifications: number;
+    tasks: number;
+    calls: number;
+    support: number;
+}
+
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
     impersonation: Impersonation;
     sidebarOpen: boolean;
+    sidebarCounts: SidebarCounts;
     countries: Country[];
     statuses: Array<{ id: number; name: string; order: number; color: string }>;
     services: Service[];

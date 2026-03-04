@@ -6,6 +6,7 @@ import { LeadRecordsOverviewTasks } from './lead-records-overview-tasks';
 import { usePage } from '@inertiajs/react';
 import { SharedData, User } from '@/types';
 import { useLeadActivitiesLatest } from '@/hooks/useLead';
+import { useCreateDialog } from '@/providers/CreateDialogProvider';
 
 type UserRole = 'support-agent' | 'senior-support-agent' | 'super-admin';
 
@@ -19,6 +20,7 @@ type Props = {
 export function LeadRecordsOverview({ lead, users = [], onViewAllActivity, onViewAllNotes }: Props) {
     const tasks = lead.tasks?.data || [];
     const {props: {auth:{user}}} = usePage<SharedData>();
+    const { open: openCreateDialog } = useCreateDialog();
 
     // Fetch activities via API (server-side pagination)
     const { data: allActivities = [], isLoading: activitiesLoading } = useLeadActivitiesLatest(lead.id, 10);
@@ -31,11 +33,20 @@ export function LeadRecordsOverview({ lead, users = [], onViewAllActivity, onVie
 
     const userRole = user?.roles?.[0]?.name as UserRole | undefined;
 
+    const handleAddNote = () => {
+        openCreateDialog('note', {
+            type: 'lead',
+            id: lead.id,
+            name: lead.name || '',
+            url: lead.urls?.show,
+        });
+    };
+
     return (
         <div className="space-y-6">
             <LeadRecordsOverviewHighlights lead={lead} />
             <LeadRecordsOverviewActivity activities={activities} isLoading={activitiesLoading} onViewAll={onViewAllActivity} />
-            <LeadRecordsOverviewNotes activities={allActivities} leadId={lead.id} onViewAll={onViewAllNotes} />
+            <LeadRecordsOverviewNotes activities={allActivities} leadId={lead.id} leadName={lead.name} leadUrl={lead.urls?.show} onAddNote={handleAddNote} onViewAll={onViewAllNotes} />
             <LeadRecordsOverviewTasks tasks={tasks} leadId={lead.id} users={users} currentUserId={user.id} userRole={userRole}/>
         </div>
     );

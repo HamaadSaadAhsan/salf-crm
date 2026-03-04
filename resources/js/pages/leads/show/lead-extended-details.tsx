@@ -434,9 +434,10 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     const isAdmin = currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
     const isCRO = !isAdmin && currentUserRoles.some((r) => ['support-agent', 'senior-support-agent'].includes(r));
     const isAdvisor = !isAdmin && currentUserRoles.some((r) => ['sales-rep', 'senior-sales-rep'].includes(r));
+    const isProcessing = currentUserRoles.includes('processing');
 
-    // CROs cannot edit lead details when assigned to advisor
-    const isReadOnly = isCRO && isAssignedToAdvisor;
+    // CROs cannot edit lead details when assigned to advisor; processing users are always read-only
+    const isReadOnly = isProcessing || (isCRO && isAssignedToAdvisor);
 
     // Check if current user can change assignments (admin roles only)
     const canChangeAssignment = currentUserRoles.some((r) => ['super-admin', 'admin', 'manager', 'team-lead'].includes(r));
@@ -1179,15 +1180,6 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                     </div>
                                 </div>
                             )}
-
-                            {/* Detail/Notes */}
-                            <div className="flex items-start gap-2 text-sm">
-                                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                <div className="flex flex-1 flex-col">
-                                    <span className="text-xs text-muted-foreground">Notes</span>
-                                    <InlineEdit value={model.detail ?? ''} placeholder="Add notes" onSave={(v) => saveField('detail', v || null)} />
-                                </div>
-                            </div>
 
                             {/* Custom Fields - Editable */}
                             <div className="pt-2">

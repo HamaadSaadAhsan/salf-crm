@@ -10,6 +10,7 @@ import { getInitials, toAbsoluteUrl } from '@/lib/helpers';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Tooltip,
@@ -22,6 +23,8 @@ import { Task } from '@/types/task';
 import type { User as UserType } from '@/types';
 import { toast } from 'sonner';
 import { LeadTaskSheet } from '@/components/lead-task-sheet';
+import { usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
 
 type Props = {
     lead: Lead;
@@ -66,6 +69,8 @@ function isLastWeek(date: Date): boolean {
 }
 
 export function LeadRecordsTasks({ lead, users = [] }: Props) {
+    const { auth } = usePage<SharedData>().props;
+    const canCreateTasks = auth.permissions.includes('create tasks');
     const [expanded, setExpanded] = useState({
         upcoming: true,
         today: true,
@@ -307,9 +312,11 @@ export function LeadRecordsTasks({ lead, users = [] }: Props) {
         <div className="grid">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold">Tasks</h2>
-                <Button variant="outline" size="sm" className="gap-1" onClick={handleAddTask}>
-                    + Create task
-                </Button>
+                {canCreateTasks && (
+                    <CreateButton onClick={handleAddTask}>
+                        Create task
+                    </CreateButton>
+                )}
             </div>
 
             {tasks.length === 0 ? (

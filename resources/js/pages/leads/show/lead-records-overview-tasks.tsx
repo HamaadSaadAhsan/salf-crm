@@ -39,6 +39,9 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { LeadTaskSheet } from '@/components/lead-task-sheet';
 import { TaskDetailsDialog } from '@/components/task-details-dialog';
+import { BadgeCount } from '@/components/ui/badge-count';
+import { usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
 
 interface LeadRecordsOverviewTasksProps {
     tasks?: Task[];
@@ -55,7 +58,9 @@ export function LeadRecordsOverviewTasks({
     currentUserId,
     userRole = 'support-agent',
 }: LeadRecordsOverviewTasksProps) {
-    const [isTasksOpen, setIsTasksOpen] = useState(true);
+    const { auth } = usePage<SharedData>().props;
+    const canCreateTasks = auth.permissions.includes('create tasks');
+    const [isTasksOpen, setIsTasksOpen] = useState(false);
     const [showCompleted, setShowCompleted] = useState(false);
     const [showTaskSheet, setShowTaskSheet] = useState(false);
     const [showTaskDetails, setShowTaskDetails] = useState(false);
@@ -158,7 +163,7 @@ export function LeadRecordsOverviewTasks({
                         className="text-semibold ps-1.5 text-sm hover:bg-accent [&:not(:hover)[data-state=open]]:bg-transparent"
                     >
                         <ListTodo />
-                        Tasks {pendingTasks.length > 0 && `(${pendingTasks.length})`}
+                        Tasks {pendingTasks.length > 0 && <BadgeCount count={pendingTasks.length} />}
                         <ChevronRight className="[[data-state=open]_&]:rotate-90" />
                     </Button>
                 </CollapsibleTrigger>
@@ -173,16 +178,18 @@ export function LeadRecordsOverviewTasks({
                             {showCompleted ? 'Hide' : 'Show'} completed ({completedTasks.length})
                         </Button>
                     )}
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" mode="icon"  onClick={handleAddTask}>
-                                    <Plus />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Add task</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    {canCreateTasks && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="sm" mode="icon"  onClick={handleAddTask}>
+                                        <Plus />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Add task</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
                 </div>
             </div>
 
@@ -195,10 +202,12 @@ export function LeadRecordsOverviewTasks({
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     {showCompleted ? 'No tasks found' : 'No pending tasks'}
                                 </p>
-                                <Button variant="outline" size="sm" className="mt-4" onClick={handleAddTask}>
-                                    <Plus className="size-4" />
-                                    Create your first task
-                                </Button>
+                                {canCreateTasks && (
+                                    <Button variant="outline" size="sm" className="mt-4" onClick={handleAddTask}>
+                                        <Plus className="size-4" />
+                                        Create your first task
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <ul className="flex flex-col gap-2.5">
@@ -215,6 +224,7 @@ export function LeadRecordsOverviewTasks({
                                             size="sm"
                                             className="mt-1 shrink-0"
                                             checked={task.is_completed}
+                                            disabled={!canCreateTasks}
                                             onCheckedChange={() => handleToggleCompletion(task.id)}
                                         />
 
@@ -294,7 +304,7 @@ export function LeadRecordsOverviewTasks({
                                             </div>
                                         </div>
 
-                                        {/* Menu button - always visible as separate column */}
+                                        {/* Menu button */}
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="sm" mode="icon" className="shrink-0 -mt-1 -mr-1">
@@ -306,17 +316,21 @@ export function LeadRecordsOverviewTasks({
                                                     <Eye className="size-4" />
                                                     View details
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleEditTask(task.id)}>
-                                                    <Pencil className="size-4" />
-                                                    Edit task
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => handleDeleteTask(task.id)}
-                                                    className="text-destructive"
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                    Delete task
-                                                </DropdownMenuItem>
+                                                {canCreateTasks && (
+                                                    <>
+                                                        <DropdownMenuItem onClick={() => handleEditTask(task.id)}>
+                                                            <Pencil className="size-4" />
+                                                            Edit task
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDeleteTask(task.id)}
+                                                            className="text-destructive"
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                            Delete task
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </li>

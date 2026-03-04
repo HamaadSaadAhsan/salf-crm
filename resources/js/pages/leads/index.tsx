@@ -1,14 +1,4 @@
-import {
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    CommandIcon,
-    Filter,
-    Plus,
-    RefreshCw,
-    Search,
-    Settings,
-} from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, CommandIcon, Filter, Plus, RefreshCw, Search, Settings } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +23,6 @@ import OptimizedLeadRow from './components/LeadRow';
 import LeadFilterBar from './components/LeadFilterBar';
 import { NewLeadSheet } from './components/NewLeadSheet';
 import SavedFiltersDialog from './components/SavedFiltersDialog';
-
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Leads', href: '/leads' },

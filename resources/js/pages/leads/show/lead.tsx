@@ -18,17 +18,18 @@ const LEAD_DETAILS_BREAKPOINT = 1490;
 type Props = {
     lead: Lead;
     users?: User[];
+    activeTab?: string;
 };
 
-export function LeadPage({ lead, users = [] }: Props) {
+export function LeadPage({ lead, users = [], activeTab = 'overview' }: Props) {
     const hideLeadDetails = useMediaQuery(LEAD_DETAILS_BREAKPOINT);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-full overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Main content area - full width when sidebar hidden */}
-            <div className={`flex min-w-0 flex-1 flex-col ${!hideLeadDetails ? 'border-r' : ''}`}>
-                <LeadRecords lead={lead} users={users} />
+            <div className={`flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden ${!hideLeadDetails ? 'border-r' : ''}`}>
+                <LeadRecords lead={lead} users={users} activeTab={activeTab} />
             </div>
 
             {/* Desktop sidebar - hidden below 1490px */}

@@ -1,12 +1,5 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -34,7 +27,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Lead } from '@/types/lead';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Lead, LeadStatus } from '@/types/lead';
 import { store } from '@/actions/App/Http/Controllers/Api/LeadActivityController';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
@@ -44,9 +42,7 @@ import {
     CalendarIcon,
     Clock,
     EllipsisVertical,
-    Flag,
     LayoutDashboard,
-    TrendingUp,
     UserCheck,
     Users,
 } from 'lucide-react';
@@ -72,26 +68,57 @@ const DURATION_OPTIONS = [
     { value: '120', label: '2 hours' },
 ];
 
-const getLeadScoreQuality = (score: number): string => {
-    if (score >= 80) return 'High Quality';
-    if (score >= 60) return 'Good Quality';
-    if (score >= 40) return 'Medium Quality';
-    return 'Low Quality';
-};
+const LEAD_STAGES = [
+    { key: 'new', label: 'New', color: 'bg-blue-400' },
+    { key: 'contacted', label: 'Contacted', color: 'bg-amber-400' },
+    { key: 'qualified', label: 'Qualified', color: 'bg-emerald-400' },
+    { key: 'assigned_to_advisor', label: 'Assigned', color: 'bg-violet-400' },
+] as const;
 
-const getLeadScoreVariant = (score: number): 'primary' | 'secondary' | 'outline' | 'destructive' => {
-    if (score >= 80) return 'primary';
-    if (score >= 60) return 'secondary';
-    return 'outline';
-};
+const ADVISOR_STAGES = [
+    { key: 'new', label: 'New', color: 'bg-blue-400' },
+    { key: 'contacted', label: 'Contacted', color: 'bg-amber-400' },
+    { key: 'meeting', label: 'Meeting', color: 'bg-orange-400' },
+    { key: 'contract_signed', label: 'Contract', color: 'bg-emerald-400' },
+    { key: 'initial_payment', label: 'Payment', color: 'bg-teal-400' },
+    { key: 'won', label: 'Won', color: 'bg-green-400' },
+] as const;
 
-const getLeadScoreMessage = (score: number, isHotLead: boolean): string => {
-    if (isHotLead) return 'High priority - Likely to convert';
-    if (score >= 80) return 'Likely to convert';
-    if (score >= 60) return 'Good conversion potential';
-    if (score >= 40) return 'Moderate conversion chance';
-    return 'Needs more qualification';
-};
+const QUALIFIED_STATUSES: LeadStatus[] = ['qualified', 'assigned_to_advisor', 'proposal', 'won', 'converted'];
+
+function getStageInfo(lead: Lead) {
+    const isQualified = QUALIFIED_STATUSES.includes(lead.inquiry_status);
+    const hasAdvisorStage = !!lead.advisor_stage && lead.advisor_stage !== 'lost';
+
+    if (isQualified && hasAdvisorStage) {
+        const stages = ADVISOR_STAGES;
+        const currentIndex = stages.findIndex(s => s.key === lead.advisor_stage);
+        return {
+            label: 'Advisor stage',
+            currentName: stages[currentIndex]?.label ?? lead.advisor_stage,
+            stages,
+            currentIndex: currentIndex >= 0 ? currentIndex : 0,
+        };
+    }
+
+    const stages = LEAD_STAGES;
+    const statusToStageMap: Record<string, string> = {
+        new: 'new',
+        assigned_to_cro: 'new',
+        contacted: 'contacted',
+        qualified: 'qualified',
+        assigned_to_advisor: 'assigned_to_advisor',
+    };
+    const mappedKey = statusToStageMap[lead.inquiry_status] ?? 'new';
+    const currentIndex = stages.findIndex(s => s.key === mappedKey);
+
+    return {
+        label: 'Lead stage',
+        currentName: stages[currentIndex]?.label ?? lead.inquiry_status,
+        stages,
+        currentIndex: currentIndex >= 0 ? currentIndex : 0,
+    };
+}
 
 const formatTaskDueDate = (dueAt: string): string => {
     try {
@@ -99,18 +126,12 @@ const formatTaskDueDate = (dueAt: string): string => {
         const now = new Date();
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
-
-        // Check if today
         if (date.toDateString() === now.toDateString()) {
             return 'Today ' + format(date, 'h:mm a');
         }
-
-        // Check if tomorrow
         if (date.toDateString() === tomorrow.toDateString()) {
             return 'Tomorrow ' + format(date, 'h:mm a');
         }
-
-        // Otherwise show full date
         return format(date, 'MMM d, h:mm a');
     } catch {
         return dueAt;
@@ -125,10 +146,9 @@ const formatDuration = (minutes: number): string => {
 };
 
 export function LeadRecordsOverviewHighlights({ lead }: { lead: Lead }) {
-    const leadScore = lead.lead_score || 0;
-    const isHotLead = lead.is_hot_lead || false;
     const nextTask = lead.next_task;
     const nextMeeting = lead.next_meeting;
+    const stageInfo = getStageInfo(lead);
     const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
 
     return (
@@ -138,133 +158,142 @@ export function LeadRecordsOverviewHighlights({ lead }: { lead: Lead }) {
                 Highlights
             </h3>
 
-            {/* Responsive grid: 1 column on mobile, 2 columns on sm+, 3 on lg */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:flex lg:gap-4">
-                {/* Lead Score */}
-                <Card className="w-full shadow-none lg:w-72">
-                    <CardHeader className="border-0 p-2.5 py-0 min-h-10">
-                        <CardTitle className="text-2sm font-normal">
-                            Lead Score
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 px-2.5 pb-2.5 pt-1">
-                        <div className="flex items-center gap-2">
-                            <TrendingUp className="text-muted-foreground h-4 w-4" />
-                            <span className="text-2xl font-semibold">{leadScore}</span>
-                            <Badge size="sm" variant={getLeadScoreVariant(leadScore)}>
-                                {getLeadScoreQuality(leadScore)}
-                            </Badge>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <UserCheck className="text-muted-foreground size-3.5 shrink-0" />
-                            <span className="text-sm">
-                                {getLeadScoreMessage(leadScore, isHotLead)}
+            {/* Attio-style responsive grid: 1 col mobile, max 3 columns desktop */}
+            <div
+                className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(max(168px,calc((100%-16px)/3)),1fr))]"
+            >
+                {/* Lead/Advisor Stage */}
+                <div className="relative h-[86px]">
+                    <div className="absolute inset-0 flex flex-col rounded-xl bg-card shadow-[inset_0_0_0_1px_var(--color-border)]">
+                        <div className="flex items-center justify-between gap-2 px-3 pt-2.5">
+                            <span className="truncate text-xs font-medium text-muted-foreground">
+                                {stageInfo.label}
                             </span>
                         </div>
-                    </CardContent>
-                </Card>
+                        <div className="mt-auto px-3 pb-2.5">
+                            <span className="text-sm font-medium text-card-foreground">
+                                {stageInfo.currentName}
+                            </span>
+                            <div className="flex gap-0.5 mt-1">
+                                {stageInfo.stages.map((stage, i) => (
+                                    <Tooltip key={stage.key}>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex-1 py-1.5 cursor-default">
+                                                <div
+                                                    className={cn(
+                                                        'h-1 rounded-full transition-colors',
+                                                        i <= stageInfo.currentIndex
+                                                            ? stage.color
+                                                            : 'bg-border',
+                                                    )}
+                                                />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="bottom"
+                                            className="rounded-lg bg-zinc-950 px-2 py-1 text-xs text-white dark:border-0 dark:bg-zinc-950 dark:text-white"
+                                        >
+                                            {stage.label}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                {/* Next Follow-up/Task */}
-                <Card className="w-full shadow-none lg:w-72">
-                    <CardHeader className="border-0 p-2.5 py-0 min-h-10">
-                        <CardTitle className="text-2sm font-normal">
-                            Next Follow-up
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 px-2.5 pb-2.5 pt-1">
-                        {nextTask ? (
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <Flag className="text-muted-foreground size-3.5 shrink-0" />
-                                    <span className="font-medium">
+                {/* Next Follow-up */}
+                <div className="relative h-[86px]">
+                    <div className="absolute inset-0 flex flex-col rounded-xl bg-card shadow-[inset_0_0_0_1px_var(--color-border)]">
+                        <div className="flex items-center justify-between gap-2 px-3 pt-2.5">
+                            <span className="truncate text-xs font-medium text-muted-foreground">
+                                Next follow-up
+                            </span>
+                        </div>
+                        <div className="mt-auto overflow-hidden px-3 pb-2.5">
+                            {nextTask ? (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="truncate text-sm font-medium text-card-foreground">
                                         {nextTask.title}
                                     </span>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        {nextTask.assigned_to && (
+                                            <>
+                                                <UserCheck className="size-3 shrink-0" />
+                                                <span className="truncate">{nextTask.assigned_to.name}</span>
+                                            </>
+                                        )}
+                                        {nextTask.due_at && (
+                                            <>
+                                                {nextTask.assigned_to && <span>·</span>}
+                                                <Clock className="size-3 shrink-0" />
+                                                <span className="shrink-0">{formatTaskDueDate(nextTask.due_at)}</span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                                {nextTask.assigned_to && (
-                                    <div className="flex items-center gap-2">
-                                        <UserCheck className="text-muted-foreground size-3.5 shrink-0" />
-                                        <span className="text-sm">
-                                            Assigned to {nextTask.assigned_to.name}
-                                        </span>
-                                    </div>
-                                )}
-                                {nextTask.due_at && (
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="text-muted-foreground size-3.5 shrink-0" />
-                                        <Badge size="sm">
-                                            {formatTaskDueDate(nextTask.due_at)}
-                                        </Badge>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                <CalendarCheck className="size-3.5 shrink-0" />
-                                <span>No upcoming tasks</span>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <span className="text-sm text-muted-foreground/60">
+                                    No upcoming tasks
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Next Meeting */}
-                <Card className="w-full shadow-none lg:w-72">
-                    <CardHeader className="border-0 p-2.5 py-0 min-h-10">
-                        <CardTitle className="text-2sm font-normal">
-                            Next Meeting
-                        </CardTitle>
-                        <div className="ml-auto">
+                <div className="relative h-[86px]">
+                    <div className="absolute inset-0 flex flex-col rounded-xl bg-card shadow-[inset_0_0_0_1px_var(--color-border)]">
+                        <div className="flex items-center justify-between gap-2 px-3 pt-2.5">
+                            <span className="truncate text-xs font-medium text-muted-foreground">
+                                Next meeting
+                            </span>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                        <EllipsisVertical className="h-3.5 w-3.5" />
-                                    </Button>
+                                    <button className="shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+                                        <EllipsisVertical className="size-3.5" />
+                                    </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
+                                <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={() => setMeetingDialogOpen(true)}>
-                                        <CalendarCheck className="h-3.5 w-3.5" />
+                                        <CalendarCheck className="size-3.5" />
                                         Schedule Meeting
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2 px-2.5 pb-2.5 pt-1">
-                        {nextMeeting ? (
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <Users className="text-muted-foreground size-3.5 shrink-0" />
-                                    <span className="font-medium">
+                        <div className="mt-auto overflow-hidden px-3 pb-2.5">
+                            {nextMeeting ? (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="truncate text-sm font-medium text-card-foreground">
                                         {nextMeeting.subject}
                                     </span>
-                                </div>
-                                {nextMeeting.user && (
-                                    <div className="flex items-center gap-2">
-                                        <UserCheck className="text-muted-foreground size-3.5 shrink-0" />
-                                        <span className="text-sm">
-                                            Scheduled by {nextMeeting.user.name}
-                                        </span>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        {nextMeeting.user && (
+                                            <>
+                                                <Users className="size-3 shrink-0" />
+                                                <span className="truncate">{nextMeeting.user.name}</span>
+                                            </>
+                                        )}
+                                        <span>·</span>
+                                        <Clock className="size-3 shrink-0" />
+                                        <span className="shrink-0">{formatTaskDueDate(nextMeeting.scheduled_at)}</span>
+                                        {nextMeeting.duration_minutes && (
+                                            <>
+                                                <span>·</span>
+                                                <span className="shrink-0">{formatDuration(nextMeeting.duration_minutes)}</span>
+                                            </>
+                                        )}
                                     </div>
-                                )}
-                                <div className="flex items-center gap-2">
-                                    <Clock className="text-muted-foreground size-3.5 shrink-0" />
-                                    <Badge size="sm">
-                                        {formatTaskDueDate(nextMeeting.scheduled_at)}
-                                    </Badge>
-                                    {nextMeeting.duration_minutes && (
-                                        <Badge size="sm" variant="outline">
-                                            {formatDuration(nextMeeting.duration_minutes)}
-                                        </Badge>
-                                    )}
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                <Users className="size-3.5 shrink-0" />
-                                <span>No upcoming meetings</span>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <span className="text-sm text-muted-foreground/60">
+                                    No upcoming meetings
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <ScheduleMeetingDialog

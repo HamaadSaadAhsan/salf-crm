@@ -58,6 +58,10 @@ export interface Lead {
     labels?: [];
     tags?: LeadTag[];
     notes?: LeadNote[];
+    notes_count?: number;
+    pending_tasks_count?: number;
+    calls_count?: number;
+    files_count?: number;
     urls: {
         show: string;
         edit: string;

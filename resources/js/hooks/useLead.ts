@@ -825,7 +825,7 @@ export function useLeadNotes(leadId: string | null, page: number = 1, perPage: n
             const response = await axios.get(`${apiClient.baseURL}/lead-activities`, {
                 params: {
                     lead_id: leadId,
-                    type: 'note,call',
+                    type: 'note',
                     exclude_system: 1,
                     page,
                     per_page: perPage,
@@ -926,6 +926,215 @@ export function useLoadMoreMonthActivities(leadId: string | null) {
         onSuccess: () => {
             // Invalidate to refresh the month summary
             void queryClient.invalidateQueries({ queryKey: ['lead-activities', 'month-summary', leadId] });
+        },
+    });
+}
+
+// LEAD FILES - Fetch, upload, delete files via Spatie Media Library
+export interface LeadFile {
+    id: number;
+    name: string;
+    file_name: string;
+    mime_type: string;
+    size: number;
+    human_readable_size: string;
+    url: string;
+    thumb_url: string | null;
+    created_at: string;
+    custom_properties: {
+        uploaded_by?: number;
+        uploaded_by_name?: string;
+        folder_id?: number;
+    };
+    folder_id: number | null;
+}
+
+export interface LeadFolder {
+    id: number;
+    name: string;
+    created_at: string;
+}
+
+export function useLeadFiles(leadId: string | null) {
+    return useQuery<{ data: LeadFile[] }>({
+        queryKey: ['lead-files', leadId],
+        queryFn: async () => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.get(`/api/leads/${leadId}/files`);
+            return response.data;
+        },
+        enabled: !!leadId,
+        staleTime: DEFAULT_STALE_TIME,
+        gcTime: DEFAULT_GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useUploadLeadFiles(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ files, folderId }: { files: File[]; folderId?: number | null }) => {
+            if (!leadId) throw new Error('Lead ID required');
+
+            const formData = new FormData();
+            files.forEach((file) => formData.append('files[]', file));
+            if (folderId) {
+                formData.append('folder_id', String(folderId));
+            }
+
+            const response = await axios.post(`/api/leads/${leadId}/files`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+            toast.success('Files uploaded successfully');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+            const message = axiosError.response?.data?.message || 'Failed to upload files';
+            toast.error(message);
+        },
+    });
+}
+
+export function useRenameLeadFile(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ mediaId, name }: { mediaId: number; name: string }) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.patch(`/api/leads/${leadId}/files/${mediaId}/rename`, { name });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+            toast.success('File renamed');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to rename file');
+        },
+    });
+}
+
+export function useDeleteLeadFile(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (mediaId: number) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.delete(`/api/leads/${leadId}/files/${mediaId}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+            toast.success('File deleted');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to delete file');
+        },
+    });
+}
+
+// LEAD FOLDERS - Fetch, create, rename, delete folders
+export function useLeadFolders(leadId: string | null) {
+    return useQuery<{ data: LeadFolder[] }>({
+        queryKey: ['lead-folders', leadId],
+        queryFn: async () => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.get(`/api/leads/${leadId}/folders`);
+            return response.data;
+        },
+        enabled: !!leadId,
+        staleTime: DEFAULT_STALE_TIME,
+        gcTime: DEFAULT_GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useCreateLeadFolder(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (name: string) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.post(`/api/leads/${leadId}/folders`, { name });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-folders', leadId] });
+            toast.success('Folder created');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to create folder');
+        },
+    });
+}
+
+export function useRenameLeadFolder(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ folderId, name }: { folderId: number; name: string }) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.patch(`/api/leads/${leadId}/folders/${folderId}/rename`, { name });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-folders', leadId] });
+            toast.success('Folder renamed');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to rename folder');
+        },
+    });
+}
+
+export function useDeleteLeadFolder(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (folderId: number) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.delete(`/api/leads/${leadId}/folders/${folderId}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-folders', leadId] });
+            void queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+            toast.success('Folder deleted');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to delete folder');
+        },
+    });
+}
+
+export function useMoveFileToFolder(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ mediaId, folderId }: { mediaId: number; folderId: number | null }) => {
+            if (!leadId) throw new Error('Lead ID required');
+            const response = await axios.patch(`/api/leads/${leadId}/files/${mediaId}/move`, {
+                folder_id: folderId,
+            });
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+            toast.success('File moved');
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to move file');
         },
     });
 }
