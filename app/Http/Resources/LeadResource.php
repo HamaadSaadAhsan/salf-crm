@@ -128,6 +128,12 @@ class LeadResource extends JsonResource
                 ];
             }),
 
+            // Tab counts (from withCount, no extra queries)
+            'notes_count' => $this->when(isset($this->notes_count), $this->notes_count),
+            'pending_tasks_count' => $this->when(isset($this->pending_tasks_count), $this->pending_tasks_count),
+            'calls_count' => $this->when(isset($this->calls_count), $this->calls_count),
+            'files_count' => $this->when(isset($this->media_count), $this->media_count),
+
             // URLs for frontend routing
             'urls' => [
                 'show' => route('leads.show', $this->id),

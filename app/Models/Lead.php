@@ -14,10 +14,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class Lead extends Model
+class Lead extends Model implements HasMedia
 {
-    use HasFactory, HasUuids, Searchable, SoftDeletes;
+    use HasFactory, HasUuids, InteractsWithMedia, Searchable, SoftDeletes;
 
     protected $fillable = [
         'name', 'email', 'phone', 'occupation', 'address', 'country', 'city',
@@ -383,6 +386,40 @@ class Lead extends Model
     public function tasks(): MorphMany
     {
         return $this->morphMany(Task::class, 'taskable');
+    }
+
+    public function googleDriveFiles(): HasMany
+    {
+        return $this->hasMany(LeadGoogleDriveFile::class);
+    }
+
+    public function folders(): HasMany
+    {
+        return $this->hasMany(LeadFolder::class);
+    }
+
+    public function pdfSubmissions(): HasMany
+    {
+        return $this->hasMany(LeadPdfSubmission::class);
+    }
+
+    /**
+     * Register media collections for the lead.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('files');
+    }
+
+    /**
+     * Register media conversions (thumbnail for images/PDFs).
+     */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')
+            ->width(200)
+            ->height(200)
+            ->nonQueued();
     }
 
     public function calls()

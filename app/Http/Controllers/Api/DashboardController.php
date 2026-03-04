@@ -45,6 +45,7 @@ class DashboardController extends Controller
                 $user->hasAnyRole(['manager', 'team-lead']) => $this->getManagerDashboard($user),
                 $user->hasAnyRole(['support-agent', 'senior-support-agent']) => $this->getCRODashboard($user),
                 $user->hasAnyRole(['sales-rep', 'senior-sales-rep']) => $this->getAdvisorDashboard($user),
+                $user->hasRole('processing') => $this->getProcessingDashboard($user),
                 default => $this->getBasicDashboard($user),
             };
         }, self::CACHE_TTL);
@@ -337,6 +338,31 @@ class DashboardController extends Controller
             'my_tasks' => $myTasks,
             'my_performance' => $this->getPersonalPerformance($user, $today),
             'upcoming_meetings' => $this->getUpcomingMeetings($user),
+        ];
+    }
+
+    public function getProcessingDashboard(User $user): array
+    {
+        $stages = config('processing.visible_advisor_stages', ['meeting']);
+        $today = Carbon::today();
+
+        $leadsQuery = Lead::whereIn('advisor_stage', $stages);
+
+        $total = (clone $leadsQuery)->count();
+        $newToday = (clone $leadsQuery)->whereDate('updated_at', $today)->count();
+
+        $byStage = [];
+        foreach ($stages as $stage) {
+            $byStage[$stage] = Lead::where('advisor_stage', $stage)->count();
+        }
+
+        return [
+            'role' => 'processing',
+            'leads_to_process' => [
+                'total' => $total,
+                'new_today' => $newToday,
+                'by_stage' => $byStage,
+            ],
         ];
     }
 

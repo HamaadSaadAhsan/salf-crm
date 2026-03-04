@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Contracts\Providers\TextProvider;
+use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -41,6 +42,16 @@ class AppServiceProvider extends ServiceProvider
         Lead::observe(LeadObserver::class);
         LeadActivity::observe(LeadActivityObserver::class);
         CallSession::observe(CallSessionObserver::class);
+
+        // Register custom Socialite driver for Google Drive (separate OAuth from Calendar)
+        Socialite::extend('google_drive', function ($app) {
+            $config = $app['config']['services.google_drive'];
+
+            return Socialite::buildProvider(
+                \Laravel\Socialite\Two\GoogleProvider::class,
+                $config,
+            );
+        });
 
         // Event listeners are auto-discovered by Laravel from app/Listeners
     }

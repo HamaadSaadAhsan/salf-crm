@@ -112,6 +112,9 @@ class LeadsPermissionsSeeder extends Seeder
             'delete files',
             'manage file permissions',
 
+            // Document management
+            'view documents',
+
             // API & automation (admin+ only)
             'access api',
             'manage webhooks',
@@ -332,6 +335,19 @@ class LeadsPermissionsSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdmin->syncPermissions(Permission::all());
 
-        $this->command->info('Created '.count($allPermissions).' permissions across 8 roles.');
+        // 9. PROCESSING — read-only access to leads at configured advisor stages
+        $processing = Role::firstOrCreate(['name' => 'processing']);
+        $processing->syncPermissions([
+            'view dashboard',
+            'view leads',
+            'view lead notes',
+            'view lead timeline',
+            'view lead pipeline',
+            'view files',
+            'view tasks',
+            'view documents',
+        ]);
+
+        $this->command->info('Created '.count($allPermissions).' permissions across 9 roles.');
     }
 }

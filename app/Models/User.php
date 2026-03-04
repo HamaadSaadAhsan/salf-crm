@@ -272,6 +272,11 @@ class User extends Authenticatable
         return $this->hasOne(CalendarIntegration::class);
     }
 
+    public function storageAccounts(): HasMany
+    {
+        return $this->hasMany(StorageAccount::class);
+    }
+
     public function scopeSuperAdmin()
     {
         return $this->hasRole('super-admin');

@@ -19,8 +19,11 @@ class LeadActivityController extends Controller
     {
         $activity->load(['user', 'lead']);
 
-        // Refresh lead and return lead data
-        $lead = $activity->lead->load(['assignedTo', 'createdBy', 'service', 'source']);
+        $lead = $activity->lead;
+
+        if ($lead) {
+            $lead->load(['assignedTo', 'createdBy', 'service', 'source']);
+        }
 
         // Invalidate leads cache
         Cache::tags(['leads', 'leads_list'])->flush();
@@ -29,7 +32,7 @@ class LeadActivityController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'activity' => LeadActivityResource::make($activity),
-                'lead' => LeadResource::make($lead),
+                'lead' => $lead ? LeadResource::make($lead) : null,
             ]);
         }
 
@@ -42,7 +45,7 @@ class LeadActivityController extends Controller
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
             'type' => ['nullable', Rule::in(['call', 'email', 'meeting', 'note', 'comment', 'message', 'task', 'follow_up', 'status_change', 'assignment_change'])],
-            'description' => 'required_without:attachments|string|max:1000',
+            'description' => 'nullable|string|max:10000',
             'subject' => 'nullable|string|max:255',
             'priority' => ['nullable', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'scheduled_at' => 'nullable|date',
@@ -247,26 +250,51 @@ class LeadActivityController extends Controller
         ]);
     }
 
-    public function update(Request $request, LeadActivity $activity)
+    public function show(LeadActivity $leadActivity)
+    {
+        $leadActivity->load(['user', 'lead']);
+
+        $lead = $leadActivity->lead;
+
+        if ($lead) {
+            $lead->load(['assignedTo', 'createdBy', 'service', 'source']);
+        }
+
+        return response()->json([
+            'activity' => LeadActivityResource::make($leadActivity),
+            'lead' => $lead ? LeadResource::make($lead) : null,
+        ]);
+    }
+
+    public function update(Request $request, LeadActivity $leadActivity)
     {
         $request->validate([
             'status' => ['nullable', Rule::in(['pending', 'completed', 'cancelled'])],
             'outcome' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
+            'subject' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:10000',
+            'editor_state' => 'nullable|string|max:500000',
         ]);
 
-        $activity->update($request->only(['status', 'outcome', 'notes']));
+        $leadActivity->update($request->only(['status', 'outcome', 'notes', 'subject', 'description']));
 
-        if ($request->status === 'completed' && ! $activity->completed_at) {
-            $activity->update(['completed_at' => now()]);
+        if ($request->has('editor_state')) {
+            $metadata = $leadActivity->metadata ?? [];
+            $metadata['editor_state'] = $request->editor_state;
+            $leadActivity->update(['metadata' => $metadata]);
         }
 
-        return $this->buildActivityResponse($request, $activity);
+        if ($request->status === 'completed' && ! $leadActivity->completed_at) {
+            $leadActivity->update(['completed_at' => now()]);
+        }
+
+        return $this->buildActivityResponse($request, $leadActivity);
     }
 
-    public function destroy(LeadActivity $activity)
+    public function destroy(LeadActivity $leadActivity)
     {
-        $activity->delete();
+        $leadActivity->delete();
 
         return response()->json(['message' => 'Activity deleted successfully']);
     }

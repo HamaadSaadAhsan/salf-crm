@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class UserPerformanceController extends Controller
 {
-    private const MAX_CRO_WORKLOAD = 50;
+    private const MAX_CRO_WORKLOAD = 300;
 
     private const CRO_ROLES = ['support-agent', 'senior-support-agent'];
 

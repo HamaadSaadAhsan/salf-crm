@@ -3,10 +3,14 @@
 namespace App\Http\Middleware;
 
 use App\Http\Controllers\ImpersonationController;
+use App\Models\CallSession;
 use App\Models\Country;
+use App\Models\Lead;
 use App\Models\LeadSource;
 use App\Models\Service;
 use App\Models\Status;
+use App\Models\Task;
+use App\Models\Ticket;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -109,13 +113,23 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'permissions' => $permissions,
-                'isSuperAdmin' => $user?->hasRole('super-admin') ?? false,
+                'isSuperAdmin' => $isSuperAdmin = $user?->hasRole('super-admin') ?? false,
+                'openTicketsCount' => $isSuperAdmin
+                    ? Ticket::query()->whereIn('status', ['open', 'in_progress'])->count()
+                    : 0,
             ],
             'impersonation' => [
                 'isImpersonating' => ImpersonationController::isImpersonating(),
                 'impersonator' => ImpersonationController::getImpersonator(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'sidebarCounts' => fn () => $user ? [
+                'leads' => Lead::active()->count(),
+                'notifications' => $user->unreadNotifications()->count(),
+                'tasks' => Task::pending()->where('assigned_to_id', $user->id)->count(),
+                'calls' => CallSession::whereDate('started_at', today())->count(),
+                'support' => Ticket::open()->forUser($user->id)->count(),
+            ] : [],
         ];
     }
 }

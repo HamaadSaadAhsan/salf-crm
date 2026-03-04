@@ -3,8 +3,13 @@
 use App\Http\Controllers\Api\CallSessionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LeadActivityController;
+use App\Http\Controllers\Api\LeadFileController;
+use App\Http\Controllers\Api\LeadFolderController;
+use App\Http\Controllers\Api\LeadGoogleDriveFileController;
+use App\Http\Controllers\Api\LeadPdfSubmissionController;
 use App\Http\Controllers\Api\MentionUserController;
 use App\Http\Controllers\Api\MetricsController;
+use App\Http\Controllers\Api\PdfTemplateController;
 use App\Http\Controllers\Api\Roles\PermissionController;
 use App\Http\Controllers\Api\Roles\RoleController;
 use App\Http\Controllers\Api\UserPerformanceController;
@@ -19,6 +24,8 @@ use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TicketCommentController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 use App\Http\Resources\SourceController;
 use Illuminate\Support\Facades\Route;
@@ -47,10 +54,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->middleware('role_or_permission:super-admin|view dashboard')->name('dashboard');
 
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
-        Route::resource('leads', LeadController::class)->names('leads');
-        Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
+        Route::resource('leads', LeadController::class)->except('show')->names('leads');
         Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
         Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
+        Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
+        Route::get('leads/{lead}/{tab?}', [LeadController::class, 'show'])->name('leads.show')
+            ->where('tab', 'overview|activity|notes|tasks|calls|files|documents');
     });
 
     Route::apiResource('statuses', StatusController::class)->names('statuses');
@@ -73,6 +82,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/assignment-visualizer', [AssignmentVisualizerController::class, 'index'])
         ->middleware('role:super-admin')
         ->name('api.assignment-visualizer');
+
+    // PDF Templates (Admin)
+    Route::middleware('role:super-admin')->prefix('api')->group(function () {
+        Route::get('/pdf-templates', [PdfTemplateController::class, 'index'])->name('api.pdf-templates.index');
+        Route::post('/pdf-templates', [PdfTemplateController::class, 'store'])->name('api.pdf-templates.store');
+        Route::get('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'show'])->name('api.pdf-templates.show');
+        Route::patch('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'update'])->name('api.pdf-templates.update');
+        Route::delete('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'destroy'])->name('api.pdf-templates.destroy');
+        Route::post('/pdf-templates/{pdfTemplate}/fields', [PdfTemplateController::class, 'saveFields'])->name('api.pdf-templates.fields');
+        Route::post('/pdf-templates/{pdfTemplate}/scan', [PdfTemplateController::class, 'scanFields'])->name('api.pdf-templates.scan');
+    });
 
     // Management Routes (Super Admin only)
     Route::middleware('role:super-admin')->group(function () {
@@ -148,6 +168,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Global Search (command palette)
     Route::get('api/global-search', \App\Http\Controllers\Api\GlobalSearchController::class)->name('api.global-search');
 
+    // Support Tickets - All authenticated users
+    Route::resource('support', TicketController::class)->names('support')->parameters(['support' => 'ticket'])->whereNumber('ticket')->except(['edit']);
+    Route::post('support/{ticket}/comments', [TicketCommentController::class, 'store'])->name('support.comments.store');
+
+    // Admin Ticket Management
+    Route::get('admin/tickets', [TicketController::class, 'adminIndex'])
+        ->middleware('role:super-admin')->name('admin.tickets.index');
+
     // Tasks Management
     Route::resource('tasks', TaskController::class)->names('tasks');
 
@@ -183,6 +211,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/leads/{lead}', [\App\Http\Controllers\Api\Leads\LeadController::class, 'show'])->name('api.leads.show');
         Route::get('/leads/{lead}/calls', [CallSessionController::class, 'leadCallHistory'])->name('api.leads.calls');
         Route::get('/leads/{lead}/recordings', [CallSessionController::class, 'leadRecordings'])->name('api.leads.recordings');
+
+        // Lead Files
+        Route::get('/leads/{lead}/files', [LeadFileController::class, 'index'])->name('api.leads.files.index');
+        Route::post('/leads/{lead}/files', [LeadFileController::class, 'store'])->name('api.leads.files.store');
+        Route::get('/leads/{lead}/files/{media}/download', [LeadFileController::class, 'download'])->name('api.leads.files.download');
+        Route::patch('/leads/{lead}/files/{media}/rename', [LeadFileController::class, 'rename'])->name('api.leads.files.rename');
+        Route::patch('/leads/{lead}/files/{media}/move', [LeadFileController::class, 'moveToFolder'])->name('api.leads.files.move');
+        Route::delete('/leads/{lead}/files/{media}', [LeadFileController::class, 'destroy'])->name('api.leads.files.destroy');
+
+        // Lead Folders
+        Route::get('/leads/{lead}/folders', [LeadFolderController::class, 'index'])->name('api.leads.folders.index');
+        Route::post('/leads/{lead}/folders', [LeadFolderController::class, 'store'])->name('api.leads.folders.store');
+        Route::patch('/leads/{lead}/folders/{folder}/rename', [LeadFolderController::class, 'rename'])->name('api.leads.folders.rename');
+        Route::delete('/leads/{lead}/folders/{folder}', [LeadFolderController::class, 'destroy'])->name('api.leads.folders.destroy');
+
+        // Lead PDF Submissions
+        Route::get('/leads/{lead}/pdf-templates', [LeadPdfSubmissionController::class, 'templates'])->name('api.leads.pdf-templates');
+        Route::get('/leads/{lead}/pdf-templates/{pdfTemplate}', [LeadPdfSubmissionController::class, 'showTemplate'])->name('api.leads.pdf-templates.show');
+        Route::get('/leads/{lead}/pdf-submissions', [LeadPdfSubmissionController::class, 'index'])->name('api.leads.pdf-submissions.index');
+        Route::post('/leads/{lead}/pdf-submissions', [LeadPdfSubmissionController::class, 'store'])->name('api.leads.pdf-submissions.store');
+        Route::get('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'show'])->name('api.leads.pdf-submissions.show');
+        Route::patch('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'update'])->name('api.leads.pdf-submissions.update');
+        Route::delete('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'destroy'])->name('api.leads.pdf-submissions.destroy');
+
+        // Lead Google Drive Files
+        Route::get('/leads/{lead}/google-drive-files', [LeadGoogleDriveFileController::class, 'index'])->name('api.leads.google-drive-files.index');
+        Route::post('/leads/{lead}/google-drive-files', [LeadGoogleDriveFileController::class, 'store'])->name('api.leads.google-drive-files.store');
+        Route::delete('/leads/{lead}/google-drive-files/{linkedFile}', [LeadGoogleDriveFileController::class, 'destroy'])->name('api.leads.google-drive-files.destroy');
+
+        // Storage Accounts API
+        Route::get('/storage-accounts', [\App\Http\Controllers\Settings\StorageAccountController::class, 'api'])->name('api.storage-accounts.index');
+        Route::get('/storage-accounts/{storageAccount}/files', [\App\Http\Controllers\Settings\GoogleDriveController::class, 'files'])->name('api.storage-accounts.files');
+        Route::get('/storage-accounts/{storageAccount}/files/{fileId}/download', [\App\Http\Controllers\Settings\GoogleDriveController::class, 'download'])->name('api.storage-accounts.files.download');
         Route::get('/calls/active', [CallSessionController::class, 'getActiveCall'])->name('api.calls.active');
         Route::get('/calls/{callSession}', [CallSessionController::class, 'show'])->name('api.calls.show');
         Route::get('/calls/{callSession}/recording', [CallSessionController::class, 'streamRecording'])->name('api.calls.recording');

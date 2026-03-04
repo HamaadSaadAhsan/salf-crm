@@ -41,6 +41,12 @@ return [
         'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/calendar/callback'),
     ],
 
+    'google_drive' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_DRIVE_REDIRECT_URI', env('APP_URL').'/settings/storage-accounts/google-drive/callback'),
+    ],
+
     'facebook' => [
         'api_version' => env('FACEBOOK_API_VERSION', 'v23.0'),
         'app_id' => env('FACEBOOK_APP_ID'),
