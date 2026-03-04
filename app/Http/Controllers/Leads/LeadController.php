@@ -67,6 +67,9 @@ class LeadController extends Controller
                 ? \App\Models\User::role($subordinateRole)->pluck('id')->toArray()
                 : [];
             $filters['assigned_to_in'] = array_unique(array_merge([$user->id], $subordinateIds));
+        } elseif ($user->hasRole('processing') && ! $user->hasAnyRole($adminRoles)) {
+            // Processing: can only see leads at configured advisor stages
+            $filters['advisor_stage_in'] = config('processing.visible_advisor_stages', ['meeting']);
         } elseif ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $filters['assigned_to'] = $user->id;
             // Always include leads the user qualified (they get reassigned to advisors after qualification)
@@ -592,6 +595,11 @@ class LeadController extends Controller
             }
         }
 
+        // Advisor stage filter (used by processing department)
+        if (! empty($filters['advisor_stage_in'])) {
+            $query->whereIn('advisor_stage', (array) $filters['advisor_stage_in']);
+        }
+
         // Inquiry type filter
         if (! empty($filters['inquiry_type'])) {
             $query->where('inquiry_type', $filters['inquiry_type']);
@@ -804,8 +812,13 @@ class LeadController extends Controller
     /**
      * Get a single lead with related data
      */
-    public function show(Lead $lead)
+    public function show(Lead $lead, ?string $tab = null)
     {
+        // Redirect to default tab if none specified so URL always shows the tab
+        if ($tab === null) {
+            return redirect()->route('leads.show', [$lead, 'overview']);
+        }
+
         // CROs and Advisors can only view leads assigned to them
         $user = auth()->user();
         $restrictedRoles = ['support-agent', 'senior-support-agent', 'sales-rep', 'senior-sales-rep'];
@@ -815,7 +828,14 @@ class LeadController extends Controller
             'senior-sales-rep' => 'sales-rep',
         ];
 
-        if ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
+        if ($user->hasRole('processing') && ! $user->hasAnyRole($adminRoles)) {
+            $allowedStages = config('processing.visible_advisor_stages', ['meeting']);
+            abort_unless(
+                in_array($lead->advisor_stage, $allowedStages, true),
+                403,
+                'This lead is not available for processing.',
+            );
+        } elseif ($user->hasAnyRole($restrictedRoles) && ! $user->hasAnyRole($adminRoles)) {
             $isSeniorManaging = $user->hasPermissionTo('manage team agents');
 
             if ($isSeniorManaging) {
@@ -865,6 +885,13 @@ class LeadController extends Controller
                     'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
                     'last_activity_at', 'viewed_at', 'next_follow_up_at', 'tags',
                 ])
+                    ->withCount([
+                        'activities as notes_count' => fn ($q) => $q->where('type', 'note')
+                            ->where(fn ($sq) => $sq->whereNull('category')->orWhereNotIn('category', ['system', 'tag_change'])),
+                        'tasks as pending_tasks_count' => fn ($q) => $q->whereNull('completed_at'),
+                        'callSessions as calls_count',
+                        'media',
+                    ])
                     ->with([
                         'service' => function ($query) {
                             $query->select('id', 'name')->withCount('children');
@@ -911,9 +938,26 @@ class LeadController extends Controller
                 ->toArray();
         }
 
+        // Navigation: get prev/next leads by created_at order
+        $prevLead = Lead::where('created_at', '<', $lead->created_at)
+            ->orderByDesc('created_at')->first(['id']);
+        $nextLead = Lead::where('created_at', '>', $lead->created_at)
+            ->orderBy('created_at')->first(['id']);
+        $totalLeads = Lead::count();
+
+        // Determine current position
+        $currentPosition = Lead::where('created_at', '>', $lead->created_at)->count() + 1;
+
         return Inertia::render('leads/show', [
             'lead' => $resourceData,
             'users' => $croUsers,
+            'tab' => $tab,
+            'navigation' => [
+                'prev' => $prevLead?->id,
+                'next' => $nextLead?->id,
+                'current' => $currentPosition,
+                'total' => $totalLeads,
+            ],
             'permissions' => [
                 'can_edit' => $this->canEdit($lead),
                 'can_assign' => $this->canAssign($lead),
@@ -1626,6 +1670,13 @@ class LeadController extends Controller
                         'assigned_date', 'ticket_id', 'ticket_date', 'created_at', 'updated_at',
                         'last_activity_at', 'next_follow_up_at', 'tags',
                     ])
+                        ->withCount([
+                            'activities as notes_count' => fn ($q) => $q->where('type', 'note')
+                                ->where(fn ($sq) => $sq->whereNull('category')->orWhereNotIn('category', ['system', 'tag_change'])),
+                            'tasks as pending_tasks_count' => fn ($q) => $q->whereNull('completed_at'),
+                            'callSessions as calls_count',
+                            'media',
+                        ])
                         ->with([
                             'service' => function ($query) {
                                 $query->select('id', 'name')->withCount('children');
