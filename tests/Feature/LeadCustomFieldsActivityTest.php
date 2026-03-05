@@ -11,7 +11,7 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
-it('formats custom fields in activity description as human-readable text', function () {
+it('formats custom fields in activity metadata as human-readable text', function () {
     $lead = Lead::factory()->create([
         'custom_fields' => [
             'family_size' => 5,
@@ -35,26 +35,26 @@ it('formats custom fields in activity description as human-readable text', funct
 
     // Get the activity created by the observer
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
+    expect($activity->subject)->toBe('Updated Custom Fields');
 
-    // Verify the description contains formatted field names (Title Case)
-    expect($activity->description)
+    // Verify the metadata contains the changes
+    $changes = $activity->metadata['changes'];
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['field'])->toBe('custom_fields');
+
+    // Verify formatted values contain Title Case field names
+    $newValue = $changes[0]['new_value'];
+    expect($newValue)
         ->toContain('Family Size:')
         ->toContain('Children Ages:')
         ->toContain('Current Citizenships:')
         ->toContain('Investment Experience:')
         ->toContain('Urgency:');
-
-    // Verify the description does NOT contain raw JSON
-    expect($activity->description)
-        ->not->toContain('{')
-        ->not->toContain('}')
-        ->not->toContain('["')
-        ->not->toContain('"]');
 });
 
 it('formats array values in custom fields as comma-separated strings', function () {
@@ -71,12 +71,14 @@ it('formats array values in custom fields as comma-separated strings', function 
     ]);
 
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
-    expect($activity->description)->toContain('USA, Canada, UK');
+
+    $changes = $activity->metadata['changes'];
+    expect($changes[0]['new_value'])->toContain('USA, Canada, UK');
 });
 
 it('formats boolean values in custom fields as Yes/No', function () {
@@ -93,14 +95,12 @@ it('formats boolean values in custom fields as Yes/No', function () {
     ]);
 
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
-
-    // Check the new value in the description
-    expect($activity->description)->toContain('Yes');
+    expect($activity->metadata['changes'][0]['new_value'])->toContain('Yes');
 });
 
 it('handles null values in custom fields', function () {
@@ -117,15 +117,15 @@ it('handles null values in custom fields', function () {
     ]);
 
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
-    expect($activity->description)->toContain('Not set');
+    expect($activity->metadata['changes'][0]['new_value'])->toContain('Not set');
 });
 
-it('converts snake_case field names to Title Case in activity description', function () {
+it('converts snake_case field names to Title Case in activity metadata', function () {
     $lead = Lead::factory()->create([
         'custom_fields' => [
             'investment_amount_usd' => 100000,
@@ -139,42 +139,41 @@ it('converts snake_case field names to Title Case in activity description', func
     ]);
 
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
-    expect($activity->description)->toContain('Investment Amount Usd:');
+    expect($activity->metadata['changes'][0]['new_value'])->toContain('Investment Amount Usd:');
 });
 
-it('stores metadata with field change information', function () {
-    $oldCustomFields = [
-        'family_size' => 3,
-        'urgency' => 'low',
-    ];
-
-    $newCustomFields = [
-        'family_size' => 4,
-        'urgency' => 'high',
-    ];
-
+it('stores metadata with batched change information', function () {
     $lead = Lead::factory()->create([
-        'custom_fields' => $oldCustomFields,
+        'custom_fields' => [
+            'family_size' => 3,
+            'urgency' => 'low',
+        ],
     ]);
 
     $lead->update([
-        'custom_fields' => $newCustomFields,
+        'custom_fields' => [
+            'family_size' => 4,
+            'urgency' => 'high',
+        ],
     ]);
 
     $activity = LeadActivity::where('lead_id', $lead->id)
-        ->where('subject', 'Updated Custom Fields')
+        ->where('type', 'attribute_change')
         ->latest()
         ->first();
 
     expect($activity)->not->toBeNull();
     expect($activity->metadata)
+        ->toHaveKey('changes')
+        ->toHaveKey('change_type', 'attribute_change');
+    expect($activity->metadata['changes'][0])
         ->toHaveKey('field', 'custom_fields')
-        ->toHaveKey('change_type', 'field_update')
+        ->toHaveKey('field_name', 'Custom Fields')
         ->toHaveKey('old_value')
         ->toHaveKey('new_value');
 });
