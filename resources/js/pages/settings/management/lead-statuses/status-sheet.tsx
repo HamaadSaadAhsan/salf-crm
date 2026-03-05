@@ -33,7 +33,7 @@ export function StatusSheet({ open, onOpenChange, status }: StatusSheetProps) {
     order: 0,
   });
 
-  const editMode = !!status;
+  const _editMode = !!status;
 
   useEffect(() => {
     if (status && open) {
@@ -73,9 +73,10 @@ export function StatusSheet({ open, onOpenChange, status }: StatusSheetProps) {
         setSuccess(null);
         router.reload({ only: ['statuses'] });
       }, 1500);
-    } catch (err: any) {
-      const errors = err.response?.data?.errors;
-      const errorMessage = errors?.name?.[0] || errors?.color?.[0] || err.response?.data?.message || 'Failed to save status.';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const errors = axiosErr.response?.data?.errors;
+      const errorMessage = errors?.name?.[0] || errors?.color?.[0] || axiosErr.response?.data?.message || 'Failed to save status.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

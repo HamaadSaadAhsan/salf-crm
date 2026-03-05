@@ -54,7 +54,7 @@ const ProvinceList = ({ provinces, onEditProvince }: ProvinceListProps) => {
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
   >({});
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+  const [columnPinning] = useState<ColumnPinningState>({
     left: ['select', 'name'],
     right: [],
   });
@@ -249,7 +249,7 @@ const ProvinceList = ({ provinces, onEditProvince }: ProvinceListProps) => {
   return (
     <DataGrid table={table} recordCount={provincesList.length}>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -264,7 +264,7 @@ const ProvinceList = ({ provinces, onEditProvince }: ProvinceListProps) => {
                 className="pl-9 h-9"
               />
             </div>
-            {table.getColumn('name')?.getFilterValue() && (
+            {!!table.getColumn('name')?.getFilterValue() && (
               <Button
                 variant="ghost"
                 onClick={() => table.getColumn('name')?.setFilterValue('')}
@@ -280,10 +280,10 @@ const ProvinceList = ({ provinces, onEditProvince }: ProvinceListProps) => {
           </div>
         </CardHeader>
         <CardTable>
-          <DataGridTable table={table} columns={columns} />
+          <DataGridTable />
         </CardTable>
         <CardFooter className="pt-4">
-          <DataGridPagination table={table} />
+          <DataGridPagination />
         </CardFooter>
       </Card>
 

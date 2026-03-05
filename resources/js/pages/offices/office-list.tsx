@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import {
   ColumnDef,
@@ -60,13 +60,12 @@ interface OfficeListProps {
 
 const OfficeList = ({ offices, onEditOffice }: OfficeListProps) => {
   const officesList = Array.isArray(offices) ? offices : [];
-  const [searchQuery, setSearchQuery] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
   >({});
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+  const [columnPinning] = useState<ColumnPinningState>({
     left: ['select', 'name'],
     right: [],
   });
@@ -344,7 +343,7 @@ const OfficeList = ({ offices, onEditOffice }: OfficeListProps) => {
   return (
       <DataGrid table={table} recordCount={officesList.length}>
           <Card className="border-0">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
                   <div className="flex flex-1 items-center space-x-2">
                       <div className="relative max-w-sm flex-1">
                           <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -355,7 +354,7 @@ const OfficeList = ({ offices, onEditOffice }: OfficeListProps) => {
                               className="h-9 pl-9"
                           />
                       </div>
-                      {table.getColumn('name')?.getFilterValue() && (
+                      {!!table.getColumn('name')?.getFilterValue() && (
                           <Button variant="ghost" onClick={() => table.getColumn('name')?.setFilterValue('')} className="h-9 px-2 lg:px-3">
                               Reset
                               <X className="ml-2 h-4 w-4" />
