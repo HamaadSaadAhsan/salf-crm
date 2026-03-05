@@ -758,6 +758,29 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
         }
     };
 
+    // Save budget as structured object
+    const saveBudget = (amountStr: string) => {
+        const amount = parseFloat(amountStr.replace(/[^0-9.]/g, ''));
+        const budget = !isNaN(amount) && amount > 0
+            ? { amount, currency: model.budget?.currency ?? 'USD' }
+            : null;
+        router.put(
+            `/leads/${model.id}`,
+            { budget },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['lead'],
+                onSuccess: (page) => {
+                    const leadData = (page.props as { lead?: Lead }).lead;
+                    if (leadData) {
+                        setModel(leadData);
+                    }
+                },
+            },
+        );
+    };
+
     // Save additional details
     const saveField = (field: string, value: string | null) => {
         router.put(
@@ -984,7 +1007,16 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                 <DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Budget</span>
-                                    <span className="text-sm font-medium">{model.formatted_budget || '—'}</span>
+                                    <InlineEdit
+                                        value={model.budget?.amount ? String(model.budget.amount) : ''}
+                                        placeholder="Add budget"
+                                        format={(v) =>
+                                            v && Number(v) > 0
+                                                ? `${model.budget?.currency ?? 'USD'} ${Number(v).toLocaleString()}`
+                                                : '—'
+                                        }
+                                        onSave={saveBudget}
+                                    />
                                 </div>
                             </div>
 

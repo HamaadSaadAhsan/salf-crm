@@ -7,17 +7,20 @@ use App\Events\LeadRequalified;
 use App\Events\LeadStageChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LeadFilterRequest;
+use App\Http\Requests\StoreLeadRequest;
 use App\Http\Requests\UpdateAdvisorStageRequest;
 use App\Http\Resources\LeadResource;
 use App\Jobs\WarmDashboardCacheJob;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\LeadCase;
+use App\Models\LeadSource;
 use App\Models\Service;
 use App\Models\Task;
 use App\Services\LeadAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -123,6 +126,10 @@ class LeadController extends Controller
             'leads' => $result['data'],
             'meta' => $result['meta'],
             'filters' => $userFilters,
+            'leadSources' => LeadSource::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'search_info' => $result['search_info'] ?? null,
             'cache_info' => [
                 'cached' => $fromCache,
@@ -151,6 +158,25 @@ class LeadController extends Controller
                 ])
             ),
         ]);
+    }
+
+    public function store(StoreLeadRequest $request): RedirectResponse
+    {
+        $lead = Lead::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'occupation' => $request->occupation,
+            'inquiry_status' => $request->inquiry_status ?? 'new',
+            'priority' => $request->priority ?? 'medium',
+            'lead_source_id' => $request->lead_source_id,
+            'detail' => $request->detail,
+        ]);
+
+        Cache::tags(['leads'])->flush();
+
+        return redirect()->route('leads.show', $lead)
+            ->with('success', 'Lead created successfully.');
     }
 
     /**
