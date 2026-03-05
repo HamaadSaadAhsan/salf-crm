@@ -86,9 +86,10 @@ export function LeadSourceSheet({ open, onOpenChange, source }: LeadSourceSheetP
         setSuccess(null);
         router.reload({ only: ['leadSources'] });
       }, 1500);
-    } catch (err: any) {
-      const errors = err.response?.data?.errors;
-      const errorMessage = errors?.name?.[0] || errors?.slug?.[0] || err.response?.data?.message || 'Failed to save lead source.';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const errors = axiosErr.response?.data?.errors;
+      const errorMessage = errors?.name?.[0] || errors?.slug?.[0] || axiosErr.response?.data?.message || 'Failed to save lead source.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

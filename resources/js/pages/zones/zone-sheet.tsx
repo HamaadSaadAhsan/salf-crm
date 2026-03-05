@@ -102,6 +102,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                 setSelectedCityIds([]);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCountryId]);
 
     // Fetch cities when provinces change
@@ -114,6 +115,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                 setSelectedCityIds([]);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedProvinceIds]);
 
     useEffect(() => {
@@ -235,9 +237,9 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                     }, 1500);
                 }
             },
-            onError: (errors: any) => {
+            onError: (errors: Record<string, string>) => {
                 console.error('Zone save error:', errors);
-                const errorMessage = errors?.message || errors?.name?.[0] || errors?.code?.[0] || 'Failed to save zone. Please try again.';
+                const errorMessage = errors?.message || errors?.name || errors?.code || 'Failed to save zone. Please try again.';
                 setError(errorMessage);
             },
             onFinish: () => {
@@ -352,9 +354,10 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
             setNewCityCode('');
             setNewCityProvinceId(null);
             setShowNewCityDialog(false);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error creating city:', error);
-            setNewCityError(error.response?.data?.message || error.response?.data?.errors?.name?.[0] || 'Failed to create city');
+            const axiosError = error as { response?: { data?: { message?: string; errors?: { name?: string[] } } } };
+            setNewCityError(axiosError.response?.data?.message || axiosError.response?.data?.errors?.name?.[0] || 'Failed to create city');
         } finally {
             setIsCreatingCity(false);
         }
