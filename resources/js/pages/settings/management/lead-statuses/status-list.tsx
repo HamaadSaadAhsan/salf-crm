@@ -41,7 +41,7 @@ interface StatusListProps {
 }
 
 export function StatusList({ statuses, onEditStatus, onDeleteStatus }: StatusListProps) {
-  const statusesList = Array.isArray(statuses) ? statuses : [];
+  const statusesList = useMemo(() => (Array.isArray(statuses) ? statuses : []), [statuses]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'order', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
@@ -100,10 +100,11 @@ export function StatusList({ statuses, onEditStatus, onDeleteStatus }: StatusLis
     try {
       await axios.post('/statuses/reorder', { orders: orderUpdates });
       // Reload to get fresh data from server
-      router.reload({ only: ['statuses'], preserveScroll: true });
-    } catch (error: any) {
+      router.reload({ only: ['statuses'] });
+    } catch (error: unknown) {
       console.error('Failed to reorder statuses:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to reorder statuses.';
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError.response?.data?.message || 'Failed to reorder statuses.';
       alert(errorMessage);
       // Revert on error
       setLocalStatuses(statusesList);
@@ -145,7 +146,6 @@ export function StatusList({ statuses, onEditStatus, onDeleteStatus }: StatusLis
         <DataGridColumnHeader column={column} title="#" />
       ),
       cell: ({ row }) => {
-        const status = row.original;
         return (
           <div className="flex items-center gap-2">
             <DataGridTableDndRowHandle rowId={row.id} />
@@ -296,7 +296,7 @@ export function StatusList({ statuses, onEditStatus, onDeleteStatus }: StatusLis
   return (
     <DataGrid table={table} recordCount={localStatuses.length} key={tableKey}>
       <Card className="border-0">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -351,15 +351,15 @@ export function StatusList({ statuses, onEditStatus, onDeleteStatus }: StatusLis
 function getContrastColor(hexColor: string): string {
   // Remove # if present
   const color = hexColor.replace('#', '');
-  
+
   // Convert to RGB
   const r = parseInt(color.substring(0, 2), 16);
   const g = parseInt(color.substring(2, 4), 16);
   const b = parseInt(color.substring(4, 6), 16);
-  
+
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
+
   // Return black for light colors, white for dark colors
   return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }

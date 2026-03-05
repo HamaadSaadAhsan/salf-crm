@@ -12,18 +12,40 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface Role {
+  id: number;
+  name: string;
+}
 
 interface NewUserSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  roles?: Role[];
 }
 
-export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
+export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [rolePopoverOpen, setRolePopoverOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,35 +53,44 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
     password_confirmation: '',
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const selectedRoleObj = roles.find((r) => r.name === selectedRole);
+
+  const resetForm = () => {
+    setFormData({ name: '', email: '', password: '', password_confirmation: '' });
+    setSelectedRole('');
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setSuccess(null);
 
+    const payload: Record<string, unknown> = { ...formData };
+    if (selectedRole) {
+      payload.roles = [selectedRole];
+    }
+
     try {
-      await axios.post('/api/users', formData);
+      await axios.post('/api/users', payload);
       setSuccess('User created successfully!');
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-      });
-      // Close the sheet after a short delay
+      resetForm();
       setTimeout(() => {
         onOpenChange(false);
         setSuccess(null);
-        // Reload the page to show the new user
         router.reload({ only: ['users'] });
       }, 1500);
-    } catch (err: any) {
-      const errors = err.response?.data?.errors;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const errors = axiosErr.response?.data?.errors;
       const errorMessage =
         errors?.email?.[0] ||
         errors?.name?.[0] ||
         errors?.password?.[0] ||
-        err.response?.data?.message ||
+        errors?.roles?.[0] ||
+        axiosErr.response?.data?.message ||
         'Failed to create user. Please try again.';
       setError(errorMessage);
     } finally {
@@ -67,7 +98,7 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: { target: { name: string; value: string } }) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -75,7 +106,7 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetForm(); }}>
       <SheetContent className="sm:max-w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Create New User</SheetTitle>
@@ -85,7 +116,6 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-6 mb-6">
-          {/* Success Message */}
           {success && (
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -95,7 +125,6 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
             </Alert>
           )}
 
-          {/* Error Message */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -163,11 +192,75 @@ export function NewUserSheet({ open, onOpenChange }: NewUserSheetProps) {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={rolePopoverOpen}
+                  className="w-full justify-between"
+                  disabled={isLoading}
+                >
+                  <span className="truncate">
+                    {selectedRoleObj ? selectedRoleObj.name : 'Select a role...'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0 z-102" align="start">
+                <Command>
+                  <CommandInput placeholder="Search roles..." />
+                  <CommandList>
+                    <CommandEmpty>No role found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__none__"
+                        onSelect={() => {
+                          setSelectedRole('');
+                          setRolePopoverOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            !selectedRole ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span className="text-muted-foreground">No role</span>
+                      </CommandItem>
+                      {roles.map((role) => (
+                        <CommandItem
+                          key={role.id}
+                          value={role.name}
+                          onSelect={() => {
+                            setSelectedRole(role.name);
+                            setRolePopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedRole === role.name ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          {role.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <SheetFooter className="mt-6">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { onOpenChange(false); resetForm(); }}
               disabled={isLoading}
             >
               Cancel

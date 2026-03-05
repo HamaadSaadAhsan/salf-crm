@@ -135,7 +135,7 @@ export function OfficeSheet({
           router.reload({ only: ['offices'] });
         }, 1500);
       },
-      onError: (errors: any) => {
+      onError: (errors: Record<string, string>) => {
         console.error('Office save error:', errors);
         const errorMessage =
           errors?.message ||

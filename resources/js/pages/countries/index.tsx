@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { PageHeader } from './page-header';
 import CountryList from './country-list';
 import { CountrySheet } from './country-sheet';
 import { Content } from '@/crm/layout/components/content';
+import { Globe, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface Country {
   id: number;
@@ -46,25 +47,35 @@ export default function CountriesPage({ countries }: CountriesPageProps) {
   const countriesList = Array.isArray(countries) ? countries : [];
 
   return (
-    <>
-      <AppLayout>
-        <Head title="Countries Management" />
+      <>
+          <AppLayout>
+              <Head title="Countries Management" />
+              {/*
         <PageHeader onNewCountry={handleNewCountry} />
-        <Content className="px-0">
-          <div className="py-4">
-            <CountryList
-              countries={countriesList}
-              onEditCountry={handleEditCountry}
-            />
-          </div>
-        </Content>
-      </AppLayout>
+*/}
+              <div className="flex w-full items-center justify-between border-b px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                          <Globe className="size-5 text-primary" />
+                          <h1 className="text-lg font-semibold">Countries Management</h1>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Manage countries and regional settings</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button onClick={handleNewCountry} className="flex items-center gap-2">
+                          <Plus className="size-4" />
+                          New Country
+                      </Button>
+                  </div>
+              </div>
+              <Content className="px-0">
+                  <div>
+                      <CountryList countries={countriesList} onEditCountry={handleEditCountry} />
+                  </div>
+              </Content>
+          </AppLayout>
 
-      <CountrySheet
-        open={showCountrySheet}
-        onOpenChange={handleCloseSheet}
-        country={selectedCountry}
-      />
-    </>
+          <CountrySheet open={showCountrySheet} onOpenChange={handleCloseSheet} country={selectedCountry} />
+      </>
   );
 }

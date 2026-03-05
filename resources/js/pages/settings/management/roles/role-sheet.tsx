@@ -105,9 +105,10 @@ export function RoleSheet({ open, onOpenChange, role, permissions }: RoleSheetPr
           router.reload();
         }, 1500);
       }
-    } catch (err: any) {
-      const errors = err.response?.data?.errors;
-      const errorMessage = errors?.name?.[0] || err.response?.data?.message || 'Failed to save role.';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const errors = axiosErr.response?.data?.errors;
+      const errorMessage = errors?.name?.[0] || axiosErr.response?.data?.message || 'Failed to save role.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

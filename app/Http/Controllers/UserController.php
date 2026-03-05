@@ -72,6 +72,11 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
+        $roles = \Spatie\Permission\Models\Role::query()
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('users/index', [
             'users' => [
                 'data' => $result['data']->resolve(),
@@ -80,6 +85,7 @@ class UserController extends Controller
             'zones' => $zones,
             'offices' => $offices,
             'services' => $services,
+            'roles' => $roles,
         ]);
     }
 

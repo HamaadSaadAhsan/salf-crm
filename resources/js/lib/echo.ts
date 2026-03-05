@@ -9,6 +9,10 @@ configureEcho({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
+    // Prevent rapid reconnect storms when Reverb is unreachable
+    activityTimeout: 30000,
+    pongTimeout: 10000,
+    unavailableTimeout: 15000,
     authorizer: (channel: any) => {
         return {
             authorize: (socketId: string, callback: Function) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { router } from '@inertiajs/react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -53,7 +54,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
   >({});
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+  const [columnPinning] = useState<ColumnPinningState>({
     left: ['select', 'name'],
     right: [],
   });
@@ -271,7 +272,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
       onSuccess: () => {
         setDeleteCity(null);
       },
-      onError: (errors) => {
+      onError: (errors: Record<string, string>) => {
         console.error('Delete error:', errors);
       },
     });
@@ -280,7 +281,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
   return (
     <DataGrid table={table} recordCount={citiesList.length}>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -295,7 +296,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
                 className="pl-9 h-9"
               />
             </div>
-            {table.getColumn('name')?.getFilterValue() && (
+            {!!table.getColumn('name')?.getFilterValue() && (
               <Button
                 variant="ghost"
                 onClick={() => table.getColumn('name')?.setFilterValue('')}
@@ -311,10 +312,10 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
           </div>
         </CardHeader>
         <CardTable>
-          <DataGridTable table={table} columns={columns} />
+          <DataGridTable />
         </CardTable>
         <CardFooter className="pt-4">
-          <DataGridPagination table={table} />
+          <DataGridPagination />
         </CardFooter>
       </Card>
 

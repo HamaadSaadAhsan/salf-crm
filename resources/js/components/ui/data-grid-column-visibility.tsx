@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 import { Table } from '@tanstack/react-table';
+import { Settings2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -8,12 +10,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+const defaultTrigger = (
+  <Button size="sm" variant="outline">
+    <Settings2 className="size-4" />
+    View
+  </Button>
+);
+
 function DataGridColumnVisibility<TData>({
   table,
-  trigger,
+  trigger = defaultTrigger,
 }: {
   table: Table<TData>;
-  trigger: ReactNode;
+  trigger?: ReactNode;
 }) {
   return (
     <DropdownMenu>

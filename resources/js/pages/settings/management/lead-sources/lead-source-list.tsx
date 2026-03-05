@@ -108,7 +108,7 @@ export function LeadSourceList({ leadSources, onEditSource, onDeleteSource }: Le
       cell: ({ row }) => {
         const isActive = row.original.is_active;
         return (
-          <Badge variant={isActive ? 'default' : 'secondary'} className="gap-1.5">
+          <Badge variant={isActive ? 'success' : 'secondary'} className="gap-1.5">
             {isActive ? (
               <>
                 <CheckCircle2 className="h-3 w-3" />
@@ -134,7 +134,7 @@ export function LeadSourceList({ leadSources, onEditSource, onDeleteSource }: Le
         const score = row.getValue('source_score') as number;
         return (
           <div className="flex items-center gap-1.5">
-            <Badge variant={score >= 8 ? 'default' : score >= 5 ? 'secondary' : score > 0 ? 'outline' : 'secondary'}>
+            <Badge variant={score >= 8 ? 'success' : score >= 5 ? 'secondary' : score > 0 ? 'outline' : 'secondary'}>
               {score}/10
             </Badge>
           </div>
@@ -250,7 +250,7 @@ export function LeadSourceList({ leadSources, onEditSource, onDeleteSource }: Le
   return (
     <DataGrid table={table} recordCount={sourcesList.length}>
       <Card className="border-0">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

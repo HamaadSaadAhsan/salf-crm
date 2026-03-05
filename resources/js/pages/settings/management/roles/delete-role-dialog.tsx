@@ -25,8 +25,8 @@ export function DeleteRoleDialog({ role, onOpenChange }: DeleteRoleDialogProps) 
       await axios.delete(`/api/roles/${role.id}`);
       onOpenChange();
       router.reload();
-    } catch (err: any) {
-      console.error('Delete error:', err.response?.data);
+    } catch (err: unknown) {
+      console.error('Delete error:', (err as { response?: { data?: unknown } })?.response?.data);
     }
   };
 
