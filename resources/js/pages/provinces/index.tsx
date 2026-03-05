@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { PageHeader } from './page-header';
 import ProvinceList from './province-list';
 import { ProvinceSheet } from './province-sheet';
 import { Content } from '@/crm/layout/components/content';
+import { Map, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface Province {
   id: number;
@@ -49,25 +50,35 @@ export default function ProvincesPage({ provinces }: ProvincesPageProps) {
   const provincesList = Array.isArray(provinces) ? provinces : [];
 
   return (
-    <>
-      <AppLayout>
-        <Head title="Provinces Management" />
+      <>
+          <AppLayout>
+              <Head title="Provinces Management" />
+              {/*
         <PageHeader onNewProvince={handleNewProvince} />
-        <Content className="px-0">
-          <div className="py-4">
-            <ProvinceList
-              provinces={provincesList}
-              onEditProvince={handleEditProvince}
-            />
-          </div>
-        </Content>
-      </AppLayout>
+*/}
+              <div className="flex w-full items-center justify-between border-b px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                          <Map className="size-5 text-primary" />
+                          <h1 className="text-lg font-semibold">Provinces Management</h1>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Configure provinces and states</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button onClick={handleNewProvince} className="flex items-center gap-2">
+                          <Plus className="size-4" />
+                          New Province
+                      </Button>
+                  </div>
+              </div>
+              <Content className="px-0">
+                  <div>
+                      <ProvinceList provinces={provincesList} onEditProvince={handleEditProvince} />
+                  </div>
+              </Content>
+          </AppLayout>
 
-      <ProvinceSheet
-        open={showProvinceSheet}
-        onOpenChange={handleCloseSheet}
-        province={selectedProvince}
-      />
-    </>
+          <ProvinceSheet open={showProvinceSheet} onOpenChange={handleCloseSheet} province={selectedProvince} />
+      </>
   );
 }

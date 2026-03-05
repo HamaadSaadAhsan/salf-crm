@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { PageHeader } from './page-header';
 import OfficeList from './office-list';
 import { OfficeSheet } from './office-sheet';
 import { Content } from '@/crm/layout/components/content';
+import { Building, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface Office {
   id: number;
@@ -62,21 +63,30 @@ export default function OfficesPage({ offices, zones }: OfficesPageProps) {
   const zonesList = Array.isArray(zones) ? zones : [];
 
   return (
-    <>
-      <AppLayout>
-        <Head title="Offices Management" />
-        <PageHeader onNewOffice={handleNewOffice} />
-        <Content className="px-0">
-          <OfficeList offices={officesList} onEditOffice={handleEditOffice} />
-        </Content>
-      </AppLayout>
+      <>
+          <AppLayout>
+              <Head title="Offices Management" />
+              <div className="flex w-full items-center justify-between border-b px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                          <Building className="size-5 text-primary" />
+                          <h1 className="text-lg font-semibold">Offices Management</h1>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Manage office locations and assign them to zones</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button onClick={handleNewOffice} className="flex items-center gap-2">
+                          <Plus className="size-4" />
+                          New Office
+                      </Button>
+                  </div>
+              </div>
+              <Content className="px-0">
+                  <OfficeList offices={officesList} onEditOffice={handleEditOffice} />
+              </Content>
+          </AppLayout>
 
-      <OfficeSheet
-        open={showOfficeSheet}
-        onOpenChange={handleCloseSheet}
-        office={selectedOffice}
-        zones={zonesList}
-      />
-    </>
+          <OfficeSheet open={showOfficeSheet} onOpenChange={handleCloseSheet} office={selectedOffice} zones={zonesList} />
+      </>
   );
 }

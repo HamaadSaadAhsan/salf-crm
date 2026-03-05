@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { PageHeader } from './page-header';
 import { LeadSourceList } from './lead-source-list';
 import { LeadSourceSheet } from './lead-source-sheet';
 import { Content } from '@/crm/layout/components/content';
 import axios from '@/lib/axios';
 import { router } from '@inertiajs/react';
+import { Plus, Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface LeadSource {
   id: number;
@@ -52,8 +53,9 @@ export default function LeadSourcesPage({ leadSources }: LeadSourcesPageProps) {
     try {
       await axios.delete(`/sources/${source.id}`);
       router.reload({ only: ['leadSources'] });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to delete lead source.';
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError.response?.data?.message || 'Failed to delete lead source.';
       alert(errorMessage);
     }
   };
@@ -61,26 +63,35 @@ export default function LeadSourcesPage({ leadSources }: LeadSourcesPageProps) {
   const sourcesList = Array.isArray(leadSources) ? leadSources : [];
 
   return (
-    <>
-      <AppLayout>
-        <Head title="Lead Sources Management" />
+      <>
+          <AppLayout>
+              <Head title="Lead Sources Management" />
+              {/*
         <PageHeader onNewSource={handleNewSource} />
-        <Content className="px-0">
-          <div className="py-4">
-            <LeadSourceList
-              leadSources={sourcesList}
-              onEditSource={handleEditSource}
-              onDeleteSource={handleDeleteSource}
-            />
-          </div>
-        </Content>
-      </AppLayout>
+*/}
+              <div className="flex w-full items-center justify-between border-b px-4 py-3">
+                  <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                          <Share2 className="size-5 text-primary" />
+                          <h1 className="text-lg font-semibold">Lead Sources Management</h1>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Manage and organize lead sources</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button onClick={handleNewSource} className="flex items-center gap-2">
+                          <Plus className="size-4" />
+                          New Source
+                      </Button>
+                  </div>
+              </div>
+              <Content className="px-0">
+                  <div>
+                      <LeadSourceList leadSources={sourcesList} onEditSource={handleEditSource} onDeleteSource={handleDeleteSource} />
+                  </div>
+              </Content>
+          </AppLayout>
 
-      <LeadSourceSheet
-        open={showSourceSheet}
-        onOpenChange={setShowSourceSheet}
-        source={selectedSource}
-      />
-    </>
+          <LeadSourceSheet open={showSourceSheet} onOpenChange={handleCloseSheet} source={selectedSource} />
+      </>
   );
 }
