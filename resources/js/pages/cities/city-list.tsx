@@ -10,6 +10,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
+import { router } from '@inertiajs/react';
 import { Building2, Search, X, Edit, Trash2, MapPin, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { City } from './index';
+import { destroy } from '@/actions/App/Http/Controllers/CityController';
 
 interface CityListProps {
   cities?: City[];
@@ -267,7 +269,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
   const handleDelete = () => {
     if (!deleteCity) return;
 
-    router.delete(`/cities/${deleteCity.id}`, {
+    router.delete(destroy['/cities/{city}'](deleteCity.id).url, {
       onSuccess: () => {
         setDeleteCity(null);
       },
@@ -295,7 +297,7 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
                 className="pl-9 h-9"
               />
             </div>
-            {table.getColumn('name')?.getFilterValue() && (
+            {!!table.getColumn('name')?.getFilterValue() && (
               <Button
                 variant="ghost"
                 onClick={() => table.getColumn('name')?.setFilterValue('')}
@@ -307,14 +309,18 @@ const CityList = ({ cities, onEditCity }: CityListProps) => {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <DataGridColumnVisibility table={table} />
+            <DataGridColumnVisibility table={table} trigger={
+              <Button variant="outline" size="sm" className="h-9">
+                Columns
+              </Button>
+            } />
           </div>
         </CardHeader>
         <CardTable>
-          <DataGridTable table={table} columns={columns} />
+          <DataGridTable />
         </CardTable>
         <CardFooter className="pt-4">
-          <DataGridPagination table={table} />
+          <DataGridPagination />
         </CardFooter>
       </Card>
 
