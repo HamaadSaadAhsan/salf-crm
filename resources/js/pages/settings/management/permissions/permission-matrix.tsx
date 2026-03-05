@@ -96,7 +96,7 @@ export function PermissionMatrix({ roles, permissions }: PermissionMatrixProps) 
 
     return (
         <Card className="border-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">Permission Matrix</CardTitle>
                 <div className="flex items-center gap-3">
                     <div className="relative max-w-sm">
