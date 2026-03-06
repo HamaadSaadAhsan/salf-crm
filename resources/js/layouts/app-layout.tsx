@@ -107,7 +107,7 @@ export default ({ children, breadcrumbs = [], hideContentHeader = false }: AppLa
                     </CallContextComponent>
                 </AsteriskWebSocketProvider>
                 <Toaster
-                    position="top-right"
+                    position="bottom-right"
                     closeButton
                     expand
                     gap={8}
