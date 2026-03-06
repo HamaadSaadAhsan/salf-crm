@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config(['broadcasting.default' => 'null']);
     $this->seed(\Database\Seeders\LeadsPermissionsSeeder::class);
 
     $this->user = User::factory()->create(['email_verified_at' => now()]);
@@ -39,7 +40,7 @@ it('includes next_meeting in lead show response when a pending future meeting ex
     ]);
 
     $response = $this->actingAs($this->user)
-        ->get(route('leads.show', $this->lead));
+        ->get(route('leads.show', [$this->lead, 'overview']));
 
     $response->assertSuccessful();
     $leadData = $response->original->getData()['page']['props']['lead'];
@@ -68,7 +69,7 @@ it('returns null next_meeting when no pending or overdue meetings exist', functi
     ]);
 
     $response = $this->actingAs($this->user)
-        ->get(route('leads.show', $this->lead));
+        ->get(route('leads.show', [$this->lead, 'overview']));
 
     $response->assertSuccessful();
     $leadData = $response->original->getData()['page']['props']['lead'];
@@ -89,7 +90,7 @@ it('returns the soonest pending meeting as next_meeting', function () {
     ]);
 
     $response = $this->actingAs($this->user)
-        ->get(route('leads.show', $this->lead));
+        ->get(route('leads.show', [$this->lead, 'overview']));
 
     $response->assertSuccessful();
     $leadData = $response->original->getData()['page']['props']['lead'];

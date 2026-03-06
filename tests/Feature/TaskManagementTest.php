@@ -210,7 +210,7 @@ it('loads tasks with lead', function () {
     ]);
 
     $response = $this->actingAs($user)
-        ->get("/leads/{$lead->id}");
+        ->get("/leads/{$lead->id}/overview");
 
     $response->assertSuccessful();
 
@@ -254,7 +254,7 @@ it('orders tasks by completion status and due date', function () {
     ]);
 
     $response = $this->actingAs($user)
-        ->get("/leads/{$lead->id}");
+        ->get("/leads/{$lead->id}/overview");
 
     $response->assertSuccessful();
 
@@ -279,7 +279,7 @@ it('limits tasks to 10 per lead', function () {
     ]);
 
     $response = $this->actingAs($user)
-        ->get("/leads/{$lead->id}");
+        ->get("/leads/{$lead->id}/overview");
 
     $response->assertSuccessful();
 
@@ -299,7 +299,7 @@ it('includes task type metadata', function () {
     ]);
 
     $response = $this->actingAs($user)
-        ->get("/leads/{$lead->id}");
+        ->get("/leads/{$lead->id}/overview");
 
     $response->assertSuccessful();
 
@@ -327,7 +327,7 @@ it('eager loads collaborators with tasks', function () {
     $task->collaborators()->attach($collaborator->id);
 
     $response = $this->actingAs($user)
-        ->get("/leads/{$lead->id}");
+        ->get("/leads/{$lead->id}/overview");
 
     $response->assertSuccessful();
 

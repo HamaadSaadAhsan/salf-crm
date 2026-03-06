@@ -1229,7 +1229,7 @@ class LeadController extends Controller
     public function update(Request $request, Lead $lead)
     {
         if (! $request->user()->hasPermissionTo('edit leads')) {
-            redirect(route('leads.index'));
+            abort(403, 'You are not authorized to edit leads.');
         }
 
         $user = $request->user();

@@ -107,7 +107,7 @@ it('senior-support-agent can view a lead assigned to a support-agent', function 
     $lead = Lead::factory()->create(['assigned_to' => $this->supportAgent->id]);
 
     $this->actingAs($this->seniorSupportAgent)
-        ->get("/leads/{$lead->id}")
+        ->get("/leads/{$lead->id}/overview")
         ->assertOk();
 });
 
@@ -115,7 +115,7 @@ it('senior-support-agent can view their own assigned lead', function () {
     $lead = Lead::factory()->create(['assigned_to' => $this->seniorSupportAgent->id]);
 
     $this->actingAs($this->seniorSupportAgent)
-        ->get("/leads/{$lead->id}")
+        ->get("/leads/{$lead->id}/overview")
         ->assertOk();
 });
 
@@ -123,7 +123,7 @@ it('senior-support-agent gets 403 viewing a lead assigned to a non-team-member',
     $lead = Lead::factory()->create(['assigned_to' => $this->salesRep->id]);
 
     $this->actingAs($this->seniorSupportAgent)
-        ->get("/leads/{$lead->id}")
+        ->get("/leads/{$lead->id}/overview")
         ->assertForbidden();
 });
 
@@ -197,7 +197,7 @@ it('senior-sales-rep can view a lead assigned to a sales-rep', function () {
     $lead = Lead::factory()->create(['assigned_to' => $this->salesRep->id]);
 
     $this->actingAs($this->seniorSalesRep)
-        ->get("/leads/{$lead->id}")
+        ->get("/leads/{$lead->id}/overview")
         ->assertOk();
 });
 
@@ -205,7 +205,7 @@ it('senior-sales-rep gets 403 viewing a lead assigned to a non-team-member', fun
     $lead = Lead::factory()->create(['assigned_to' => $this->supportAgent->id]);
 
     $this->actingAs($this->seniorSalesRep)
-        ->get("/leads/{$lead->id}")
+        ->get("/leads/{$lead->id}/overview")
         ->assertForbidden();
 });
 
