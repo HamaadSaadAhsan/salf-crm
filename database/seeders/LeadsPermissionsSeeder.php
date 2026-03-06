@@ -147,7 +147,6 @@ class LeadsPermissionsSeeder extends Seeder
             'view dashboard',
             'view analytics',
             'view leads',
-            'create leads',
             'edit leads',
             'view assigned leads',
             'assign leads to self',
@@ -203,7 +202,6 @@ class LeadsPermissionsSeeder extends Seeder
             'view reports',
             'export data',
             'view leads',
-            'create leads',
             'edit leads',
             'delete leads',
             'view assigned leads',
@@ -271,7 +269,6 @@ class LeadsPermissionsSeeder extends Seeder
             'view reports',
             'export data',
             'view leads',
-            'create leads',
             'edit leads',
             'delete leads',
             'view all leads',
@@ -348,6 +345,14 @@ class LeadsPermissionsSeeder extends Seeder
             'view documents',
         ]);
 
-        $this->command->info('Created '.count($allPermissions).' permissions across 9 roles.');
+        // 10. FDO — can view dashboard, view leads, and create leads manually
+        $fdo = Role::firstOrCreate(['name' => 'fdo']);
+        $fdo->syncPermissions([
+            'view dashboard',
+            'view leads',
+            'create leads',
+        ]);
+
+        $this->command->info('Created '.count($allPermissions).' permissions across 10 roles.');
     }
 }

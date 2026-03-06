@@ -213,7 +213,7 @@ SearchInput.displayName = 'SearchInput';
 
 // Main leads interface
 export default function LeadsInterface() {
-    const pageProps = usePage<LeadsPageProps & Record<string, unknown>>().props;
+    const { auth, ...pageProps } = usePage<LeadsPageProps & Record<string, unknown> & { auth: { permissions?: string[] } }>().props;
 
     const leads = useMemo(
         () => (Array.isArray(pageProps.leads) ? pageProps.leads : pageProps.leads?.data || pageProps.data || []),
@@ -244,6 +244,8 @@ export default function LeadsInterface() {
         applyFilters,
         activeFilterCount,
     } = useLeadFilters();
+
+    const canCreateLead = (auth.permissions ?? []).includes('create leads');
 
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [isMac, setIsMac] = useState(false);
@@ -337,15 +339,17 @@ export default function LeadsInterface() {
                 <header className="flex h-16 items-center border-b bg-background px-4">
                     <SearchInput searchInput={searchInput} onSearchChange={setSearchInput} isMac={isMac} inputRef={searchInputRef} />
                     <div className="ml-4 flex items-center gap-2">
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setIsNewLeadSheetOpen(true)}
-                            className="mr-2"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            New Lead
-                        </Button>
+                        {canCreateLead && (
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => setIsNewLeadSheetOpen(true)}
+                                className="mr-2"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                New Lead
+                            </Button>
+                        )}
                         <Button
                             variant={showFilterBar ? 'secondary' : 'ghost'}
                             size="icon"
