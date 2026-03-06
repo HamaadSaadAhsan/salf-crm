@@ -39,6 +39,11 @@ interface PendingDueTask {
     lead_name: string | null;
 }
 
+interface LeadSource {
+    id: number;
+    name: string;
+}
+
 interface LeadsPageProps {
     leads: Lead[] | { data: Lead[] };
     data?: Lead[];
@@ -52,6 +57,7 @@ interface LeadsPageProps {
         has_more: boolean;
     };
     filters: LeadFilters;
+    leadSources: LeadSource[];
     pendingDueTasks?: PendingDueTask[];
 }
 
@@ -468,6 +474,7 @@ export default function LeadsInterface() {
             <NewLeadSheet
                 open={isNewLeadSheetOpen}
                 onOpenChange={setIsNewLeadSheetOpen}
+                leadSources={pageProps.leadSources ?? []}
             />
 
             <SavedFiltersDialog

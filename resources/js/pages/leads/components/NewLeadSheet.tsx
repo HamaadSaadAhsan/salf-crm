@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,88 +18,67 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { store } from '@/actions/App/Http/Controllers/Leads/LeadController';
+
+interface LeadSource {
+    id: number;
+    name: string;
+}
 
 interface NewLeadSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    leadSources: LeadSource[];
 }
 
-export function NewLeadSheet({ open, onOpenChange }: NewLeadSheetProps) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-    const [formData, setFormData] = useState({
+const LEAD_STATUSES = [
+    { value: 'new', label: 'New' },
+    { value: 'contacted', label: 'Contacted' },
+    { value: 'qualified', label: 'Qualified' },
+    { value: 'proposal', label: 'Proposal Sent' },
+    { value: 'nurturing', label: 'Nurturing' },
+    { value: 'won', label: 'Won' },
+    { value: 'lost', label: 'Lost' },
+];
+
+const LEAD_PRIORITIES = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'urgent', label: 'Urgent' },
+];
+
+export function NewLeadSheet({ open, onOpenChange, leadSources }: NewLeadSheetProps) {
+    const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
         phone: '',
-        company: '',
-        status: 'new',
+        occupation: '',
+        inquiry_status: 'new',
         priority: 'medium',
-        source: '',
-        notes: '',
+        lead_source_id: '' as string | number,
+        detail: '',
     });
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-        setSuccess(null);
-
-        router.post('/leads', formData, {
+        post(store().url, {
             onSuccess: () => {
-                setSuccess('Lead created successfully!');
-                setFormData({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    company: '',
-                    status: 'new',
-                    priority: 'medium',
-                    source: '',
-                    notes: '',
-                });
-                // Close the sheet after a short delay
-                setTimeout(() => {
-                    onOpenChange(false);
-                    setSuccess(null);
-                    // Reload the page to show the new lead
-                    router.reload({ only: ['leads', 'meta'] });
-                }, 1500);
-            },
-            onError: (errors: any) => {
-                console.error('Lead creation error:', errors);
-                const errorMessage =
-                    errors?.message ||
-                    errors?.email?.[0] ||
-                    errors?.name?.[0] ||
-                    errors?.phone?.[0] ||
-                    'Failed to create lead. Please try again.';
-                setError(errorMessage);
-            },
-            onFinish: () => {
-                setIsLoading(false);
+                reset();
+                onOpenChange(false);
             },
         });
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData((prev) => ({
-            ...prev,
-            [e.target.name]: e.target.value,
-        }));
-    };
-
-    const handleSelectChange = (name: string, value: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+    const handleOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            reset();
+        }
+        onOpenChange(isOpen);
     };
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
+        <Sheet open={open} onOpenChange={handleOpenChange}>
             <SheetContent className="sm:max-w-[540px] overflow-y-auto">
                 <SheetHeader>
                     <SheetTitle>Create New Lead</SheetTitle>
@@ -110,38 +88,21 @@ export function NewLeadSheet({ open, onOpenChange }: NewLeadSheetProps) {
                 </SheetHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4 mt-6 mb-6">
-                    {/* Success Message */}
-                    {success && (
-                        <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            <AlertDescription className="text-green-800 dark:text-green-200">
-                                {success}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    {/* Error Message */}
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    {/* Name - Required */}
+                    {/* Name */}
                     <div className="space-y-2">
                         <Label htmlFor="name">
                             Full Name <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             id="name"
-                            name="name"
+                            value={data.name}
+                            onChange={(e) => setData('name', e.target.value)}
                             placeholder="John Doe"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
-                            disabled={isLoading}
+                            disabled={processing}
                         />
+                        {errors.name && (
+                            <p className="text-sm text-destructive">{errors.name}</p>
+                        )}
                     </div>
 
                     {/* Email */}
@@ -149,13 +110,15 @@ export function NewLeadSheet({ open, onOpenChange }: NewLeadSheetProps) {
                         <Label htmlFor="email">Email Address</Label>
                         <Input
                             id="email"
-                            name="email"
                             type="email"
+                            value={data.email}
+                            onChange={(e) => setData('email', e.target.value)}
                             placeholder="john@example.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            disabled={isLoading}
+                            disabled={processing}
                         />
+                        {errors.email && (
+                            <p className="text-sm text-destructive">{errors.email}</p>
+                        )}
                     </div>
 
                     {/* Phone */}
@@ -163,110 +126,132 @@ export function NewLeadSheet({ open, onOpenChange }: NewLeadSheetProps) {
                         <Label htmlFor="phone">Phone Number</Label>
                         <Input
                             id="phone"
-                            name="phone"
                             type="tel"
+                            value={data.phone}
+                            onChange={(e) => setData('phone', e.target.value)}
                             placeholder="+1 (555) 123-4567"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            disabled={isLoading}
+                            disabled={processing}
                         />
+                        {errors.phone && (
+                            <p className="text-sm text-destructive">{errors.phone}</p>
+                        )}
                     </div>
 
-                    {/* Company */}
+                    {/* Occupation */}
                     <div className="space-y-2">
-                        <Label htmlFor="company">Company</Label>
+                        <Label htmlFor="occupation">Occupation / Company</Label>
                         <Input
-                            id="company"
-                            name="company"
-                            placeholder="Acme Inc."
-                            value={formData.company}
-                            onChange={handleChange}
-                            disabled={isLoading}
+                            id="occupation"
+                            value={data.occupation}
+                            onChange={(e) => setData('occupation', e.target.value)}
+                            placeholder="CEO at Acme Inc."
+                            disabled={processing}
                         />
+                        {errors.occupation && (
+                            <p className="text-sm text-destructive">{errors.occupation}</p>
+                        )}
                     </div>
 
-                    {/* Status & Priority Row */}
+                    {/* Status & Priority */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
+                            <Label htmlFor="inquiry_status">Status</Label>
                             <Select
-                                value={formData.status}
-                                onValueChange={(value) => handleSelectChange('status', value)}
-                                disabled={isLoading}
+                                value={data.inquiry_status}
+                                onValueChange={(value) => setData('inquiry_status', value)}
+                                disabled={processing}
                             >
-                                <SelectTrigger id="status">
+                                <SelectTrigger id="inquiry_status">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="new">New</SelectItem>
-                                    <SelectItem value="contacted">Contacted</SelectItem>
-                                    <SelectItem value="qualified">Qualified</SelectItem>
-                                    <SelectItem value="proposal">Proposal</SelectItem>
-                                    <SelectItem value="negotiation">Negotiation</SelectItem>
-                                    <SelectItem value="won">Won</SelectItem>
-                                    <SelectItem value="lost">Lost</SelectItem>
+                                    {LEAD_STATUSES.map((status) => (
+                                        <SelectItem key={status.value} value={status.value}>
+                                            {status.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
+                            {errors.inquiry_status && (
+                                <p className="text-sm text-destructive">{errors.inquiry_status}</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="priority">Priority</Label>
                             <Select
-                                value={formData.priority}
-                                onValueChange={(value) => handleSelectChange('priority', value)}
-                                disabled={isLoading}
+                                value={data.priority}
+                                onValueChange={(value) => setData('priority', value)}
+                                disabled={processing}
                             >
                                 <SelectTrigger id="priority">
                                     <SelectValue placeholder="Select priority" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="low">Low</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                    <SelectItem value="urgent">Urgent</SelectItem>
+                                    {LEAD_PRIORITIES.map((priority) => (
+                                        <SelectItem key={priority.value} value={priority.value}>
+                                            {priority.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
+                            {errors.priority && (
+                                <p className="text-sm text-destructive">{errors.priority}</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Source */}
+                    {/* Lead Source */}
                     <div className="space-y-2">
-                        <Label htmlFor="source">Lead Source</Label>
-                        <Input
-                            id="source"
-                            name="source"
-                            placeholder="Website, Referral, Social Media, etc."
-                            value={formData.source}
-                            onChange={handleChange}
-                            disabled={isLoading}
-                        />
+                        <Label htmlFor="lead_source_id">Lead Source</Label>
+                        <Select
+                            value={data.lead_source_id ? String(data.lead_source_id) : ''}
+                            onValueChange={(value) => setData('lead_source_id', value ? Number(value) : '')}
+                            disabled={processing}
+                        >
+                            <SelectTrigger id="lead_source_id">
+                                <SelectValue placeholder="Select source" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {leadSources.map((source) => (
+                                    <SelectItem key={source.id} value={String(source.id)}>
+                                        {source.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.lead_source_id && (
+                            <p className="text-sm text-destructive">{errors.lead_source_id}</p>
+                        )}
                     </div>
 
-                    {/* Notes */}
+                    {/* Detail / Notes */}
                     <div className="space-y-2">
-                        <Label htmlFor="notes">Notes</Label>
+                        <Label htmlFor="detail">Notes</Label>
                         <Textarea
-                            id="notes"
-                            name="notes"
+                            id="detail"
+                            value={data.detail}
+                            onChange={(e) => setData('detail', e.target.value)}
                             placeholder="Add any additional notes about this lead..."
-                            value={formData.notes}
-                            onChange={handleChange}
-                            disabled={isLoading}
+                            disabled={processing}
                             rows={4}
                         />
+                        {errors.detail && (
+                            <p className="text-sm text-destructive">{errors.detail}</p>
+                        )}
                     </div>
 
                     <SheetFooter className="mt-6">
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isLoading}
+                            onClick={() => handleOpenChange(false)}
+                            disabled={processing}
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Creating...' : 'Create Lead'}
+                        <Button type="submit" disabled={processing}>
+                            {processing ? 'Creating...' : 'Create Lead'}
                         </Button>
                     </SheetFooter>
                 </form>
