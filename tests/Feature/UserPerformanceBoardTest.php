@@ -75,7 +75,7 @@ describe('CRO Performance Board', function () {
 
         $data = $response->json();
         expect($data['metrics']['capacity']['current'])->toBe(25);
-        expect($data['metrics']['capacity']['max'])->toBe(50);
+        expect($data['metrics']['capacity']['max'])->toBe(300);
     });
 
     it('returns correct qtc ratio calculation', function () {

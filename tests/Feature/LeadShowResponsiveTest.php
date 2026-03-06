@@ -22,7 +22,7 @@ describe('Lead Show Page Responsive Design', function () {
         $lead = Lead::factory()->create();
 
         $response = $this->actingAs($this->user)
-            ->get("/leads/{$lead->id}");
+            ->get("/leads/{$lead->id}/overview");
 
         $response->assertOk();
     });
@@ -34,7 +34,7 @@ describe('Lead Show Page Responsive Design', function () {
         ]);
 
         $response = $this->actingAs($this->user)
-            ->get("/leads/{$lead->id}");
+            ->get("/leads/{$lead->id}/overview");
 
         $response->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -49,7 +49,7 @@ describe('Lead Show Page Responsive Design', function () {
         $lead = Lead::factory()->create();
 
         $response = $this->actingAs($this->user)
-            ->get("/leads/{$lead->id}");
+            ->get("/leads/{$lead->id}/overview");
 
         $response->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -63,7 +63,7 @@ describe('Lead Show Page Structure', function () {
         $lead = Lead::factory()->create();
 
         $response = $this->actingAs($this->user)
-            ->get("/leads/{$lead->id}");
+            ->get("/leads/{$lead->id}/overview");
 
         $response->assertInertia(fn (Assert $page) => $page
             ->component('leads/show')
@@ -74,7 +74,7 @@ describe('Lead Show Page Structure', function () {
         $lead = Lead::factory()->create();
 
         $response = $this->actingAs($this->user)
-            ->get("/leads/{$lead->id}");
+            ->get("/leads/{$lead->id}/overview");
 
         $response->assertOk()
             ->assertInertia(fn (Assert $page) => $page

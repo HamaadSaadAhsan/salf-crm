@@ -15,7 +15,9 @@ function getInitialSidebarWidth(): number {
         return parsed;
       }
     }
-  } catch {}
+  } catch {
+    // localStorage may be unavailable
+  }
   return DEFAULT_SIDEBAR_WIDTH;
 }
 
@@ -59,7 +61,9 @@ export function LayoutProvider({
     setSidebarWidthState(clamped);
     try {
       localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
-    } catch {}
+    } catch {
+      // localStorage may be unavailable
+    }
   }, []);
   const initialPinned = sidebarNavItems
     .filter((item) => item.pinned)

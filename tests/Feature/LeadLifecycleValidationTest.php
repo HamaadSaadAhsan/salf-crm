@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\City;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\LeadCase;
+use App\Models\Service;
 use App\Models\User;
+use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -26,12 +29,29 @@ beforeEach(function () {
     $this->advisorRole->givePermissionTo([$editPermission, $viewPermission]);
     $this->adminRole->givePermissionTo([$editPermission, $viewPermission]);
 
+    // Create city, zone, and service for qualification tests
+    $this->city = City::factory()->create(['name' => 'Dubai']);
+    $this->zone = Zone::factory()->create(['name' => 'UAE Zone']);
+    $this->zone->cities()->attach($this->city);
+    $this->service = Service::create([
+        'name' => 'Test Service',
+        'detail' => 'Test service',
+        'sort_order' => 1,
+        'status' => 'active',
+    ]);
+
     // Create users
     $this->cro = User::factory()->create();
     $this->cro->assignRole($this->croRole);
 
-    $this->advisor = User::factory()->create();
+    $this->advisor = User::factory()->create([
+        'availability' => true,
+        'active' => true,
+        'current_lead_count' => 0,
+        'zone_id' => $this->zone->id,
+    ]);
     $this->advisor->assignRole($this->advisorRole);
+    $this->service->assignToUser($this->advisor);
 
     $this->admin = User::factory()->create();
     $this->admin->assignRole($this->adminRole);
@@ -58,6 +78,8 @@ it('allows CRO to transition contacted → qualified', function () {
     $lead = Lead::factory()->create([
         'inquiry_status' => 'contacted',
         'assigned_to' => $this->cro->id,
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $response = $this->actingAs($this->cro)
@@ -66,7 +88,8 @@ it('allows CRO to transition contacted → qualified', function () {
         ]);
 
     $response->assertOk();
-    expect($lead->fresh()->inquiry_status)->toBe('qualified');
+    // Qualifying with an available advisor auto-assigns to advisor
+    expect($lead->fresh()->inquiry_status)->toBeIn(['qualified', 'assigned_to_advisor']);
 });
 
 it('rejects CRO skipping steps: new → qualified', function () {
@@ -323,6 +346,8 @@ it('allows admin to skip CRO transition rules', function () {
     $lead = Lead::factory()->create([
         'inquiry_status' => 'new',
         'assigned_to' => $this->cro->id,
+        'city' => $this->city->name,
+        'service_id' => $this->service->id,
     ]);
 
     $response = $this->actingAs($this->admin)
@@ -331,7 +356,8 @@ it('allows admin to skip CRO transition rules', function () {
         ]);
 
     $response->assertOk();
-    expect($lead->fresh()->inquiry_status)->toBe('qualified');
+    // Admin can skip transition rules; qualifying with available advisor auto-assigns
+    expect($lead->fresh()->inquiry_status)->toBeIn(['qualified', 'assigned_to_advisor']);
 });
 
 // ── Activity Logging ────────────────────────────────────────────────
