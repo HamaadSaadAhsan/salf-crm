@@ -69,17 +69,17 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
     } satisfies ChartConfig;
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Manager Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Manager Dashboard</h1>
                 <p className="text-muted-foreground">
                     Team performance and conversion metrics
                 </p>
             </div>
 
             {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatMetricCard
                     title="Total Leads"
                     value={formatNumber(kpis.total_leads)}
@@ -129,15 +129,15 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                             {Object.entries(teamPerformance).map(([role, stats]: [string, any]) => (
                                 <div
                                     key={role}
-                                    className="flex items-center justify-between p-4 border rounded-lg"
+                                    className="flex flex-col gap-3 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between sm:p-4"
                                 >
-                                    <div className="flex-1">
+                                    <div>
                                         <p className="font-medium capitalize">{role}</p>
                                         <p className="text-sm text-muted-foreground">
                                             {stats.count} team members
                                         </p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4 text-right">
+                                    <div className="grid grid-cols-2 gap-4 sm:text-right">
                                         <div>
                                             <p className="text-sm text-muted-foreground">
                                                 Avg Conversion
@@ -173,7 +173,7 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                             <p className="text-sm font-medium text-muted-foreground">
                                 First Response Time
                             </p>
-                            <p className="text-3xl font-bold">
+                            <p className="text-2xl font-bold sm:text-3xl">
                                 {formatTime(responseTimes.avg_first_response)}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -184,7 +184,7 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                             <p className="text-sm font-medium text-muted-foreground">
                                 Qualification Time
                             </p>
-                            <p className="text-3xl font-bold">
+                            <p className="text-2xl font-bold sm:text-3xl">
                                 {formatTime(responseTimes.avg_qualification)}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -207,9 +207,9 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {performanceLoading ? (
-                            <Skeleton className="h-[350px] w-full" />
+                            <Skeleton className="h-[250px] sm:h-[300px] lg:h-[350px] w-full" />
                         ) : teamPerformanceData.length > 0 ? (
-                            <ChartContainer config={teamChartConfig} className="h-[350px] w-full">
+                            <ChartContainer config={teamChartConfig} className="h-[250px] sm:h-[300px] lg:h-[350px] w-full">
                                 <BarChart
                                     data={teamPerformanceData}
                                     layout="vertical"
@@ -239,7 +239,7 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                                 </BarChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[350px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center text-muted-foreground">
                                 No team performance data available
                             </div>
                         )}
@@ -256,9 +256,9 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {metricsLoading ? (
-                            <Skeleton className="h-[350px] w-full" />
+                            <Skeleton className="h-[250px] sm:h-[300px] lg:h-[350px] w-full" />
                         ) : conversionTrendData.length > 0 ? (
-                            <ChartContainer config={conversionChartConfig} className="h-[350px] w-full">
+                            <ChartContainer config={conversionChartConfig} className="h-[250px] sm:h-[300px] lg:h-[350px] w-full">
                                 <LineChart
                                     data={conversionTrendData}
                                     margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
@@ -285,7 +285,7 @@ export function ManagerDashboard({ data, isLoading }: ManagerDashboardProps) {
                                 </LineChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[350px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center text-muted-foreground">
                                 No conversion data available
                             </div>
                         )}

@@ -83,10 +83,10 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
     } satisfies ChartConfig;
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">CRO Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">CRO Dashboard</h1>
                 <p className="text-muted-foreground">
                     Your leads, tasks, and performance metrics
                 </p>
@@ -138,7 +138,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
             </div>
 
             {/* Performance Metrics */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <StatMetricCard
                     title="Qualification Rate"
                     value={formatPercent(myPerformance.qualification_rate)}
@@ -180,9 +180,9 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {performanceLoading ? (
-                            <Skeleton className="h-[300px] w-full" />
+                            <Skeleton className="h-[200px] sm:h-[250px] lg:h-[300px] w-full" />
                         ) : qualificationTrend.length > 0 ? (
-                            <ChartContainer config={qualificationChartConfig} className="h-[300px] w-full">
+                            <ChartContainer config={qualificationChartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px] w-full">
                                 <LineChart
                                     data={qualificationTrend}
                                     margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
@@ -209,7 +209,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                                 </LineChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[200px] sm:h-[250px] lg:h-[300px] flex items-center justify-center text-muted-foreground">
                                 No performance data available
                             </div>
                         )}
@@ -226,9 +226,9 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {performanceLoading ? (
-                            <Skeleton className="h-[300px] w-full" />
+                            <Skeleton className="h-[200px] sm:h-[250px] lg:h-[300px] w-full" />
                         ) : activityTrend.length > 0 ? (
-                            <ChartContainer config={activityChartConfig} className="h-[300px] w-full">
+                            <ChartContainer config={activityChartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px] w-full">
                                 <AreaChart
                                     data={activityTrend}
                                     margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
@@ -260,7 +260,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                                 </AreaChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[200px] sm:h-[250px] lg:h-[300px] flex items-center justify-center text-muted-foreground">
                                 No activity data available
                             </div>
                         )}
@@ -282,7 +282,7 @@ export function CRODashboard({ data, isLoading }: CRODashboardProps) {
                             {hotLeads.map((lead: any) => (
                                 <div
                                     key={lead.id}
-                                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                                    className="flex flex-col gap-2 p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-0"
                                     onClick={() => router.visit(`/leads/${lead.id}`)}
                                 >
                                     <div className="flex-1">

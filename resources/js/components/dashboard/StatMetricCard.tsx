@@ -60,7 +60,7 @@ export function StatMetricCard({
     const gradientId = `spark-${title.replace(/\s/g, '')}`;
 
     return (
-        <Card className="overflow-hidden">
+        <Card>
             <CardContent className="p-0">
                 {/* Main content area */}
                 <div className="p-5 pb-0">

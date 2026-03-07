@@ -79,10 +79,10 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
     } satisfies ChartConfig;
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Advisor Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Advisor Dashboard</h1>
                 <p className="text-muted-foreground">
                     Your qualified leads and conversion pipeline
                 </p>
@@ -120,7 +120,7 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
             </div>
 
             {/* Performance Metrics */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <StatMetricCard
                     title="Conversion Rate"
                     value={formatPercent(myPerformance.conversion_rate)}
@@ -162,9 +162,9 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {performanceLoading ? (
-                            <Skeleton className="h-[300px] w-full" />
+                            <Skeleton className="h-[200px] sm:h-[250px] lg:h-[300px] w-full" />
                         ) : conversionTrend.length > 0 ? (
-                            <ChartContainer config={conversionChartConfig} className="h-[300px] w-full">
+                            <ChartContainer config={conversionChartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px] w-full">
                                 <LineChart
                                     data={conversionTrend}
                                     margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
@@ -191,7 +191,7 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                                 </LineChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[200px] sm:h-[250px] lg:h-[300px] flex items-center justify-center text-muted-foreground">
                                 No conversion data available
                             </div>
                         )}
@@ -208,9 +208,9 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         {performanceLoading ? (
-                            <Skeleton className="h-[300px] w-full" />
+                            <Skeleton className="h-[200px] sm:h-[250px] lg:h-[300px] w-full" />
                         ) : meetingActivity.length > 0 ? (
-                            <ChartContainer config={activityChartConfig} className="h-[300px] w-full">
+                            <ChartContainer config={activityChartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px] w-full">
                                 <BarChart
                                     data={meetingActivity.slice(-14)}
                                     margin={{ top: 10, left: 0, right: 0, bottom: 0 }}
@@ -240,7 +240,7 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                                 </BarChart>
                             </ChartContainer>
                         ) : (
-                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                            <div className="h-[200px] sm:h-[250px] lg:h-[300px] flex items-center justify-center text-muted-foreground">
                                 No activity data available
                             </div>
                         )}
@@ -263,7 +263,7 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                                 {upcomingMeetings.slice(0, 5).map((meeting: any) => (
                                     <div
                                         key={meeting.id}
-                                        className="flex items-start justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                                        className="flex flex-col gap-2 p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors sm:flex-row sm:items-start sm:justify-between sm:gap-0"
                                         onClick={() =>
                                             router.visit(`/leads/${meeting.lead_id}`)
                                         }
@@ -313,7 +313,7 @@ export function AdvisorDashboard({ data, isLoading }: AdvisorDashboardProps) {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center justify-between">
-                                <p className="text-3xl font-bold text-red-500">
+                                <p className="text-2xl font-bold text-red-500 sm:text-3xl">
                                     {myTasks.overdue}
                                 </p>
                                 <button

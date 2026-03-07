@@ -13,10 +13,10 @@ export function BasicDashboard({ data, isLoading }: BasicDashboardProps) {
     const myTasks = data?.my_tasks || {};
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
                 <p className="text-muted-foreground">Welcome to your dashboard</p>
             </div>
 
