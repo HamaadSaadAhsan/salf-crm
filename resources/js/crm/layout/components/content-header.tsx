@@ -1,9 +1,8 @@
-import { PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useLayout } from './layout-context';
 import { useIsTablet } from '@/hooks/use-mobile';
+import { SidebarCollapseButton } from './sidebar-default-header';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { type BreadcrumbItem } from '@/types';
 import { AiChatSheet } from '@/components/ai-chat/ai-chat-sheet';
@@ -35,11 +34,10 @@ export function ContentHeader({
       >
           <div className="flex flex-1 items-center justify-between gap-1.5 overflow-hidden py-[10px] px-[12px]">
               {/* Left side: collapse button + breadcrumbs */}
-              <div className="flex min-w-0 items-center">
+              <div className="flex min-w-0 items-center ms-2">
                   {showExpandButton && (
-                      <Button
-                          variant="ghost"
-                          size="icon"
+                      <SidebarCollapseButton
+                          collapsed={true}
                           className="-ms-2.5 me-1"
                           onClick={() => {
                               if (isTablet) {
@@ -48,9 +46,7 @@ export function ContentHeader({
                                   setSidebarCollapse(false);
                               }
                           }}
-                      >
-                          <PanelLeftOpen />
-                      </Button>
+                      />
                   )}
                   <div className={cn('flex min-w-0 grow items-center', className)}>
                       {breadcrumbs.length > 0 ? <Breadcrumbs breadcrumbs={breadcrumbs} /> : children}
