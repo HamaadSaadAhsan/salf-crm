@@ -18,6 +18,10 @@ import {
     Circle,
     Clock,
     ChevronDown,
+    FileText,
+    Plus,
+    Trash2,
+    ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -72,13 +76,23 @@ const serviceConfig: Record<string, { icon: any; color: string; label: string; d
         description: 'Listens for new leads from Facebook Lead Ads forms. Incoming leads are automatically processed by downstream actions.',
         runLabel: 'Test Trigger',
     },
+    field_mapping: {
+        icon: FileText,
+        color: 'bg-violet-600',
+        label: 'Field Mapping',
+        description: 'Map incoming lead data fields to your CRM lead fields. Each mapping defines which source field maps to which target field.',
+        runLabel: 'Save Mappings',
+    },
 };
 
 type StepStatus = 'pending' | 'completed' | 'error';
 
 function getStepStatus(step: WorkflowStep): StepStatus {
     const c = step.configuration || {};
-    if (c.authorized || c.synced || c.subscribed) {
+    if (c.authorized || c.synced || c.subscribed || c.configured) {
+        return 'completed';
+    }
+    if (step.service === 'field_mapping' && step.field_mappings && step.field_mappings.length > 0) {
         return 'completed';
     }
     if (c.error) {
@@ -94,7 +108,45 @@ const statusDisplay: Record<StepStatus, { icon: any; label: string; color: strin
 };
 
 // Steps that need page selection
-const pageBasedServices = ['facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
+const pageBasedServices = ['facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub', 'facebook_lead_ads'];
+
+// Common Facebook lead source fields
+const facebookSourceFields = [
+    { value: 'full_name', label: 'Full Name' },
+    { value: 'first_name', label: 'First Name' },
+    { value: 'last_name', label: 'Last Name' },
+    { value: 'email', label: 'Email' },
+    { value: 'phone_number', label: 'Phone Number' },
+    { value: 'city', label: 'City' },
+    { value: 'state', label: 'State' },
+    { value: 'country', label: 'Country' },
+    { value: 'zip_code', label: 'Zip Code' },
+    { value: 'street_address', label: 'Street Address' },
+    { value: 'job_title', label: 'Job Title' },
+    { value: 'company_name', label: 'Company Name' },
+    { value: 'work_email', label: 'Work Email' },
+    { value: 'work_phone_number', label: 'Work Phone' },
+];
+
+// CRM Lead target fields
+const leadTargetFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'email', label: 'Email' },
+    { value: 'phone', label: 'Phone' },
+    { value: 'occupation', label: 'Occupation' },
+    { value: 'address', label: 'Address' },
+    { value: 'country', label: 'Country' },
+    { value: 'city', label: 'City' },
+    { value: 'detail', label: 'Detail / Notes' },
+    { value: 'budget', label: 'Budget' },
+    { value: 'tags', label: 'Tags' },
+];
+
+interface FieldMapping {
+    source_field: string;
+    target_field: string;
+    field_type: string;
+}
 
 export default function WorkflowNodeConfig({
     step,
@@ -108,6 +160,13 @@ export default function WorkflowNodeConfig({
     const [copied, setCopied] = useState(false);
     const [pages, setPages] = useState<FacebookPage[]>([]);
     const [loadingPages, setLoadingPages] = useState(false);
+    const [mappings, setMappings] = useState<FieldMapping[]>(
+        (step.field_mappings || []).map((m: any) => ({
+            source_field: m.source_field || '',
+            target_field: m.target_field || '',
+            field_type: m.field_type || 'text',
+        })),
+    );
 
     const config = serviceConfig[step.service] || {
         icon: Circle,
@@ -164,6 +223,27 @@ export default function WorkflowNodeConfig({
                 selected_page_id: page.id,
                 selected_page_name: page.name,
             },
+        });
+    };
+
+    const addMapping = () => {
+        setMappings((prev) => [...prev, { source_field: '', target_field: '', field_type: 'text' }]);
+    };
+
+    const updateMapping = (index: number, updates: Partial<FieldMapping>) => {
+        setMappings((prev) => {
+            const updated = prev.map((m, i) => (i === index ? { ...m, ...updates } : m));
+            // Persist to step
+            onUpdate({ field_mappings: updated });
+            return updated;
+        });
+    };
+
+    const removeMapping = (index: number) => {
+        setMappings((prev) => {
+            const updated = prev.filter((_, i) => i !== index);
+            onUpdate({ field_mappings: updated });
+            return updated;
         });
     };
 
@@ -243,6 +323,30 @@ export default function WorkflowNodeConfig({
                     }
                     break;
                 }
+                case 'facebook_lead_ads': {
+                    // Lead trigger doesn't need a "run" — it's event-driven
+                    // Just mark as configured if page is selected
+                    const pageId = step.configuration?.page_id || selectedPageId;
+                    if (!pageId) {
+                        toast.error('Please select a page first');
+                        setRunning(false);
+                        return;
+                    }
+                    clearError({ page_id: pageId, configured: true });
+                    break;
+                }
+                case 'field_mapping': {
+                    // Validate that at least one complete mapping exists
+                    const completeMappings = mappings.filter((m) => m.source_field && m.target_field);
+                    if (completeMappings.length === 0) {
+                        toast.error('Add at least one complete field mapping');
+                        setRunning(false);
+                        return;
+                    }
+                    onUpdate({ field_mappings: completeMappings });
+                    clearError({ configured: true, mapping_count: completeMappings.length });
+                    break;
+                }
             }
             setRunResult('success');
             toast.success(`${config.label} completed`);
@@ -260,7 +364,7 @@ export default function WorkflowNodeConfig({
     };
 
     const needsPageSelection = pageBasedServices.includes(step.service);
-    const canRun = !needsPageSelection || selectedPageId || step.service === 'facebook_page_sync';
+    const canRun = step.service === 'field_mapping' || !needsPageSelection || selectedPageId || step.service === 'facebook_page_sync';
 
     return (
         <div
@@ -413,6 +517,96 @@ export default function WorkflowNodeConfig({
                                 </span>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* Field Mapping UI */}
+                {step.service === 'field_mapping' && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Field Mappings
+                            </label>
+                            <button
+                                onClick={addMapping}
+                                className={cn(
+                                    'flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md',
+                                    'text-primary hover:bg-primary/10 transition-colors',
+                                )}
+                            >
+                                <Plus className="w-3 h-3" />
+                                Add
+                            </button>
+                        </div>
+
+                        {mappings.length === 0 ? (
+                            <div className="text-center py-6 border border-dashed border-border rounded-lg">
+                                <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                                <p className="text-xs text-muted-foreground">
+                                    No mappings yet. Click Add to map source fields to lead fields.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {mappings.map((mapping, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <select
+                                                value={mapping.source_field}
+                                                onChange={(e) => updateMapping(index, { source_field: e.target.value })}
+                                                className={cn(
+                                                    'w-full appearance-none rounded-md border border-border bg-background',
+                                                    'px-2 py-1.5 text-xs text-foreground',
+                                                    'focus:outline-none focus:ring-1 focus:ring-primary/20',
+                                                )}
+                                            >
+                                                <option value="">Source field...</option>
+                                                {facebookSourceFields.map((f) => (
+                                                    <option key={f.value} value={f.value}>
+                                                        {f.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+
+                                        <div className="flex-1 min-w-0">
+                                            <select
+                                                value={mapping.target_field}
+                                                onChange={(e) => updateMapping(index, { target_field: e.target.value })}
+                                                className={cn(
+                                                    'w-full appearance-none rounded-md border border-border bg-background',
+                                                    'px-2 py-1.5 text-xs text-foreground',
+                                                    'focus:outline-none focus:ring-1 focus:ring-primary/20',
+                                                )}
+                                            >
+                                                <option value="">Lead field...</option>
+                                                {leadTargetFields.map((f) => (
+                                                    <option key={f.value} value={f.value}>
+                                                        {f.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <button
+                                            onClick={() => removeMapping(index)}
+                                            className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Map Facebook Lead Ads fields to your CRM lead fields. Unmapped fields will be stored in custom_fields.
+                        </p>
                     </div>
                 )}
 

@@ -165,10 +165,17 @@ class WorkflowController extends Controller
             }
 
             // Handle full workflow updates (PUT requests)
-            $workflow = $this->workflowService->updateWorkflow(
-                $workflow,
-                $request->validated()
-            );
+            $validated = $request->validated();
+            $previousStatus = $workflow->status;
+
+            // Validate before saving when activating/publishing
+            $newStatus = $validated['status'] ?? $previousStatus;
+            if ($newStatus === 'active' && $previousStatus !== 'active') {
+                // Temporarily apply steps to validate, then save
+                $this->workflowService->validateWorkflowSteps($validated['steps'] ?? [], $newStatus);
+            }
+
+            $workflow = $this->workflowService->updateWorkflow($workflow, $validated);
 
             return redirect()->back()
                 ->with('success', 'Workflow updated successfully');
