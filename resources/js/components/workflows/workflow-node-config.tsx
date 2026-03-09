@@ -127,23 +127,26 @@ export default function WorkflowNodeConfig({
         setRunning(true);
         setRunResult(null);
 
-        // For OAuth, open popup immediately to avoid browser popup blocker
-        let oauthPopup: Window | null = null;
-        if (step.service === 'facebook_oauth') {
-            oauthPopup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
-        }
-
         try {
             switch (step.service) {
                 case 'facebook_oauth': {
-                    const res = await api.post('/integrations/facebook/oauth/authorize');
-                    if (res.data.success && res.data.auth_url) {
-                        if (oauthPopup) {
-                            oauthPopup.location.href = res.data.auth_url;
+                    // Open popup in click context to avoid browser blocker
+                    const popup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
+                    try {
+                        const res = await api.post('/integrations/facebook/oauth/authorize');
+                        if (res.data.success && res.data.auth_url) {
+                            if (popup && !popup.closed) {
+                                popup.location.href = res.data.auth_url;
+                            } else {
+                                window.open(res.data.auth_url, 'facebook_oauth', 'width=600,height=700');
+                            }
+                            clearError({ authorized: true });
                         } else {
-                            window.open(res.data.auth_url, 'facebook_oauth', 'width=600,height=700');
+                            popup?.close();
                         }
-                        clearError({ authorized: true });
+                    } catch (oauthErr) {
+                        popup?.close();
+                        throw oauthErr;
                     }
                     break;
                 }
@@ -172,12 +175,13 @@ export default function WorkflowNodeConfig({
             setRunResult('success');
             toast.success(`${config.label} completed`);
         } catch (err: any) {
-            if (oauthPopup) oauthPopup.close();
+            console.error(`[Workflow] ${step.service} failed:`, err);
             setRunResult('error');
             onUpdate({
                 configuration: { ...step.configuration, error: true },
             });
-            toast.error(err?.response?.data?.message || `Failed to run ${config.label}`);
+            const message = err?.response?.data?.message || err?.message || `Failed to run ${config.label}`;
+            toast.error(message);
         } finally {
             setRunning(false);
         }
