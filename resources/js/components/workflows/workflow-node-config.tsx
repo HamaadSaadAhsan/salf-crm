@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { type Workflow, type WorkflowStep } from '@/types/workflow';
@@ -17,9 +17,16 @@ import {
     XCircle,
     Circle,
     Clock,
+    ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+
+interface FacebookPage {
+    id: string;
+    name: string;
+    category?: string;
+}
 
 interface WorkflowNodeConfigProps {
     step: WorkflowStep;
@@ -48,14 +55,14 @@ const serviceConfig: Record<string, { icon: any; color: string; label: string; d
         icon: Webhook,
         color: 'bg-[#1877F2]',
         label: 'Webhook Subscription',
-        description: 'Subscribes to Facebook webhooks for lead generation events using the auto-generated webhook URL. No manual configuration needed.',
+        description: 'Subscribes to Facebook webhooks for lead generation events on the selected page.',
         runLabel: 'Subscribe Webhooks',
     },
     facebook_app_sub: {
         icon: AppWindow,
         color: 'bg-[#1877F2]',
         label: 'App Subscription',
-        description: 'Subscribes the Facebook App to page events (leadgen, feed, messaging). Enables real-time notifications for your selected pages.',
+        description: 'Subscribes the Facebook App to page events (leadgen, feed) on the selected page.',
         runLabel: 'Subscribe App',
     },
     facebook_lead_ads: {
@@ -86,6 +93,9 @@ const statusDisplay: Record<StepStatus, { icon: any; label: string; color: strin
     error: { icon: XCircle, label: 'Failed — click Run to retry', color: 'text-red-600 dark:text-red-400' },
 };
 
+// Steps that need page selection
+const pageBasedServices = ['facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
+
 export default function WorkflowNodeConfig({
     step,
     workflow,
@@ -96,6 +106,8 @@ export default function WorkflowNodeConfig({
     const [running, setRunning] = useState(false);
     const [runResult, setRunResult] = useState<'success' | 'error' | null>(null);
     const [copied, setCopied] = useState(false);
+    const [pages, setPages] = useState<FacebookPage[]>([]);
+    const [loadingPages, setLoadingPages] = useState(false);
 
     const config = serviceConfig[step.service] || {
         icon: Circle,
@@ -108,6 +120,52 @@ export default function WorkflowNodeConfig({
     const stepStatus = getStepStatus(step);
     const statusInfo = statusDisplay[stepStatus];
     const StatusIcon = statusInfo.icon;
+
+    const selectedPageId = step.configuration?.page_id || workflow.metadata?.selected_page_id;
+    const selectedPageName = step.configuration?.page_name || workflow.metadata?.selected_page_name;
+
+    // Load pages when opening a page-based step
+    useEffect(() => {
+        if (pageBasedServices.includes(step.service)) {
+            loadPages();
+        }
+    }, [step.service]);
+
+    const loadPages = async () => {
+        setLoadingPages(true);
+        try {
+            const res = await api.get(`/workflows/${workflow.id}/pages`);
+            if (res.pages) {
+                setPages(res.pages);
+            }
+        } catch {
+            // Pages not synced yet — that's OK
+        } finally {
+            setLoadingPages(false);
+        }
+    };
+
+    const handlePageSelect = (pageId: string) => {
+        const page = pages.find((p) => p.id === pageId);
+        if (!page) return;
+
+        onUpdate({
+            configuration: {
+                ...step.configuration,
+                page_id: page.id,
+                page_name: page.name,
+            },
+        });
+
+        // Also store in workflow metadata so other steps can use it
+        onWorkflowUpdate?.({
+            metadata: {
+                ...workflow.metadata,
+                selected_page_id: page.id,
+                selected_page_name: page.name,
+            },
+        });
+    };
 
     const handleCopyWebhookUrl = () => {
         if (workflow.webhook_url) {
@@ -130,10 +188,9 @@ export default function WorkflowNodeConfig({
         try {
             switch (step.service) {
                 case 'facebook_oauth': {
-                    // Open popup in click context to avoid browser blocker
                     const popup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
                     try {
-                        const res = await api.post('/integrations/facebook/oauth/authorize');
+                        const res = await api.post('/integrations/facebook/oauth/authorize', {});
                         if (res.success && res.auth_url) {
                             if (popup && !popup.closed) {
                                 popup.location.href = res.auth_url;
@@ -151,23 +208,38 @@ export default function WorkflowNodeConfig({
                     break;
                 }
                 case 'facebook_page_sync': {
-                    const res = await api.post(`/workflows/${workflow.id}/sync-pages`);
+                    const res = await api.post(`/workflows/${workflow.id}/sync-pages`, {});
                     if (res.success !== false) {
                         clearError({ synced: true, synced_at: new Date().toISOString() });
+                        if (res.pages) {
+                            setPages(res.pages);
+                        }
                     }
                     break;
                 }
                 case 'facebook_webhook_sub': {
-                    const res = await api.post(`/workflows/${workflow.id}/subscribe-webhook`);
+                    const pageId = step.configuration?.page_id || selectedPageId;
+                    if (!pageId) {
+                        toast.error('Please select a page first');
+                        setRunning(false);
+                        return;
+                    }
+                    const res = await api.post(`/workflows/${workflow.id}/subscribe-webhook`, { page_id: pageId });
                     if (res.success !== false) {
-                        clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
+                        clearError({ subscribed: true, subscribed_at: new Date().toISOString(), page_id: pageId });
                     }
                     break;
                 }
                 case 'facebook_app_sub': {
-                    const res = await api.post(`/workflows/${workflow.id}/subscribe-app`);
+                    const pageId = step.configuration?.page_id || selectedPageId;
+                    if (!pageId) {
+                        toast.error('Please select a page first');
+                        setRunning(false);
+                        return;
+                    }
+                    const res = await api.post(`/workflows/${workflow.id}/subscribe-app`, { page_id: pageId });
                     if (res.success !== false) {
-                        clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
+                        clearError({ subscribed: true, subscribed_at: new Date().toISOString(), page_id: pageId });
                     }
                     break;
                 }
@@ -186,6 +258,9 @@ export default function WorkflowNodeConfig({
             setRunning(false);
         }
     };
+
+    const needsPageSelection = pageBasedServices.includes(step.service);
+    const canRun = !needsPageSelection || selectedPageId || step.service === 'facebook_page_sync';
 
     return (
         <div
@@ -224,6 +299,55 @@ export default function WorkflowNodeConfig({
                         {config.description}
                     </p>
                 </div>
+
+                {/* Page selector for page-based steps */}
+                {needsPageSelection && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Facebook Page
+                        </label>
+                        {loadingPages ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Loading pages...
+                            </div>
+                        ) : pages.length > 0 ? (
+                            <div className="relative">
+                                <select
+                                    value={selectedPageId || ''}
+                                    onChange={(e) => handlePageSelect(e.target.value)}
+                                    className={cn(
+                                        'w-full appearance-none rounded-lg border border-border bg-background',
+                                        'px-3 py-2 pr-8 text-sm text-foreground',
+                                        'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                                    )}
+                                >
+                                    <option value="">Select a page...</option>
+                                    {pages.map((page) => (
+                                        <option key={page.id} value={page.id}>
+                                            {page.name} {page.category ? `(${page.category})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                            </div>
+                        ) : step.service !== 'facebook_page_sync' ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                No pages found. Run Page Sync first.
+                            </p>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Click Run below to fetch your pages.
+                            </p>
+                        )}
+                        {selectedPageName && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                Selected: {selectedPageName}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Completed timestamp */}
                 {step.configuration?.synced_at && (
@@ -316,7 +440,7 @@ export default function WorkflowNodeConfig({
             <div className="flex-shrink-0 px-4 py-3 border-t border-border">
                 <Button
                     onClick={handleRunStep}
-                    disabled={running}
+                    disabled={running || (!canRun)}
                     className={cn(
                         'w-full',
                         runResult === 'success' && 'bg-emerald-600 hover:bg-emerald-700',

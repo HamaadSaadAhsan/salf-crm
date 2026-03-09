@@ -398,6 +398,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
         Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
         Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
+        Route::get('workflows/{workflow}/pages', [\App\Http\Controllers\WorkflowController::class, 'getPages'])->name('workflows.pages');
         Route::post('workflows/{workflow}/subscribe-webhook', [\App\Http\Controllers\WorkflowController::class, 'subscribeWebhook'])->name('workflows.subscribe-webhook');
         Route::post('workflows/{workflow}/subscribe-app', [\App\Http\Controllers\WorkflowController::class, 'subscribeApp'])->name('workflows.subscribe-app');
         Route::post('workflows/{workflow}/sync-pages', [\App\Http\Controllers\WorkflowController::class, 'syncPages'])->name('workflows.sync-pages');

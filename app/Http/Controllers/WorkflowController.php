@@ -396,6 +396,21 @@ class WorkflowController extends Controller
     }
 
     /**
+     * Get synced Facebook pages for the authenticated user
+     */
+    public function getPages(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('view', $workflow);
+
+        $pages = \App\Models\MetaPage::where('user_id', $request->user()->id)
+            ->select('page_id as id', 'name')
+            ->get()
+            ->toArray();
+
+        return response()->json(['pages' => $pages]);
+    }
+
+    /**
      * Auto-subscribe workflow's dynamic webhook to Facebook
      */
     public function subscribeWebhook(Request $request, Workflow $workflow): JsonResponse
@@ -407,35 +422,43 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'Workflow has no webhook token'], 400);
             }
 
-            $integration = \App\Models\Integration::where('provider', 'facebook')
-                ->where('active', true)
-                ->first();
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
 
-            if (! $integration) {
-                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            if (! $accessToken) {
+                return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $config = $integration->config;
-            $pageAccessToken = decrypt($config['access_token']);
-            $pageId = $config['page_id'];
+            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '');
+
+            if ($request->input('page_id')) {
+                $pageQuery->where('page_id', $request->input('page_id'));
+            }
+
+            $page = $pageQuery->first();
+
+            if (! $page) {
+                return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
+            }
 
             $facebookService = app(\App\Services\FacebookService::class);
 
             $result = $facebookService->subscribeToWebhook(
-                $pageAccessToken,
-                $pageId,
+                $page->access_token,
+                $page->page_id,
                 ['leadgen', 'feed'],
                 $workflow->webhook_url,
                 $workflow->webhook_token,
             );
 
             if ($result['success']) {
-                // Store verify token in workflow metadata for hub.challenge verification
                 $workflow->update([
                     'metadata' => array_merge($workflow->metadata ?? [], [
                         'webhook_verify_token' => $workflow->webhook_token,
                         'webhook_subscribed_at' => now()->toISOString(),
-                        'webhook_page_id' => $pageId,
+                        'webhook_page_id' => $page->page_id,
                     ]),
                 ]);
             }
@@ -462,24 +485,33 @@ class WorkflowController extends Controller
         $this->authorize('update', $workflow);
 
         try {
-            $integration = \App\Models\Integration::where('provider', 'facebook')
-                ->where('active', true)
-                ->first();
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
 
-            if (! $integration) {
-                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            if (! $accessToken) {
+                return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $config = $integration->config;
-            $pageAccessToken = decrypt($config['access_token']);
-            $pageId = $config['page_id'];
+            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '');
+
+            if ($request->input('page_id')) {
+                $pageQuery->where('page_id', $request->input('page_id'));
+            }
+
+            $page = $pageQuery->first();
+
+            if (! $page) {
+                return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
+            }
 
             $apiVersion = config('services.facebook.api_version', 'v23.0');
 
             $response = Http::post(
-                "https://graph.facebook.com/{$apiVersion}/{$pageId}/subscribed_apps",
+                "https://graph.facebook.com/{$apiVersion}/{$page->page_id}/subscribed_apps",
                 [
-                    'access_token' => $pageAccessToken,
+                    'access_token' => $page->access_token,
                     'subscribed_fields' => 'leadgen,feed',
                 ]
             );
@@ -495,7 +527,7 @@ class WorkflowController extends Controller
             $workflow->update([
                 'metadata' => array_merge($workflow->metadata ?? [], [
                     'app_subscribed_at' => now()->toISOString(),
-                    'app_subscribed_page_id' => $pageId,
+                    'app_subscribed_page_id' => $page->page_id,
                 ]),
             ]);
 
