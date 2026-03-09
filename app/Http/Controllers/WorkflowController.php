@@ -12,6 +12,8 @@ use App\Models\Workflow;
 use App\Services\WorkflowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
@@ -37,6 +39,9 @@ class WorkflowController extends Controller
                     'name' => $workflow->name,
                     'description' => $workflow->description,
                     'status' => $workflow->status,
+                    'webhook_url' => $workflow->webhook_url,
+                    'webhook_token' => $workflow->webhook_token,
+                    'canvas_data' => $workflow->canvas_data,
                     'created_at' => $workflow->created_at->toISOString(),
                     'updated_at' => $workflow->updated_at->toISOString(),
                     'executions_count' => $workflow->executions_count,
@@ -91,6 +96,9 @@ class WorkflowController extends Controller
                 'name' => $workflow->name,
                 'description' => $workflow->description,
                 'status' => $workflow->status,
+                'webhook_url' => $workflow->webhook_url,
+                'webhook_token' => $workflow->webhook_token,
+                'canvas_data' => $workflow->canvas_data,
                 'created_at' => $workflow->created_at->toISOString(),
                 'updated_at' => $workflow->updated_at->toISOString(),
                 'executions_count' => $workflow->executions_count,
@@ -123,6 +131,9 @@ class WorkflowController extends Controller
                 'name' => $workflow->name,
                 'description' => $workflow->description,
                 'status' => $workflow->status,
+                'webhook_url' => $workflow->webhook_url,
+                'webhook_token' => $workflow->webhook_token,
+                'canvas_data' => $workflow->canvas_data,
                 'created_at' => $workflow->created_at->toISOString(),
                 'updated_at' => $workflow->updated_at->toISOString(),
                 'steps' => $workflow->steps->map(function ($step) {
@@ -382,5 +393,192 @@ class WorkflowController extends Controller
         ];
 
         return $descriptions[$fieldName] ?? '';
+    }
+
+    /**
+     * Auto-subscribe workflow's dynamic webhook to Facebook
+     */
+    public function subscribeWebhook(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('update', $workflow);
+
+        try {
+            if (! $workflow->webhook_token) {
+                return response()->json(['success' => false, 'message' => 'Workflow has no webhook token'], 400);
+            }
+
+            $integration = \App\Models\Integration::where('provider', 'facebook')
+                ->where('active', true)
+                ->first();
+
+            if (! $integration) {
+                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            }
+
+            $config = $integration->config;
+            $pageAccessToken = decrypt($config['access_token']);
+            $pageId = $config['page_id'];
+
+            $facebookService = app(\App\Services\FacebookService::class);
+
+            $result = $facebookService->subscribeToWebhook(
+                $pageAccessToken,
+                $pageId,
+                ['leadgen', 'feed'],
+                $workflow->webhook_url,
+                $workflow->webhook_token,
+            );
+
+            if ($result['success']) {
+                // Store verify token in workflow metadata for hub.challenge verification
+                $workflow->update([
+                    'metadata' => array_merge($workflow->metadata ?? [], [
+                        'webhook_verify_token' => $workflow->webhook_token,
+                        'webhook_subscribed_at' => now()->toISOString(),
+                        'webhook_page_id' => $pageId,
+                    ]),
+                ]);
+            }
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Workflow webhook subscription failed', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to subscribe webhook: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Auto-subscribe app to page events for a workflow
+     */
+    public function subscribeApp(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('update', $workflow);
+
+        try {
+            $integration = \App\Models\Integration::where('provider', 'facebook')
+                ->where('active', true)
+                ->first();
+
+            if (! $integration) {
+                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            }
+
+            $config = $integration->config;
+            $pageAccessToken = decrypt($config['access_token']);
+            $pageId = $config['page_id'];
+
+            $apiVersion = config('services.facebook.api_version', 'v23.0');
+
+            $response = Http::post(
+                "https://graph.facebook.com/{$apiVersion}/{$pageId}/subscribed_apps",
+                [
+                    'access_token' => $pageAccessToken,
+                    'subscribed_fields' => 'leadgen,feed',
+                ]
+            );
+
+            if (! $response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to subscribe app to page',
+                    'details' => $response->json(),
+                ], 400);
+            }
+
+            $workflow->update([
+                'metadata' => array_merge($workflow->metadata ?? [], [
+                    'app_subscribed_at' => now()->toISOString(),
+                    'app_subscribed_page_id' => $pageId,
+                ]),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'App subscribed to page events',
+                'data' => $response->json(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Workflow app subscription failed', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to subscribe app: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync Facebook pages for a workflow
+     */
+    public function syncPages(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('update', $workflow);
+
+        try {
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
+
+            if (! $accessToken) {
+                return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
+            }
+
+            $apiVersion = config('services.facebook.api_version', 'v23.0');
+
+            $response = Http::get("https://graph.facebook.com/{$apiVersion}/me/accounts", [
+                'access_token' => $accessToken,
+                'fields' => 'id,name,category,access_token,picture',
+            ]);
+
+            if (! $response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to fetch pages from Facebook',
+                ], 400);
+            }
+
+            $pages = $response->json('data', []);
+
+            // Store pages in meta_pages table
+            foreach ($pages as $pageData) {
+                \App\Models\MetaPage::updateOrCreate(
+                    ['user_id' => $user->id, 'page_id' => $pageData['id']],
+                    [
+                        'name' => $pageData['name'],
+                        'access_token' => $pageData['access_token'] ?? '',
+                        'last_updated' => now(),
+                    ]
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($pages).' pages synced',
+                'pages' => collect($pages)->map(fn ($p) => [
+                    'id' => $p['id'],
+                    'name' => $p['name'],
+                    'category' => $p['category'] ?? null,
+                ])->toArray(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Workflow page sync failed', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to sync pages: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

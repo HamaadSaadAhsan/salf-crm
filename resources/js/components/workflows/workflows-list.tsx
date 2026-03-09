@@ -135,60 +135,17 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
     }
   }
 
-  // Create a new draft workflow
+  // Create a new empty draft workflow
   const handleCreateNew = () => {
     setCreateLoading(true)
 
-    const draftWorkflowData = {
+    router.post('/workflows', {
       name: 'Untitled Workflow',
-      description: 'New workflow created on ' + new Date().toLocaleString(),
-      status: 'draft' as const,
-      metadata: {
-        created_by: 'workflow_builder',
-        version: '1.0',
-      },
-      steps: [
-        {
-          temp_id: 'step_1',
-          step_type: 'trigger' as const,
-          service: 'facebook_lead_ads',
-          operation: 'new_lead',
-          order: 0,
-          enabled: true,
-          configuration: {
-            page_id: '',
-            form_id: '',
-            page_name: '',
-            form_name: '',
-          },
-          field_mappings: [],
-        },
-        {
-          temp_id: 'step_2',
-          step_type: 'action' as const,
-          service: 'webhook',
-          operation: 'post_data',
-          order: 1,
-          enabled: true,
-          configuration: {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          },
-          field_mappings: [],
-        },
-      ],
-      connections: [
-        {
-          from_step_temp_id: 'step_1',
-          to_step_temp_id: 'step_2',
-          conditions: [],
-        },
-      ],
-    }
-
-    router.post('/workflows', draftWorkflowData, {
+      description: '',
+      status: 'draft',
+      metadata: { is_new: true },
+      steps: [],
+    }, {
       onSuccess: () => {
         setCreateLoading(false)
       },

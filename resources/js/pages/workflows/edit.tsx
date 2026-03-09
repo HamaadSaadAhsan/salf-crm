@@ -1,386 +1,349 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { Head, Link, router, usePage } from "@inertiajs/react"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Undo, Play, Loader2, Save, AlertCircle } from "lucide-react"
-import WorkflowCanvas from "@/components/workflows/workflow-canvas"
-import FloatingSidebar from "@/components/workflows/floating-sidebar"
-import { cn } from "@/lib/utils"
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useWorkflowEdit } from '@/hooks/useWorkflowEdit'
-import { WorkflowHelpers } from '@/lib/workflow-helpers'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import AppLayout from "@/layouts/app-layout"
-import { Workflow } from "@/types/workflow"
-import { type BreadcrumbItem } from "@/types"
+import { useState, useCallback } from 'react';
+import { Head, Link } from '@inertiajs/react';
+import { useEcho } from '@laravel/echo-react';
+import { ReactFlowProvider } from '@xyflow/react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { useWorkflowEdit } from '@/hooks/useWorkflowEdit';
+import WorkflowCanvas from '@/components/workflows/workflow-canvas';
+import WorkflowNodePanel from '@/components/workflows/workflow-node-panel';
+import WorkflowNodeConfig from '@/components/workflows/workflow-node-config';
+import WorkflowGuide from '@/components/workflows/workflow-guide';
+import { type Workflow, type WorkflowStep, type NodeExecutionState } from '@/types/workflow';
+import {
+    ArrowLeft,
+    Save,
+    Loader2,
+    Play,
+    Pause,
+    AlertCircle,
+    X,
+} from 'lucide-react';
 
 interface WorkflowEditPageProps {
-  workflow: Workflow
+    workflow: Workflow;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-  {
-    title: 'Workflows',
-    href: '/workflows',
-  },
-  {
-    title: 'Edit Workflow',
-    href: '#',
-  },
-]
+const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
+    draft: { label: 'Draft', color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300', dot: 'bg-zinc-400' },
+    active: { label: 'Active', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400', dot: 'bg-emerald-500' },
+    paused: { label: 'Paused', color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400', dot: 'bg-amber-500' },
+    inactive: { label: 'Inactive', color: 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400', dot: 'bg-red-500' },
+};
 
 export default function WorkflowEditPage({ workflow: initialWorkflow }: WorkflowEditPageProps) {
-  const { props } = usePage()
-  
-  // Use custom hook for workflow management
-  const {
-    workflow,
-    loading,
-    saving,
-    error,
-    hasUnsavedChanges,
-    updateWorkflow,
-    saveWorkflow,
-    publishWorkflow,
-    setError
-  } = useWorkflowEdit(initialWorkflow.id, initialWorkflow)
-
-  // UI state
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [currentStep, setCurrentStep] = useState<"setup" | "configure" | "test">("configure")
-  const [selectedPage, setSelectedPage] = useState("")
-  const [selectedForm, setSelectedForm] = useState("")
-  const sidebarRef = useRef(null)
-  const [triggerSelected, setTriggerSelected] = useState<string>("")
-
-  // Initialize UI state when workflow loads (only on mount, not on every workflow update)
-  const initializedRef = useRef(false)
-  useEffect(() => {
-    if (workflow && !initializedRef.current) {
-      const triggerStep = WorkflowHelpers.getTriggerStep(workflow)
-      if (triggerStep) {
-        setTriggerSelected(triggerStep.service)
-
-        // Set a Facebook-specific state if applicable
-        if (triggerStep.service === 'facebook_lead_ads') {
-          setSelectedPage(triggerStep.configuration.page_id || "")
-          setSelectedForm(triggerStep.configuration.form_id || "")
-        }
-
-        initializedRef.current = true
-      }
-    }
-  }, [workflow])
-
-  // Memoize status info computation
-  const statusInfo = useMemo(() =>
-      WorkflowHelpers.getStatusInfo(workflow?.status || 'draft'),
-    [workflow?.status]
-  )
-
-  // Handle save with validation feedback
-  const handleSave = async () => {
-    if (!workflow) return
-
-    const validation = WorkflowHelpers.validateWorkflow(workflow)
-    if (!validation.isValid) {
-      setError(validation.errors.join(', '))
-      return
-    }
-
-    const success = await saveWorkflow()
-    if (success) {
-      console.log('Workflow saved successfully')
-      // Add toast notification here
-    }
-  }
-
-  // Handle publishes with validation
-  const handlePublish = async () => {
-    if (!workflow) return
-
-    const validation = WorkflowHelpers.validateWorkflow(workflow)
-    if (!validation.isValid) {
-      setError(`Cannot publish: ${validation.errors.join(', ')}`)
-      return
-    }
-
-    const success = await publishWorkflow()
-    if (success) {
-      console.log('Workflow published successfully')
-      // Add toast notification here
-    }
-  }
-
-  // Handle test workflow
-  const handleTest = async () => {
-    console.log('Testing workflow...')
-    // Implement test functionality
-  }
-
-  const handleConfigureFacebook = useCallback(() => {
-    setShowSidebar(true)
-    setCurrentStep("configure")
-    setTriggerSelected("facebook_lead_ads")
-  }, [])
-
-  const handleConfigureWebhook = useCallback(() => {
-    setShowSidebar(true)
-    setCurrentStep("configure")
-    setTriggerSelected("webhook")
-  }, [])
-
-  const handlePageFormUpdate = useCallback((page: string, form: string) => {
-    setSelectedPage(page)
-    setSelectedForm(form)
-
-    if (workflow) {
-      const updatedWorkflow = WorkflowHelpers.updateFacebookConfig(
+    const {
         workflow,
-        page,
-        form
-      )
-      updateWorkflow(updatedWorkflow)
+        loading,
+        saving,
+        error,
+        hasUnsavedChanges,
+        updateWorkflow,
+        saveWorkflow,
+        publishWorkflow,
+        setError,
+    } = useWorkflowEdit(initialWorkflow.id, initialWorkflow);
+
+    const [showNodePanel, setShowNodePanel] = useState(false);
+    const [selectedStep, setSelectedStep] = useState<WorkflowStep | null>(null);
+    const [showConfig, setShowConfig] = useState(false);
+    const [guideDismissed, setGuideDismissed] = useState(false);
+    const [executionStates, setExecutionStates] = useState<NodeExecutionState[]>([]);
+
+    // Listen for live workflow execution updates via Reverb
+    type StepExecutedPayload = {
+        workflow_id: number;
+        execution_id: number;
+        node_id: string;
+        status: 'running' | 'success' | 'failed' | 'completed';
+        step_data: Record<string, unknown>;
+        timestamp: string;
+    };
+
+    useEcho<StepExecutedPayload>(
+        `workflow.${initialWorkflow.id}`,
+        '.workflow.step.executed',
+        (e) => {
+            if (e.node_id === 'execution') {
+                if (e.status === 'completed' || e.status === 'failed') {
+                    // Clear execution states after a delay to show final status
+                    setTimeout(() => setExecutionStates([]), 2000);
+                }
+                return;
+            }
+
+            setExecutionStates((prev) => {
+                const existing = prev.filter((s) => s.nodeId !== e.node_id);
+                return [...existing, { nodeId: e.node_id, status: e.status, startedAt: Date.now() }];
+            });
+        },
+    );
+
+    const status = statusConfig[workflow?.status || 'draft'];
+
+    // Show guide for new empty workflows
+    const isNewEmptyWorkflow =
+        workflow &&
+        workflow.steps.length === 0 &&
+        workflow.metadata?.is_new &&
+        !guideDismissed;
+
+    const handleNodeClick = useCallback((stepId: number, step: WorkflowStep) => {
+        setSelectedStep(step);
+        setShowConfig(true);
+        setShowNodePanel(false);
+    }, []);
+
+    const handleAddNode = useCallback(() => {
+        setShowNodePanel(true);
+        setShowConfig(false);
+        setSelectedStep(null);
+    }, []);
+
+    const addFacebookSteps = useCallback(() => {
+        if (!workflow) return;
+
+        const ts = () => new Date().toISOString();
+
+        const newSteps: WorkflowStep[] = [
+            {
+                id: -1,
+                step_type: 'trigger',
+                service: 'facebook_oauth',
+                operation: 'authorize',
+                order: 0,
+                configuration: {},
+                enabled: true,
+                field_mappings: [],
+                created_at: ts(),
+                updated_at: ts(),
+            },
+            {
+                id: -2,
+                step_type: 'action',
+                service: 'facebook_page_sync',
+                operation: 'sync_pages',
+                order: 1,
+                configuration: {},
+                enabled: true,
+                field_mappings: [],
+                created_at: ts(),
+                updated_at: ts(),
+            },
+            {
+                id: -3,
+                step_type: 'action',
+                service: 'facebook_webhook_sub',
+                operation: 'subscribe',
+                order: 2,
+                configuration: {},
+                enabled: true,
+                field_mappings: [],
+                created_at: ts(),
+                updated_at: ts(),
+            },
+            {
+                id: -4,
+                step_type: 'action',
+                service: 'facebook_app_sub',
+                operation: 'subscribe_app',
+                order: 3,
+                configuration: {},
+                enabled: true,
+                field_mappings: [],
+                created_at: ts(),
+                updated_at: ts(),
+            },
+        ];
+
+        updateWorkflow({
+            steps: [...workflow.steps, ...newSteps],
+            metadata: { ...workflow.metadata, is_new: false },
+        });
+    }, [workflow, updateWorkflow]);
+
+    const handleGuideTemplate = useCallback(
+        (templateId: string) => {
+            if (templateId === 'facebook_lead_gen') {
+                addFacebookSteps();
+            }
+            setGuideDismissed(true);
+        },
+        [addFacebookSteps],
+    );
+
+    const handleGuideSkip = useCallback(() => {
+        setGuideDismissed(true);
+        if (workflow) {
+            updateWorkflow({ metadata: { ...workflow.metadata, is_new: false } });
+        }
+    }, [workflow, updateWorkflow]);
+
+    const handleAddFacebookWorkflow = useCallback(() => {
+        addFacebookSteps();
+        setShowNodePanel(false);
+    }, [addFacebookSteps]);
+
+    const handleSave = useCallback(async () => {
+        if (!workflow) return;
+        await saveWorkflow();
+    }, [workflow, saveWorkflow]);
+
+    const handlePublish = useCallback(async () => {
+        if (!workflow) return;
+        await publishWorkflow();
+    }, [workflow, publishWorkflow]);
+
+    if (loading || !workflow) {
+        return (
+            <div className="h-screen bg-background flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+        );
     }
-  }, [workflow, updateWorkflow])
 
-  // Loading state
-  if (loading) {
     return (
-      <AppLayout breadcrumbs={breadcrumbs}>
-        <Head title={`Edit Workflow: ${initialWorkflow.name}`} />
-        <div className="min-h-screen bg-primary-foreground flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading workflow...</p>
-          </div>
-        </div>
-      </AppLayout>
-    )
-  }
+        <ReactFlowProvider>
+            <div className="h-screen flex flex-col bg-background">
+                <Head title={`Edit: ${workflow.name}`} />
 
-  // Error state
-  if (error && !workflow) {
-    return (
-      <AppLayout breadcrumbs={breadcrumbs}>
-        <Head title={`Edit Workflow: ${initialWorkflow.name}`} />
-        <div className="min-h-screen bg-primary-foreground flex items-center justify-center">
-          <div className="max-w-md w-full px-4">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-            <div className="mt-4 text-center">
-              <Link href="/workflows">
-                <Button variant="outline">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Workflows
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </AppLayout>
-    )
-  }
+                {/* Top bar */}
+                <header className="flex-shrink-0 h-12 border-b border-border bg-card flex items-center justify-between px-3 z-50">
+                    {/* Left section */}
+                    <div className="flex items-center gap-2">
+                        <Link href="/workflows">
+                            <Button variant="ghost" size="sm" className="h-8 px-2">
+                                <ArrowLeft className="w-4 h-4" />
+                            </Button>
+                        </Link>
 
-  if (!workflow) return null
+                        <span className="text-muted-foreground">/</span>
 
-  return (
-    <div className="min-h-screen bg-primary-foreground">
-      <Head title={`Edit Workflow: ${workflow.name}`} />
-      
-      {/* Header */}
-      <header className="bg-primary-foreground border-b border-primary-foreground px-4 py-3 relative z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/workflows">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-yellow-600 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">W</span>
-              </div>
-              <span className="font-semibold">Workflow</span>
-            </div>
-          </div>
+                        <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+                            {workflow.name}
+                        </span>
 
-          <div className="flex justify-center items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <div className="text-center">
-                    <h1 className="font-bold">{workflow.name}</h1>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {workflow.description && (
-                    <p className="text-sm text-gray-600">{workflow.description}</p>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                        <Badge
+                            variant="secondary"
+                            className={cn('text-[10px] h-5 px-1.5 gap-1', status.color)}
+                        >
+                            <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />
+                            {status.label}
+                        </Badge>
+                    </div>
 
-            <Badge
-              className={cn(
-                statusInfo.color === 'green' && "bg-green-100 text-green-800",
-                statusInfo.color === 'yellow' && "bg-yellow-100 text-yellow-800",
-                statusInfo.color === 'red' && "bg-red-100 text-red-800",
-                statusInfo.color === 'gray' && "bg-gray-100 text-gray-800"
-              )}
-            >
-              {statusInfo.label}
-            </Badge>
-          </div>
+                    {/* Right section */}
+                    <div className="flex items-center gap-2">
+                        {hasUnsavedChanges && (
+                            <span className="text-xs text-amber-600 dark:text-amber-400 mr-2">
+                                Unsaved changes
+                            </span>
+                        )}
 
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8"
+                            onClick={handleSave}
+                            disabled={saving || !hasUnsavedChanges}
+                        >
+                            {saving ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                                <Save className="w-3.5 h-3.5 mr-1.5" />
+                            )}
+                            Save
+                        </Button>
+
+                        {workflow.status === 'draft' ? (
+                            <Button
+                                size="sm"
+                                className="h-8"
+                                onClick={handlePublish}
+                            >
+                                <Play className="w-3.5 h-3.5 mr-1.5" />
+                                Publish
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8"
+                                onClick={() =>
+                                    updateWorkflow({
+                                        status: workflow.status === 'active' ? 'paused' : 'active',
+                                    })
+                                }
+                            >
+                                {workflow.status === 'active' ? (
+                                    <Pause className="w-3.5 h-3.5 mr-1.5" />
+                                ) : (
+                                    <Play className="w-3.5 h-3.5 mr-1.5" />
+                                )}
+                                {workflow.status === 'active' ? 'Pause' : 'Resume'}
+                            </Button>
+                        )}
+                    </div>
+                </header>
+
+                {/* Error banner */}
+                {error && (
+                    <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-sm">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="flex-1">{error}</span>
+                        <button onClick={() => setError(null)}>
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
                 )}
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
-            )}
 
-            <Button variant="ghost" size="sm" disabled>
-              <Undo className="w-4 h-4 mr-2" />
-              Undo
-            </Button>
+                {/* Main canvas area */}
+                <div className="flex-1 relative overflow-hidden">
+                    <WorkflowCanvas
+                        workflow={workflow}
+                        executionStates={executionStates}
+                        onWorkflowUpdate={updateWorkflow}
+                        onNodeClick={handleNodeClick}
+                        onAddNode={handleAddNode}
+                    />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTest}
-              disabled={workflow.status !== 'active'}
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Test run
-            </Button>
+                    {/* Guided onboarding for new workflows */}
+                    {isNewEmptyWorkflow && (
+                        <WorkflowGuide
+                            onSkip={handleGuideSkip}
+                            onSelectTemplate={handleGuideTemplate}
+                        />
+                    )}
 
-            {workflow.status === 'draft' ? (
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={handlePublish}
-              >
-                Publish
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSave}
-                disabled={!hasUnsavedChanges || saving}
-              >
-                Update
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+                    {/* Node panel (slide in from left) */}
+                    {showNodePanel && (
+                        <WorkflowNodePanel
+                            onClose={() => setShowNodePanel(false)}
+                            onAddFacebookWorkflow={handleAddFacebookWorkflow}
+                        />
+                    )}
 
-      {/* Error Banner */}
-      {error && (
-        <div className="flex bg-red-50 border-b border-red-200 px-4 py-2">
-          <Alert variant="destructive" className="flex items-center border-0 bg-transparent p-0">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="ml-2">{error}</AlertDescription>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setError(null)}
-            >
-              ×
-            </Button>
-          </Alert>
-        </div>
-      )}
-
-      <div className="">
-        <div className="bg-blue-50 border border-blue-200 p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">!</span>
+                    {/* Node config (slide in from right) */}
+                    {showConfig && selectedStep && (
+                        <WorkflowNodeConfig
+                            step={selectedStep}
+                            workflow={workflow}
+                            onClose={() => {
+                                setShowConfig(false);
+                                setSelectedStep(null);
+                            }}
+                            onUpdate={(updates) => {
+                                const updatedSteps = workflow.steps.map((s) =>
+                                    s.id === selectedStep.id ? { ...s, ...updates } : s,
+                                );
+                                updateWorkflow({ steps: updatedSteps });
+                                setSelectedStep({ ...selectedStep, ...updates });
+                            }}
+                        />
+                    )}
+                </div>
             </div>
-            <div className="text-sm">
-              <div className="font-medium text-blue-800 mb-1">
-                Configure your workflow steps
-              </div>
-              <div className="text-blue-700">
-                Click on any step to configure its settings. Start with the trigger to define how your workflow starts.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Unsaved Changes Warning */}
-      {hasUnsavedChanges && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-yellow-800">
-              You have unsaved changes
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              Save changes
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="h-[calc(100vh-73px)] relative overflow-hidden">
-        <WorkflowCanvas
-          workflow={workflow}
-          selectedPage={selectedPage}
-          selectedForm={selectedForm}
-          currentTrigger={triggerSelected}
-          onConfigureFacebookAction={handleConfigureFacebook}
-          onConfigureWebhookAction={handleConfigureWebhook}
-          onWorkflowUpdate={updateWorkflow}
-        />
-
-        {/* Floating Sidebar */}
-        {showSidebar && (
-          <FloatingSidebar
-            ref={sidebarRef}
-            className={cn(
-              "fixed top-20 right-4 w-96 h-[calc(100vh-120px)] z-40",
-              "transition-all duration-300 ease-in-out",
-            )}
-            resizable={true}
-            workflow={workflow}
-            currentTrigger={triggerSelected}
-            currentStep={currentStep}
-            setCurrentStep={setCurrentStep}
-            selectedPage={selectedPage}
-            setSelectedPage={setSelectedPage}
-            selectedForm={selectedForm}
-            setSelectedForm={setSelectedForm}
-            onClose={() => setShowSidebar(false)}
-            onWorkflowUpdate={updateWorkflow}
-            onPageFormUpdate={handlePageFormUpdate}
-            onConfigureWebhookAction={handleConfigureWebhook}
-          />
-        )}
-      </div>
-    </div>
-  )
+        </ReactFlowProvider>
+    );
 }

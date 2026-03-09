@@ -42,6 +42,10 @@ Route::get('/', function () {
 Route::get('/facebook/webhook', [FacebookWebhookController::class, 'verify'])->name('facebook.webhook.verify');
 Route::post('/facebook/webhook', [FacebookWebhookController::class, 'handle'])->name('facebook.webhook');
 
+// Dynamic Workflow Webhooks - auto-generated per workflow, no manual config needed
+Route::get('/webhooks/workflow/{token}', [\App\Http\Controllers\DynamicWebhookController::class, 'verify'])->name('webhooks.workflow.verify');
+Route::post('/webhooks/workflow/{token}', [\App\Http\Controllers\DynamicWebhookController::class, 'handle'])->name('webhooks.workflow.handle');
+
 // Asterisk Call Webhooks - needs to be publicly accessible or restricted by IP
 Route::post('/asterisk/inbound-call', [\App\Http\Controllers\AsteriskCallController::class, 'handleInboundCall'])->name('asterisk.inbound-call');
 Route::post('/asterisk/outbound-call', [\App\Http\Controllers\AsteriskCallController::class, 'handleOutboundCall'])->name('asterisk.outbound-call');
@@ -394,6 +398,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
         Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
         Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
+        Route::post('workflows/{workflow}/subscribe-webhook', [\App\Http\Controllers\WorkflowController::class, 'subscribeWebhook'])->name('workflows.subscribe-webhook');
+        Route::post('workflows/{workflow}/subscribe-app', [\App\Http\Controllers\WorkflowController::class, 'subscribeApp'])->name('workflows.subscribe-app');
+        Route::post('workflows/{workflow}/sync-pages', [\App\Http\Controllers\WorkflowController::class, 'syncPages'])->name('workflows.sync-pages');
     });
 
     // Note: Task routes are defined above

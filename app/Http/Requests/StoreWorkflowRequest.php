@@ -21,9 +21,9 @@ class StoreWorkflowRequest extends FormRequest
             'status' => 'in:draft,active,paused,inactive',
             'metadata' => 'nullable|array',
 
-            // Steps validation
-            'steps' => 'required|array|min:1',
-            'steps.*.temp_id' => 'required|string', // Frontend temporary ID for mapping
+            // Steps validation (optional - new workflows can be empty)
+            'steps' => 'nullable|array',
+            'steps.*.temp_id' => 'required_with:steps|string',
             'steps.*.step_type' => 'required|in:trigger,action',
             'steps.*.service' => 'required|string',
             'steps.*.operation' => 'required|string',

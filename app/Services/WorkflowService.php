@@ -23,21 +23,23 @@ class WorkflowService
                 'metadata' => $data['metadata'] ?? [],
             ]);
 
-            // Create workflow steps
+            // Create workflow steps (if provided)
             $stepIdMapping = [];
-            foreach ($data['steps'] as $stepData) {
-                $step = $this->createWorkflowStep($workflow, $stepData);
-                $stepIdMapping[$stepData['temp_id']] = $step->id;
-            }
+            if (! empty($data['steps'])) {
+                foreach ($data['steps'] as $stepData) {
+                    $step = $this->createWorkflowStep($workflow, $stepData);
+                    $stepIdMapping[$stepData['temp_id']] = $step->id;
+                }
 
-            // Create step connections
-            if (isset($data['connections'])) {
-                foreach ($data['connections'] as $connectionData) {
-                    $this->createStepConnection(
-                        $stepIdMapping[$connectionData['from_step_temp_id']],
-                        $stepIdMapping[$connectionData['to_step_temp_id']],
-                        $connectionData
-                    );
+                // Create step connections
+                if (isset($data['connections'])) {
+                    foreach ($data['connections'] as $connectionData) {
+                        $this->createStepConnection(
+                            $stepIdMapping[$connectionData['from_step_temp_id']],
+                            $stepIdMapping[$connectionData['to_step_temp_id']],
+                            $connectionData
+                        );
+                    }
                 }
             }
 
@@ -92,6 +94,7 @@ class WorkflowService
                 'description' => $data['description'] ?? $workflow->description,
                 'status' => $data['status'] ?? $workflow->status,
                 'metadata' => $data['metadata'] ?? $workflow->metadata,
+                'canvas_data' => $data['canvas_data'] ?? $workflow->canvas_data,
             ]);
 
             // If steps are provided, replace all steps
