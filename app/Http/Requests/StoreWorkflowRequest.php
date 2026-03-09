@@ -23,12 +23,13 @@ class StoreWorkflowRequest extends FormRequest
 
             // Steps validation (optional - new workflows can be empty)
             'steps' => 'nullable|array',
-            'steps.*.temp_id' => 'required_with:steps|string',
-            'steps.*.step_type' => 'required|in:trigger,action',
-            'steps.*.service' => 'required|string',
-            'steps.*.operation' => 'required|string',
-            'steps.*.order' => 'required|integer|min:0',
-            'steps.*.configuration' => 'required|array',
+            'steps.*.id' => 'nullable|integer',
+            'steps.*.temp_id' => 'nullable|string',
+            'steps.*.step_type' => 'required_with:steps|in:trigger,action',
+            'steps.*.service' => 'required_with:steps|string',
+            'steps.*.operation' => 'required_with:steps|string',
+            'steps.*.order' => 'required_with:steps|integer|min:0',
+            'steps.*.configuration' => 'nullable|array',
             'steps.*.enabled' => 'boolean',
 
             // Field mappings validation

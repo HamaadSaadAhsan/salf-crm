@@ -25,13 +25,14 @@ class UpdateWorkflowRequest extends FormRequest
             'canvas_data.viewport' => 'nullable|array',
 
             // Steps validation (optional for updates)
-            'steps' => 'sometimes|array|min:1',
-            'steps.*.temp_id' => 'required_with:steps|string',
+            'steps' => 'sometimes|array',
+            'steps.*.id' => 'nullable|integer',
+            'steps.*.temp_id' => 'nullable|string',
             'steps.*.step_type' => 'required_with:steps|in:trigger,action',
             'steps.*.service' => 'required_with:steps|string',
             'steps.*.operation' => 'required_with:steps|string',
             'steps.*.order' => 'required_with:steps|integer|min:0',
-            'steps.*.configuration' => 'required_with:steps|array',
+            'steps.*.configuration' => 'nullable|array',
             'steps.*.enabled' => 'boolean',
 
             // Field mappings validation
