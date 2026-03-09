@@ -1,6 +1,6 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Plus } from 'lucide-react';
+import { Plus, MoreVertical, Settings, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface WorkflowNodeData {
@@ -18,6 +18,7 @@ export interface WorkflowNodeData {
     onConfigure?: () => void;
     onDelete?: () => void;
     onAddAction?: () => void;
+    onRename?: (name: string) => void;
 }
 
 export default function WorkflowNode({ data, selected }: NodeProps) {
@@ -34,7 +35,46 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
         enabled = true,
         showAddAction = false,
         onAddAction,
+        onConfigure,
+        onDelete,
+        onRename,
     } = nodeData;
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editValue, setEditValue] = useState(label);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Close menu on outside click
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClick = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [menuOpen]);
+
+    // Focus input when entering edit mode
+    useEffect(() => {
+        if (editing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [editing]);
+
+    const commitRename = () => {
+        const trimmed = editValue.trim();
+        if (trimmed && trimmed !== label) {
+            onRename?.(trimmed);
+        } else {
+            setEditValue(label);
+        }
+        setEditing(false);
+    };
 
     const statusRingColors: Record<string, string> = {
         idle: '',
@@ -81,12 +121,93 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">
-                        {label}
-                    </div>
-                    {sublabel && (
+                    {editing ? (
+                        <input
+                            ref={inputRef}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={commitRename}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') commitRename();
+                                if (e.key === 'Escape') {
+                                    setEditValue(label);
+                                    setEditing(false);
+                                }
+                            }}
+                            className="w-full text-sm font-medium text-foreground bg-transparent border-b border-primary outline-none nopan nodrag"
+                        />
+                    ) : (
+                        <div className="text-sm font-medium text-foreground truncate">
+                            {label}
+                        </div>
+                    )}
+                    {sublabel && !editing && (
                         <div className="text-xs text-muted-foreground truncate mt-0.5">
                             {sublabel}
+                        </div>
+                    )}
+                </div>
+
+                {/* Three-dot menu button — visible on hover */}
+                <div className="flex-shrink-0 relative" ref={menuRef}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpen((prev) => !prev);
+                        }}
+                        className={cn(
+                            'p-1 rounded-md transition-colors nopan nodrag',
+                            'opacity-0 group-hover:opacity-100',
+                            menuOpen && 'opacity-100',
+                            'hover:bg-accent',
+                        )}
+                    >
+                        <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+
+                    {/* Popover menu */}
+                    {menuOpen && (
+                        <div
+                            className={cn(
+                                'absolute right-0 top-full mt-1 z-50',
+                                'w-36 rounded-lg border border-border bg-card shadow-lg',
+                                'py-1 animate-in fade-in-0 zoom-in-95',
+                            )}
+                        >
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpen(false);
+                                    onConfigure?.();
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                            >
+                                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                                Configure
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpen(false);
+                                    setEditing(true);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                            >
+                                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                Rename
+                            </button>
+                            <div className="my-1 border-t border-border" />
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpen(false);
+                                    onDelete?.();
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
+                            </button>
                         </div>
                     )}
                 </div>

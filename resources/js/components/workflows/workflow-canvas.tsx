@@ -117,6 +117,7 @@ export default function WorkflowCanvas({
                     onConfigure: () => onNodeClick?.(step.id, step),
                     onDelete: () => handleDeleteStep(step.id),
                     onAddAction: () => onAddNode?.(),
+                    onRename: (name: string) => handleRenameStep(step.id, name),
                 },
             });
         });
@@ -254,6 +255,18 @@ export default function WorkflowCanvas({
             const updatedSteps = workflow.steps
                 .filter((s) => s.id !== stepId)
                 .map((s, i) => ({ ...s, order: i }));
+            onWorkflowUpdate({ steps: updatedSteps });
+        },
+        [workflow.steps, onWorkflowUpdate],
+    );
+
+    const handleRenameStep = useCallback(
+        (stepId: number, name: string) => {
+            const updatedSteps = workflow.steps.map((s) =>
+                s.id === stepId
+                    ? { ...s, configuration: { ...s.configuration, custom_label: name } }
+                    : s,
+            );
             onWorkflowUpdate({ steps: updatedSteps });
         },
         [workflow.steps, onWorkflowUpdate],
@@ -409,7 +422,7 @@ function getNodeType(step: WorkflowStep): string {
 }
 
 function getNodeLabels(step: WorkflowStep): { label: string; sublabel: string } {
-    const labels: Record<string, { label: string; sublabel: string }> = {
+    const defaults: Record<string, { label: string; sublabel: string }> = {
         facebook_oauth: { label: 'Facebook OAuth', sublabel: 'Authenticate & authorize' },
         facebook_page_sync: { label: 'Page Sync', sublabel: 'Sync Facebook pages' },
         facebook_webhook_sub: { label: 'Webhook Subscription', sublabel: 'Subscribe to webhooks' },
@@ -427,7 +440,14 @@ function getNodeLabels(step: WorkflowStep): { label: string; sublabel: string } 
                 : 'Map incoming fields to lead fields',
         },
     };
-    return labels[step.service] || { label: step.service, sublabel: step.operation };
+    const result = defaults[step.service] || { label: step.service, sublabel: step.operation };
+
+    // Use custom label if set via rename
+    if (step.configuration?.custom_label) {
+        result.label = step.configuration.custom_label;
+    }
+
+    return result;
 }
 
 function isStepConfigured(step: WorkflowStep): boolean {
