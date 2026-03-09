@@ -32,6 +32,15 @@ interface FacebookPage {
     category?: string;
 }
 
+interface FacebookTokenStatus {
+    connected: boolean;
+    has_token: boolean;
+    is_expired: boolean;
+    has_pages: boolean;
+    connected_at: string | null;
+    expires_at: string | null;
+}
+
 interface WorkflowNodeConfigProps {
     step: WorkflowStep;
     workflow: Workflow;
@@ -45,7 +54,7 @@ const serviceConfig: Record<string, { icon: any; color: string; label: string; d
         icon: KeyRound,
         color: 'bg-[#1877F2]',
         label: 'Facebook OAuth',
-        description: 'Opens a popup to authenticate with Facebook. Grants permissions for lead retrieval, page management, and ad insights.',
+        description: 'Connects to Facebook at the account level. You only need to authorize once — the token is automatically extended before expiry.',
         runLabel: 'Connect Facebook',
     },
     facebook_page_sync: {
@@ -160,6 +169,8 @@ export default function WorkflowNodeConfig({
     const [copied, setCopied] = useState(false);
     const [pages, setPages] = useState<FacebookPage[]>([]);
     const [loadingPages, setLoadingPages] = useState(false);
+    const [tokenStatus, setTokenStatus] = useState<FacebookTokenStatus | null>(null);
+    const [loadingToken, setLoadingToken] = useState(false);
     const [mappings, setMappings] = useState<FieldMapping[]>(
         (step.field_mappings || []).map((m: any) => ({
             source_field: m.source_field || '',
@@ -183,12 +194,44 @@ export default function WorkflowNodeConfig({
     const selectedPageId = step.configuration?.page_id || workflow.metadata?.selected_page_id;
     const selectedPageName = step.configuration?.page_name || workflow.metadata?.selected_page_name;
 
+    // Check Facebook token status when opening OAuth step
+    useEffect(() => {
+        if (step.service === 'facebook_oauth') {
+            checkTokenStatus();
+        }
+    }, [step.service]);
+
     // Load pages when opening a page-based step
     useEffect(() => {
         if (pageBasedServices.includes(step.service)) {
             loadPages();
         }
     }, [step.service]);
+
+    const checkTokenStatus = async () => {
+        setLoadingToken(true);
+        try {
+            const res = await api.get('/workflows/facebook/token-status');
+            setTokenStatus(res);
+
+            // Auto-mark OAuth step as completed if user already has a valid token
+            if (res.connected && !step.configuration?.authorized) {
+                onUpdate({
+                    configuration: {
+                        ...step.configuration,
+                        authorized: true,
+                        auto_detected: true,
+                        connected_at: res.connected_at,
+                    },
+                });
+                toast.success('Facebook already connected — token detected');
+            }
+        } catch {
+            // Can't check token status — user will need to OAuth manually
+        } finally {
+            setLoadingToken(false);
+        }
+    };
 
     const loadPages = async () => {
         setLoadingPages(true);
@@ -495,27 +538,65 @@ export default function WorkflowNodeConfig({
                         </div>
                     )}
 
-                {/* OAuth permissions */}
+                {/* Facebook account connection status */}
                 {step.service === 'facebook_oauth' && (
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Requested Permissions
-                        </label>
-                        <div className="flex flex-wrap gap-1.5">
-                            {[
-                                'leads_retrieval',
-                                'pages_show_list',
-                                'pages_read_engagement',
-                                'pages_manage_ads',
-                                'pages_manage_metadata',
-                            ].map((scope) => (
-                                <span
-                                    key={scope}
-                                    className="text-[10px] px-2 py-1 bg-muted rounded-full text-muted-foreground"
-                                >
-                                    {scope}
-                                </span>
-                            ))}
+                    <div className="space-y-3">
+                        {loadingToken ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Checking connection status...
+                            </div>
+                        ) : tokenStatus?.connected ? (
+                            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20 p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                                        Facebook Connected
+                                    </span>
+                                </div>
+                                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70">
+                                    Your account is already connected. Token is managed at the account level and auto-extended before expiry.
+                                </p>
+                                {tokenStatus.expires_at && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Token expires: {new Date(tokenStatus.expires_at).toLocaleDateString()}
+                                    </p>
+                                )}
+                            </div>
+                        ) : tokenStatus?.is_expired ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-800/30 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                                        Token Expired
+                                    </span>
+                                </div>
+                                <p className="text-xs text-amber-600/80 dark:text-amber-400/70">
+                                    Your Facebook token has expired. Click Connect below to re-authenticate.
+                                </p>
+                            </div>
+                        ) : null}
+
+                        <div>
+                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Requested Permissions
+                            </label>
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {[
+                                    'leads_retrieval',
+                                    'pages_show_list',
+                                    'pages_read_engagement',
+                                    'pages_manage_ads',
+                                    'pages_manage_metadata',
+                                ].map((scope) => (
+                                    <span
+                                        key={scope}
+                                        className="text-[10px] px-2 py-1 bg-muted rounded-full text-muted-foreground"
+                                    >
+                                        {scope}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -656,7 +737,9 @@ export default function WorkflowNodeConfig({
                             ? 'Completed'
                             : runResult === 'error'
                                 ? 'Retry'
-                                : config.runLabel}
+                                : (step.service === 'facebook_oauth' && tokenStatus?.connected)
+                                    ? 'Reconnect Facebook'
+                                    : config.runLabel}
                 </Button>
             </div>
         </div>

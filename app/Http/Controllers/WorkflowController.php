@@ -403,6 +403,27 @@ class WorkflowController extends Controller
     }
 
     /**
+     * Get the authenticated user's Facebook token status (account-level, not per-workflow)
+     */
+    public function facebookTokenStatus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $hasToken = $user->hasFacebookToken();
+        $isExpired = $hasToken && $user->isFacebookTokenExpired();
+        $hasPages = $hasToken && \App\Models\MetaPage::where('user_id', $user->id)->exists();
+
+        return response()->json([
+            'connected' => $hasToken && ! $isExpired,
+            'has_token' => $hasToken,
+            'is_expired' => $isExpired,
+            'has_pages' => $hasPages,
+            'connected_at' => $user->facebook_connected_at?->toISOString(),
+            'expires_at' => $user->facebook_token_expires_at?->toISOString(),
+        ]);
+    }
+
+    /**
      * Get synced Facebook pages for the authenticated user
      */
     public function getPages(Request $request, Workflow $workflow): JsonResponse

@@ -43,3 +43,10 @@ Schedule::command('meetings:check-reminders')
     ->name('check-meeting-reminders')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Extend Facebook tokens before expiry (runs daily, extends tokens expiring within 48h)
+Schedule::command('facebook:extend-tokens')
+    ->dailyAt('03:00')
+    ->name('extend-facebook-tokens')
+    ->withoutOverlapping()
+    ->onOneServer();
