@@ -407,35 +407,39 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'Workflow has no webhook token'], 400);
             }
 
-            $integration = \App\Models\Integration::where('provider', 'facebook')
-                ->where('active', true)
-                ->first();
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
 
-            if (! $integration) {
-                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            if (! $accessToken) {
+                return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $config = $integration->config;
-            $pageAccessToken = decrypt($config['access_token']);
-            $pageId = $config['page_id'];
+            // Get the first available page with an access token
+            $page = \App\Models\MetaPage::where('user_id', $user->id)
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '')
+                ->first();
+
+            if (! $page) {
+                return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
+            }
 
             $facebookService = app(\App\Services\FacebookService::class);
 
             $result = $facebookService->subscribeToWebhook(
-                $pageAccessToken,
-                $pageId,
+                $page->access_token,
+                $page->page_id,
                 ['leadgen', 'feed'],
                 $workflow->webhook_url,
                 $workflow->webhook_token,
             );
 
             if ($result['success']) {
-                // Store verify token in workflow metadata for hub.challenge verification
                 $workflow->update([
                     'metadata' => array_merge($workflow->metadata ?? [], [
                         'webhook_verify_token' => $workflow->webhook_token,
                         'webhook_subscribed_at' => now()->toISOString(),
-                        'webhook_page_id' => $pageId,
+                        'webhook_page_id' => $page->page_id,
                     ]),
                 ]);
             }
@@ -462,24 +466,28 @@ class WorkflowController extends Controller
         $this->authorize('update', $workflow);
 
         try {
-            $integration = \App\Models\Integration::where('provider', 'facebook')
-                ->where('active', true)
-                ->first();
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
 
-            if (! $integration) {
-                return response()->json(['success' => false, 'message' => 'No active Facebook integration found. Complete OAuth first.'], 400);
+            if (! $accessToken) {
+                return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $config = $integration->config;
-            $pageAccessToken = decrypt($config['access_token']);
-            $pageId = $config['page_id'];
+            $page = \App\Models\MetaPage::where('user_id', $user->id)
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '')
+                ->first();
+
+            if (! $page) {
+                return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
+            }
 
             $apiVersion = config('services.facebook.api_version', 'v23.0');
 
             $response = Http::post(
-                "https://graph.facebook.com/{$apiVersion}/{$pageId}/subscribed_apps",
+                "https://graph.facebook.com/{$apiVersion}/{$page->page_id}/subscribed_apps",
                 [
-                    'access_token' => $pageAccessToken,
+                    'access_token' => $page->access_token,
                     'subscribed_fields' => 'leadgen,feed',
                 ]
             );
@@ -495,7 +503,7 @@ class WorkflowController extends Controller
             $workflow->update([
                 'metadata' => array_merge($workflow->metadata ?? [], [
                     'app_subscribed_at' => now()->toISOString(),
-                    'app_subscribed_page_id' => $pageId,
+                    'app_subscribed_page_id' => $page->page_id,
                 ]),
             ]);
 
