@@ -118,46 +118,53 @@ export default function WorkflowNodeConfig({
         }
     };
 
+    const clearError = (extra: Record<string, unknown> = {}) => {
+        const { error, ...rest } = step.configuration || {};
+        onUpdate({ configuration: { ...rest, ...extra } });
+    };
+
     const handleRunStep = async () => {
         setRunning(true);
         setRunResult(null);
+
+        // For OAuth, open popup immediately to avoid browser popup blocker
+        let oauthPopup: Window | null = null;
+        if (step.service === 'facebook_oauth') {
+            oauthPopup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
+        }
 
         try {
             switch (step.service) {
                 case 'facebook_oauth': {
                     const res = await api.post('/integrations/facebook/oauth/authorize');
                     if (res.data.success && res.data.auth_url) {
-                        window.open(res.data.auth_url, 'facebook_oauth', 'width=600,height=700');
-                        onUpdate({
-                            configuration: { ...step.configuration, authorized: true },
-                        });
+                        if (oauthPopup) {
+                            oauthPopup.location.href = res.data.auth_url;
+                        } else {
+                            window.open(res.data.auth_url, 'facebook_oauth', 'width=600,height=700');
+                        }
+                        clearError({ authorized: true });
                     }
                     break;
                 }
                 case 'facebook_page_sync': {
                     const res = await api.post(`/workflows/${workflow.id}/sync-pages`);
                     if (res.data.success !== false) {
-                        onUpdate({
-                            configuration: { ...step.configuration, synced: true, synced_at: new Date().toISOString() },
-                        });
+                        clearError({ synced: true, synced_at: new Date().toISOString() });
                     }
                     break;
                 }
                 case 'facebook_webhook_sub': {
                     const res = await api.post(`/workflows/${workflow.id}/subscribe-webhook`);
                     if (res.data.success !== false) {
-                        onUpdate({
-                            configuration: { ...step.configuration, subscribed: true, subscribed_at: new Date().toISOString() },
-                        });
+                        clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
                     }
                     break;
                 }
                 case 'facebook_app_sub': {
                     const res = await api.post(`/workflows/${workflow.id}/subscribe-app`);
                     if (res.data.success !== false) {
-                        onUpdate({
-                            configuration: { ...step.configuration, subscribed: true, subscribed_at: new Date().toISOString() },
-                        });
+                        clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
                     }
                     break;
                 }
@@ -165,6 +172,7 @@ export default function WorkflowNodeConfig({
             setRunResult('success');
             toast.success(`${config.label} completed`);
         } catch (err: any) {
+            if (oauthPopup) oauthPopup.close();
             setRunResult('error');
             onUpdate({
                 configuration: { ...step.configuration, error: true },
