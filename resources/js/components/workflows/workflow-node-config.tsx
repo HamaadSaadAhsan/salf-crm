@@ -22,6 +22,7 @@ import {
     Plus,
     Trash2,
     ArrowRight,
+    FlaskConical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -32,13 +33,30 @@ interface FacebookPage {
     category?: string;
 }
 
-interface FacebookTokenStatus {
+interface LeadForm {
+    id: string;
+    name: string;
+    status: string;
+    questions: { key: string; label: string; type: string }[];
+}
+
+interface FacebookConnectionStatus {
     connected: boolean;
     has_token: boolean;
     is_expired: boolean;
     has_pages: boolean;
+    pages_synced: boolean;
+    webhook_subscribed: boolean;
+    app_subscribed: boolean;
+    fully_setup: boolean;
     connected_at: string | null;
     expires_at: string | null;
+    pages: { id: string; name: string; webhook_subscribed: boolean; app_subscribed: boolean; fully_subscribed: boolean }[];
+}
+
+interface TestLeadField {
+    name: string;
+    values: string[];
 }
 
 interface WorkflowNodeConfigProps {
@@ -82,17 +100,20 @@ const serviceConfig: Record<string, { icon: any; color: string; label: string; d
         icon: Zap,
         color: 'bg-[#1877F2]',
         label: 'New Lead Trigger',
-        description: 'Listens for new leads from Facebook Lead Ads forms. Incoming leads are automatically processed by downstream actions.',
-        runLabel: 'Test Trigger',
+        description: 'Listens for new leads from Facebook Lead Ads forms. Select a page and form, then test to see actual lead data.',
+        runLabel: 'Configure Trigger',
     },
     field_mapping: {
         icon: FileText,
         color: 'bg-violet-600',
         label: 'Field Mapping',
-        description: 'Map incoming lead data fields to your CRM lead fields. Each mapping defines which source field maps to which target field.',
+        description: 'Map incoming lead data fields to your CRM lead fields. Test the trigger first to get real field names.',
         runLabel: 'Save Mappings',
     },
 };
+
+// Setup services that are one-time, account-level operations
+const setupServices = new Set(['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub']);
 
 type StepStatus = 'pending' | 'completed' | 'error';
 
@@ -119,8 +140,22 @@ const statusDisplay: Record<StepStatus, { icon: any; label: string; color: strin
 // Steps that need page selection
 const pageBasedServices = ['facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub', 'facebook_lead_ads'];
 
-// Common Facebook lead source fields
-const facebookSourceFields = [
+// CRM Lead target fields (static)
+const leadTargetFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'email', label: 'Email' },
+    { value: 'phone', label: 'Phone' },
+    { value: 'occupation', label: 'Occupation' },
+    { value: 'address', label: 'Address' },
+    { value: 'country', label: 'Country' },
+    { value: 'city', label: 'City' },
+    { value: 'detail', label: 'Detail / Notes' },
+    { value: 'budget', label: 'Budget' },
+    { value: 'tags', label: 'Tags' },
+];
+
+// Fallback source fields when no test data is available
+const fallbackSourceFields = [
     { value: 'full_name', label: 'Full Name' },
     { value: 'first_name', label: 'First Name' },
     { value: 'last_name', label: 'Last Name' },
@@ -133,22 +168,6 @@ const facebookSourceFields = [
     { value: 'street_address', label: 'Street Address' },
     { value: 'job_title', label: 'Job Title' },
     { value: 'company_name', label: 'Company Name' },
-    { value: 'work_email', label: 'Work Email' },
-    { value: 'work_phone_number', label: 'Work Phone' },
-];
-
-// CRM Lead target fields
-const leadTargetFields = [
-    { value: 'name', label: 'Name' },
-    { value: 'email', label: 'Email' },
-    { value: 'phone', label: 'Phone' },
-    { value: 'occupation', label: 'Occupation' },
-    { value: 'address', label: 'Address' },
-    { value: 'country', label: 'Country' },
-    { value: 'city', label: 'City' },
-    { value: 'detail', label: 'Detail / Notes' },
-    { value: 'budget', label: 'Budget' },
-    { value: 'tags', label: 'Tags' },
 ];
 
 interface FieldMapping {
@@ -169,8 +188,17 @@ export default function WorkflowNodeConfig({
     const [copied, setCopied] = useState(false);
     const [pages, setPages] = useState<FacebookPage[]>([]);
     const [loadingPages, setLoadingPages] = useState(false);
-    const [tokenStatus, setTokenStatus] = useState<FacebookTokenStatus | null>(null);
-    const [loadingToken, setLoadingToken] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState<FacebookConnectionStatus | null>(null);
+    const [loadingStatus, setLoadingStatus] = useState(false);
+    const [forms, setForms] = useState<LeadForm[]>([]);
+    const [loadingForms, setLoadingForms] = useState(false);
+    const [testLeadFields, setTestLeadFields] = useState<TestLeadField[]>(
+        step.configuration?.test_lead_fields || [],
+    );
+    const [testLeadData, setTestLeadData] = useState<Record<string, unknown> | null>(
+        step.configuration?.test_lead_data || null,
+    );
+    const [testing, setTesting] = useState(false);
     const [mappings, setMappings] = useState<FieldMapping[]>(
         (step.field_mappings || []).map((m: any) => ({
             source_field: m.source_field || '',
@@ -193,11 +221,14 @@ export default function WorkflowNodeConfig({
 
     const selectedPageId = step.configuration?.page_id || workflow.metadata?.selected_page_id;
     const selectedPageName = step.configuration?.page_name || workflow.metadata?.selected_page_name;
+    const selectedFormId = step.configuration?.form_id;
 
-    // Check Facebook token status when opening OAuth step
+    const isSetupStep = setupServices.has(step.service);
+
+    // Check full Facebook connection status for setup steps
     useEffect(() => {
-        if (step.service === 'facebook_oauth') {
-            checkTokenStatus();
+        if (isSetupStep) {
+            checkConnectionStatus();
         }
     }, [step.service]);
 
@@ -208,28 +239,72 @@ export default function WorkflowNodeConfig({
         }
     }, [step.service]);
 
-    const checkTokenStatus = async () => {
-        setLoadingToken(true);
+    // Load forms when page is selected on lead trigger
+    useEffect(() => {
+        if (step.service === 'facebook_lead_ads' && selectedPageId) {
+            loadForms(selectedPageId);
+        }
+    }, [step.service, selectedPageId]);
+
+    // Load dynamic source fields from workflow metadata (set by test trigger)
+    useEffect(() => {
+        if (step.service === 'field_mapping') {
+            const saved = workflow.metadata?.test_lead_fields;
+            if (saved && saved.length > 0) {
+                setTestLeadFields(saved);
+            }
+        }
+    }, [step.service, workflow.metadata?.test_lead_fields]);
+
+    const checkConnectionStatus = async () => {
+        setLoadingStatus(true);
         try {
             const res = await api.get('/workflows/facebook/token-status');
-            setTokenStatus(res);
-
-            // Auto-mark OAuth step as completed if user already has a valid token
-            if (res.connected && !step.configuration?.authorized) {
-                onUpdate({
-                    configuration: {
-                        ...step.configuration,
-                        authorized: true,
-                        auto_detected: true,
-                        connected_at: res.connected_at,
-                    },
-                });
-                toast.success('Facebook already connected — token detected');
-            }
+            setConnectionStatus(res);
+            autoMarkSetupStep(res);
         } catch {
-            // Can't check token status — user will need to OAuth manually
+            // Can't check — user will need to run manually
         } finally {
-            setLoadingToken(false);
+            setLoadingStatus(false);
+        }
+    };
+
+    const autoMarkSetupStep = (status: FacebookConnectionStatus) => {
+        const c = step.configuration || {};
+
+        switch (step.service) {
+            case 'facebook_oauth':
+                if (status.connected && !c.authorized) {
+                    onUpdate({
+                        configuration: { ...c, authorized: true, auto_detected: true },
+                    });
+                    toast.success('Facebook already connected');
+                }
+                break;
+            case 'facebook_page_sync':
+                if (status.pages_synced && !c.synced) {
+                    onUpdate({
+                        configuration: { ...c, synced: true, auto_detected: true, synced_at: new Date().toISOString() },
+                    });
+                    toast.success('Pages already synced');
+                }
+                break;
+            case 'facebook_webhook_sub':
+                if (status.webhook_subscribed && !c.subscribed) {
+                    onUpdate({
+                        configuration: { ...c, subscribed: true, auto_detected: true },
+                    });
+                    toast.success('Webhook already subscribed');
+                }
+                break;
+            case 'facebook_app_sub':
+                if (status.app_subscribed && !c.subscribed) {
+                    onUpdate({
+                        configuration: { ...c, subscribed: true, auto_detected: true },
+                    });
+                    toast.success('App already subscribed');
+                }
+                break;
         }
     };
 
@@ -241,9 +316,23 @@ export default function WorkflowNodeConfig({
                 setPages(res.pages);
             }
         } catch {
-            // Pages not synced yet — that's OK
+            // Pages not synced yet
         } finally {
             setLoadingPages(false);
+        }
+    };
+
+    const loadForms = async (pageId: string) => {
+        setLoadingForms(true);
+        try {
+            const res = await api.get(`/workflows/${workflow.id}/lead-forms?page_id=${pageId}`);
+            if (res.forms) {
+                setForms(res.forms);
+            }
+        } catch {
+            // Can't fetch forms
+        } finally {
+            setLoadingForms(false);
         }
     };
 
@@ -256,10 +345,11 @@ export default function WorkflowNodeConfig({
                 ...step.configuration,
                 page_id: page.id,
                 page_name: page.name,
+                form_id: undefined,
+                form_name: undefined,
             },
         });
 
-        // Also store in workflow metadata so other steps can use it
         onWorkflowUpdate?.({
             metadata: {
                 ...workflow.metadata,
@@ -269,6 +359,67 @@ export default function WorkflowNodeConfig({
         });
     };
 
+    const handleFormSelect = (formId: string) => {
+        const form = forms.find((f) => f.id === formId);
+        if (!form) return;
+
+        onUpdate({
+            configuration: {
+                ...step.configuration,
+                form_id: form.id,
+                form_name: form.name,
+            },
+        });
+    };
+
+    const handleTestTrigger = async () => {
+        const pageId = step.configuration?.page_id || selectedPageId;
+        const formId = step.configuration?.form_id;
+
+        if (!pageId || !formId) {
+            toast.error('Select a page and form first');
+            return;
+        }
+
+        setTesting(true);
+        try {
+            const res = await api.post(`/workflows/${workflow.id}/test-trigger`, {
+                page_id: pageId,
+                form_id: formId,
+            });
+
+            if (res.success && res.fields) {
+                setTestLeadFields(res.fields);
+                setTestLeadData(res.lead_data);
+
+                // Store test fields in step config AND workflow metadata for field mapping step
+                onUpdate({
+                    configuration: {
+                        ...step.configuration,
+                        configured: true,
+                        test_lead_id: res.lead_id,
+                        test_lead_fields: res.fields,
+                        test_lead_data: res.lead_data,
+                    },
+                });
+
+                onWorkflowUpdate?.({
+                    metadata: {
+                        ...workflow.metadata,
+                        test_lead_fields: res.fields,
+                    },
+                });
+
+                toast.success('Test lead created — field data received');
+            }
+        } catch (err: any) {
+            const message = err?.response?.data?.message || err?.message || 'Failed to test trigger';
+            toast.error(message);
+        } finally {
+            setTesting(false);
+        }
+    };
+
     const addMapping = () => {
         setMappings((prev) => [...prev, { source_field: '', target_field: '', field_type: 'text' }]);
     };
@@ -276,7 +427,6 @@ export default function WorkflowNodeConfig({
     const updateMapping = (index: number, updates: Partial<FieldMapping>) => {
         setMappings((prev) => {
             const updated = prev.map((m, i) => (i === index ? { ...m, ...updates } : m));
-            // Persist to step
             onUpdate({ field_mappings: updated });
             return updated;
         });
@@ -367,19 +517,17 @@ export default function WorkflowNodeConfig({
                     break;
                 }
                 case 'facebook_lead_ads': {
-                    // Lead trigger doesn't need a "run" — it's event-driven
-                    // Just mark as configured if page is selected
                     const pageId = step.configuration?.page_id || selectedPageId;
-                    if (!pageId) {
-                        toast.error('Please select a page first');
+                    const formId = step.configuration?.form_id;
+                    if (!pageId || !formId) {
+                        toast.error('Select a page and form first');
                         setRunning(false);
                         return;
                     }
-                    clearError({ page_id: pageId, configured: true });
+                    clearError({ page_id: pageId, form_id: formId, configured: true });
                     break;
                 }
                 case 'field_mapping': {
-                    // Validate that at least one complete mapping exists
                     const completeMappings = mappings.filter((m) => m.source_field && m.target_field);
                     if (completeMappings.length === 0) {
                         toast.error('Add at least one complete field mapping');
@@ -405,6 +553,14 @@ export default function WorkflowNodeConfig({
             setRunning(false);
         }
     };
+
+    // Build dynamic source fields from test lead data or form questions
+    const sourceFields = testLeadFields.length > 0
+        ? testLeadFields.map((f) => ({
+            value: f.name,
+            label: f.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        }))
+        : fallbackSourceFields;
 
     const needsPageSelection = pageBasedServices.includes(step.service);
     const canRun = step.service === 'field_mapping' || !needsPageSelection || selectedPageId || step.service === 'facebook_page_sync';
@@ -446,6 +602,47 @@ export default function WorkflowNodeConfig({
                         {config.description}
                     </p>
                 </div>
+
+                {/* Auto-detected setup status */}
+                {isSetupStep && (
+                    <div>
+                        {loadingStatus ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Checking status...
+                            </div>
+                        ) : step.configuration?.auto_detected ? (
+                            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20 p-3 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                                        Already configured
+                                    </span>
+                                </div>
+                                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70">
+                                    This step was completed previously and applies across all workflows.
+                                </p>
+                                {step.service === 'facebook_oauth' && connectionStatus?.expires_at && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Token expires: {new Date(connectionStatus.expires_at).toLocaleDateString()}
+                                    </p>
+                                )}
+                            </div>
+                        ) : connectionStatus?.is_expired && step.service === 'facebook_oauth' ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-800/30 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                                        Token Expired
+                                    </span>
+                                </div>
+                                <p className="text-xs text-amber-600/80 dark:text-amber-400/70">
+                                    Click Connect below to re-authenticate.
+                                </p>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
 
                 {/* Page selector for page-based steps */}
                 {needsPageSelection && (
@@ -496,21 +693,111 @@ export default function WorkflowNodeConfig({
                     </div>
                 )}
 
+                {/* Form selector for lead trigger */}
+                {step.service === 'facebook_lead_ads' && selectedPageId && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Lead Form
+                        </label>
+                        {loadingForms ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Loading forms...
+                            </div>
+                        ) : forms.length > 0 ? (
+                            <div className="relative">
+                                <select
+                                    value={selectedFormId || ''}
+                                    onChange={(e) => handleFormSelect(e.target.value)}
+                                    className={cn(
+                                        'w-full appearance-none rounded-lg border border-border bg-background',
+                                        'px-3 py-2 pr-8 text-sm text-foreground',
+                                        'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                                    )}
+                                >
+                                    <option value="">Select a form...</option>
+                                    {forms.map((form) => (
+                                        <option key={form.id} value={form.id}>
+                                            {form.name} ({form.status})
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                No lead forms found for this page.
+                            </p>
+                        )}
+                        {step.configuration?.form_name && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                Form: {step.configuration.form_name}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Test Trigger button + results */}
+                {step.service === 'facebook_lead_ads' && selectedFormId && (
+                    <div className="space-y-3">
+                        <Button
+                            onClick={handleTestTrigger}
+                            disabled={testing}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                        >
+                            {testing ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                                <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+                            )}
+                            {testing ? 'Sending test lead...' : 'Test Trigger'}
+                        </Button>
+
+                        {/* Test lead response */}
+                        {testLeadFields.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    Test Lead Response
+                                </label>
+                                <div className="rounded-lg border border-border bg-muted/30 p-2 space-y-1 max-h-48 overflow-y-auto">
+                                    {testLeadFields.map((field) => (
+                                        <div
+                                            key={field.name}
+                                            className="flex items-center justify-between text-xs py-1 px-2 rounded bg-background/50"
+                                        >
+                                            <span className="font-medium text-foreground">{field.name}</span>
+                                            <span className="text-muted-foreground truncate ml-2 max-w-[150px]">
+                                                {field.values.join(', ') || '(empty)'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                                    These fields are now available for mapping in the Field Mapping step.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Completed timestamp */}
-                {step.configuration?.synced_at && (
+                {step.configuration?.synced_at && !step.configuration?.auto_detected && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                         Last run: {new Date(step.configuration.synced_at).toLocaleString()}
                     </div>
                 )}
-                {step.configuration?.subscribed_at && (
+                {step.configuration?.subscribed_at && !step.configuration?.auto_detected && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                         Subscribed: {new Date(step.configuration.subscribed_at).toLocaleString()}
                     </div>
                 )}
 
-                {/* Webhook URL (show for webhook-related nodes) */}
+                {/* Webhook URL */}
                 {(step.service === 'facebook_webhook_sub' || step.service === 'facebook_lead_ads') &&
                     workflow.webhook_url && (
                         <div className="space-y-2">
@@ -532,71 +819,30 @@ export default function WorkflowNodeConfig({
                                     )}
                                 </button>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Auto-generated — no manual setup needed.
-                            </p>
                         </div>
                     )}
 
-                {/* Facebook account connection status */}
+                {/* OAuth permissions */}
                 {step.service === 'facebook_oauth' && (
-                    <div className="space-y-3">
-                        {loadingToken ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Checking connection status...
-                            </div>
-                        ) : tokenStatus?.connected ? (
-                            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20 p-3 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                                        Facebook Connected
-                                    </span>
-                                </div>
-                                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70">
-                                    Your account is already connected. Token is managed at the account level and auto-extended before expiry.
-                                </p>
-                                {tokenStatus.expires_at && (
-                                    <p className="text-[11px] text-muted-foreground">
-                                        Token expires: {new Date(tokenStatus.expires_at).toLocaleDateString()}
-                                    </p>
-                                )}
-                            </div>
-                        ) : tokenStatus?.is_expired ? (
-                            <div className="rounded-lg border border-amber-200 dark:border-amber-800/30 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                                        Token Expired
-                                    </span>
-                                </div>
-                                <p className="text-xs text-amber-600/80 dark:text-amber-400/70">
-                                    Your Facebook token has expired. Click Connect below to re-authenticate.
-                                </p>
-                            </div>
-                        ) : null}
-
-                        <div>
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Requested Permissions
-                            </label>
-                            <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                {[
-                                    'leads_retrieval',
-                                    'pages_show_list',
-                                    'pages_read_engagement',
-                                    'pages_manage_ads',
-                                    'pages_manage_metadata',
-                                ].map((scope) => (
-                                    <span
-                                        key={scope}
-                                        className="text-[10px] px-2 py-1 bg-muted rounded-full text-muted-foreground"
-                                    >
-                                        {scope}
-                                    </span>
-                                ))}
-                            </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Requested Permissions
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {[
+                                'leads_retrieval',
+                                'pages_show_list',
+                                'pages_read_engagement',
+                                'pages_manage_ads',
+                                'pages_manage_metadata',
+                            ].map((scope) => (
+                                <span
+                                    key={scope}
+                                    className="text-[10px] px-2 py-1 bg-muted rounded-full text-muted-foreground"
+                                >
+                                    {scope}
+                                </span>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -604,6 +850,14 @@ export default function WorkflowNodeConfig({
                 {/* Field Mapping UI */}
                 {step.service === 'field_mapping' && (
                     <div className="space-y-3">
+                        {/* Dynamic fields indicator */}
+                        {testLeadFields.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Using {testLeadFields.length} fields from test lead response
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                 Field Mappings
@@ -624,7 +878,9 @@ export default function WorkflowNodeConfig({
                             <div className="text-center py-6 border border-dashed border-border rounded-lg">
                                 <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                                 <p className="text-xs text-muted-foreground">
-                                    No mappings yet. Click Add to map source fields to lead fields.
+                                    {testLeadFields.length === 0
+                                        ? 'Test the trigger first to get real field names, or add mappings manually.'
+                                        : 'Click Add to map source fields to lead fields.'}
                                 </p>
                             </div>
                         ) : (
@@ -645,7 +901,7 @@ export default function WorkflowNodeConfig({
                                                 )}
                                             >
                                                 <option value="">Source field...</option>
-                                                {facebookSourceFields.map((f) => (
+                                                {sourceFields.map((f) => (
                                                     <option key={f.value} value={f.value}>
                                                         {f.label}
                                                     </option>
@@ -737,8 +993,8 @@ export default function WorkflowNodeConfig({
                             ? 'Completed'
                             : runResult === 'error'
                                 ? 'Retry'
-                                : (step.service === 'facebook_oauth' && tokenStatus?.connected)
-                                    ? 'Reconnect Facebook'
+                                : (isSetupStep && step.configuration?.auto_detected)
+                                    ? `Re-run ${config.label}`
                                     : config.runLabel}
                 </Button>
             </div>

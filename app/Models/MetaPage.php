@@ -20,6 +20,8 @@ class MetaPage extends Model
         'access_token',
         'name',
         'last_updated',
+        'webhook_subscribed_at',
+        'app_subscribed_at',
     ];
 
     protected $hidden = [
@@ -28,7 +30,14 @@ class MetaPage extends Model
 
     protected $casts = [
         'last_updated' => 'datetime',
+        'webhook_subscribed_at' => 'datetime',
+        'app_subscribed_at' => 'datetime',
     ];
+
+    public function isFullySubscribed(): bool
+    {
+        return $this->webhook_subscribed_at !== null && $this->app_subscribed_at !== null;
+    }
 
     protected static function boot(): void
     {

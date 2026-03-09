@@ -403,6 +403,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('workflows/{workflow}/subscribe-webhook', [\App\Http\Controllers\WorkflowController::class, 'subscribeWebhook'])->name('workflows.subscribe-webhook');
         Route::post('workflows/{workflow}/subscribe-app', [\App\Http\Controllers\WorkflowController::class, 'subscribeApp'])->name('workflows.subscribe-app');
         Route::post('workflows/{workflow}/sync-pages', [\App\Http\Controllers\WorkflowController::class, 'syncPages'])->name('workflows.sync-pages');
+        Route::get('workflows/{workflow}/lead-forms', [\App\Http\Controllers\WorkflowController::class, 'getLeadForms'])->name('workflows.lead-forms');
+        Route::post('workflows/{workflow}/test-trigger', [\App\Http\Controllers\WorkflowController::class, 'testTrigger'])->name('workflows.test-trigger');
     });
 
     // Note: Task routes are defined above

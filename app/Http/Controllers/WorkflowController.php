@@ -403,7 +403,7 @@ class WorkflowController extends Controller
     }
 
     /**
-     * Get the authenticated user's Facebook token status (account-level, not per-workflow)
+     * Get the authenticated user's full Facebook connection status (account-level)
      */
     public function facebookTokenStatus(Request $request): JsonResponse
     {
@@ -411,15 +411,34 @@ class WorkflowController extends Controller
 
         $hasToken = $user->hasFacebookToken();
         $isExpired = $hasToken && $user->isFacebookTokenExpired();
-        $hasPages = $hasToken && \App\Models\MetaPage::where('user_id', $user->id)->exists();
+
+        $pages = \App\Models\MetaPage::where('user_id', $user->id)->get();
+        $hasPages = $pages->isNotEmpty();
+
+        // Build per-page subscription status
+        $pageStatuses = $pages->map(fn ($p) => [
+            'id' => $p->page_id,
+            'name' => $p->name,
+            'webhook_subscribed' => $p->webhook_subscribed_at !== null,
+            'app_subscribed' => $p->app_subscribed_at !== null,
+            'fully_subscribed' => $p->isFullySubscribed(),
+        ]);
+
+        // Check if at least one page is fully set up
+        $anyPageFullySetup = $pages->contains(fn ($p) => $p->isFullySubscribed());
 
         return response()->json([
             'connected' => $hasToken && ! $isExpired,
             'has_token' => $hasToken,
             'is_expired' => $isExpired,
             'has_pages' => $hasPages,
+            'pages_synced' => $hasPages,
+            'webhook_subscribed' => $pages->contains(fn ($p) => $p->webhook_subscribed_at !== null),
+            'app_subscribed' => $pages->contains(fn ($p) => $p->app_subscribed_at !== null),
+            'fully_setup' => $hasToken && ! $isExpired && $anyPageFullySetup,
             'connected_at' => $user->facebook_connected_at?->toISOString(),
             'expires_at' => $user->facebook_token_expires_at?->toISOString(),
+            'pages' => $pageStatuses,
         ]);
     }
 
@@ -489,6 +508,9 @@ class WorkflowController extends Controller
                         'webhook_page_id' => $page->page_id,
                     ]),
                 ]);
+
+                // Persist subscription status at the page level (account-wide)
+                $page->update(['webhook_subscribed_at' => now()]);
             }
 
             return response()->json($result);
@@ -558,6 +580,9 @@ class WorkflowController extends Controller
                     'app_subscribed_page_id' => $page->page_id,
                 ]),
             ]);
+
+            // Persist subscription status at the page level (account-wide)
+            $page->update(['app_subscribed_at' => now()]);
 
             return response()->json([
                 'success' => true,
@@ -638,6 +663,154 @@ class WorkflowController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to sync pages: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get lead gen forms for a specific page
+     */
+    public function getLeadForms(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('view', $workflow);
+
+        $request->validate(['page_id' => 'required|string']);
+
+        try {
+            $user = $request->user();
+            $page = \App\Models\MetaPage::where('user_id', $user->id)
+                ->where('page_id', $request->input('page_id'))
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '')
+                ->firstOrFail();
+
+            $apiVersion = config('services.facebook.api_version', 'v23.0');
+
+            $response = Http::get(
+                "https://graph.facebook.com/{$apiVersion}/{$page->page_id}/leadgen_forms",
+                [
+                    'access_token' => $page->access_token,
+                    'fields' => 'id,name,status,questions',
+                ]
+            );
+
+            if (! $response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to fetch lead forms from Facebook',
+                ], 400);
+            }
+
+            $forms = collect($response->json('data', []))->map(fn ($f) => [
+                'id' => $f['id'],
+                'name' => $f['name'] ?? 'Untitled Form',
+                'status' => $f['status'] ?? 'ACTIVE',
+                'questions' => collect($f['questions'] ?? [])->map(fn ($q) => [
+                    'key' => $q['key'] ?? $q['id'] ?? '',
+                    'label' => $q['label'] ?? $q['key'] ?? '',
+                    'type' => $q['type'] ?? 'CUSTOM',
+                ])->toArray(),
+            ]);
+
+            return response()->json(['success' => true, 'forms' => $forms]);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch lead forms', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch lead forms: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a test lead on Facebook and fetch the response data
+     */
+    public function testTrigger(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('update', $workflow);
+
+        $request->validate([
+            'page_id' => 'required|string',
+            'form_id' => 'required|string',
+        ]);
+
+        try {
+            $user = $request->user();
+            $page = \App\Models\MetaPage::where('user_id', $user->id)
+                ->where('page_id', $request->input('page_id'))
+                ->whereNotNull('access_token')
+                ->where('access_token', '!=', '')
+                ->firstOrFail();
+
+            $apiVersion = config('services.facebook.api_version', 'v23.0');
+            $formId = $request->input('form_id');
+
+            // Create a test lead on Facebook
+            $createResponse = Http::post(
+                "https://graph.facebook.com/{$apiVersion}/{$formId}/test_leads",
+                ['access_token' => $page->access_token]
+            );
+
+            if (! $createResponse->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create test lead on Facebook',
+                    'details' => $createResponse->json(),
+                ], 400);
+            }
+
+            $leadId = $createResponse->json('id');
+
+            if (! $leadId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No lead ID returned from Facebook',
+                ], 400);
+            }
+
+            // Fetch the test lead data
+            $leadResponse = Http::get(
+                "https://graph.facebook.com/{$apiVersion}/{$leadId}",
+                [
+                    'access_token' => $page->access_token,
+                    'fields' => 'id,created_time,field_data,ad_id,form_id,campaign_id',
+                ]
+            );
+
+            if (! $leadResponse->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to fetch test lead data',
+                ], 400);
+            }
+
+            $leadData = $leadResponse->json();
+
+            // Extract field names from the response
+            $fields = collect($leadData['field_data'] ?? [])->map(fn ($f) => [
+                'name' => $f['name'],
+                'values' => $f['values'] ?? [],
+            ])->toArray();
+
+            return response()->json([
+                'success' => true,
+                'lead_id' => $leadId,
+                'lead_data' => $leadData,
+                'fields' => $fields,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Test trigger failed', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to test trigger: '.$e->getMessage(),
             ], 500);
         }
     }
