@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -90,6 +90,17 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         workflow.steps.length === 0 &&
         workflow.metadata?.is_new &&
         !guideDismissed;
+
+    // Close config panel if the selected step was deleted
+    useEffect(() => {
+        if (selectedStep && workflow) {
+            const stillExists = workflow.steps.some((s) => s.id === selectedStep.id);
+            if (!stillExists) {
+                setShowConfig(false);
+                setSelectedStep(null);
+            }
+        }
+    }, [workflow?.steps, selectedStep]);
 
     const handleNodeClick = useCallback((stepId: number, step: WorkflowStep) => {
         setSelectedStep(step);
