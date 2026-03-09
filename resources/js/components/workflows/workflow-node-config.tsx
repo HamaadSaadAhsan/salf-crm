@@ -134,11 +134,11 @@ export default function WorkflowNodeConfig({
                     const popup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
                     try {
                         const res = await api.post('/integrations/facebook/oauth/authorize');
-                        if (res.data.success && res.data.auth_url) {
+                        if (res.success && res.auth_url) {
                             if (popup && !popup.closed) {
-                                popup.location.href = res.data.auth_url;
+                                popup.location.href = res.auth_url;
                             } else {
-                                window.open(res.data.auth_url, 'facebook_oauth', 'width=600,height=700');
+                                window.open(res.auth_url, 'facebook_oauth', 'width=600,height=700');
                             }
                             clearError({ authorized: true });
                         } else {
@@ -152,21 +152,21 @@ export default function WorkflowNodeConfig({
                 }
                 case 'facebook_page_sync': {
                     const res = await api.post(`/workflows/${workflow.id}/sync-pages`);
-                    if (res.data.success !== false) {
+                    if (res.success !== false) {
                         clearError({ synced: true, synced_at: new Date().toISOString() });
                     }
                     break;
                 }
                 case 'facebook_webhook_sub': {
                     const res = await api.post(`/workflows/${workflow.id}/subscribe-webhook`);
-                    if (res.data.success !== false) {
+                    if (res.success !== false) {
                         clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
                     }
                     break;
                 }
                 case 'facebook_app_sub': {
                     const res = await api.post(`/workflows/${workflow.id}/subscribe-app`);
-                    if (res.data.success !== false) {
+                    if (res.success !== false) {
                         clearError({ subscribed: true, subscribed_at: new Date().toISOString() });
                     }
                     break;
