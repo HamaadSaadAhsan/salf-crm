@@ -28,17 +28,18 @@ class WorkflowService
             if (! empty($data['steps'])) {
                 foreach ($data['steps'] as $stepData) {
                     $step = $this->createWorkflowStep($workflow, $stepData);
-                    $stepIdMapping[$stepData['temp_id']] = $step->id;
+                    $tempKey = $stepData['temp_id'] ?? $stepData['id'] ?? $step->id;
+                    $stepIdMapping[$tempKey] = $step->id;
                 }
 
                 // Create step connections
                 if (isset($data['connections'])) {
                     foreach ($data['connections'] as $connectionData) {
-                        $this->createStepConnection(
-                            $stepIdMapping[$connectionData['from_step_temp_id']],
-                            $stepIdMapping[$connectionData['to_step_temp_id']],
-                            $connectionData
-                        );
+                        $fromId = $stepIdMapping[$connectionData['from_step_temp_id']] ?? null;
+                        $toId = $stepIdMapping[$connectionData['to_step_temp_id']] ?? null;
+                        if ($fromId && $toId) {
+                            $this->createStepConnection($fromId, $toId, $connectionData);
+                        }
                     }
                 }
             }
@@ -106,17 +107,18 @@ class WorkflowService
                 $stepIdMapping = [];
                 foreach ($data['steps'] as $stepData) {
                     $step = $this->createWorkflowStep($workflow, $stepData);
-                    $stepIdMapping[$stepData['temp_id']] = $step->id;
+                    $tempKey = $stepData['temp_id'] ?? $stepData['id'] ?? $step->id;
+                    $stepIdMapping[$tempKey] = $step->id;
                 }
 
                 // Create new connections
                 if (isset($data['connections'])) {
                     foreach ($data['connections'] as $connectionData) {
-                        $this->createStepConnection(
-                            $stepIdMapping[$connectionData['from_step_temp_id']],
-                            $stepIdMapping[$connectionData['to_step_temp_id']],
-                            $connectionData
-                        );
+                        $fromId = $stepIdMapping[$connectionData['from_step_temp_id']] ?? null;
+                        $toId = $stepIdMapping[$connectionData['to_step_temp_id']] ?? null;
+                        if ($fromId && $toId) {
+                            $this->createStepConnection($fromId, $toId, $connectionData);
+                        }
                     }
                 }
             }
