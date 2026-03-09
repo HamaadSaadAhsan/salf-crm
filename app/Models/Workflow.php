@@ -22,11 +22,31 @@ class Workflow extends Model
         'status',
         'user_id',
         'metadata',
+        'webhook_token',
+        'canvas_data',
     ];
 
-    protected $casts = [
-        'metadata' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+            'canvas_data' => 'array',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Workflow $workflow) {
+            if (! $workflow->webhook_token) {
+                $workflow->webhook_token = bin2hex(random_bytes(32));
+            }
+        });
+    }
+
+    public function getWebhookUrlAttribute(): string
+    {
+        return url("/webhooks/workflow/{$this->webhook_token}");
+    }
 
     public function user(): BelongsTo
     {

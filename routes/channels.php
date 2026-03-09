@@ -45,3 +45,8 @@ Broadcast::channel('call-session.{sessionId}', function ($user, $sessionId) {
     // Allow authenticated users to listen to call session events
     return $user !== null;
 });
+
+// Workflow execution channel
+Broadcast::channel('workflow.{id}', function ($user, $id) {
+    return $user !== null;
+});

@@ -20,6 +20,9 @@ class UpdateWorkflowRequest extends FormRequest
             'description' => 'nullable|string|max:1000',
             'status' => 'sometimes|in:draft,active,paused,inactive',
             'metadata' => 'nullable|array',
+            'canvas_data' => 'nullable|array',
+            'canvas_data.nodes' => 'nullable|array',
+            'canvas_data.viewport' => 'nullable|array',
 
             // Steps validation (optional for updates)
             'steps' => 'sometimes|array|min:1',

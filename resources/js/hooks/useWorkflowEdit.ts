@@ -61,6 +61,7 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
                 name: workflow.name,
                 description: workflow.description,
                 status: workflow.status,
+                canvas_data: workflow.canvas_data ? JSON.parse(JSON.stringify(workflow.canvas_data)) : null,
                 steps: JSON.parse(JSON.stringify(workflow.steps)),
             }, {
                 onSuccess: () => {
@@ -95,6 +96,7 @@ export const useWorkflowEdit = (workflowId: number, initialWorkflow?: Workflow) 
                 name: updatedWorkflow.name,
                 description: updatedWorkflow.description,
                 status: updatedWorkflow.status,
+                canvas_data: updatedWorkflow.canvas_data ? JSON.parse(JSON.stringify(updatedWorkflow.canvas_data)) : null,
                 steps: JSON.parse(JSON.stringify(updatedWorkflow.steps)),
             }, {
                 onSuccess: () => {
