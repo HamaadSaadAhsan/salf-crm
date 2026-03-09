@@ -396,6 +396,21 @@ class WorkflowController extends Controller
     }
 
     /**
+     * Get synced Facebook pages for the authenticated user
+     */
+    public function getPages(Request $request, Workflow $workflow): JsonResponse
+    {
+        $this->authorize('view', $workflow);
+
+        $pages = \App\Models\MetaPage::where('user_id', $request->user()->id)
+            ->select('page_id as id', 'name')
+            ->get()
+            ->toArray();
+
+        return response()->json(['pages' => $pages]);
+    }
+
+    /**
      * Auto-subscribe workflow's dynamic webhook to Facebook
      */
     public function subscribeWebhook(Request $request, Workflow $workflow): JsonResponse
@@ -414,11 +429,15 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            // Get the first available page with an access token
-            $page = \App\Models\MetaPage::where('user_id', $user->id)
+            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
                 ->whereNotNull('access_token')
-                ->where('access_token', '!=', '')
-                ->first();
+                ->where('access_token', '!=', '');
+
+            if ($request->input('page_id')) {
+                $pageQuery->where('page_id', $request->input('page_id'));
+            }
+
+            $page = $pageQuery->first();
 
             if (! $page) {
                 return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
@@ -473,10 +492,15 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $page = \App\Models\MetaPage::where('user_id', $user->id)
+            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
                 ->whereNotNull('access_token')
-                ->where('access_token', '!=', '')
-                ->first();
+                ->where('access_token', '!=', '');
+
+            if ($request->input('page_id')) {
+                $pageQuery->where('page_id', $request->input('page_id'));
+            }
+
+            $page = $pageQuery->first();
 
             if (! $page) {
                 return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
