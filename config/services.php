@@ -56,4 +56,8 @@ return [
         'webhook_verify_token' => env('FACEBOOK_WEBHOOK_VERIFY_TOKEN'),
     ],
 
+    'python' => [
+        'path' => env('PYTHON_PATH', 'python3'),
+    ],
+
 ];

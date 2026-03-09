@@ -146,7 +146,9 @@ class PdfTemplateController extends Controller
         $absolutePath = Storage::disk('public')->path($pdfTemplate->file_path);
         $scriptPath = base_path('scripts/scan_pdf_fields.py');
 
-        $result = Process::timeout(30)->run(['python3', $scriptPath, $absolutePath]);
+        $python = config('services.python.path', 'python3');
+
+        $result = Process::timeout(30)->run([$python, $scriptPath, $absolutePath]);
 
         if ($result->failed()) {
             return response()->json([
