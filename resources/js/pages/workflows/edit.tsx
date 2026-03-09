@@ -91,16 +91,30 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         workflow.metadata?.is_new &&
         !guideDismissed;
 
-    // Close config panel if the selected step was deleted
+    // Sync selected step with workflow steps after save (IDs may change from temp to real)
     useEffect(() => {
         if (selectedStep && workflow) {
-            const stillExists = workflow.steps.some((s) => s.id === selectedStep.id);
-            if (!stillExists) {
-                setShowConfig(false);
-                setSelectedStep(null);
+            // Try exact ID match first
+            const exactMatch = workflow.steps.find((s) => s.id === selectedStep.id);
+            if (exactMatch) {
+                setSelectedStep(exactMatch);
+                return;
             }
+
+            // Fallback: match by service + order (handles temp→real ID change after save)
+            const fallbackMatch = workflow.steps.find(
+                (s) => s.service === selectedStep.service && s.order === selectedStep.order,
+            );
+            if (fallbackMatch) {
+                setSelectedStep(fallbackMatch);
+                return;
+            }
+
+            // Step was truly deleted — close the panel
+            setShowConfig(false);
+            setSelectedStep(null);
         }
-    }, [workflow?.steps, selectedStep]);
+    }, [workflow?.steps]);
 
     const handleNodeClick = useCallback((stepId: number, step: WorkflowStep) => {
         setSelectedStep(step);
