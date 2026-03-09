@@ -170,7 +170,7 @@ class WorkflowController extends Controller
                 $request->validated()
             );
 
-            return redirect()->route('workflows.show', $workflow)
+            return redirect()->back()
                 ->with('success', 'Workflow updated successfully');
         } catch (\Exception $e) {
             return redirect()->back()->withErrors([
