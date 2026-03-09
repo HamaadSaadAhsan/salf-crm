@@ -102,6 +102,7 @@ class LeadPdfSubmissionController extends Controller
                     'name' => $sub->template->name,
                 ],
                 'status' => $sub->status,
+                'field_values' => $sub->field_values,
                 'submitted_by' => $sub->submittedBy ? [
                     'id' => $sub->submittedBy->id,
                     'name' => $sub->submittedBy->name,

@@ -171,7 +171,12 @@ export async function fillPdfFields(
         }
     }
 
-    form.flatten();
+    try {
+        form.flatten();
+    } catch {
+        // Some PDFs have complex AcroForm structures (indirect page refs) that
+        // pdf-lib cannot flatten. Save with interactive fields instead.
+    }
 
     // Handle overflow pages
     if (repeatGroups && Object.keys(overflowValues).length > 0) {
@@ -220,7 +225,11 @@ export async function fillPdfFields(
                     }
                 }
 
-                overflowForm.flatten();
+                try {
+                    overflowForm.flatten();
+                } catch {
+                    // Same fallback for overflow pages
+                }
 
                 // Copy the source page from the overflow doc into the main doc
                 const [copiedPage] = await pdfDoc.copyPages(overflowDoc, [meta.sourcePageIndex]);

@@ -151,8 +151,8 @@ export function LeadRecordsDocuments({ lead }: Props) {
     const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
     const [autoMappedFields, setAutoMappedFields] = useState<Set<string>>(new Set());
 
-    const templates = templatesData?.data ?? [];
-    const submissions = submissionsData?.data ?? [];
+    const templates = useMemo(() => templatesData?.data ?? [], [templatesData]);
+    const submissions = useMemo(() => submissionsData?.data ?? [], [submissionsData]);
 
     // Separate regular fields from repeat_group fields, then deduplicate regular fields
     const { deduplicatedFields, siblingMap, repeatGroupDefs } = useMemo(() => {
@@ -255,8 +255,10 @@ export function LeadRecordsDocuments({ lead }: Props) {
                 const existingSub = submissions.find((s) => s.id === view.submissionId);
                 if (existingSub) {
                     setFieldValues({ ...mappedValues, ...existingSub.field_values });
-                    return;
                 }
+                // Whether found or not, don't reset — submission was just created or cache
+                // hasn't updated yet; preserve whatever the user has entered.
+                return;
             }
 
             // For new submissions, also apply default values from field config
@@ -303,7 +305,7 @@ export function LeadRecordsDocuments({ lead }: Props) {
             return false;
         }
         return true;
-    }, [deduplicatedFields, fieldValues]);
+    }, [view.mode, deduplicatedFields, fieldValues]);
 
     const handleSaveDraft = useCallback(() => {
         if (view.mode !== 'fill') {
@@ -356,7 +358,7 @@ export function LeadRecordsDocuments({ lead }: Props) {
             const filledPdfBytes = await fillPdfFields(templateBytes, fieldValues, repeatGroupsMeta);
 
             // Trigger download
-            const blob = new Blob([filledPdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([filledPdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
