@@ -1,4 +1,4 @@
-import { type EdgeProps, getBezierPath, BaseEdge } from '@xyflow/react';
+import { type EdgeProps, getBezierPath, getStraightPath, BaseEdge } from '@xyflow/react';
 
 interface AnimatedEdgeData {
     isExecuting?: boolean;
@@ -20,14 +20,10 @@ export default function AnimatedEdge({
     const isExecuting = edgeData?.isExecuting ?? false;
     const status = edgeData?.executionStatus ?? 'idle';
 
-    const [edgePath] = getBezierPath({
-        sourceX,
-        sourceY,
-        targetX,
-        targetY,
-        sourcePosition,
-        targetPosition,
-    });
+    // Use straight path by default, bezier only during execution
+    const [edgePath] = isExecuting
+        ? getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
+        : getStraightPath({ sourceX, sourceY, targetX, targetY });
 
     const statusColors: Record<string, string> = {
         idle: 'var(--border)',

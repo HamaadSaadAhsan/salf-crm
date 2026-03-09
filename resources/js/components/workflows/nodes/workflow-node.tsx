@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface WorkflowNodeData {
@@ -13,8 +14,10 @@ export interface WorkflowNodeData {
     stepType: 'trigger' | 'action';
     service: string;
     enabled?: boolean;
+    showAddAction?: boolean;
     onConfigure?: () => void;
     onDelete?: () => void;
+    onAddAction?: () => void;
 }
 
 export default function WorkflowNode({ data, selected }: NodeProps) {
@@ -29,6 +32,8 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
         executionStatus = 'idle',
         stepType,
         enabled = true,
+        showAddAction = false,
+        onAddAction,
     } = nodeData;
 
     const statusRingColors: Record<string, string> = {
@@ -115,6 +120,27 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
                 position={Position.Bottom}
                 className="!w-3 !h-3 !bg-border !border-2 !border-card hover:!bg-primary !transition-colors !-bottom-1.5"
             />
+
+            {/* Add Action button for triggers without downstream actions */}
+            {showAddAction && onAddAction && (
+                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 z-10">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onAddAction();
+                        }}
+                        className={cn(
+                            'flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-full',
+                            'bg-primary text-primary-foreground shadow-sm',
+                            'hover:bg-primary/90 transition-colors',
+                            'nopan nodrag',
+                        )}
+                    >
+                        <Plus className="w-3 h-3" />
+                        Add Action
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

@@ -202,16 +202,72 @@ class WorkflowService
         return $workflow;
     }
 
-    protected function validateWorkflowForActivation(Workflow $workflow): void
+    /**
+     * Validate raw step data before saving — used when publishing.
+     *
+     * @param  array<int, array{step_type: string, service: string, order: int, configuration?: array, field_mappings?: array}>  $steps
+     */
+    public function validateWorkflowSteps(array $steps, string $newStatus): void
     {
-        // Check if workflow has at least one trigger
-        $triggerStep = $workflow->getTriggerStep();
-        if (! $triggerStep) {
-            throw new \Exception('Workflow must have at least one trigger step');
+        if ($newStatus !== 'active') {
+            return;
         }
 
-        // Check if all required configurations are present
-        foreach ($workflow->steps as $step) {
+        $setupServices = ['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
+
+        $businessTriggers = collect($steps)->filter(
+            fn (array $s) => ($s['step_type'] ?? '') === 'trigger' && ! in_array($s['service'] ?? '', $setupServices)
+        )->sortBy('order');
+
+        $businessActions = collect($steps)->filter(
+            fn (array $s) => ($s['step_type'] ?? '') === 'action' && ! in_array($s['service'] ?? '', $setupServices)
+        )->sortBy('order');
+
+        if ($businessTriggers->isEmpty()) {
+            throw new \Exception('Workflow must have at least one trigger (e.g. New Lead Trigger)');
+        }
+
+        foreach ($businessTriggers as $trigger) {
+            $hasActionAfter = $businessActions->contains(fn (array $a) => ($a['order'] ?? 0) > ($trigger['order'] ?? 0));
+            if (! $hasActionAfter) {
+                $label = ($trigger['service'] ?? '') === 'facebook_lead_ads' ? 'New Lead Trigger' : ($trigger['service'] ?? 'Unknown');
+                throw new \Exception("Trigger \"{$label}\" has no action after it — add a Field Mapping or other action");
+            }
+        }
+    }
+
+    public function validateWorkflowForActivation(Workflow $workflow): void
+    {
+        $workflow->load(['steps.fieldMappings']);
+        $steps = $workflow->steps->sortBy('order');
+
+        // Setup services are infrastructure steps, not business triggers
+        $setupServices = ['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
+
+        $businessTriggers = $steps->filter(
+            fn (WorkflowStep $s) => $s->step_type === 'trigger' && ! in_array($s->service, $setupServices)
+        );
+
+        $businessActions = $steps->filter(
+            fn (WorkflowStep $s) => $s->step_type === 'action' && ! in_array($s->service, $setupServices)
+        );
+
+        // Must have at least one business trigger
+        if ($businessTriggers->isEmpty()) {
+            throw new \Exception('Workflow must have at least one trigger (e.g. New Lead Trigger)');
+        }
+
+        // Each business trigger must have at least one action after it
+        foreach ($businessTriggers as $trigger) {
+            $hasActionAfter = $businessActions->contains(fn (WorkflowStep $a) => $a->order > $trigger->order);
+
+            if (! $hasActionAfter) {
+                throw new \Exception("Trigger \"{$trigger->service}\" has no action after it — add a Field Mapping or other action");
+            }
+        }
+
+        // Validate individual step configurations
+        foreach ($steps as $step) {
             $this->validateStepConfiguration($step);
         }
     }
@@ -222,13 +278,16 @@ class WorkflowService
 
         switch ($step->service) {
             case 'facebook_lead_ads':
-                if (empty($config['page_id']) || empty($config['form_id'])) {
-                    throw new \Exception('Facebook Lead Ads step requires page_id and form_id');
+                if (empty($config['page_id'])) {
+                    throw new \Exception('New Lead Trigger requires a Facebook page to be selected');
+                }
+                break;
+            case 'field_mapping':
+                if (empty($step->fieldMappings) || $step->fieldMappings->count() === 0) {
+                    throw new \Exception('Field Mapping step requires at least one field mapping');
                 }
                 break;
             case 'webhook':
-                // Webhook no longer requires URL - data is automatically mapped to leads
-                // Field mappings are required instead
                 if (empty($step->fieldMappings) || $step->fieldMappings->count() === 0) {
                     throw new \Exception('Webhook step requires at least one field mapping');
                 }

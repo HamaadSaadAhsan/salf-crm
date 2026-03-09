@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -19,6 +19,7 @@ import {
     Pause,
     AlertCircle,
     X,
+    AlertTriangle,
 } from 'lucide-react';
 
 interface WorkflowEditPageProps {
@@ -39,6 +40,7 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         saving,
         error,
         hasUnsavedChanges,
+        lastSavedAt,
         updateWorkflow,
         saveWorkflow,
         publishWorkflow,
@@ -155,6 +157,18 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                 created_at: ts(),
                 updated_at: ts(),
             },
+            {
+                id: -5,
+                step_type: 'trigger',
+                service: 'facebook_lead_ads',
+                operation: 'new_lead',
+                order: 4,
+                configuration: {},
+                enabled: true,
+                field_mappings: [],
+                created_at: ts(),
+                updated_at: ts(),
+            },
         ];
 
         updateWorkflow({
@@ -162,6 +176,29 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
             metadata: { ...workflow.metadata, is_new: false },
         });
     }, [workflow, updateWorkflow]);
+
+    const handleAddSingleNode = useCallback(
+        (step: Omit<WorkflowStep, 'id' | 'created_at' | 'updated_at'>) => {
+            if (!workflow) return;
+
+            const ts = new Date().toISOString();
+            const nextOrder = workflow.steps.length;
+            const tempId = -(nextOrder + 1);
+
+            const newStep: WorkflowStep = {
+                ...step,
+                id: tempId,
+                order: nextOrder,
+                created_at: ts,
+                updated_at: ts,
+            };
+
+            updateWorkflow({
+                steps: [...workflow.steps, newStep],
+            });
+        },
+        [workflow, updateWorkflow],
+    );
 
     const handleGuideTemplate = useCallback(
         (templateId: string) => {
@@ -185,6 +222,43 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         setShowNodePanel(false);
     }, [addFacebookSteps]);
 
+    // Validate trigger→action pairing
+    const workflowWarnings = useMemo(() => {
+        if (!workflow || workflow.steps.length === 0) return [];
+
+        const warnings: string[] = [];
+        const sorted = [...workflow.steps].sort((a, b) => a.order - b.order);
+
+        // Facebook flow services are setup steps, not business triggers
+        const setupServices = new Set(['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub']);
+
+        // Find business triggers (triggers that aren't setup steps)
+        const businessTriggers = sorted.filter(
+            (s) => s.step_type === 'trigger' && !setupServices.has(s.service),
+        );
+
+        // Find actions (non-setup actions)
+        const actions = sorted.filter(
+            (s) => s.step_type === 'action' && !setupServices.has(s.service),
+        );
+
+        // Each business trigger needs at least one action after it
+        for (const trigger of businessTriggers) {
+            const hasActionAfter = actions.some((a) => a.order > trigger.order);
+            if (!hasActionAfter) {
+                const label = trigger.service === 'facebook_lead_ads' ? 'New Lead Trigger' : trigger.service;
+                warnings.push(`"${label}" has no action after it — add a Field Mapping or other action`);
+            }
+        }
+
+        // If there are actions but no business triggers
+        if (actions.length > 0 && businessTriggers.length === 0) {
+            warnings.push('Actions exist without a trigger — add a trigger like New Lead Trigger');
+        }
+
+        return warnings;
+    }, [workflow]);
+
     const handleSave = useCallback(async () => {
         if (!workflow) return;
         await saveWorkflow();
@@ -192,8 +266,12 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
 
     const handlePublish = useCallback(async () => {
         if (!workflow) return;
+        if (workflowWarnings.length > 0) {
+            setError(`Cannot publish: ${workflowWarnings[0]}`);
+            return;
+        }
         await publishWorkflow();
-    }, [workflow, publishWorkflow]);
+    }, [workflow, publishWorkflow, workflowWarnings, setError]);
 
     if (loading || !workflow) {
         return (
@@ -235,11 +313,18 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
 
                     {/* Right section */}
                     <div className="flex items-center gap-2">
-                        {hasUnsavedChanges && (
-                            <span className="text-xs text-amber-600 dark:text-amber-400 mr-2">
-                                Unsaved changes
-                            </span>
-                        )}
+                        <span className="text-xs mr-2">
+                            {saving ? (
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Saving...
+                                </span>
+                            ) : hasUnsavedChanges ? (
+                                <span className="text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                            ) : lastSavedAt ? (
+                                <span className="text-emerald-600 dark:text-emerald-400">Saved</span>
+                            ) : null}
+                        </span>
 
                         <Button
                             variant="ghost"
@@ -248,11 +333,7 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                             onClick={handleSave}
                             disabled={saving || !hasUnsavedChanges}
                         >
-                            {saving ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                            ) : (
-                                <Save className="w-3.5 h-3.5 mr-1.5" />
-                            )}
+                            <Save className="w-3.5 h-3.5 mr-1.5" />
                             Save
                         </Button>
 
@@ -298,6 +379,14 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                     </div>
                 )}
 
+                {/* Workflow warnings */}
+                {workflowWarnings.length > 0 && (
+                    <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800/30 text-amber-700 dark:text-amber-400 text-sm">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span className="flex-1">{workflowWarnings[0]}</span>
+                    </div>
+                )}
+
                 {/* Main canvas area */}
                 <div className="flex-1 relative overflow-hidden">
                     <WorkflowCanvas
@@ -321,6 +410,8 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                         <WorkflowNodePanel
                             onClose={() => setShowNodePanel(false)}
                             onAddFacebookWorkflow={handleAddFacebookWorkflow}
+                            onAddNode={handleAddSingleNode}
+                            workflow={workflow}
                         />
                     )}
 
@@ -340,6 +431,7 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                                 updateWorkflow({ steps: updatedSteps });
                                 setSelectedStep({ ...selectedStep, ...updates });
                             }}
+                            onWorkflowUpdate={updateWorkflow}
                         />
                     )}
                 </div>
