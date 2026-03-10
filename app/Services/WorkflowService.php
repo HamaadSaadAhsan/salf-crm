@@ -213,14 +213,12 @@ class WorkflowService
             return;
         }
 
-        $setupServices = ['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
-
         $businessTriggers = collect($steps)->filter(
-            fn (array $s) => ($s['step_type'] ?? '') === 'trigger' && ! in_array($s['service'] ?? '', $setupServices)
+            fn (array $s) => ($s['step_type'] ?? '') === 'trigger'
         )->sortBy('order');
 
         $businessActions = collect($steps)->filter(
-            fn (array $s) => ($s['step_type'] ?? '') === 'action' && ! in_array($s['service'] ?? '', $setupServices)
+            fn (array $s) => ($s['step_type'] ?? '') === 'action'
         )->sortBy('order');
 
         if ($businessTriggers->isEmpty()) {
@@ -241,15 +239,12 @@ class WorkflowService
         $workflow->load(['steps.fieldMappings']);
         $steps = $workflow->steps->sortBy('order');
 
-        // Setup services are infrastructure steps, not business triggers
-        $setupServices = ['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
-
         $businessTriggers = $steps->filter(
-            fn (WorkflowStep $s) => $s->step_type === 'trigger' && ! in_array($s->service, $setupServices)
+            fn (WorkflowStep $s) => $s->step_type === 'trigger'
         );
 
         $businessActions = $steps->filter(
-            fn (WorkflowStep $s) => $s->step_type === 'action' && ! in_array($s->service, $setupServices)
+            fn (WorkflowStep $s) => $s->step_type === 'action'
         );
 
         // Must have at least one business trigger

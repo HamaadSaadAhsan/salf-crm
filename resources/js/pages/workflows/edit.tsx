@@ -9,8 +9,8 @@ import { useWorkflowEdit } from '@/hooks/useWorkflowEdit';
 import WorkflowCanvas from '@/components/workflows/workflow-canvas';
 import WorkflowNodePanel from '@/components/workflows/workflow-node-panel';
 import WorkflowNodeConfig from '@/components/workflows/workflow-node-config';
-import WorkflowGuide from '@/components/workflows/workflow-guide';
 import { type Workflow, type WorkflowStep, type NodeExecutionState } from '@/types/workflow';
+import { api } from '@/lib/api';
 import {
     ArrowLeft,
     Save,
@@ -50,8 +50,15 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
     const [showNodePanel, setShowNodePanel] = useState(false);
     const [selectedStep, setSelectedStep] = useState<WorkflowStep | null>(null);
     const [showConfig, setShowConfig] = useState(false);
-    const [guideDismissed, setGuideDismissed] = useState(false);
     const [executionStates, setExecutionStates] = useState<NodeExecutionState[]>([]);
+    const [facebookConnected, setFacebookConnected] = useState(false);
+
+    // Check Facebook connection status on mount
+    useEffect(() => {
+        api.get('/workflows/facebook/token-status')
+            .then((res: any) => setFacebookConnected(res.connected === true))
+            .catch(() => setFacebookConnected(false));
+    }, []);
 
     // Listen for live workflow execution updates via Reverb
     type StepExecutedPayload = {
@@ -69,7 +76,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         (e) => {
             if (e.node_id === 'execution') {
                 if (e.status === 'completed' || e.status === 'failed') {
-                    // Clear execution states after a delay to show final status
                     setTimeout(() => setExecutionStates([]), 2000);
                 }
                 return;
@@ -84,24 +90,15 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
 
     const status = statusConfig[workflow?.status || 'draft'];
 
-    // Show guide for new empty workflows
-    const isNewEmptyWorkflow =
-        workflow &&
-        workflow.steps.length === 0 &&
-        workflow.metadata?.is_new &&
-        !guideDismissed;
-
     // Sync selected step with workflow steps after save (IDs may change from temp to real)
     useEffect(() => {
         if (selectedStep && workflow) {
-            // Try exact ID match first
             const exactMatch = workflow.steps.find((s) => s.id === selectedStep.id);
             if (exactMatch) {
                 setSelectedStep(exactMatch);
                 return;
             }
 
-            // Fallback: match by service + order (handles temp→real ID change after save)
             const fallbackMatch = workflow.steps.find(
                 (s) => s.service === selectedStep.service && s.order === selectedStep.order,
             );
@@ -110,7 +107,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                 return;
             }
 
-            // Step was truly deleted — close the panel
             setShowConfig(false);
             setSelectedStep(null);
         }
@@ -127,80 +123,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         setShowConfig(false);
         setSelectedStep(null);
     }, []);
-
-    const addFacebookSteps = useCallback(() => {
-        if (!workflow) return;
-
-        const ts = () => new Date().toISOString();
-
-        const newSteps: WorkflowStep[] = [
-            {
-                id: -1,
-                step_type: 'trigger',
-                service: 'facebook_oauth',
-                operation: 'authorize',
-                order: 0,
-                configuration: {},
-                enabled: true,
-                field_mappings: [],
-                created_at: ts(),
-                updated_at: ts(),
-            },
-            {
-                id: -2,
-                step_type: 'action',
-                service: 'facebook_page_sync',
-                operation: 'sync_pages',
-                order: 1,
-                configuration: {},
-                enabled: true,
-                field_mappings: [],
-                created_at: ts(),
-                updated_at: ts(),
-            },
-            {
-                id: -3,
-                step_type: 'action',
-                service: 'facebook_webhook_sub',
-                operation: 'subscribe',
-                order: 2,
-                configuration: {},
-                enabled: true,
-                field_mappings: [],
-                created_at: ts(),
-                updated_at: ts(),
-            },
-            {
-                id: -4,
-                step_type: 'action',
-                service: 'facebook_app_sub',
-                operation: 'subscribe_app',
-                order: 3,
-                configuration: {},
-                enabled: true,
-                field_mappings: [],
-                created_at: ts(),
-                updated_at: ts(),
-            },
-            {
-                id: -5,
-                step_type: 'trigger',
-                service: 'facebook_lead_ads',
-                operation: 'new_lead',
-                order: 4,
-                configuration: {},
-                enabled: true,
-                field_mappings: [],
-                created_at: ts(),
-                updated_at: ts(),
-            },
-        ];
-
-        updateWorkflow({
-            steps: [...workflow.steps, ...newSteps],
-            metadata: { ...workflow.metadata, is_new: false },
-        });
-    }, [workflow, updateWorkflow]);
 
     const handleAddSingleNode = useCallback(
         (step: Omit<WorkflowStep, 'id' | 'created_at' | 'updated_at'>) => {
@@ -225,28 +147,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         [workflow, updateWorkflow],
     );
 
-    const handleGuideTemplate = useCallback(
-        (templateId: string) => {
-            if (templateId === 'facebook_lead_gen') {
-                addFacebookSteps();
-            }
-            setGuideDismissed(true);
-        },
-        [addFacebookSteps],
-    );
-
-    const handleGuideSkip = useCallback(() => {
-        setGuideDismissed(true);
-        if (workflow) {
-            updateWorkflow({ metadata: { ...workflow.metadata, is_new: false } });
-        }
-    }, [workflow, updateWorkflow]);
-
-    const handleAddFacebookWorkflow = useCallback(() => {
-        addFacebookSteps();
-        setShowNodePanel(false);
-    }, [addFacebookSteps]);
-
     // Validate trigger→action pairing
     const workflowWarnings = useMemo(() => {
         if (!workflow || workflow.steps.length === 0) return [];
@@ -254,21 +154,10 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
         const warnings: string[] = [];
         const sorted = [...workflow.steps].sort((a, b) => a.order - b.order);
 
-        // Facebook flow services are setup steps, not business triggers
-        const setupServices = new Set(['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub']);
+        const triggers = sorted.filter((s) => s.step_type === 'trigger');
+        const actions = sorted.filter((s) => s.step_type === 'action');
 
-        // Find business triggers (triggers that aren't setup steps)
-        const businessTriggers = sorted.filter(
-            (s) => s.step_type === 'trigger' && !setupServices.has(s.service),
-        );
-
-        // Find actions (non-setup actions)
-        const actions = sorted.filter(
-            (s) => s.step_type === 'action' && !setupServices.has(s.service),
-        );
-
-        // Each business trigger needs at least one action after it
-        for (const trigger of businessTriggers) {
+        for (const trigger of triggers) {
             const hasActionAfter = actions.some((a) => a.order > trigger.order);
             if (!hasActionAfter) {
                 const label = trigger.service === 'facebook_lead_ads' ? 'New Lead Trigger' : trigger.service;
@@ -276,8 +165,7 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
             }
         }
 
-        // If there are actions but no business triggers
-        if (actions.length > 0 && businessTriggers.length === 0) {
+        if (actions.length > 0 && triggers.length === 0) {
             warnings.push('Actions exist without a trigger — add a trigger like New Lead Trigger');
         }
 
@@ -313,7 +201,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
 
                 {/* Top bar */}
                 <header className="flex-shrink-0 h-12 border-b border-border bg-card flex items-center justify-between px-3 z-50">
-                    {/* Left section */}
                     <div className="flex items-center gap-2">
                         <Link href="/workflows">
                             <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -336,7 +223,6 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                         </Badge>
                     </div>
 
-                    {/* Right section */}
                     <div className="flex items-center gap-2">
                         <span className="text-xs mr-2">
                             {saving ? (
@@ -417,24 +303,16 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                     <WorkflowCanvas
                         workflow={workflow}
                         executionStates={executionStates}
+                        facebookConnected={facebookConnected}
                         onWorkflowUpdate={updateWorkflow}
                         onNodeClick={handleNodeClick}
                         onAddNode={handleAddNode}
                     />
 
-                    {/* Guided onboarding for new workflows */}
-                    {isNewEmptyWorkflow && (
-                        <WorkflowGuide
-                            onSkip={handleGuideSkip}
-                            onSelectTemplate={handleGuideTemplate}
-                        />
-                    )}
-
                     {/* Node panel (slide in from left) */}
                     {showNodePanel && (
                         <WorkflowNodePanel
                             onClose={() => setShowNodePanel(false)}
-                            onAddFacebookWorkflow={handleAddFacebookWorkflow}
                             onAddNode={handleAddSingleNode}
                             workflow={workflow}
                         />
@@ -457,6 +335,7 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
                                 setSelectedStep({ ...selectedStep, ...updates });
                             }}
                             onWorkflowUpdate={updateWorkflow}
+                            onFacebookConnected={() => setFacebookConnected(true)}
                         />
                     )}
                 </div>

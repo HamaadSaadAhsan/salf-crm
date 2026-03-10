@@ -4,14 +4,11 @@ import {
     Zap,
     Facebook,
     FileText,
-    AlertCircle,
-    CheckCircle2,
 } from 'lucide-react';
 import { type Workflow, type WorkflowStep } from '@/types/workflow';
 
 interface WorkflowNodePanelProps {
     onClose: () => void;
-    onAddFacebookWorkflow: () => void;
     onAddNode: (step: Omit<WorkflowStep, 'id' | 'created_at' | 'updated_at'>) => void;
     workflow: Workflow;
 }
@@ -22,63 +19,28 @@ interface NodeDef {
     description: string;
     icon: any;
     color: string;
-    isTemplate?: boolean;
     disabled?: boolean;
     disabledReason?: string;
     stepType: 'trigger' | 'action';
     operation: string;
 }
 
-// The required Facebook flow services that must all be completed
-const facebookFlowServices = ['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub'];
-
-function isFacebookFlowComplete(workflow: Workflow): boolean {
-    return facebookFlowServices.every((service) => {
-        const step = workflow.steps.find((s) => s.service === service);
-        if (!step) return false;
-        const c = step.configuration || {};
-        return !!(c.authorized || c.synced || c.subscribed);
-    });
-}
-
-function hasFacebookFlowSteps(workflow: Workflow): boolean {
-    return facebookFlowServices.every((service) =>
-        workflow.steps.some((s) => s.service === service),
-    );
-}
-
 export default function WorkflowNodePanel({
     onClose,
-    onAddFacebookWorkflow,
     onAddNode,
     workflow,
 }: WorkflowNodePanelProps) {
-    const flowComplete = isFacebookFlowComplete(workflow);
-    const flowExists = hasFacebookFlowSteps(workflow);
+    const hasTrigger = workflow.steps.some((s) => s.service === 'facebook_lead_ads');
 
     const triggerNodes: NodeDef[] = [
         {
-            id: 'facebook_full_workflow',
-            name: 'Facebook Full Setup',
-            description: 'OAuth + Page Sync + Webhook + App Sub',
-            icon: Facebook,
-            color: 'bg-[#1877F2]',
-            isTemplate: true,
-            disabled: flowExists,
-            disabledReason: flowExists ? 'Facebook flow already added' : undefined,
-            stepType: 'trigger',
-            operation: 'full_setup',
-        },
-        {
             id: 'facebook_lead_ads',
             name: 'New Lead Trigger',
-            description: flowComplete
-                ? 'Trigger on new lead from Lead Ads'
-                : 'Requires completed Facebook Full Setup',
+            description: 'Trigger on new lead from Facebook Lead Ads',
             icon: Zap,
             color: 'bg-[#1877F2]',
-            disabled: !flowComplete,
-            disabledReason: !flowComplete ? 'Complete the Facebook Full Setup flow first' : undefined,
+            disabled: hasTrigger,
+            disabledReason: hasTrigger ? 'Trigger already added' : undefined,
             stepType: 'trigger',
             operation: 'new_lead',
         },
@@ -98,12 +60,6 @@ export default function WorkflowNodePanel({
 
     const handleNodeClick = (node: NodeDef) => {
         if (node.disabled) return;
-
-        if (node.isTemplate) {
-            onAddFacebookWorkflow();
-            onClose();
-            return;
-        }
 
         onAddNode({
             step_type: node.stepType,
@@ -128,7 +84,6 @@ export default function WorkflowNodePanel({
                 node.disabled
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-accent',
-                node.isTemplate && !node.disabled && 'ring-1 ring-[#1877F2]/20 bg-[#1877F2]/5 dark:bg-[#1877F2]/10',
             )}
         >
             <div
@@ -142,21 +97,7 @@ export default function WorkflowNodePanel({
             <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-foreground">{node.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{node.description}</div>
-                {node.disabled && node.disabledReason && (
-                    <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                        {node.disabledReason}
-                    </div>
-                )}
             </div>
-            {node.isTemplate && !node.disabled && (
-                <span className="text-[10px] font-medium text-[#1877F2] bg-[#1877F2]/10 px-1.5 py-0.5 rounded">
-                    Template
-                </span>
-            )}
-            {node.isTemplate && node.disabled && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-            )}
         </button>
     );
 

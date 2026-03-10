@@ -15,6 +15,7 @@ export interface WorkflowNodeData {
     service: string;
     enabled?: boolean;
     showAddAction?: boolean;
+    needsConnection?: boolean;
     onConfigure?: () => void;
     onDelete?: () => void;
     onAddAction?: () => void;
@@ -34,6 +35,7 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
         stepType,
         enabled = true,
         showAddAction = false,
+        needsConnection = false,
         onAddAction,
         onConfigure,
         onDelete,
@@ -90,6 +92,13 @@ export default function WorkflowNode({ data, selected }: NodeProps) {
                 !enabled && 'opacity-50',
             )}
         >
+            {/* Warning animated border when connection needed */}
+            {needsConnection && !isExecuting && (
+                <div className="absolute -inset-[2px] rounded-2xl overflow-hidden">
+                    <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 animate-pulse" />
+                </div>
+            )}
+
             {/* Sparkling border effect on execution */}
             {isExecuting && (
                 <div className="absolute -inset-[2px] rounded-2xl overflow-hidden">

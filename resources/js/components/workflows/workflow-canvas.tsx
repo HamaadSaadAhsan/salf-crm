@@ -22,10 +22,6 @@ import { cn } from '@/lib/utils';
 import { type Workflow, type WorkflowStep, type NodeExecutionState } from '@/types/workflow';
 
 // Node components
-import FacebookOAuthNode from './nodes/facebook-oauth-node';
-import FacebookPageSyncNode from './nodes/facebook-page-sync-node';
-import FacebookWebhookSubNode from './nodes/facebook-webhook-sub-node';
-import FacebookAppSubNode from './nodes/facebook-app-sub-node';
 import FacebookLeadTriggerNode from './nodes/facebook-lead-trigger-node';
 import FieldMappingNode from './nodes/field-mapping-node';
 
@@ -43,10 +39,6 @@ import {
 } from 'lucide-react';
 
 const nodeTypes = {
-    facebook_oauth: FacebookOAuthNode,
-    facebook_page_sync: FacebookPageSyncNode,
-    facebook_webhook_sub: FacebookWebhookSubNode,
-    facebook_app_sub: FacebookAppSubNode,
     facebook_lead_ads: FacebookLeadTriggerNode,
     field_mapping: FieldMappingNode,
 };
@@ -58,6 +50,7 @@ const edgeTypes = {
 interface WorkflowCanvasProps {
     workflow: Workflow;
     executionStates?: NodeExecutionState[];
+    facebookConnected?: boolean;
     onWorkflowUpdate: (updates: Partial<Workflow>) => void;
     onNodeClick?: (stepId: number, step: WorkflowStep) => void;
     onAddNode?: () => void;
@@ -66,6 +59,7 @@ interface WorkflowCanvasProps {
 export default function WorkflowCanvas({
     workflow,
     executionStates = [],
+    facebookConnected = false,
     onWorkflowUpdate,
     onNodeClick,
     onAddNode,
@@ -83,9 +77,6 @@ export default function WorkflowCanvas({
         const newNodes: Node[] = [];
         const newEdges: Edge[] = [];
 
-        // Setup services are not business triggers
-        const setupServices = new Set(['facebook_oauth', 'facebook_page_sync', 'facebook_webhook_sub', 'facebook_app_sub']);
-
         sortedSteps.forEach((step) => {
             const execState = activeExecutionStates.find((s) => s.nodeId === `step-${step.id}`);
             const isExecuting = execState?.status === 'running';
@@ -94,16 +85,19 @@ export default function WorkflowCanvas({
             const nodeType = getNodeType(step);
             const { label, sublabel } = getNodeLabels(step);
 
-            // Show "Add Action" button on business triggers that have no action after them
-            const isBusinessTrigger = step.step_type === 'trigger' && !setupServices.has(step.service);
-            const hasActionAfter = isBusinessTrigger && sortedSteps.some(
-                (s) => s.order > step.order && s.step_type === 'action' && !setupServices.has(s.service),
+            // Show "Add Action" button on triggers that have no action after them
+            const isTrigger = step.step_type === 'trigger';
+            const hasActionAfter = isTrigger && sortedSteps.some(
+                (s) => s.order > step.order && s.step_type === 'action',
             );
+
+            // Trigger needs Facebook connection warning
+            const needsConnection = isTrigger && step.service === 'facebook_lead_ads' && !facebookConnected;
 
             newNodes.push({
                 id: `step-${step.id}`,
                 type: nodeType,
-                position: { x: 0, y: 0 }, // Will be auto-laid out
+                position: { x: 0, y: 0 },
                 data: {
                     stepId: step.id,
                     step,
@@ -113,7 +107,8 @@ export default function WorkflowCanvas({
                     isExecuting,
                     executionStatus,
                     enabled: step.enabled,
-                    showAddAction: isBusinessTrigger && !hasActionAfter,
+                    showAddAction: isTrigger && !hasActionAfter,
+                    needsConnection,
                     onConfigure: () => onNodeClick?.(step.id, step),
                     onDelete: () => handleDeleteStep(step.id),
                     onAddAction: () => onAddNode?.(),
@@ -157,7 +152,7 @@ export default function WorkflowCanvas({
         }
 
         return laid;
-    }, [workflow.steps, workflow.canvas_data, activeExecutionStates, onNodeClick]);
+    }, [workflow.steps, workflow.canvas_data, activeExecutionStates, onNodeClick, facebookConnected]);
 
     // Rebuild graph when workflow changes
     useEffect(() => {
@@ -411,10 +406,6 @@ export default function WorkflowCanvas({
 // Helper functions
 function getNodeType(step: WorkflowStep): string {
     const typeMap: Record<string, string> = {
-        facebook_oauth: 'facebook_oauth',
-        facebook_page_sync: 'facebook_page_sync',
-        facebook_webhook_sub: 'facebook_webhook_sub',
-        facebook_app_sub: 'facebook_app_sub',
         facebook_lead_ads: 'facebook_lead_ads',
         field_mapping: 'field_mapping',
     };
@@ -423,10 +414,6 @@ function getNodeType(step: WorkflowStep): string {
 
 function getNodeLabels(step: WorkflowStep): { label: string; sublabel: string } {
     const defaults: Record<string, { label: string; sublabel: string }> = {
-        facebook_oauth: { label: 'Facebook OAuth', sublabel: 'Authenticate & authorize' },
-        facebook_page_sync: { label: 'Page Sync', sublabel: 'Sync Facebook pages' },
-        facebook_webhook_sub: { label: 'Webhook Subscription', sublabel: 'Subscribe to webhooks' },
-        facebook_app_sub: { label: 'App Subscription', sublabel: 'Subscribe app to page events' },
         facebook_lead_ads: {
             label: 'New Lead',
             sublabel: step.configuration?.page_name
@@ -442,7 +429,6 @@ function getNodeLabels(step: WorkflowStep): { label: string; sublabel: string } 
     };
     const result = defaults[step.service] || { label: step.service, sublabel: step.operation };
 
-    // Use custom label if set via rename
     if (step.configuration?.custom_label) {
         result.label = step.configuration.custom_label;
     }
@@ -454,14 +440,6 @@ function isStepConfigured(step: WorkflowStep): boolean {
     switch (step.service) {
         case 'facebook_lead_ads':
             return !!(step.configuration?.page_id && step.configuration?.form_id);
-        case 'facebook_oauth':
-            return !!(step.configuration?.authorized);
-        case 'facebook_page_sync':
-            return !!(step.configuration?.synced);
-        case 'facebook_webhook_sub':
-            return !!(step.configuration?.subscribed);
-        case 'facebook_app_sub':
-            return !!(step.configuration?.subscribed);
         case 'field_mapping':
             return !!(step.field_mappings && step.field_mappings.length > 0);
         default:
