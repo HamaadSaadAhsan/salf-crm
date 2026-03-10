@@ -182,11 +182,11 @@ class FacebookOAuthController extends Controller
             // Clean up OAuth session
             $oauthSession->delete();
 
-            // Redirect to page selection
-            return redirect(route('integrations'))->with([
-                'success' => 'true',
-                'step' => 'select_page',
-                'message' => 'Please select a Facebook page to integrate',
+            // If opened as popup (from workflow editor), auto-close
+            // Otherwise redirect to integrations page for page selection
+            return view('oauth-callback-close', [
+                'message' => 'Facebook connected successfully. This window will close automatically.',
+                'redirect' => route('integrations'),
             ]);
 
         } catch (Exception $e) {

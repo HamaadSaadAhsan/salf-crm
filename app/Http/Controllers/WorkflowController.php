@@ -668,112 +668,26 @@ class WorkflowController extends Controller
     }
 
     /**
-     * Run full Facebook setup automatically after OAuth:
-     * sync pages → subscribe webhooks → subscribe app (skips already-subscribed pages)
+     * Dispatch background job to run full Facebook setup after OAuth:
+     * sync pages → subscribe webhooks → subscribe app (skips already-subscribed pages).
+     * Progress is broadcast via Reverb on the workflow channel.
      */
     public function autoSetupFacebook(Request $request, Workflow $workflow): JsonResponse
     {
         $this->authorize('update', $workflow);
 
-        try {
-            $user = $request->user();
-            $accessToken = $user->getFacebookAccessToken();
+        $user = $request->user();
 
-            if (! $accessToken) {
-                return response()->json(['success' => false, 'message' => 'No Facebook access token.'], 400);
-            }
-
-            $apiVersion = config('services.facebook.api_version', 'v23.0');
-
-            // 1. Sync pages
-            $pagesResponse = Http::get("https://graph.facebook.com/{$apiVersion}/me/accounts", [
-                'access_token' => $accessToken,
-                'fields' => 'id,name,category,access_token',
-            ]);
-
-            if (! $pagesResponse->successful()) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch pages from Facebook'], 400);
-            }
-
-            $pagesData = $pagesResponse->json('data', []);
-            $pages = [];
-
-            foreach ($pagesData as $pageData) {
-                $page = \App\Models\MetaPage::updateOrCreate(
-                    ['user_id' => $user->id, 'page_id' => $pageData['id']],
-                    [
-                        'name' => $pageData['name'],
-                        'access_token' => $pageData['access_token'] ?? '',
-                        'last_updated' => now(),
-                    ]
-                );
-
-                // 2. Subscribe webhooks (skip if already subscribed)
-                if (! $page->webhook_subscribed_at && $workflow->webhook_token) {
-                    try {
-                        $facebookService = app(\App\Services\FacebookService::class);
-                        $result = $facebookService->subscribeToWebhook(
-                            $page->access_token,
-                            $page->page_id,
-                            ['leadgen', 'feed'],
-                            $workflow->webhook_url,
-                            $workflow->webhook_token,
-                        );
-                        if ($result['success'] ?? false) {
-                            $page->update(['webhook_subscribed_at' => now()]);
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning('Auto-setup webhook subscription failed for page', [
-                            'page_id' => $page->page_id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                // 3. Subscribe app (skip if already subscribed)
-                if (! $page->app_subscribed_at) {
-                    try {
-                        $appResponse = Http::post(
-                            "https://graph.facebook.com/{$apiVersion}/{$page->page_id}/subscribed_apps",
-                            [
-                                'access_token' => $page->access_token,
-                                'subscribed_fields' => 'leadgen,feed',
-                            ]
-                        );
-                        if ($appResponse->successful()) {
-                            $page->update(['app_subscribed_at' => now()]);
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning('Auto-setup app subscription failed for page', [
-                            'page_id' => $page->page_id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                $pages[] = [
-                    'id' => $pageData['id'],
-                    'name' => $pageData['name'],
-                    'category' => $pageData['category'] ?? null,
-                ];
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => count($pages).' pages synced and subscribed',
-                'pages' => $pages,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Auto-setup Facebook failed', [
-                'workflow_id' => $workflow->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Auto-setup failed: '.$e->getMessage(),
-            ], 500);
+        if (! $user->hasFacebookToken()) {
+            return response()->json(['success' => false, 'message' => 'No Facebook access token.'], 400);
         }
+
+        \App\Jobs\AutoSetupFacebookJob::dispatch($user->id, $workflow->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Facebook setup started — progress will be broadcast via WebSocket.',
+        ], 202);
     }
 
     /**

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEcho } from '@laravel/echo-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { type Workflow, type WorkflowStep } from '@/types/workflow';
@@ -135,7 +136,8 @@ export default function WorkflowNodeConfig({
     const [facebookConnected, setFacebookConnected] = useState<boolean | null>(null);
     const [connectingFacebook, setConnectingFacebook] = useState(false);
     const [setupProgress, setSetupProgress] = useState<string | null>(null);
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const popupRef = useRef<Window | null>(null);
+    const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const config = serviceConfig[step.service] || {
         icon: Circle,
@@ -148,6 +150,36 @@ export default function WorkflowNodeConfig({
     const selectedPageId = step.configuration?.page_id || workflow.metadata?.selected_page_id;
     const selectedPageName = step.configuration?.page_name || workflow.metadata?.selected_page_name;
     const selectedFormId = step.configuration?.form_id;
+
+    // Listen for Facebook auto-setup progress via Reverb
+    type SetupProgressPayload = {
+        workflow_id: number;
+        status: 'running' | 'completed' | 'failed';
+        message: string;
+        data: { pages?: { id: string; name: string; category?: string }[] };
+        timestamp: string;
+    };
+
+    useEcho<SetupProgressPayload>(
+        `workflow.${workflow.id}`,
+        '.facebook.setup.progress',
+        useCallback((e: SetupProgressPayload) => {
+            if (e.status === 'running') {
+                setSetupProgress(e.message);
+            } else if (e.status === 'completed') {
+                setFacebookConnected(true);
+                setSetupProgress(null);
+                setConnectingFacebook(false);
+                onFacebookConnected?.();
+                toast.success(e.message);
+                loadPages();
+            } else if (e.status === 'failed') {
+                setSetupProgress(null);
+                setConnectingFacebook(false);
+                toast.error(e.message);
+            }
+        }, [workflow.id, onFacebookConnected]),
+    );
 
     // Check Facebook connection on mount for lead trigger
     useEffect(() => {
@@ -180,11 +212,11 @@ export default function WorkflowNodeConfig({
         }
     }, [step.service, workflow.metadata?.test_lead_fields]);
 
-    // Clean up polling on unmount
+    // Clean up popup check on unmount
     useEffect(() => {
         return () => {
-            if (pollRef.current) {
-                clearInterval(pollRef.current);
+            if (popupCheckRef.current) {
+                clearInterval(popupCheckRef.current);
             }
         };
     }, []);
@@ -205,42 +237,35 @@ export default function WorkflowNodeConfig({
         try {
             // Open popup first (must be in direct click handler to avoid popup blocker)
             const popup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
+            popupRef.current = popup;
 
             const res = await api.post('/integrations/facebook/oauth/authorize', {});
             if (res.success && res.auth_url) {
                 if (popup && !popup.closed) {
                     popup.location.href = res.auth_url;
                 } else {
-                    window.open(res.auth_url, 'facebook_oauth', 'width=600,height=700');
+                    popupRef.current = window.open(res.auth_url, 'facebook_oauth', 'width=600,height=700');
                 }
 
-                // Poll for popup close + token
                 setSetupProgress('Waiting for Facebook login...');
-                pollRef.current = setInterval(async () => {
-                    // Check if popup was closed
-                    if (popup && popup.closed) {
-                        if (pollRef.current) {
-                            clearInterval(pollRef.current);
-                            pollRef.current = null;
+
+                // Watch for popup close, then dispatch auto-setup (job handles work, Reverb pushes progress)
+                popupCheckRef.current = setInterval(async () => {
+                    if (popupRef.current && popupRef.current.closed) {
+                        if (popupCheckRef.current) {
+                            clearInterval(popupCheckRef.current);
+                            popupCheckRef.current = null;
                         }
 
-                        // Check if token was saved
+                        // Check if token was actually saved
                         setSetupProgress('Checking connection...');
                         try {
                             const statusRes = await api.get('/workflows/facebook/token-status');
                             if (statusRes.connected) {
-                                // Token saved — run auto-setup
-                                setSetupProgress('Syncing pages & subscriptions...');
+                                // Token saved — dispatch auto-setup job (returns immediately, Reverb handles updates)
+                                setSetupProgress('Setting up pages & subscriptions...');
                                 await api.post(`/workflows/${workflow.id}/auto-setup-facebook`, {});
-
-                                setFacebookConnected(true);
-                                setSetupProgress(null);
-                                setConnectingFacebook(false);
-                                onFacebookConnected?.();
-                                toast.success('Facebook connected — pages synced & subscriptions active');
-
-                                // Load pages now
-                                loadPages();
+                                // Progress updates will arrive via Reverb (useEcho above)
                             } else {
                                 setSetupProgress(null);
                                 setConnectingFacebook(false);
