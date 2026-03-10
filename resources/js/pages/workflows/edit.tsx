@@ -20,6 +20,7 @@ import {
     AlertCircle,
     X,
     AlertTriangle,
+    Pencil,
 } from 'lucide-react';
 
 interface WorkflowEditPageProps {
@@ -52,6 +53,15 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
     const [showConfig, setShowConfig] = useState(false);
     const [executionStates, setExecutionStates] = useState<NodeExecutionState[]>([]);
     const [facebookConnected, setFacebookConnected] = useState(false);
+    const [editingName, setEditingName] = useState(false);
+    const [nameValue, setNameValue] = useState(workflow?.name || '');
+
+    // Keep name in sync when workflow loads/changes externally
+    useEffect(() => {
+        if (workflow?.name && !editingName) {
+            setNameValue(workflow.name);
+        }
+    }, [workflow?.name]);
 
     // Check Facebook connection status on mount
     useEffect(() => {
@@ -210,9 +220,47 @@ export default function WorkflowEditPage({ workflow: initialWorkflow }: Workflow
 
                         <span className="text-muted-foreground">/</span>
 
-                        <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                            {workflow.name}
-                        </span>
+                        {editingName ? (
+                            <input
+                                autoFocus
+                                value={nameValue}
+                                onChange={(e) => setNameValue(e.target.value)}
+                                onBlur={() => {
+                                    const trimmed = nameValue.trim();
+                                    if (trimmed && trimmed !== workflow.name) {
+                                        updateWorkflow({ name: trimmed });
+                                    } else {
+                                        setNameValue(workflow.name);
+                                    }
+                                    setEditingName(false);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        (e.target as HTMLInputElement).blur();
+                                    }
+                                    if (e.key === 'Escape') {
+                                        setNameValue(workflow.name);
+                                        setEditingName(false);
+                                    }
+                                }}
+                                className={cn(
+                                    'text-sm font-medium text-foreground bg-transparent',
+                                    'border-b border-primary outline-none',
+                                    'max-w-[200px] px-0.5',
+                                )}
+                            />
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setEditingName(true)}
+                                className="group flex items-center gap-1.5 hover:bg-muted/50 rounded px-1.5 py-0.5 -mx-1.5 transition-colors"
+                            >
+                                <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+                                    {workflow.name}
+                                </span>
+                                <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                        )}
 
                         <Badge
                             variant="secondary"
