@@ -9,12 +9,10 @@ import {
     Copy,
     Check,
     Loader2,
-    Play,
     CheckCircle2,
-    XCircle,
     Circle,
     Clock,
-    ChevronDown,
+    ChevronRight,
     FileText,
     Plus,
     Trash2,
@@ -25,19 +23,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-
-interface FacebookPage {
-    id: string;
-    name: string;
-    category?: string;
-}
-
-interface LeadForm {
-    id: string;
-    name: string;
-    status: string;
-    questions: { key: string; label: string; type: string }[];
-}
+import PageSelectionModal from './page-selection-modal';
+import FormSelectionModal from './form-selection-modal';
 
 interface TestLeadField {
     name: string;
@@ -113,10 +100,8 @@ export default function WorkflowNodeConfig({
     onFacebookConnected,
 }: WorkflowNodeConfigProps) {
     const [copied, setCopied] = useState(false);
-    const [pages, setPages] = useState<FacebookPage[]>([]);
-    const [loadingPages, setLoadingPages] = useState(false);
-    const [forms, setForms] = useState<LeadForm[]>([]);
-    const [loadingForms, setLoadingForms] = useState(false);
+    const [pageModalOpen, setPageModalOpen] = useState(false);
+    const [formModalOpen, setFormModalOpen] = useState(false);
     const [testLeadFields, setTestLeadFields] = useState<TestLeadField[]>(
         step.configuration?.test_lead_fields || [],
     );
@@ -172,7 +157,6 @@ export default function WorkflowNodeConfig({
                 setConnectingFacebook(false);
                 onFacebookConnected?.();
                 toast.success(e.message);
-                loadPages();
             } else if (e.status === 'failed') {
                 setSetupProgress(null);
                 setConnectingFacebook(false);
@@ -187,20 +171,6 @@ export default function WorkflowNodeConfig({
             checkFacebookConnection();
         }
     }, [step.service]);
-
-    // Load pages when Facebook is connected and step is lead trigger
-    useEffect(() => {
-        if (step.service === 'facebook_lead_ads' && facebookConnected) {
-            loadPages();
-        }
-    }, [step.service, facebookConnected]);
-
-    // Load forms when page is selected on lead trigger
-    useEffect(() => {
-        if (step.service === 'facebook_lead_ads' && selectedPageId && facebookConnected) {
-            loadForms(selectedPageId);
-        }
-    }, [step.service, selectedPageId, facebookConnected]);
 
     // Load dynamic source fields from workflow metadata (set by test trigger)
     useEffect(() => {
@@ -292,43 +262,12 @@ export default function WorkflowNodeConfig({
         }
     };
 
-    const loadPages = async () => {
-        setLoadingPages(true);
-        try {
-            const res = await api.get(`/workflows/${workflow.id}/pages`);
-            if (res.pages) {
-                setPages(res.pages);
-            }
-        } catch {
-            // Pages not synced yet
-        } finally {
-            setLoadingPages(false);
-        }
-    };
-
-    const loadForms = async (pageId: string) => {
-        setLoadingForms(true);
-        try {
-            const res = await api.get(`/workflows/${workflow.id}/lead-forms?page_id=${pageId}`);
-            if (res.forms) {
-                setForms(res.forms);
-            }
-        } catch {
-            // Can't fetch forms
-        } finally {
-            setLoadingForms(false);
-        }
-    };
-
-    const handlePageSelect = (pageId: string) => {
-        const page = pages.find((p) => p.id === pageId);
-        if (!page) return;
-
+    const handlePageSelected = (pageId: string, pageName: string) => {
         onUpdate({
             configuration: {
                 ...step.configuration,
-                page_id: page.id,
-                page_name: page.name,
+                page_id: pageId,
+                page_name: pageName,
                 form_id: undefined,
                 form_name: undefined,
             },
@@ -337,23 +276,37 @@ export default function WorkflowNodeConfig({
         onWorkflowUpdate?.({
             metadata: {
                 ...workflow.metadata,
-                selected_page_id: page.id,
-                selected_page_name: page.name,
+                selected_page_id: pageId,
+                selected_page_name: pageName,
             },
         });
     };
 
-    const handleFormSelect = (formId: string) => {
-        const form = forms.find((f) => f.id === formId);
-        if (!form) return;
+    const handleFormSelected = (formId: string, formName: string, questions?: { key: string; label: string; type: string }[]) => {
+        // Build source fields from form questions
+        const formFields = (questions || []).map((q) => ({
+            name: q.key,
+            values: [],
+        }));
 
         onUpdate({
             configuration: {
                 ...step.configuration,
-                form_id: form.id,
-                form_name: form.name,
+                form_id: formId,
+                form_name: formName,
+                form_fields: formFields,
             },
         });
+
+        // Store form fields in workflow metadata so field mapping step can use them
+        if (formFields.length > 0) {
+            onWorkflowUpdate?.({
+                metadata: {
+                    ...workflow.metadata,
+                    form_fields: formFields,
+                },
+            });
+        }
     };
 
     const handleTestTrigger = async () => {
@@ -404,6 +357,12 @@ export default function WorkflowNodeConfig({
         }
     };
 
+    const syncMappingsToServer = (updated: FieldMapping[]) => {
+        // Only persist complete mappings to avoid validation errors
+        const complete = updated.filter((m) => m.source_field && m.target_field);
+        onUpdate({ field_mappings: complete });
+    };
+
     const addMapping = () => {
         setMappings((prev) => [...prev, { source_field: '', target_field: '', field_type: 'text' }]);
     };
@@ -411,7 +370,7 @@ export default function WorkflowNodeConfig({
     const updateMapping = (index: number, updates: Partial<FieldMapping>) => {
         setMappings((prev) => {
             const updated = prev.map((m, i) => (i === index ? { ...m, ...updates } : m));
-            onUpdate({ field_mappings: updated });
+            syncMappingsToServer(updated);
             return updated;
         });
     };
@@ -419,7 +378,7 @@ export default function WorkflowNodeConfig({
     const removeMapping = (index: number) => {
         setMappings((prev) => {
             const updated = prev.filter((_, i) => i !== index);
-            onUpdate({ field_mappings: updated });
+            syncMappingsToServer(updated);
             return updated;
         });
     };
@@ -433,11 +392,18 @@ export default function WorkflowNodeConfig({
         }
     };
 
-    // Build dynamic source fields from test lead data or form questions
-    const sourceFields = testLeadFields.length > 0
-        ? testLeadFields.map((f) => ({
+    // Build dynamic source fields: test lead data > form questions > fallback
+    const formFields = workflow.metadata?.form_fields || step.configuration?.form_fields || [];
+    const dynamicFields = testLeadFields.length > 0
+        ? testLeadFields
+        : formFields.length > 0
+            ? formFields
+            : [];
+
+    const sourceFields = dynamicFields.length > 0
+        ? dynamicFields.map((f: { name: string }) => ({
             value: f.name,
-            label: f.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            label: f.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
         }))
         : fallbackSourceFields;
 
@@ -543,91 +509,59 @@ export default function WorkflowNodeConfig({
                                     Facebook connected
                                 </div>
 
-                                {/* Page selector */}
+                                {/* Page selector trigger */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                         Facebook Page
                                     </label>
-                                    {loadingPages ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                            Loading pages...
-                                        </div>
-                                    ) : pages.length > 0 ? (
-                                        <div className="relative">
-                                            <select
-                                                value={selectedPageId || ''}
-                                                onChange={(e) => handlePageSelect(e.target.value)}
-                                                className={cn(
-                                                    'w-full appearance-none rounded-lg border border-border bg-background',
-                                                    'px-3 py-2 pr-8 text-sm text-foreground',
-                                                    'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                                                )}
-                                            >
-                                                <option value="">Select a page...</option>
-                                                {pages.map((page) => (
-                                                    <option key={page.id} value={page.id}>
-                                                        {page.name} {page.category ? `(${page.category})` : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                                            No pages found. Try reconnecting Facebook.
-                                        </p>
-                                    )}
-                                    {selectedPageName && (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                            Selected: {selectedPageName}
-                                        </div>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setPageModalOpen(true)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 rounded-lg border border-border bg-background',
+                                            'px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
+                                        )}
+                                    >
+                                        <Facebook className={cn(
+                                            'w-4 h-4 flex-shrink-0',
+                                            selectedPageName ? 'text-[#1877F2]' : 'text-muted-foreground',
+                                        )} />
+                                        <span className={cn(
+                                            'flex-1 text-sm truncate',
+                                            selectedPageName ? 'text-foreground font-medium' : 'text-muted-foreground',
+                                        )}>
+                                            {selectedPageName || 'Select a page...'}
+                                        </span>
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    </button>
                                 </div>
 
-                                {/* Form selector */}
+                                {/* Form selector trigger */}
                                 {selectedPageId && (
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                             Lead Form
                                         </label>
-                                        {loadingForms ? (
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                Loading forms...
-                                            </div>
-                                        ) : forms.length > 0 ? (
-                                            <div className="relative">
-                                                <select
-                                                    value={selectedFormId || ''}
-                                                    onChange={(e) => handleFormSelect(e.target.value)}
-                                                    className={cn(
-                                                        'w-full appearance-none rounded-lg border border-border bg-background',
-                                                        'px-3 py-2 pr-8 text-sm text-foreground',
-                                                        'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                                                    )}
-                                                >
-                                                    <option value="">Select a form...</option>
-                                                    {forms.map((form) => (
-                                                        <option key={form.id} value={form.id}>
-                                                            {form.name} ({form.status})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                                            </div>
-                                        ) : (
-                                            <p className="text-xs text-muted-foreground">
-                                                No lead forms found for this page.
-                                            </p>
-                                        )}
-                                        {step.configuration?.form_name && (
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                                Form: {step.configuration.form_name}
-                                            </div>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormModalOpen(true)}
+                                            className={cn(
+                                                'w-full flex items-center gap-3 rounded-lg border border-border bg-background',
+                                                'px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
+                                            )}
+                                        >
+                                            <FileText className={cn(
+                                                'w-4 h-4 flex-shrink-0',
+                                                step.configuration?.form_name ? 'text-violet-600' : 'text-muted-foreground',
+                                            )} />
+                                            <span className={cn(
+                                                'flex-1 text-sm truncate',
+                                                step.configuration?.form_name ? 'text-foreground font-medium' : 'text-muted-foreground',
+                                            )}>
+                                                {step.configuration?.form_name || 'Select a form...'}
+                                            </span>
+                                            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                        </button>
                                     </div>
                                 )}
 
@@ -708,10 +642,10 @@ export default function WorkflowNodeConfig({
                 {isFieldMapping && (
                     <div className="space-y-3">
                         {/* Dynamic fields indicator */}
-                        {testLeadFields.length > 0 && (
+                        {dynamicFields.length > 0 && (
                             <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                Using {testLeadFields.length} fields from test lead response
+                                Using {dynamicFields.length} fields from {testLeadFields.length > 0 ? 'test lead' : 'lead form'}
                             </div>
                         )}
 
@@ -823,6 +757,25 @@ export default function WorkflowNodeConfig({
                     </button>
                 </div>
             </div>
+
+            {/* Page & Form selection modals */}
+            <PageSelectionModal
+                open={pageModalOpen}
+                onClose={() => setPageModalOpen(false)}
+                onSelect={handlePageSelected}
+                selectedPageId={selectedPageId}
+                workflowId={workflow.id}
+            />
+            {selectedPageId && (
+                <FormSelectionModal
+                    open={formModalOpen}
+                    onClose={() => setFormModalOpen(false)}
+                    onSelect={handleFormSelected}
+                    selectedFormId={selectedFormId}
+                    pageId={selectedPageId}
+                    workflowId={workflow.id}
+                />
+            )}
         </div>
     );
 }

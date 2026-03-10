@@ -6,11 +6,7 @@
     {{ $message ?? 'Authorization complete. This window will close automatically.' }}
 </p>
 <script>
-    if (window.opener) {
-        window.close();
-    } else {
-        window.location.href = '{{ $redirect ?? "/integrations" }}';
-    }
+    window.close();
 </script>
 </body>
 </html>

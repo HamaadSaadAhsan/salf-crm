@@ -772,7 +772,22 @@ class WorkflowController extends Controller
             $apiVersion = config('services.facebook.api_version', 'v23.0');
             $formId = $request->input('form_id');
 
-            // Create a test lead on Facebook
+            // Delete existing test leads first (Facebook only allows one per form)
+            $existingResponse = Http::get(
+                "https://graph.facebook.com/{$apiVersion}/{$formId}/test_leads",
+                ['access_token' => $page->access_token]
+            );
+
+            if ($existingResponse->successful()) {
+                foreach ($existingResponse->json('data', []) as $existing) {
+                    Http::delete(
+                        "https://graph.facebook.com/{$apiVersion}/{$existing['id']}",
+                        ['access_token' => $page->access_token]
+                    );
+                }
+            }
+
+            // Create a new test lead
             $createResponse = Http::post(
                 "https://graph.facebook.com/{$apiVersion}/{$formId}/test_leads",
                 ['access_token' => $page->access_token]

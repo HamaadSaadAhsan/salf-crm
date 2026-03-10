@@ -1,395 +1,208 @@
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Search, X, Loader2, RefreshCw, AlertCircle, FileText, Calendar } from "lucide-react"
-import { Workflow } from '@/types/workflow'
-import axios from "@/lib/axios"
+import { useState, useEffect } from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Search, Loader2, RefreshCw, CheckCircle2, FileText } from 'lucide-react';
+import { api } from '@/lib/api';
 
-interface FacebookForm {
-  id: string
-  name: string
-  status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'
-  created_at: string
-  leadgen_export_csv_url?: string
-  leads_count?: number
-  page_id: string
+interface FormQuestion {
+    key: string;
+    label: string;
+    type: string;
+}
+
+interface LeadForm {
+    id: string;
+    name: string;
+    status: string;
+    questions?: FormQuestion[];
 }
 
 interface FormSelectionModalProps {
-  open: boolean
-  onClose: () => void
-  selectedForm: string
-  selectedPage: string
-  onSelectForm: (formId: string, formName?: string) => void  // Enhanced callback
-  workflow?: Workflow  // Optional workflow context
+    open: boolean;
+    onClose: () => void;
+    onSelect: (formId: string, formName: string, questions?: FormQuestion[]) => void;
+    selectedFormId?: string;
+    pageId: string;
+    workflowId: number;
 }
 
 export default function FormSelectionModal({
-                                             open,
-                                             onClose,
-                                             selectedForm,
-                                             selectedPage,
-                                             onSelectForm,
-                                             workflow
-                                           }: FormSelectionModalProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [tempSelected, setTempSelected] = useState(selectedForm)
-  const [forms, setForms] = useState<FacebookForm[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalForms, setTotalForms] = useState(0)
+    open,
+    onClose,
+    onSelect,
+    selectedFormId,
+    pageId,
+    workflowId,
+}: FormSelectionModalProps) {
+    const [search, setSearch] = useState('');
+    const [forms, setForms] = useState<LeadForm[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [tempSelected, setTempSelected] = useState<string | null>(null);
 
-  const filteredForms = forms.filter((form) =>
-    form.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    form.id.includes(searchTerm)
-  )
+    const filtered = forms.filter(
+        (f) =>
+            f.name.toLowerCase().includes(search.toLowerCase()) ||
+            f.id.includes(search),
+    );
 
-  // Update temp selection when selectedForm prop changes
-  useEffect(() => {
-    setTempSelected(selectedForm)
-  }, [selectedForm])
-
-  useEffect(() => {
-    if (open && selectedPage) {
-      setCurrentPage(1)
-      fetchForms(1)
-    } else if (open && !selectedPage) {
-      setError("Please select a Facebook page first")
-    } else {
-      // Reset state when modal closes
-      setSearchTerm("")
-      setError(null)
-      setForms([])
-      setCurrentPage(1)
-    }
-  }, [open, selectedPage])
-
-  const fetchForms = async (page: number = 1) => {
-    if (!selectedPage) {
-      setError("No page selected")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const params = {
-        page_id: selectedPage,
-        per_page: 10
-      }
-
-      const response = await axios.post(`/integrations/facebook/forms?page=${page}`, params)
-      const data = await response.data
-
-      if (data.success) {
-        if (page === 1) {
-          setForms(data.forms)
-        } else {
-          setForms(prev => [...prev, ...data.forms])
+    useEffect(() => {
+        if (open && pageId) {
+            setTempSelected(selectedFormId || null);
+            setSearch('');
+            fetchForms();
         }
-        setHasMore(data.meta?.has_more || false)
-        setTotalForms(data.meta?.total || 0)
-        setCurrentPage(page)
-      } else {
-        throw new Error(data.message || 'Failed to fetch forms')
-      }
-    } catch (error: any) {
-      console.error("Failed to fetch forms:", error)
-      setError(error.message || 'Failed to load Facebook forms')
-    } finally {
-      setLoading(false)
-    }
-  }
+    }, [open, pageId]);
 
-  const loadMore = async () => {
-    if (!hasMore || loading) return
-    await fetchForms(currentPage + 1)
-  }
+    const fetchForms = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get(`/workflows/${workflowId}/lead-forms?page_id=${pageId}`);
+            setForms(res.forms || []);
+        } catch {
+            setForms([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleSelect = () => {
-    if (!tempSelected) return
+    const handleConfirm = () => {
+        if (!tempSelected) return;
+        const form = forms.find((f) => f.id === tempSelected);
+        if (form) {
+            onSelect(form.id, form.name, form.questions);
+        }
+        onClose();
+    };
 
-    const selectedFormData = forms.find(form => form.id === tempSelected)
-    onSelectForm(tempSelected, selectedFormData?.name)
-    onClose()
-  }
+    const selectedForm = forms.find((f) => f.id === tempSelected);
 
-  const refreshResults = () => {
-    setForms([])
-    setHasMore(true)
-    setCurrentPage(1)
-    fetchForms(1)
-  }
+    return (
+        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+            <DialogContent className="max-w-lg" showCloseButton={false}>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-violet-600" />
+                        Select Lead Form
+                    </DialogTitle>
+                    <DialogDescription>
+                        Choose the lead form to capture submissions from.
+                    </DialogDescription>
+                </DialogHeader>
 
-  const clearSelection = () => {
-    setTempSelected("")
-  }
+                <div className="space-y-3">
+                    {/* Search */}
+                    {forms.length > 3 && (
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search forms..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                    )}
 
-  // Get current form name for display
-  const getCurrentFormName = () => {
-    if (!selectedForm) return null
-    const currentForm = forms.find(form => form.id === selectedForm)
-    return currentForm?.name || selectedForm
-  }
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  // Get status badge variant
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'primary'
-      case 'ARCHIVED': return 'secondary'
-      case 'DELETED': return 'destructive'
-      default: return 'outline'
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl [&>button]:hidden">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DialogTitle>Select Lead Form</DialogTitle>
-              <Badge variant="secondary">Facebook Lead Ads</Badge>
-              {workflow && (
-                <Badge variant="outline" className="text-xs">
-                  {workflow.name}
-                </Badge>
-              )}
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Current Selection Info */}
-          {selectedForm && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="text-sm">
-                <span className="font-medium">Currently selected:</span> {getCurrentFormName()}
-              </div>
-            </div>
-          )}
-
-          {/* No Page Selected Warning */}
-          {!selectedPage && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please select a Facebook page first before choosing a form.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Error State */}
-          {error && selectedPage && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>{error}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshResults}
-                  disabled={loading}
-                >
-                  <RefreshCw className="w-4 h-4 mr-1" />
-                  Retry
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* No Forms State */}
-          {!loading && !error && selectedPage && forms.length === 0 && (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <div className="text-gray-500 mb-2">
-                No lead forms found for this page
-              </div>
-              <p className="text-sm text-gray-400 mb-4">
-                Create lead forms in Facebook Ads Manager to capture leads
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => window.open('https://www.facebook.com/ads/manager', '_blank')}
-              >
-                Open Ads Manager
-              </Button>
-            </div>
-          )}
-
-          {/* Search */}
-          {forms.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search forms by name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          )}
-
-          {/* Form List */}
-          {loading && forms.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Loading lead forms...</p>
-              </div>
-            </div>
-          ) : forms.length > 0 ? (
-            <div className="space-y-4">
-              <RadioGroup value={tempSelected} onValueChange={setTempSelected}>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {filteredForms.map((form) => (
-                    <div
-                      key={form.id}
-                      className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-primary-foreground ${
-                        tempSelected === form.id
-                          ? 'border-blue-200 bg-blue-800'
-                          : 'border-gray-200'
-                      }`}
-                      onClick={() => setTempSelected(form.id)}
-                    >
-                      <RadioGroupItem value={form.id} id={form.id} />
-                      <div className="flex-1">
-                        <Label htmlFor={form.id} className="cursor-pointer">
-                          <div>
-                            <div className="font-medium">{form.name}</div>
-                            <div className="text-sm text-gray-500">ID: {form.id}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-1 text-xs text-gray-400">
-                                <Calendar className="w-3 h-3" />
-                                Created {formatDate(form.created_at)}
-                              </div>
-                              {form.leads_count !== undefined && (
-                                <div className="text-xs text-gray-400">
-                                  {form.leads_count} leads
-                                </div>
-                              )}
+                    {/* List */}
+                    <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-10">
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mb-2" />
+                                <p className="text-sm text-muted-foreground">Loading forms...</p>
                             </div>
-                          </div>
-                        </Label>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge variant={getStatusVariant(form.status)} className="text-xs">
-                          {form.status}
-                        </Badge>
-                      </div>
+                        ) : filtered.length > 0 ? (
+                            <div className="divide-y divide-border">
+                                {filtered.map((form) => {
+                                    const isSelected = tempSelected === form.id;
+                                    return (
+                                        <button
+                                            key={form.id}
+                                            type="button"
+                                            onClick={() => setTempSelected(form.id)}
+                                            className={cn(
+                                                'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors',
+                                                isSelected
+                                                    ? 'bg-primary/5'
+                                                    : 'hover:bg-muted/50',
+                                            )}
+                                        >
+                                            <div
+                                                className={cn(
+                                                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                                                    isSelected
+                                                        ? 'bg-violet-600 text-white'
+                                                        : 'bg-muted text-muted-foreground',
+                                                )}
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-foreground truncate">
+                                                    {form.name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    ID: {form.id}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <Badge
+                                                    variant={form.status === 'ACTIVE' ? 'primary' : 'secondary'}
+                                                    size="sm"
+                                                >
+                                                    {form.status}
+                                                </Badge>
+                                                {isSelected && (
+                                                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-10">
+                                <FileText className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                                <p className="text-sm text-muted-foreground">
+                                    {search ? `No forms matching "${search}"` : 'No lead forms found for this page'}
+                                </p>
+                            </div>
+                        )}
                     </div>
-                  ))}
 
-                  {searchTerm && filteredForms.length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      No forms found matching {`"${searchTerm}"`}
+                    {/* Summary */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{forms.length} form{forms.length !== 1 ? 's' : ''} available</span>
+                        <button
+                            type="button"
+                            onClick={fetchForms}
+                            disabled={loading}
+                            className="flex items-center gap-1 hover:text-foreground transition-colors"
+                        >
+                            <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} />
+                            Refresh
+                        </button>
                     </div>
-                  )}
-                </div>
-              </RadioGroup>
-
-              {/* Load More & Actions */}
-              <div className="flex items-center justify-between pt-2 border-t">
-                <div className="text-sm text-gray-600">
-                  {searchTerm
-                    ? `Showing ${filteredForms.length} of ${forms.length} forms (filtered from ${totalForms} total)`
-                    : `Showing ${forms.length} of ${totalForms} forms`
-                  }
                 </div>
 
-                <div className="flex gap-2">
-                  {hasMore && !searchTerm && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={loadMore}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Loading...
-                        </>
-                      ) : (
-                        'Load more'
-                      )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
                     </Button>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={refreshResults}
-                    disabled={loading}
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                    Refresh
-                  </Button>
-
-                  {tempSelected && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearSelection}
-                    >
-                      Clear
+                    <Button onClick={handleConfirm} disabled={!tempSelected}>
+                        {selectedForm ? `Select ${selectedForm.name}` : 'Select Form'}
                     </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Help Text */}
-          {selectedPage && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">About lead forms:</p>
-                <ul className="text-xs space-y-1">
-                  <li>• Only active forms can capture new leads</li>
-                  <li>• Forms must be published and running ads to generate leads</li>
-                  <li>• You can create new forms in Facebook Ads Manager</li>
-                  <li>• Form fields will be available for mapping after selection</li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSelect}
-            disabled={!tempSelected || !selectedPage}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Select Form
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
