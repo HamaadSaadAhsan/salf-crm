@@ -58,6 +58,7 @@ export interface ScannedPdfFieldResponse {
         section: string;
         repeat_group: string | null;
         value: string;
+        field_options: string[] | null;
     }[];
     repeat_groups: Record<
         string,

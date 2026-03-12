@@ -9,10 +9,17 @@ Output: JSON to stdout with fields, repeat_groups, sections, total_fields, pages
 """
 
 import json
+import os
 import re
 import sys
+import tempfile
+
+# Ensure sibling modules in scripts/ are importable
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fitz  # PyMuPDF
+
+from make_fillable import analyse_and_build, has_form_fields
 
 
 # Widget subtype constants
@@ -239,8 +246,83 @@ def detect_repeat_groups(
     return raw_name_to_group, group_meta
 
 
+def _extract_radio_option(widget) -> str | None:
+    """
+    Extract the 'on' state name from a radio button widget's appearance dictionary.
+    The AP/N dict has keys like '/M' and '/Off' — we want the non-Off key.
+    """
+    try:
+        # Try PyMuPDF's on_state method first (available in newer versions)
+        if hasattr(widget, "on_state"):
+            state = widget.on_state()
+            if state and state != "Off":
+                return state
+    except Exception:
+        pass
+
+    try:
+        # Fallback: parse the widget's underlying PDF object
+        xref = widget.xref
+        doc = widget.parent
+        ap = doc.xref_get_key(xref, "AP")
+        if ap and ap[0] == "dict":
+            # Get the /N (normal appearance) sub-dictionary
+            n_dict = doc.xref_get_key(xref, "AP/N")
+            if n_dict and n_dict[0] == "dict":
+                # Parse dict string like "<< /M 10 0 R /Off 11 0 R >>"
+                import re as _re
+                keys = _re.findall(r"/(\w+)", n_dict[1])
+                for key in keys:
+                    if key != "Off":
+                        return key
+    except Exception:
+        pass
+
+    return None
+
+
+def ensure_fillable(pdf_path: str) -> tuple[str, bool]:
+    """
+    Check if the PDF has form fields. If not, convert it to a fillable PDF
+    by overwriting the original file.
+
+    Returns (path_to_scan, was_converted).
+    """
+    if has_form_fields(pdf_path):
+        return pdf_path, False
+
+    # Also check with PyMuPDF — some PDFs have AcroForm but no actual widgets
+    doc = fitz.open(pdf_path)
+    has_widgets = False
+    for page in doc:
+        if list(page.widgets()):
+            has_widgets = True
+            break
+    doc.close()
+
+    if has_widgets:
+        return pdf_path, False
+
+    # Convert plain PDF to fillable: write to temp file, then replace original
+    fd, tmp_path = tempfile.mkstemp(suffix=".pdf", dir=os.path.dirname(pdf_path))
+    os.close(fd)
+
+    try:
+        analyse_and_build(pdf_path, tmp_path)
+        os.replace(tmp_path, pdf_path)
+        return pdf_path, True
+    except Exception:
+        # Clean up temp file on failure, return original for scanning
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        return pdf_path, False
+
+
 def scan_pdf(pdf_path: str) -> dict:
     """Scan a PDF file and return structured field data."""
+    # Auto-convert plain PDFs to fillable before scanning
+    pdf_path, was_converted = ensure_fillable(pdf_path)
+
     doc = fitz.open(pdf_path)
     total_pages = len(doc)
 
@@ -254,6 +336,8 @@ def scan_pdf(pdf_path: str) -> dict:
 
     # Phase 2: Extract all form widgets
     raw_fields: list[dict] = []
+    radio_options: dict[str, list[str]] = {}  # field_name → list of option values
+
     for page_num in range(total_pages):
         page = doc[page_num]
         for widget in page.widgets():
@@ -274,6 +358,14 @@ def scan_pdf(pdf_path: str) -> dict:
             rect = list(widget.rect)  # [x0, y0, x1, y1]
             value = widget.field_value or ""
 
+            # Extract radio/checkbox option values from AP/N dictionary
+            if field_type_int == WIDGET_RADIO:
+                option_value = _extract_radio_option(widget)
+                if option_value and field_name not in radio_options:
+                    radio_options[field_name] = []
+                if option_value and option_value not in radio_options[field_name]:
+                    radio_options[field_name].append(option_value)
+
             raw_fields.append({
                 "raw_name": field_name,
                 "base_name": base_name,
@@ -282,6 +374,13 @@ def scan_pdf(pdf_path: str) -> dict:
                 "rect": rect,
                 "value": value,
             })
+
+    # Attach field_options to radio fields (deduplicated per group name)
+    for f in raw_fields:
+        if f["type"] == "radio" and f["raw_name"] in radio_options:
+            f["field_options"] = radio_options[f["raw_name"]]
+        else:
+            f["field_options"] = None
 
     # Phase 3: Assign sections to fields
     for f in raw_fields:
@@ -317,6 +416,7 @@ def scan_pdf(pdf_path: str) -> dict:
             "section": f["section"],
             "repeat_group": f["repeat_group"],
             "value": f["value"],
+            "field_options": f.get("field_options"),
         })
 
     doc.close()
@@ -327,6 +427,7 @@ def scan_pdf(pdf_path: str) -> dict:
         "sections": sections,
         "total_fields": len(output_fields),
         "pages": total_pages,
+        "was_converted": was_converted,
     }
 
 
