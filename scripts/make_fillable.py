@@ -385,12 +385,12 @@ def detect_underscore_blanks(chars, words, rects, page_num):
                 continue
 
             field_box = {
-                "x0": span_x0,
-                "top": span_top - 10,
+                "x0": span_x0 + 3,
+                "top": span_bot - 14,
                 "x1": span_x1,
-                "bottom": span_top + 1,
+                "bottom": span_bot - 1,
                 "w": span_len,
-                "h": 11,
+                "h": 13,
                 "page": page_num,
                 "style": "underscore_blank",
             }
@@ -599,7 +599,7 @@ def make_text_widget(writer, field_name, rect, page_ref, multiline=False):
     field[NameObject("/P")] = page_ref
     ff = (1 << 12) if multiline else 0
     field[NameObject("/Ff")] = NumberObject(ff)
-    field[NameObject("/DA")] = TextStringObject("/Helv 8 Tf 0 0 0.6 rg")
+    field[NameObject("/DA")] = TextStringObject("/Helv 0 Tf 0 0 0.6 rg")
     bs = DictionaryObject()
     bs[NameObject("/W")] = NumberObject(0)
     bs[NameObject("/S")] = NameObject("/S")
