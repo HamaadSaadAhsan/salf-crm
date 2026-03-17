@@ -1,5 +1,6 @@
 import { Content } from '@/crm/layout/components/content';
 import {
+    useBulkDeletePdfTemplates,
     useCreatePdfTemplate,
     useDeletePdfTemplate,
     usePdfTemplate,
@@ -63,6 +64,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
     Select,
@@ -177,6 +179,7 @@ export default function PdfTemplatesPage() {
     const createTemplate = useCreatePdfTemplate();
     const updateTemplate = useUpdatePdfTemplate();
     const deleteTemplate = useDeletePdfTemplate();
+    const bulkDeleteTemplates = useBulkDeletePdfTemplates();
     const saveFields = useSavePdfTemplateFields();
     const scanTemplate = useScanPdfTemplate();
 
@@ -190,6 +193,8 @@ export default function PdfTemplatesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [fieldsSearchQuery, setFieldsSearchQuery] = useState('');
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
     // Create form state
     const [createForm, setCreateForm] = useState({
@@ -462,6 +467,37 @@ export default function PdfTemplatesPage() {
         }
     }, []);
 
+    const toggleSelect = useCallback((id: number) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedIds((prev) => {
+            if (prev.size === filteredTemplates.length) {
+                return new Set();
+            }
+            return new Set(filteredTemplates.map((t) => t.id));
+        });
+    }, [filteredTemplates]);
+
+    const handleBulkDelete = useCallback(() => {
+        if (selectedIds.size === 0) return;
+        bulkDeleteTemplates.mutate([...selectedIds], {
+            onSuccess: () => {
+                setSelectedIds(new Set());
+                setShowBulkDeleteDialog(false);
+            },
+        });
+    }, [selectedIds, bulkDeleteTemplates]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="PDF Templates" />
@@ -505,26 +541,76 @@ export default function PdfTemplatesPage() {
                     </Empty>
                 ) : (
                     <div className="p-6">
-                        {templates.length > 3 && (
-                            <div className="mb-4 relative max-w-sm">
-                                <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search templates..."
-                                    className="pl-8 h-9"
-                                />
-                            </div>
-                        )}
+                        <div className="mb-4 flex items-center gap-3">
+                            {filteredTemplates.length > 1 && (
+                                <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
+                                    <Checkbox
+                                        checked={selectedIds.size === filteredTemplates.length ? true : selectedIds.size > 0 ? 'indeterminate' : false}
+                                        onCheckedChange={toggleSelectAll}
+                                        size="sm"
+                                    />
+                                    Select All
+                                </label>
+                            )}
+                            {templates.length > 3 && (
+                                <div className="relative max-w-sm flex-1">
+                                    <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search templates..."
+                                        className="pl-8 h-9"
+                                    />
+                                </div>
+                            )}
+                            {selectedIds.size > 0 && (
+                                <div className="flex items-center gap-2 ml-auto">
+                                    <span className="text-sm text-muted-foreground">
+                                        {selectedIds.size} selected
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedIds(new Set())}
+                                    >
+                                        Clear
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => setShowBulkDeleteDialog(true)}
+                                    >
+                                        <Trash2 className="mr-1 size-4" />
+                                        Delete Selected
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {filteredTemplates.map((template) => (
                                 <div
                                     key={template.id}
-                                    className="group relative flex flex-col rounded-lg border border-border bg-card transition-colors hover:border-border/80 hover:shadow-sm"
+                                    className={`group relative flex flex-col rounded-lg border bg-card transition-colors hover:border-border/80 hover:shadow-sm ${
+                                        selectedIds.has(template.id)
+                                            ? 'border-primary/50 bg-primary/5'
+                                            : 'border-border'
+                                    }`}
                                 >
                                     <div className="flex items-start gap-3 p-4 pb-0">
-                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                                            <FileText className="size-5 text-primary" />
+                                        <div
+                                            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 cursor-pointer"
+                                            onClick={() => toggleSelect(template.id)}
+                                        >
+                                            {selectedIds.has(template.id) ? (
+                                                <Checkbox checked size="sm" />
+                                            ) : (
+                                                <FileText className="size-5 text-primary group-hover:hidden" />
+                                            )}
+                                            <Checkbox
+                                                checked={false}
+                                                size="sm"
+                                                className={`hidden ${selectedIds.has(template.id) ? '' : 'group-hover:block'}`}
+                                            />
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-start justify-between gap-2">
@@ -616,6 +702,29 @@ export default function PdfTemplatesPage() {
                         >
                             {deleteTemplate.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Delete Confirmation AlertDialog */}
+            <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {selectedIds.size} Template{selectedIds.size > 1 ? 's' : ''}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedIds.size} selected template{selectedIds.size > 1 ? 's' : ''}? This action cannot be undone and will remove all associated field configurations.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={handleBulkDelete}
+                            disabled={bulkDeleteTemplates.isPending}
+                        >
+                            {bulkDeleteTemplates.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
+                            Delete {selectedIds.size} Template{selectedIds.size > 1 ? 's' : ''}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

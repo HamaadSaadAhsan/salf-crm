@@ -132,6 +132,28 @@ class PdfTemplateController extends Controller
         return response()->json(['message' => 'Template deleted successfully.']);
     }
 
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:pdf_templates,id'],
+        ]);
+
+        $templates = PdfTemplate::whereIn('id', $request->input('ids'))->get();
+
+        foreach ($templates as $template) {
+            if ($template->file_path) {
+                Storage::disk('public')->delete($template->file_path);
+            }
+            $template->delete();
+        }
+
+        return response()->json([
+            'message' => "{$templates->count()} template(s) deleted successfully.",
+            'deleted_count' => $templates->count(),
+        ]);
+    }
+
     /**
      * Scan PDF fields using the Python scanner script.
      *

@@ -91,6 +91,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super-admin')->prefix('api')->group(function () {
         Route::get('/pdf-templates', [PdfTemplateController::class, 'index'])->name('api.pdf-templates.index');
         Route::post('/pdf-templates', [PdfTemplateController::class, 'store'])->name('api.pdf-templates.store');
+        Route::delete('/pdf-templates/bulk', [PdfTemplateController::class, 'bulkDestroy'])->name('api.pdf-templates.bulk-destroy');
         Route::get('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'show'])->name('api.pdf-templates.show');
         Route::patch('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'update'])->name('api.pdf-templates.update');
         Route::delete('/pdf-templates/{pdfTemplate}', [PdfTemplateController::class, 'destroy'])->name('api.pdf-templates.destroy');
@@ -235,6 +236,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/leads/{lead}/pdf-templates/{pdfTemplate}', [LeadPdfSubmissionController::class, 'showTemplate'])->name('api.leads.pdf-templates.show');
         Route::get('/leads/{lead}/pdf-submissions', [LeadPdfSubmissionController::class, 'index'])->name('api.leads.pdf-submissions.index');
         Route::post('/leads/{lead}/pdf-submissions', [LeadPdfSubmissionController::class, 'store'])->name('api.leads.pdf-submissions.store');
+        Route::delete('/leads/{lead}/pdf-submissions/bulk', [LeadPdfSubmissionController::class, 'bulkDestroy'])->name('api.leads.pdf-submissions.bulk-destroy');
         Route::get('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'show'])->name('api.leads.pdf-submissions.show');
         Route::patch('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'update'])->name('api.leads.pdf-submissions.update');
         Route::delete('/leads/{lead}/pdf-submissions/{submission}', [LeadPdfSubmissionController::class, 'destroy'])->name('api.leads.pdf-submissions.destroy');

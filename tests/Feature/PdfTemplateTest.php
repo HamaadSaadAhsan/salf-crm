@@ -269,6 +269,36 @@ it('preserves section and repeat_group on field re-save', function () {
     expect($field->repeat_group)->toBe('d4_dependents');
 });
 
+it('can bulk delete pdf templates', function () {
+    Storage::fake('public');
+
+    $user = createPdfTemplateAdmin();
+    $templates = PdfTemplate::factory()->count(3)->create();
+    PdfTemplateField::factory()->count(2)->create(['pdf_template_id' => $templates[0]->id]);
+
+    $ids = $templates->pluck('id')->toArray();
+
+    $response = $this->actingAs($user)->deleteJson('/api/pdf-templates/bulk', [
+        'ids' => $ids,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('deleted_count', 3);
+
+    expect(PdfTemplate::count())->toBe(0);
+    expect(PdfTemplateField::count())->toBe(0);
+});
+
+it('validates ids are required for bulk delete', function () {
+    $user = createPdfTemplateAdmin();
+
+    $response = $this->actingAs($user)->deleteJson('/api/pdf-templates/bulk', [
+        'ids' => [],
+    ]);
+
+    $response->assertUnprocessable();
+});
+
 it('returns 404 when scanning template with missing file', function () {
     $user = createPdfTemplateAdmin();
     $template = PdfTemplate::factory()->create(['file_path' => 'pdf-templates/nonexistent.pdf']);

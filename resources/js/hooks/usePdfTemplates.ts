@@ -96,6 +96,25 @@ export function useDeletePdfTemplate() {
     });
 }
 
+export function useBulkDeletePdfTemplates() {
+    const queryClient = useQueryClient();
+
+    return useMutation<{ deleted_count: number }, Error, number[]>({
+        mutationFn: async (ids: number[]) => {
+            const response = await axios.delete('/api/pdf-templates/bulk', { data: { ids } });
+            return response.data;
+        },
+        onSuccess: (_data, ids) => {
+            void queryClient.invalidateQueries({ queryKey: ['pdf-templates'] });
+            toast.success(`${ids.length} template${ids.length > 1 ? 's' : ''} deleted successfully`);
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to delete templates');
+        },
+    });
+}
+
 export function useScanPdfTemplate() {
     return useMutation({
         mutationFn: async (templateId: number) => {
@@ -209,6 +228,25 @@ export function useUpdateLeadPdfSubmission(leadId: string | null) {
         onError: (err: Error) => {
             const axiosError = err as Error & { response?: { data?: { message?: string } } };
             toast.error(axiosError.response?.data?.message || 'Failed to update submission');
+        },
+    });
+}
+
+export function useBulkDeleteLeadPdfSubmissions(leadId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation<{ deleted_count: number }, Error, number[]>({
+        mutationFn: async (ids: number[]) => {
+            const response = await axios.delete(`/api/leads/${leadId}/pdf-submissions/bulk`, { data: { ids } });
+            return response.data;
+        },
+        onSuccess: (_data, ids) => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-pdf-submissions', leadId] });
+            toast.success(`${ids.length} submission${ids.length > 1 ? 's' : ''} deleted successfully`);
+        },
+        onError: (err: Error) => {
+            const axiosError = err as Error & { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to delete submissions');
         },
     });
 }

@@ -23,6 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+    useBulkDeleteLeadPdfSubmissions,
     useCreateLeadPdfSubmission,
     useDeleteLeadPdfSubmission,
     useLeadPdfSubmissions,
@@ -143,11 +144,14 @@ export function LeadRecordsDocuments({ lead }: Props) {
     const createSubmission = useCreateLeadPdfSubmission(leadId);
     const updateSubmission = useUpdateLeadPdfSubmission(leadId);
     const deleteSubmission = useDeleteLeadPdfSubmission(leadId);
+    const bulkDeleteSubmissions = useBulkDeleteLeadPdfSubmissions(leadId);
 
     const [view, setView] = useState<ViewState>({ mode: 'list' });
     const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
     const [generating, setGenerating] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<LeadPdfSubmission | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
     const [autoMappedFields, setAutoMappedFields] = useState<Set<string>>(new Set());
 
@@ -382,6 +386,37 @@ export function LeadRecordsDocuments({ lead }: Props) {
         });
     }, [deleteTarget, deleteSubmission]);
 
+    const toggleSelect = useCallback((id: number) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedIds((prev) => {
+            if (prev.size === submissions.length) {
+                return new Set();
+            }
+            return new Set(submissions.map((s) => s.id));
+        });
+    }, [submissions]);
+
+    const handleBulkDelete = useCallback(() => {
+        if (selectedIds.size === 0) return;
+        bulkDeleteSubmissions.mutate([...selectedIds], {
+            onSuccess: () => {
+                setSelectedIds(new Set());
+                setShowBulkDeleteDialog(false);
+            },
+        });
+    }, [selectedIds, bulkDeleteSubmissions]);
+
     // Group deduplicated fields by section, sorted by page_number then section name
     const groupedFields = useMemo(() => {
         const sectionMap = new Map<string, { page: number; fields: PdfTemplateField[] }>();
@@ -552,12 +587,52 @@ export function LeadRecordsDocuments({ lead }: Props) {
                 </div>
             ) : submissions.length > 0 ? (
                 <div>
-                    <h3 className="mb-3 text-sm font-medium">Saved Submissions</h3>
+                    <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {submissions.length > 1 && (
+                                <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
+                                    <Checkbox
+                                        checked={selectedIds.size === submissions.length ? true : selectedIds.size > 0 ? 'indeterminate' : false}
+                                        onCheckedChange={toggleSelectAll}
+                                        size="sm"
+                                    />
+                                    Select All
+                                </label>
+                            )}
+                            <h3 className="text-sm font-medium">Saved Submissions</h3>
+                        </div>
+                        {selectedIds.size > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
+                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                                    Clear
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => setShowBulkDeleteDialog(true)}
+                                >
+                                    <Trash2 className="mr-1 size-3" />
+                                    Delete Selected
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                     <div className="space-y-2">
                         {submissions.map((sub) => (
-                            <div key={sub.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                            <div
+                                key={sub.id}
+                                className={`flex items-center justify-between rounded-lg border p-3 ${
+                                    selectedIds.has(sub.id) ? 'border-primary/50 bg-primary/5' : 'border-border'
+                                }`}
+                            >
                                 <div className="flex items-center gap-3">
-                                    <FileText className="size-4 text-muted-foreground" />
+                                    <Checkbox
+                                        checked={selectedIds.has(sub.id)}
+                                        onCheckedChange={() => toggleSelect(sub.id)}
+                                        size="sm"
+                                    />
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-medium">{sub.template.name}</p>
@@ -604,6 +679,29 @@ export function LeadRecordsDocuments({ lead }: Props) {
                         <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteSubmission} disabled={deleteSubmission.isPending}>
                             {deleteSubmission.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Delete Submissions AlertDialog */}
+            <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {selectedIds.size} Submission{selectedIds.size > 1 ? 's' : ''}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedIds.size} selected submission{selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={handleBulkDelete}
+                            disabled={bulkDeleteSubmissions.isPending}
+                        >
+                            {bulkDeleteSubmissions.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
+                            Delete {selectedIds.size} Submission{selectedIds.size > 1 ? 's' : ''}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -237,6 +237,34 @@ class LeadPdfSubmissionController extends Controller
     }
 
     /**
+     * Bulk delete submissions for a lead.
+     */
+    public function bulkDestroy(Request $request, Lead $lead): JsonResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $submissions = $lead->pdfSubmissions()
+            ->whereIn('id', $request->input('ids'))
+            ->get();
+
+        $deletedCount = 0;
+        foreach ($submissions as $submission) {
+            if (auth()->user()->hasRole('super-admin') || $submission->submitted_by === auth()->id()) {
+                $submission->delete();
+                $deletedCount++;
+            }
+        }
+
+        return response()->json([
+            'message' => "{$deletedCount} submission(s) deleted successfully.",
+            'deleted_count' => $deletedCount,
+        ]);
+    }
+
+    /**
      * Validate that all required template fields have non-empty values.
      *
      * @param  array<string, string>  $fieldValues

@@ -212,6 +212,93 @@ it('cascades delete submissions when lead is deleted', function () {
     expect(LeadPdfSubmission::count())->toBe(0);
 });
 
+it('can bulk delete submissions', function () {
+    $user = createPdfSubmissionUser();
+    $lead = Lead::factory()->create();
+    $template = PdfTemplate::factory()->create();
+
+    $submissions = LeadPdfSubmission::factory()->count(3)->create([
+        'lead_id' => $lead->id,
+        'pdf_template_id' => $template->id,
+        'submitted_by' => $user->id,
+    ]);
+
+    $ids = $submissions->pluck('id')->toArray();
+
+    $response = $this->actingAs($user)->deleteJson("/api/leads/{$lead->id}/pdf-submissions/bulk", [
+        'ids' => $ids,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('deleted_count', 3);
+
+    expect(LeadPdfSubmission::count())->toBe(0);
+});
+
+it('bulk delete only deletes submissions the user owns', function () {
+    $owner = createPdfSubmissionUserWithPermission('view documents');
+    $otherUser = createPdfSubmissionUserWithPermission('view documents');
+    $lead = Lead::factory()->create();
+    $template = PdfTemplate::factory()->create();
+
+    $ownSubmission = LeadPdfSubmission::factory()->create([
+        'lead_id' => $lead->id,
+        'pdf_template_id' => $template->id,
+        'submitted_by' => $otherUser->id,
+    ]);
+
+    $otherSubmission = LeadPdfSubmission::factory()->create([
+        'lead_id' => $lead->id,
+        'pdf_template_id' => $template->id,
+        'submitted_by' => $owner->id,
+    ]);
+
+    $response = $this->actingAs($otherUser)->deleteJson("/api/leads/{$lead->id}/pdf-submissions/bulk", [
+        'ids' => [$ownSubmission->id, $otherSubmission->id],
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('deleted_count', 1);
+
+    expect(LeadPdfSubmission::count())->toBe(1);
+    expect(LeadPdfSubmission::first()->id)->toBe($otherSubmission->id);
+});
+
+it('super admin can bulk delete any submissions', function () {
+    $admin = createPdfSubmissionUser();
+    $otherUser = createPdfSubmissionUserWithPermission('view documents');
+    $lead = Lead::factory()->create();
+    $template = PdfTemplate::factory()->create();
+
+    LeadPdfSubmission::factory()->count(2)->create([
+        'lead_id' => $lead->id,
+        'pdf_template_id' => $template->id,
+        'submitted_by' => $otherUser->id,
+    ]);
+
+    $ids = LeadPdfSubmission::pluck('id')->toArray();
+
+    $response = $this->actingAs($admin)->deleteJson("/api/leads/{$lead->id}/pdf-submissions/bulk", [
+        'ids' => $ids,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('deleted_count', 2);
+
+    expect(LeadPdfSubmission::count())->toBe(0);
+});
+
+it('validates ids are required for bulk delete submissions', function () {
+    $user = createPdfSubmissionUser();
+    $lead = Lead::factory()->create();
+
+    $response = $this->actingAs($user)->deleteJson("/api/leads/{$lead->id}/pdf-submissions/bulk", [
+        'ids' => [],
+    ]);
+
+    $response->assertUnprocessable();
+});
+
 // =====================
 // AUTHORIZATION TESTS
 // =====================
