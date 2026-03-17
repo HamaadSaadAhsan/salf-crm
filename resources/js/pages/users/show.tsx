@@ -150,7 +150,7 @@ export default function UserShow({ user, roles, zones, offices, services, allPer
 
           <Content className="px-5">
               <div className="flex w-full items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 py-2">
                       <Button size="sm" asChild className="bg-blue-500 shadow-(--button-shadow)">
                           <Link href="/users">
                               <ArrowLeft className="size-4" />

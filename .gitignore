@@ -59,4 +59,5 @@ data.ms
 storage/app/public/recordings
 
 **/*.bak
+**/__pycache__
 .DS_Store
