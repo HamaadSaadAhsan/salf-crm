@@ -1,4 +1,4 @@
-import { PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRawStream, PDFRef, PDFStream, PDFTextField } from 'pdf-lib';
+import { PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFHexString, PDFName, PDFRadioGroup, PDFRawStream, PDFRef, PDFStream, PDFString, PDFTextField } from 'pdf-lib';
 import type { Lead } from '@/types/lead';
 
 export const LEAD_FIELD_MAPPINGS = [
@@ -102,6 +102,22 @@ function fillSingleField(
         const field = form.getField(fieldName);
         if (field instanceof PDFTextField) {
             field.setText(value);
+            // Patch the /DA string on each widget to use a smaller font size
+            // that fits the field height, instead of the default auto-size
+            const widgets = field.acroField.getWidgets();
+            for (const widget of widgets) {
+                const rect = widget.getRectangle();
+                const fontSize = Math.round(Math.max(6, Math.min(rect.height * 0.5, 11)));
+                const daObj = widget.dict.get(PDFName.of('DA')) ?? field.acroField.dict.get(PDFName.of('DA'));
+                if (daObj) {
+                    const daStr = daObj instanceof PDFHexString ? daObj.decodeText() : daObj instanceof PDFString ? daObj.decodeText() : String(daObj);
+                    // Replace font size and force black color
+                    const patchedSize = daStr.replace(/\/(\w+)\s+[\d.]+\s+Tf/, `/$1 ${fontSize} Tf`);
+                    // Replace any color operator (e.g. "0 0 0.6 rg" or "0 g") with black
+                    const patched = patchedSize.replace(/[\d.]+(\s+[\d.]+\s+[\d.]+)?\s+rg/, '0 g').replace(/[\d.]+\s+g/, '0 g');
+                    widget.dict.set(PDFName.of('DA'), PDFString.of(patched));
+                }
+            }
         } else if (field instanceof PDFCheckBox) {
             if (value === 'true' || value === '1' || value === 'yes') {
                 field.check();
@@ -196,21 +212,27 @@ function ensureButtonAppearanceResources(
                     stream.dict.set(resourcesKey, resDict);
                 }
 
-                // Rewrite content stream: centered glyph for "on", empty for "off"
-                if (stream instanceof PDFRawStream) {
-                    if (isOff) {
-                        stream.contents = new Uint8Array(0);
-                    } else {
-                        // Use a fixed small size for the glyph, centered in the box
-                        const fontSize = Math.min(Math.min(boxW, boxH) * 0.45, 12);
-                        // ZapfDingbats glyph widths are roughly 0.8em
-                        const glyphW = fontSize * 0.8;
-                        const tx = (boxW - glyphW) / 2;
-                        const ty = (boxH - fontSize) / 2;
-                        const content = `q\nBT\n/ZaDb ${fontSize.toFixed(1)} Tf\n${tx.toFixed(1)} ${ty.toFixed(1)} Td\n(${glyphChar}) Tj\nET\nQ\n`;
-                        stream.contents = new TextEncoder().encode(content);
-                    }
+                // Build replacement content bytes
+                let contentBytes: Uint8Array;
+                if (isOff) {
+                    contentBytes = new Uint8Array(0);
+                } else {
+                    const fontSize = Math.min(Math.min(boxW, boxH) * 0.45, 12);
+                    const glyphW = fontSize * 0.8;
+                    const tx = (boxW - glyphW) / 2;
+                    const ty = (boxH - fontSize) / 2;
+                    const content = `q\nBT\n/ZaDb ${fontSize.toFixed(1)} Tf\n${tx.toFixed(1)} ${ty.toFixed(1)} Td\n(${glyphChar}) Tj\nET\nQ\n`;
+                    contentBytes = new TextEncoder().encode(content);
                 }
+
+                // Replace stream by registering a new one with the same dict
+                const newStream = pdfDoc.context.stream(contentBytes);
+                // Copy dict entries from old stream to new
+                for (const [dk, dv] of stream.dict.entries()) {
+                    newStream.dict.set(dk as PDFName, dv);
+                }
+                const newRef = pdfDoc.context.register(newStream);
+                (nVal as PDFDict).set(key, newRef);
             }
         }
     }

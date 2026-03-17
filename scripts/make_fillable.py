@@ -599,7 +599,7 @@ def make_text_widget(writer, field_name, rect, page_ref, multiline=False):
     field[NameObject("/P")] = page_ref
     ff = (1 << 12) if multiline else 0
     field[NameObject("/Ff")] = NumberObject(ff)
-    field[NameObject("/DA")] = TextStringObject("/Helv 0 Tf 0 0 0.6 rg")
+    field[NameObject("/DA")] = TextStringObject("/Helv 7 Tf 0 g")
     bs = DictionaryObject()
     bs[NameObject("/W")] = NumberObject(0)
     bs[NameObject("/S")] = NameObject("/S")
@@ -943,7 +943,7 @@ def analyse_and_build(input_pdf, output_pdf):
 
     acro = DictionaryObject()
     acro[NameObject("/DR")] = dr
-    acro[NameObject("/DA")] = TextStringObject("/Helv 10 Tf 0 g")
+    acro[NameObject("/DA")] = TextStringObject("/Helv 8 Tf 0 g")
     acro[NameObject("/NeedAppearances")] = BooleanObject(True)
     acro_fields = ArrayObject()
 
