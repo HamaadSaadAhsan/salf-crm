@@ -345,7 +345,12 @@ def detect_underscore_blanks(chars, words, rects, page_num):
         y_key = round(c["top"] / 3) * 3
         y_groups[y_key].append(c)
 
-    rect_regions = [(r["x0"], r["top"], r["x1"], r["bottom"]) for r in rects]
+    # Exclude decorative / page-border rects that would overlap everything
+    rect_regions = [
+        (r["x0"], r["top"], r["x1"], r["bottom"])
+        for r in rects
+        if r["w"] < 500 or r["h"] < 200
+    ]
 
     fields = []
     for y_key, group in y_groups.items():
@@ -410,6 +415,110 @@ def detect_underscore_blanks(chars, words, rects, page_num):
                     context = " ".join(pre_words[-3:])
                     context = re.sub(r'^[,;:\s]+', '', context)
                     field_box["context_label"] = context
+
+            fields.append(field_box)
+
+    return fields
+
+
+def detect_dot_line_blanks(chars, words, rects, page_num):
+    """Find runs of consecutive period/dot characters that form fill-in blanks.
+
+    Many Word-to-PDF documents use dotted lines (.....) instead of underscores
+    or solid lines for fill-in areas.  This detector mirrors
+    ``detect_underscore_blanks`` but targets '.' characters with a slightly
+    larger gap tolerance (dots in these PDFs are typically touching or have
+    small gaps).
+    """
+    if not chars:
+        return []
+
+    dots = [c for c in chars if c["text"] == "."]
+    if not dots:
+        return []
+
+    y_groups = defaultdict(list)
+    for c in dots:
+        y_key = round(c["top"] / 3) * 3
+        y_groups[y_key].append(c)
+
+    # Exclude decorative / page-border rects that would overlap everything
+    rect_regions = [
+        (r["x0"], r["top"], r["x1"], r["bottom"])
+        for r in rects
+        if r["w"] < 500 or r["h"] < 200
+    ]
+
+    fields = []
+    for y_key, group in y_groups.items():
+        group.sort(key=lambda c: c["x0"])
+
+        # Build runs — allow a slightly larger gap than underscores because
+        # dot characters are narrower and Word exports may insert micro-gaps.
+        runs = []
+        current_run = [group[0]]
+        for i in range(1, len(group)):
+            gap = group[i]["x0"] - current_run[-1]["x1"]
+            if gap < 5:
+                current_run.append(group[i])
+            else:
+                runs.append(current_run)
+                current_run = [group[i]]
+        runs.append(current_run)
+
+        for run in runs:
+            # Require a meaningful number of dots to avoid matching
+            # abbreviations, ellipsis, or decimal numbers.
+            if len(run) < 8:
+                continue
+
+            span_x0 = run[0]["x0"]
+            span_x1 = run[-1]["x1"]
+            span_top = run[0]["top"]
+            span_bot = run[0]["bottom"]
+            span_len = span_x1 - span_x0
+
+            if span_len < 30:
+                continue
+
+            # Skip if the dot run overlaps an existing rect field
+            overlaps = False
+            for rx0, rtop, rx1, rbot in rect_regions:
+                if (span_x0 < rx1 and span_x1 > rx0
+                        and span_top < rbot + 3 and span_bot > rtop - 3):
+                    overlaps = True
+                    break
+            if overlaps:
+                continue
+
+            field_box = {
+                "x0": span_x0 + 3,
+                "top": span_bot - 14,
+                "x1": span_x1,
+                "bottom": span_bot - 1,
+                "w": span_len,
+                "h": 13,
+                "page": page_num,
+                "style": "dot_line_blank",
+            }
+
+            # Gather label text to the left of the dot run on the same line
+            line_chars = [
+                c for c in chars
+                if c["text"] != "."
+                and abs(c["top"] - span_top) < 3
+                and c["x1"] <= span_x0 + 2
+            ]
+            if line_chars:
+                line_chars.sort(key=lambda c: c["x0"])
+                pre_text = "".join(c["text"] for c in line_chars).strip()
+                pre_text = re.sub(r'[,;:\s.]+$', '', pre_text)
+                pre_words = pre_text.split()
+                if pre_words:
+                    context = " ".join(pre_words[-5:])
+                    context = re.sub(r'^[,;:\s.]+', '', context)
+                    if context:
+                        field_box["context_label"] = context
 
             fields.append(field_box)
 
@@ -606,6 +715,8 @@ def make_text_widget(writer, field_name, rect, page_ref, multiline=False):
     field[NameObject("/BS")] = bs
     mk = DictionaryObject()
     mk[NameObject("/BC")] = ArrayObject([])
+    # White background so filled values cover underlying placeholder text
+    mk[NameObject("/BG")] = ArrayObject([NumberObject(1), NumberObject(1), NumberObject(1)])
     field[NameObject("/MK")] = mk
     return writer._add_object(field)
 
@@ -907,6 +1018,25 @@ def analyse_and_build(input_pdf, output_pdf):
                 label_text = re.sub(r'_+', '', label_text).strip(' ,')
             fname = _sanitize(label_text) if label_text else "Blank_Field"
             pdf_r = to_pdf_rect(uf["x0"], uf["top"], uf["x1"], uf["bottom"], ph)
+            all_fields.append({
+                "type": "text",
+                "page": pg,
+                "field_name": namer.unique(fname),
+                "rect": pdf_r,
+                "label": label_text,
+                "multiline": False,
+            })
+
+        # Dot-line blank fields (Word-exported PDFs use ..... for blanks)
+        dot_fields = detect_dot_line_blanks(chars, words, rects, pg)
+        for df in dot_fields:
+            label_text = df.get("context_label", "")
+            if not label_text:
+                lbl_word = find_label_for_box(df, words, pw)
+                label_text = gather_label_text(lbl_word, words, box=df) if lbl_word else ""
+                label_text = re.sub(r'\.+', '', label_text).strip(' ,')
+            fname = _sanitize(label_text) if label_text else "Dot_Field"
+            pdf_r = to_pdf_rect(df["x0"], df["top"], df["x1"], df["bottom"], ph)
             all_fields.append({
                 "type": "text",
                 "page": pg,

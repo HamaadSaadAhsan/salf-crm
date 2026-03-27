@@ -60,11 +60,32 @@ class PdfTemplateController extends Controller
             'created_by' => auth()->id(),
         ]);
 
+        // Auto-scan and convert PDF fields on upload
+        $scanData = $this->runPdfScan($template);
+        $scannedFields = [];
+
+        if ($scanData) {
+            foreach ($scanData['fields'] as $index => $field) {
+                $scannedFields[] = $template->fields()->create([
+                    'field_name' => $field['raw_name'],
+                    'field_label' => $field['base_name'],
+                    'field_type' => $field['type'],
+                    'field_options' => $field['field_options'],
+                    'sort_order' => $index,
+                    'page_number' => $field['page_number'],
+                    'section' => $field['section'],
+                    'repeat_group' => $field['repeat_group'],
+                    'is_required' => false,
+                ]);
+            }
+        }
+
         return response()->json([
             'data' => [
                 'id' => $template->id,
                 'name' => $template->name,
                 'file_url' => $template->file_url,
+                'fields_count' => count($scannedFields),
             ],
         ], 201);
     }
@@ -165,27 +186,156 @@ class PdfTemplateController extends Controller
             return response()->json(['error' => 'PDF file not found.'], 404);
         }
 
-        $absolutePath = Storage::disk('public')->path($pdfTemplate->file_path);
-        $scriptPath = base_path('scripts/scan_pdf_fields.py');
+        $data = $this->runPdfScan($pdfTemplate);
 
-        $python = config('services.python.path', 'python3');
-
-        $result = Process::timeout(30)->run([$python, $scriptPath, $absolutePath]);
-
-        if ($result->failed()) {
-            return response()->json([
-                'error' => 'PDF scan failed.',
-                'details' => $result->errorOutput(),
-            ], 422);
-        }
-
-        $data = json_decode($result->output(), true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return response()->json(['error' => 'Invalid scanner output.'], 500);
+        if ($data === null) {
+            return response()->json(['error' => 'PDF scan failed.'], 422);
         }
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Run the Python PDF scanner and return transformed data.
+     * If the PDF has no AcroForm fields, converts it to a fillable PDF first.
+     *
+     * @return array{fields: array, repeat_groups: array, sections: array, total_fields: int, pages: int}|null
+     */
+    private function runPdfScan(PdfTemplate $pdfTemplate): ?array
+    {
+        $absolutePath = Storage::disk('public')->path($pdfTemplate->file_path);
+        $scriptPath = base_path('scripts/fill_and_sign_pdf.py');
+        $python = $this->getPythonPath();
+
+        $result = Process::timeout(30)->run([$python, $scriptPath, 'scan', $absolutePath]);
+
+        if ($result->failed()) {
+            return null;
+        }
+
+        $raw = json_decode($result->output(), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($raw)) {
+            return null;
+        }
+
+        // If the PDF has no AcroForm fields, convert it to a fillable PDF
+        if (! ($raw['has_acroform'] ?? false) && ! empty($raw['fields'])) {
+            $this->makeFillable($pdfTemplate, $absolutePath);
+        }
+
+        return $this->transformScanOutput($raw);
+    }
+
+    /**
+     * Convert a non-fillable PDF to a fillable AcroForm PDF, replacing the stored file.
+     */
+    private function makeFillable(PdfTemplate $pdfTemplate, string $absolutePath): void
+    {
+        $scriptPath = base_path('scripts/fill_and_sign_pdf.py');
+        $python = $this->getPythonPath();
+
+        $fillablePath = $absolutePath.'.fillable.pdf';
+
+        $result = Process::timeout(60)->run([
+            $python, $scriptPath, 'make-fillable', $absolutePath, $fillablePath,
+        ]);
+
+        if ($result->successful() && file_exists($fillablePath)) {
+            rename($fillablePath, $absolutePath);
+        }
+    }
+
+    /**
+     * Get the Python interpreter path (venv-first, then config fallback).
+     */
+    private function getPythonPath(): string
+    {
+        $venvPython = base_path('venv/bin/python');
+
+        return file_exists($venvPython)
+            ? $venvPython
+            : config('services.python.path', 'python3');
+    }
+
+    /**
+     * Transform fill_and_sign_pdf.py scan output to the expected frontend format.
+     *
+     * @param  array{path: string, pages: int, has_acroform: bool, fields: array}  $raw
+     * @return array{fields: array, repeat_groups: array, sections: array, total_fields: int, pages: int}
+     */
+    private function transformScanOutput(array $raw): array
+    {
+        $fields = [];
+        $sectionMap = [];
+
+        foreach ($raw['fields'] ?? [] as $field) {
+            $rawName = $field['name'] ?? 'Field';
+            $baseName = preg_replace('/_\d+$/', '', $rawName);
+            $type = $field['type'] ?? 'text';
+            $pageNumber = $field['page'] ?? 1;
+            $label = $field['label'] ?? $rawName;
+            $section = $this->inferSection($label, $pageNumber);
+
+            // For radio fields, extract options list from the scan data
+            $fieldOptions = null;
+            if ($type === 'radio' && ! empty($field['options'])) {
+                $fieldOptions = array_values(array_filter(
+                    array_map('strval', (array) $field['options']),
+                    fn ($o) => $o !== '',
+                ));
+            }
+
+            $fields[] = [
+                'raw_name' => $rawName,
+                'base_name' => $baseName,
+                'type' => $type,
+                'page_number' => $pageNumber,
+                'section' => $section,
+                'repeat_group' => null,
+                'value' => $field['value'] ?? '',
+                'field_options' => $fieldOptions,
+            ];
+
+            if (! isset($sectionMap[$section])) {
+                $sectionMap[$section] = ['name' => $section, 'page' => $pageNumber, 'field_count' => 0];
+            }
+            $sectionMap[$section]['field_count']++;
+        }
+
+        return [
+            'fields' => $fields,
+            'repeat_groups' => (object) [],
+            'sections' => array_values($sectionMap),
+            'total_fields' => count($fields),
+            'pages' => $raw['pages'] ?? 1,
+        ];
+    }
+
+    /**
+     * Infer a section name from the field label text.
+     */
+    private function inferSection(string $label, int $page): string
+    {
+        $label = trim($label);
+
+        if (preg_match('/\b(personal|name|first.?name|last.?name|applicant)\b/i', $label)) {
+            return 'Personal Details';
+        }
+        if (preg_match('/\b(address|city|state|zip|postal|country|province)\b/i', $label)) {
+            return 'Address';
+        }
+        if (preg_match('/\b(phone|tel|mobile|email|contact)\b/i', $label)) {
+            return 'Contact Information';
+        }
+        if (preg_match('/\b(date|dob|birth|expir)\b/i', $label)) {
+            return 'Dates';
+        }
+        if (preg_match('/\b(signature|sign|witness|authorized)\b/i', $label)) {
+            return 'Signatures';
+        }
+
+        return "Page {$page}";
     }
 
     /**
@@ -197,7 +347,7 @@ class PdfTemplateController extends Controller
             'fields' => ['required', 'array'],
             'fields.*.field_name' => ['required', 'string', 'max:255'],
             'fields.*.field_label' => ['required', 'string', 'max:255'],
-            'fields.*.field_type' => ['required', 'string', 'in:text,checkbox,date,dropdown,radio'],
+            'fields.*.field_type' => ['required', 'string', 'in:text,checkbox,date,dropdown,radio,signature'],
             'fields.*.field_options' => ['nullable', 'array'],
             'fields.*.lead_field_mapping' => ['nullable', 'string', 'max:255'],
             'fields.*.default_value' => ['nullable', 'string', 'max:255'],
