@@ -198,6 +198,19 @@ class AsteriskCallController extends Controller
                             ]);
                         }
 
+                        // Set source to "Inbound Call" if lead has no source
+                        if ($lead && ! $lead->lead_source_id) {
+                            $inboundSource = \App\Models\LeadSource::where('slug', 'inbound-call')->first();
+                            if ($inboundSource) {
+                                $lead->update(['lead_source_id' => $inboundSource->id]);
+
+                                Log::info('Lead source set to Inbound Call', [
+                                    'lead_id' => $lead->id,
+                                    'lead_source_id' => $inboundSource->id,
+                                ]);
+                            }
+                        }
+
                         // Log connect event to call_logs
                         \App\Models\CallLog::createForSession(
                             $callSession,
