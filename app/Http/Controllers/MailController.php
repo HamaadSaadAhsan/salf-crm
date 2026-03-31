@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageReceived;
 use App\Http\Requests\SendMessageRequest;
 use App\Models\GmailIntegration;
 use App\Models\Label;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\GmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -96,7 +98,7 @@ class MailController extends Controller
         $user = $request->user();
         $isDraft = $validated['is_draft'] ?? false;
 
-        $message = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user, $isDraft) {
+        $message = DB::transaction(function () use ($validated, $user, $isDraft) {
             $message = Message::create([
                 'sender_id' => $user->id,
                 'parent_id' => $validated['parent_id'] ?? null,
@@ -113,12 +115,25 @@ class MailController extends Controller
             return $message;
         });
 
-        // Send via Gmail API outside the transaction (network call)
+        $message->load(['sender:id,name,email', 'recipients.user:id,name,email']);
+
         if (! $isDraft) {
+            // Broadcast to all internal recipients
+            $recipientIds = $message->recipients
+                ->where('type', 'to')
+                ->pluck('user_id')
+                ->filter(fn ($id) => $id !== $user->id)
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            if (! empty($recipientIds)) {
+                broadcast(new MessageReceived($message, $user, $recipientIds));
+            }
+
+            // Send via Gmail API (network call, non-blocking on failure)
             $this->dispatchViaGmail($user, $validated);
         }
-
-        $message->load(['sender:id,name,email', 'recipients.user:id,name,email']);
 
         return response()->json([
             'success' => true,

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { PageProps } from '@/types/global';
 import { api } from '@/lib/api';
+import { useMailListener } from '@/hooks/useMailListener';
 import { MailSidebar } from './components/mail-sidebar';
 import { MailList } from './components/mail-list';
 import { MailView } from './components/mail-view';
@@ -21,6 +23,7 @@ interface MailPageProps {
 }
 
 export default function MailPage({ folder: initialFolder, labelId: initialLabelId }: MailPageProps) {
+    const { auth } = usePage<PageProps>().props;
     const [activeFolder, setActiveFolder] = useState<MailFolder>((initialFolder as MailFolder) || 'inbox');
     const [activeLabel, setActiveLabel] = useState<number | null>(initialLabelId ?? null);
     const [messages, setMessages] = useState<MailMessage[]>([]);
@@ -158,6 +161,15 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         setForwardFrom(null);
         setComposeOpen(true);
     }, []);
+
+    // Live inbox updates — silently refresh list when a new message arrives
+    useMailListener({
+        userId: auth.user.id,
+        onMessageReceived: useCallback(() => {
+            fetchMessages();
+            fetchCounts();
+        }, [fetchMessages, fetchCounts]),
+    });
 
     const handleMessageSent = useCallback(() => {
         fetchMessages();
