@@ -32,7 +32,8 @@ interface Integration {
     icon: React.ReactNode;
     status: 'active' | 'inactive';
     configureUrl?: string;
-    type?: 'calendar';
+    connectedAs?: string;
+    type?: 'calendar' | 'gmail';
 }
 
 interface IntegrationsPageProps extends PageProps {
@@ -40,6 +41,8 @@ interface IntegrationsPageProps extends PageProps {
         facebook: boolean;
         whatsapp: boolean;
         calendar: boolean;
+        gmail: boolean;
+        gmailEmail?: string | null;
     };
 }
 
@@ -62,6 +65,14 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
                     <rect width="80" height="80" fill="white" transform="translate(0.5)" />
                 </clipPath>
             </defs>
+        </svg>
+    );
+}
+
+function GmailIcon({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className}>
+            <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
         </svg>
     );
 }
@@ -102,7 +113,9 @@ function IntegrationCard({
                                 {integration.name}
                             </span>
                             <span className="text-xs font-medium leading-4 tracking-[-0.01em] text-muted-foreground">
-                                {integration.description}
+                                {isActive && integration.connectedAs
+                                    ? integration.connectedAs
+                                    : integration.description}
                             </span>
                         </div>
                     </div>
@@ -164,6 +177,7 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
     const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
     const [isDisconnecting, setIsDisconnecting] = useState(false);
     const [connectingFacebook, setConnectingFacebook] = useState(false);
+    const [connectingGmail, setConnectingGmail] = useState(false);
     const popupRef = useRef<Window | null>(null);
     const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -193,6 +207,15 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
             status: toStatus(statuses.calendar),
             type: 'calendar',
             configureUrl: statuses.calendar ? '/integrations/calendar' : undefined,
+        },
+        {
+            id: 'gmail',
+            name: 'Gmail',
+            description: 'Send emails directly from your Gmail account',
+            icon: <GmailIcon className="size-5" />,
+            status: toStatus(statuses.gmail),
+            type: 'gmail',
+            connectedAs: statuses.gmailEmail ?? undefined,
         },
     ];
 
@@ -262,11 +285,24 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
         }
     };
 
+    const connectGmail = async () => {
+        setConnectingGmail(true);
+        try {
+            const res = await api.get('/api/gmail/connect');
+            window.location.href = res.auth_url;
+        } catch {
+            toast.error('Failed to initiate Gmail connection');
+            setConnectingGmail(false);
+        }
+    };
+
     const handleConnect = (id: string) => {
         if (id === 'calendar') {
             connectCalendar();
         } else if (id === 'facebook') {
             connectFacebook();
+        } else if (id === 'gmail') {
+            connectGmail();
         }
     };
 
@@ -287,6 +323,18 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
                 router.reload();
             } catch {
                 toast.error('Failed to disconnect calendar');
+            } finally {
+                setIsDisconnecting(false);
+                setDisconnectTarget(null);
+            }
+        } else if (disconnectTarget === 'gmail') {
+            setIsDisconnecting(true);
+            try {
+                await api.delete('/api/gmail/disconnect');
+                toast.success('Gmail disconnected successfully');
+                router.reload();
+            } catch {
+                toast.error('Failed to disconnect Gmail');
             } finally {
                 setIsDisconnecting(false);
                 setDisconnectTarget(null);
@@ -332,7 +380,10 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
                             integration={integration}
                             onConnect={() => handleConnect(integration.id)}
                             onDisconnect={setDisconnectTarget}
-                            isConnecting={integration.id === 'facebook' && connectingFacebook}
+                            isConnecting={
+                                (integration.id === 'facebook' && connectingFacebook) ||
+                                (integration.id === 'gmail' && connectingGmail)
+                            }
                         />
                     ))}
                 </div>
