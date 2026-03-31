@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CalendarIntegration;
 use App\Models\Lead;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
@@ -9,9 +10,14 @@ use Illuminate\Http\Request;
 
 class FollowUpCalendarController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return inertia('calendar/index');
+        $calendarIntegration = CalendarIntegration::where('user_id', $request->user()->id)->first();
+
+        return inertia('calendar/index', [
+            'calendarLinked' => (bool) $calendarIntegration?->is_active,
+            'calendarEmail' => $calendarIntegration?->is_active ? $calendarIntegration->google_account_email : null,
+        ]);
     }
 
     public function events(Request $request): JsonResponse
