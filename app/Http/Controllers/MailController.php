@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SendMessageRequest;
+use App\Models\GmailIntegration;
 use App\Models\Label;
 use App\Models\Message;
 use App\Models\MessageLabel;
 use App\Models\MessageRecipient;
 use App\Models\User;
+use App\Services\GmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -106,12 +109,78 @@ class MailController extends Controller
 
         $this->createRecipients($message, $validated);
 
+        // Send via Gmail API if the user has an active integration and this is not a draft
+        if (! $isDraft) {
+            $this->dispatchViaGmail($user, $validated);
+        }
+
         $message->load(['sender:id,name,email', 'recipients.user:id,name,email']);
 
         return response()->json([
             'success' => true,
             'message' => $this->formatMessage($message, $user),
         ], 201);
+    }
+
+    private function dispatchViaGmail(User $user, array $validated): void
+    {
+        $integration = GmailIntegration::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $integration) {
+            return;
+        }
+
+        try {
+            $gmailService = app(GmailService::class);
+
+            // Resolve recipient email addresses
+            $toEmails = $this->resolveEmails($validated['to'] ?? []);
+            $ccEmails = $this->resolveEmails($validated['cc'] ?? []);
+
+            if (empty($toEmails)) {
+                return;
+            }
+
+            $gmailService->sendEmail($integration, [
+                'from_name' => $user->name,
+                'from_email' => $integration->google_account_email,
+                'to' => $toEmails,
+                'cc' => $ccEmails,
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Gmail dispatch failed (message still saved internally): '.$e->getMessage());
+        }
+    }
+
+    private function resolveEmails(array $recipients): array
+    {
+        $emails = [];
+
+        foreach ($recipients as $recipient) {
+            if (is_numeric($recipient)) {
+                $id = (int) $recipient;
+
+                if ($id > 0) {
+                    $user = User::find($id);
+                    if ($user?->email) {
+                        $emails[] = "{$user->name} <{$user->email}>";
+                    }
+                } elseif ($id < 0) {
+                    $lead = \App\Models\Lead::find(-$id);
+                    if ($lead?->email) {
+                        $emails[] = "{$lead->name} <{$lead->email}>";
+                    }
+                }
+            } elseif (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                $emails[] = $recipient;
+            }
+        }
+
+        return $emails;
     }
 
     public function update(SendMessageRequest $request, Message $message): JsonResponse

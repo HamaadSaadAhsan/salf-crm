@@ -30,6 +30,8 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
     const [counts, setCounts] = useState<MailCounts>({ inbox: 0, drafts: 0, starred: 0 });
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
+    const [gmailConnected, setGmailConnected] = useState(false);
+    const [gmailEmail, setGmailEmail] = useState<string | null>(null);
 
     // Dialogs
     const [composeOpen, setComposeOpen] = useState(false);
@@ -78,6 +80,10 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
     useEffect(() => {
         fetchLabels();
         fetchCounts();
+        api.get('/api/gmail/status').then((res) => {
+            setGmailConnected(res.connected);
+            setGmailEmail(res.email ?? null);
+        }).catch(() => {});
     }, []);
 
     const handleSelectMessage = useCallback(async (message: MailMessage) => {
@@ -216,6 +222,8 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                 onSent={handleMessageSent}
                 replyTo={replyTo}
                 forwardFrom={forwardFrom}
+                gmailConnected={gmailConnected}
+                gmailEmail={gmailEmail}
             />
 
             <CreateLabelDialog

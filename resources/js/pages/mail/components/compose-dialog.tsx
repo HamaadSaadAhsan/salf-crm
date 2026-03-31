@@ -14,6 +14,8 @@ interface ComposeDialogProps {
     onSent: () => void;
     replyTo?: MailMessage | null;
     forwardFrom?: MailMessage | null;
+    gmailConnected?: boolean;
+    gmailEmail?: string | null;
 }
 
 type ComposeMode = 'normal' | 'minimized' | 'fullscreen';
@@ -202,7 +204,7 @@ function RecipientInput({
     );
 }
 
-export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom }: ComposeDialogProps) {
+export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, gmailConnected = false, gmailEmail }: ComposeDialogProps) {
     const [to, setTo] = useState<MailUser[]>([]);
     const [cc, setCc] = useState<MailUser[]>([]);
     const [showCc, setShowCc] = useState(false);
@@ -446,21 +448,72 @@ function ComposeBody({
     );
 }
 
-function ComposeFooter({ sending, onSend, onDraft }: { sending: boolean; onSend: () => void; onDraft: () => void }) {
+function ComposeFooter({
+    sending,
+    onSend,
+    onDraft,
+    gmailConnected,
+    gmailEmail,
+}: {
+    sending: boolean;
+    onSend: () => void;
+    onDraft: () => void;
+    gmailConnected: boolean;
+    gmailEmail?: string | null;
+}) {
+    const handleConnect = async () => {
+        const res = await api.get('/api/gmail/connect');
+        window.location.href = res.auth_url;
+    };
+
     return (
-        <div className="flex items-center justify-between border-t border-border/60 bg-background px-3 py-2.5">
-            <Button onClick={onSend} disabled={sending} size="sm" className="rounded-full px-5">
-                {sending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-                Send
-            </Button>
-            <button
-                type="button"
-                onClick={onDraft}
-                disabled={sending}
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-            >
-                Save draft
-            </button>
+        <div className="border-t border-border/60 bg-background">
+            {/* Gmail connection status */}
+            {!gmailConnected ? (
+                <div className="flex items-center gap-2 border-b border-border/40 px-3 py-1.5">
+                    <span className="flex-1 text-xs text-muted-foreground">
+                        Connect Gmail to send real emails
+                    </span>
+                    <button
+                        type="button"
+                        onClick={handleConnect}
+                        className="text-xs font-medium text-primary hover:underline"
+                    >
+                        Connect
+                    </button>
+                </div>
+            ) : (
+                <div className="flex items-center gap-1.5 border-b border-border/40 px-3 py-1.5">
+                    <span className="size-1.5 rounded-full bg-green-500" />
+                    <span className="text-xs text-muted-foreground">Sending via {gmailEmail}</span>
+                    <a
+                        href="/api/gmail/disconnect"
+                        onClick={async (e) => {
+                            e.preventDefault();
+                            await api.delete('/api/gmail/disconnect');
+                            window.location.reload();
+                        }}
+                        className="ml-auto text-xs text-muted-foreground/60 hover:text-foreground"
+                    >
+                        Disconnect
+                    </a>
+                </div>
+            )}
+
+            <div className="flex items-center justify-between px-3 py-2.5">
+                <Button onClick={onSend} disabled={sending} size="sm" className="rounded-full px-5">
+                    {sending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                    Send
+                </Button>
+                <button
+                    type="button"
+                    onClick={onDraft}
+                    disabled={sending}
+                    className="text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                >
+                    Save draft
+                </button>
+            </div>
         </div>
     );
 }

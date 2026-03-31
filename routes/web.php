@@ -18,6 +18,7 @@ use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FollowUpCalendarController;
+use App\Http\Controllers\GmailController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImpersonationController;
@@ -207,6 +208,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/mail/users', [MailController::class, 'users'])->name('mail.users');
     Route::get('api/mail/counts', [MailController::class, 'counts'])->name('mail.counts');
 
+    // Gmail OAuth integration
+    Route::get('api/gmail/status', [GmailController::class, 'status'])->name('gmail.status');
+    Route::get('api/gmail/connect', [GmailController::class, 'connect'])->name('gmail.connect');
+    Route::delete('api/gmail/disconnect', [GmailController::class, 'disconnect'])->name('gmail.disconnect');
+
     // Lead Activities
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
         Route::get('leads/{lead}/activities/month-summary', [LeadActivityController::class, 'monthSummary'])->name('leads.activities.month-summary');
@@ -363,6 +369,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/facebook/callback', [FacebookOAuthController::class, 'callback']);
+    Route::get('/integrations/gmail/callback', [GmailController::class, 'callback'])->name('gmail.callback');
 
     Route::prefix('integrations')->middleware('role_or_permission:super-admin|manage integrations')->group(function () {
         Route::get('/', [\App\Http\Controllers\IntegrationController::class, 'index'])->name('integrations');
