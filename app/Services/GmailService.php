@@ -130,6 +130,13 @@ class GmailService
             ]);
 
         if (! $response->successful()) {
+            $status = $response->json('error.status');
+            if ($status === 'PERMISSION_DENIED') {
+                throw new \App\Exceptions\GmailInsufficientScopeException(
+                    'Gmail token lacks required scopes. User must re-authorize.'
+                );
+            }
+
             Log::error('Gmail list messages failed', ['response' => $response->body()]);
 
             return [];

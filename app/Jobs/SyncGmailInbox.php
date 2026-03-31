@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\MessageReceived;
+use App\Exceptions\GmailInsufficientScopeException;
 use App\Models\GmailIntegration;
 use App\Models\Message;
 use App\Models\MessageRecipient;
@@ -36,6 +37,12 @@ class SyncGmailInbox implements ShouldQueue
 
         try {
             $gmailIds = $gmailService->listInboxMessageIds($integration, $since);
+        } catch (GmailInsufficientScopeException $e) {
+            // Token lacks required scopes — disable the integration until user re-authorizes
+            $integration->update(['is_active' => false]);
+            Log::warning("Gmail integration disabled for user {$this->gmailIntegrationUserId}: insufficient scopes. User must reconnect.");
+
+            return;
         } catch (\Exception $e) {
             Log::warning("Gmail inbox list failed for user {$this->gmailIntegrationUserId}: {$e->getMessage()}");
 
