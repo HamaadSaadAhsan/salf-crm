@@ -1,4 +1,4 @@
-import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy } from 'lucide-react';
+import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy, CalendarDays } from 'lucide-react';
 
 import { NavConfig } from '../types';
 import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
@@ -35,6 +35,12 @@ export const MAIN_NAV: NavConfig = [
             title: 'Tasks',
             path: '/tasks',
             icon: ListChecks,
+        },
+        {
+            id: 'follow-up-calendar',
+            title: 'Calendar',
+            path: '/follow-up-calendar',
+            icon: CalendarDays,
         },
         {
             id: 'reports',

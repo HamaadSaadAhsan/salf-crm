@@ -17,6 +17,7 @@ use App\Http\Controllers\AssignmentVisualizerController;
 use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
+use App\Http\Controllers\FollowUpCalendarController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImpersonationController;
@@ -182,6 +183,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Tasks Management
     Route::resource('tasks', TaskController::class)->names('tasks');
+
+    // Follow-Up Calendar
+    Route::get('follow-up-calendar', [FollowUpCalendarController::class, 'index'])->name('follow-up-calendar');
+    Route::get('api/follow-up-calendar/events', [FollowUpCalendarController::class, 'events'])->name('follow-up-calendar.events');
 
     // Lead Activities
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
