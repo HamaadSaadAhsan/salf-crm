@@ -13,6 +13,14 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    config([
+        'services.google.client_id' => 'test-client-id',
+        'services.google.client_secret' => 'test-client-secret',
+        'services.google.redirect_uri' => 'http://localhost/calendar/callback',
+    ]);
+});
+
 function createCalendarTestUser(): User
 {
     Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
