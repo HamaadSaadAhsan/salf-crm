@@ -96,20 +96,24 @@ class MailController extends Controller
         $user = $request->user();
         $isDraft = $validated['is_draft'] ?? false;
 
-        $message = Message::create([
-            'sender_id' => $user->id,
-            'parent_id' => $validated['parent_id'] ?? null,
-            'thread_id' => $this->resolveThreadId($validated['parent_id'] ?? null),
-            'subject' => $validated['subject'],
-            'body' => $validated['body'],
-            'type' => $validated['type'] ?? 'new',
-            'is_draft' => $isDraft,
-            'sent_at' => $isDraft ? null : now(),
-        ]);
+        $message = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user, $isDraft) {
+            $message = Message::create([
+                'sender_id' => $user->id,
+                'parent_id' => $validated['parent_id'] ?? null,
+                'thread_id' => $this->resolveThreadId($validated['parent_id'] ?? null),
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+                'type' => $validated['type'] ?? 'new',
+                'is_draft' => $isDraft,
+                'sent_at' => $isDraft ? null : now(),
+            ]);
 
-        $this->createRecipients($message, $validated);
+            $this->createRecipients($message, $validated);
 
-        // Send via Gmail API if the user has an active integration and this is not a draft
+            return $message;
+        });
+
+        // Send via Gmail API outside the transaction (network call)
         if (! $isDraft) {
             $this->dispatchViaGmail($user, $validated);
         }
@@ -392,7 +396,7 @@ class MailController extends Controller
                 ]);
         }
 
-        return response()->json(['users' => $users->merge($leads)->values()]);
+        return response()->json(['users' => $users->toBase()->merge($leads)->values()]);
     }
 
     public function counts(Request $request): JsonResponse
