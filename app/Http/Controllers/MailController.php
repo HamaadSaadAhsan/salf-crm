@@ -161,21 +161,13 @@ class MailController extends Controller
         $emails = [];
 
         foreach ($recipients as $recipient) {
-            if (is_numeric($recipient)) {
-                $id = (int) $recipient;
-
-                if ($id > 0) {
-                    $user = User::find($id);
-                    if ($user?->email) {
-                        $emails[] = "{$user->name} <{$user->email}>";
-                    }
-                } elseif ($id < 0) {
-                    $lead = \App\Models\Lead::find(-$id);
-                    if ($lead?->email) {
-                        $emails[] = "{$lead->name} <{$lead->email}>";
-                    }
+            if (is_numeric($recipient) && (int) $recipient > 0) {
+                $user = User::find((int) $recipient);
+                if ($user?->email) {
+                    $emails[] = "{$user->name} <{$user->email}>";
                 }
-            } elseif (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            } elseif (is_string($recipient) && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                // Lead or free-form external email — include as-is
                 $emails[] = $recipient;
             }
         }
@@ -391,8 +383,9 @@ class MailController extends Controller
                 ->limit(10)
                 ->get()
                 ->filter(fn ($l) => ! $users->firstWhere('email', $l->email))
-                ->map(fn ($l) => [
-                    'id' => -$l->id,   // negative ID signals lead/external
+                ->values()
+                ->map(fn ($l, $i) => [
+                    'id' => -($i + 1),  // safe negative placeholder (email is the real identifier)
                     'name' => $l->name,
                     'email' => $l->email,
                     'isExternal' => true,
@@ -559,21 +552,11 @@ class MailController extends Controller
                 // Negative ID = lead (external), positive = CRM user
                 $userId = null;
 
-                if (is_numeric($recipient)) {
-                    $recipientId = (int) $recipient;
-
-                    if ($recipientId > 0) {
-                        $userId = $recipientId;
-                    } elseif ($recipientId < 0) {
-                        // Lead: look up their user account by matching lead email
-                        $lead = \App\Models\Lead::find(-$recipientId);
-                        if ($lead?->email) {
-                            $user = User::where('email', $lead->email)->first();
-                            $userId = $user?->id;
-                        }
-                    }
-                } elseif (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                    // Free-form email string: find or skip
+                if (is_numeric($recipient) && (int) $recipient > 0) {
+                    // Internal CRM user ID
+                    $userId = (int) $recipient;
+                } elseif (is_string($recipient) && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                    // External / lead email — match to a CRM user if one exists
                     $user = User::where('email', $recipient)->first();
                     $userId = $user?->id;
                 }

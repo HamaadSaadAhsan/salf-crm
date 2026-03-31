@@ -527,8 +527,8 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
 
         try {
             await api.post('/api/mail/messages', {
-                to: to.map((u) => u.id),
-                cc: cc.map((u) => u.id),
+                to: to.map((u) => u.isExternal ? u.email : u.id),
+                cc: cc.map((u) => u.isExternal ? u.email : u.id),
                 bcc: [],
                 subject: subject.trim(),
                 body: body.trim(),
