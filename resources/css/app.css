@@ -200,6 +200,9 @@ html {
 @import './demos/demo1.css';
 @import './config.metronic.css';
 
+/* Component Overrides */
+@import './components/calendar.css';
+
 /* Card Title */
 [data-slot='card-title'] {
     @apply font-medium;

@@ -1,0 +1,182 @@
+@layer components {
+  .fc-calendar {
+    /* Hide default toolbar — custom React toolbar */
+    & .fc-toolbar {
+      display: none !important;
+    }
+
+    /* Remove all default borders from the calendar shell */
+    & .fc,
+    & .fc-scrollgrid {
+      border: 0 !important;
+    }
+
+    /* ── Grid Borders ── */
+    & .fc-theme-standard td,
+    & .fc-theme-standard th,
+    & .fc-theme-standard .fc-scrollgrid {
+      border-color: var(--color-border);
+    }
+
+    /* ── Column Headers (Sun, Mon …) ── */
+    & .fc-col-header-cell {
+      background: var(--color-muted);
+      padding-block: 0.5rem;
+      border-bottom: 1px solid var(--color-border) !important;
+    }
+
+    & .fc-col-header-cell-cushion {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--color-muted-foreground);
+      text-decoration: none !important;
+    }
+
+    /* ── Day Numbers ── */
+    & .fc-daygrid-day-number {
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.375rem 0.5rem;
+      color: var(--color-muted-foreground);
+      text-decoration: none !important;
+    }
+
+    /* Today */
+    & .fc-day-today {
+      background: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
+    }
+
+    & .fc-day-today .fc-daygrid-day-number {
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    /* Other-month days */
+    & .fc-day-other {
+      background: color-mix(in srgb, var(--color-muted) 30%, transparent);
+    }
+
+    & .fc-day-other .fc-daygrid-day-number {
+      opacity: 0.35;
+    }
+
+    /* ── Events ── */
+    & .fc-event {
+      cursor: pointer;
+      border: 0 !important;
+      background: transparent !important;
+      border-radius: 0.375rem;
+      padding: 0;
+      margin-bottom: 1px;
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+
+    & .fc-event:hover {
+      filter: brightness(1.05);
+    }
+
+    & .fc-event-main {
+      padding: 0 !important;
+    }
+
+    & .fc-event-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & .fc-daygrid-event {
+      margin-inline: 2px !important;
+    }
+
+    /* ── "+N more" link ── */
+    & .fc-more-link {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--color-primary);
+      text-decoration: none;
+      padding: 0.125rem 0.375rem;
+      margin-top: 0.125rem;
+      border-radius: 0.25rem;
+    }
+
+    & .fc-more-link:hover {
+      background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+
+    /* ── Popover ("+N more" expanded) ── */
+    & .fc-popover {
+      border-radius: 0.5rem;
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      z-index: 50;
+    }
+
+    & .fc-popover-header {
+      background: var(--color-muted);
+      padding: 0.375rem 0.625rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-foreground);
+    }
+
+    & .fc-popover-body {
+      padding: 0.25rem;
+    }
+
+    /* ── Time Grid (Week / Day) ── */
+    & .fc-timegrid-slot {
+      height: 2.75rem;
+    }
+
+    & .fc-timegrid-slot-label-cushion,
+    & .fc-timegrid-axis-cushion {
+      font-size: 0.6875rem;
+      color: var(--color-muted-foreground);
+    }
+
+    & .fc-timegrid-now-indicator-line {
+      border-color: var(--color-destructive) !important;
+      border-width: 2px;
+    }
+
+    & .fc-timegrid-now-indicator-arrow {
+      border-color: var(--color-destructive) !important;
+    }
+
+    & .fc-timegrid-event {
+      border-radius: 0.375rem !important;
+      border: 0 !important;
+    }
+
+    & .fc-timegrid-event .fc-event-main {
+      padding: 0.25rem 0.375rem !important;
+    }
+
+    /* All-day section */
+    & .fc-timegrid-divider {
+      display: none;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      & .fc-col-header-cell-cushion {
+        font-size: 0.5625rem;
+      }
+
+      & .fc-daygrid-day-number {
+        font-size: 0.625rem;
+        padding: 0.25rem;
+      }
+
+      & .fc-daygrid-event {
+        margin-inline: 1px !important;
+      }
+    }
+  }
+}
