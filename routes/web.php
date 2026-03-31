@@ -22,6 +22,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Leads\LeadController;
+use App\Http\Controllers\MailController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\TaskController;
@@ -187,6 +188,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Follow-Up Calendar
     Route::get('follow-up-calendar', [FollowUpCalendarController::class, 'index'])->name('follow-up-calendar');
     Route::get('api/follow-up-calendar/events', [FollowUpCalendarController::class, 'events'])->name('follow-up-calendar.events');
+
+    // Mail
+    Route::get('mail', [MailController::class, 'index'])->name('mail');
+    Route::get('api/mail/messages', [MailController::class, 'messages'])->name('mail.messages');
+    Route::get('api/mail/messages/{message}', [MailController::class, 'show'])->name('mail.show');
+    Route::post('api/mail/messages', [MailController::class, 'send'])->name('mail.send');
+    Route::put('api/mail/messages/{message}', [MailController::class, 'update'])->name('mail.update');
+    Route::post('api/mail/messages/{message}/star', [MailController::class, 'toggleStar'])->name('mail.star');
+    Route::post('api/mail/messages/{message}/read', [MailController::class, 'toggleRead'])->name('mail.read');
+    Route::post('api/mail/messages/{message}/trash', [MailController::class, 'trash'])->name('mail.trash');
+    Route::post('api/mail/messages/{message}/restore', [MailController::class, 'restore'])->name('mail.restore');
+    Route::delete('api/mail/messages/{message}', [MailController::class, 'destroy'])->name('mail.destroy');
+    Route::get('api/mail/labels', [MailController::class, 'labels'])->name('mail.labels');
+    Route::post('api/mail/labels', [MailController::class, 'storeLabel'])->name('mail.labels.store');
+    Route::delete('api/mail/labels/{label}', [MailController::class, 'deleteLabel'])->name('mail.labels.destroy');
+    Route::post('api/mail/messages/{message}/labels/{label}', [MailController::class, 'toggleLabel'])->name('mail.labels.toggle');
+    Route::get('api/mail/users', [MailController::class, 'users'])->name('mail.users');
+    Route::get('api/mail/counts', [MailController::class, 'counts'])->name('mail.counts');
 
     // Lead Activities
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {

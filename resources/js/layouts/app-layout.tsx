@@ -23,9 +23,10 @@ interface AppLayoutProps {
     children: ReactNode;
     breadcrumbs?: BreadcrumbItem[];
     hideContentHeader?: boolean;
+    fullHeight?: boolean;
 }
 
-export default ({ children, breadcrumbs = [], hideContentHeader = false }: AppLayoutProps) => {
+export default ({ children, breadcrumbs = [], hideContentHeader = false, fullHeight = false }: AppLayoutProps) => {
     const { auth } = usePage<SharedData>().props;
     const isSuperAdmin = auth.isSuperAdmin;
     const userPermissions = auth.permissions ?? [];
@@ -94,7 +95,7 @@ export default ({ children, breadcrumbs = [], hideContentHeader = false }: AppLa
                             {/* Impersonation Banner - shows when super admin is impersonating */}
                             <ImpersonationBanner />
 
-                            <Layout breadcrumbs={breadcrumbs} hideContentHeader={hideContentHeader}>
+                            <Layout breadcrumbs={breadcrumbs} hideContentHeader={hideContentHeader} fullHeight={fullHeight}>
                                 {children}
                             </Layout>
 

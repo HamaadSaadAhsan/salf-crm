@@ -10,9 +10,10 @@ interface LayoutProps {
   children: React.ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   hideContentHeader?: boolean;
+  fullHeight?: boolean;
 }
 
-export function Layout({ children, breadcrumbs = [], hideContentHeader = false }: LayoutProps) {
+export function Layout({ children, breadcrumbs = [], hideContentHeader = false, fullHeight = false }: LayoutProps) {
   const { isSidebarResizing } = useLayout();
   const { impersonation } = usePage<SharedData>().props;
   const bannerHeight = impersonation?.isImpersonating ? '40px' : '0px';
@@ -38,9 +39,15 @@ export function Layout({ children, breadcrumbs = [], hideContentHeader = false }
         ) : (
           <ContentHeader breadcrumbs={breadcrumbs} />
         )}
-        <ScrollArea className="flex-1 min-h-0">
-          {children}
-        </ScrollArea>
+        {fullHeight ? (
+          <div className="flex-1 overflow-hidden min-h-0">
+            {children}
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 min-h-0">
+            {children}
+          </ScrollArea>
+        )}
       </main>
     </div>
   );

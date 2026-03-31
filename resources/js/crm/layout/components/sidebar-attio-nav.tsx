@@ -44,7 +44,7 @@ interface NavSection {
 }
 
 const SECTIONS: NavSection[] = [
-  { label: 'Main', ids: ['dashboard', 'leads', 'notifications', 'tasks', 'follow-up-calendar', 'calls'] },
+  { label: 'Main', ids: ['dashboard', 'leads', 'notifications', 'tasks', 'follow-up-calendar', 'mail', 'calls'] },
   { label: 'Reports', ids: ['reports'] },
   { label: 'Management', ids: ['workflows', 'management', 'integrations'] },
   { label: 'Support', ids: ['support'] },
