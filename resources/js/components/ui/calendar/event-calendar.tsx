@@ -45,6 +45,7 @@ export interface EventCalendarProps {
   onEventAdd?: (event: CalendarEvent) => void
   onEventUpdate?: (event: CalendarEvent) => void
   onEventDelete?: (eventId: string) => void
+  onNewEvent?: (date: Date) => void
   className?: string
   initialView?: CalendarView
 }
@@ -54,6 +55,7 @@ export function EventCalendar({
   onEventAdd,
   onEventUpdate,
   onEventDelete,
+  onNewEvent,
   className,
   initialView = "month",
 }: EventCalendarProps) {
@@ -140,14 +142,17 @@ export function EventCalendar({
     const remainder = minutes % 15
     if (remainder !== 0) {
       if (remainder < 7.5) {
-        // Round down to nearest 15 min
         startTime.setMinutes(minutes - remainder)
       } else {
-        // Round up to nearest 15 min
         startTime.setMinutes(minutes + (15 - remainder))
       }
       startTime.setSeconds(0)
       startTime.setMilliseconds(0)
+    }
+
+    if (onNewEvent) {
+      onNewEvent(startTime)
+      return
     }
 
     const newEvent: CalendarEvent = {
@@ -340,12 +345,15 @@ export function EventCalendar({
               className="max-[479px]:aspect-square max-[479px]:p-0!"
               variant="mono"
               onClick={() => {
-                // Create a new event starting at the current date/time
                 const now = new Date()
-                // Round to next hour
                 now.setMinutes(0, 0, 0)
                 now.setHours(now.getHours() + 1)
-                
+
+                if (onNewEvent) {
+                  onNewEvent(now)
+                  return
+                }
+
                 const newEvent: CalendarEvent = {
                   id: "",
                   title: "",

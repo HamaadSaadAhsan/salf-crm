@@ -187,6 +187,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Follow-Up Calendar
     Route::get('follow-up-calendar', [FollowUpCalendarController::class, 'index'])->name('follow-up-calendar');
     Route::get('api/follow-up-calendar/events', [FollowUpCalendarController::class, 'events'])->name('follow-up-calendar.events');
+    Route::post('api/follow-up-calendar/tasks', [FollowUpCalendarController::class, 'storeTask'])->name('follow-up-calendar.store-task');
+    Route::post('api/follow-up-calendar/follow-ups', [FollowUpCalendarController::class, 'storeFollowUp'])->name('follow-up-calendar.store-follow-up');
+    Route::get('api/follow-up-calendar/users', [FollowUpCalendarController::class, 'users'])->name('follow-up-calendar.users');
+    Route::get('api/follow-up-calendar/leads', [FollowUpCalendarController::class, 'leads'])->name('follow-up-calendar.leads');
 
     // Lead Activities
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {

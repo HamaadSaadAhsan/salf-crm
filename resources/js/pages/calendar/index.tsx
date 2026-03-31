@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { EventCalendar } from '@/components/ui/calendar/event-calendar';
 import { type CalendarEvent } from '@/components/ui/calendar/types';
 import { api } from '@/lib/api';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { CalendarCheck2, CalendarX2, ExternalLink } from 'lucide-react';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { PageProps } from '@/types/global';
+import { CreateEventDialog } from './create-event-dialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -34,14 +35,17 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
     const isSuperAdmin = auth.user.role === 'Super Admin';
 
     const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [lastFetchRange, setLastFetchRange] = useState<{ start: string; end: string } | null>(null);
+    const lastFetchRangeRef = useRef<{ start: string; end: string } | null>(null);
 
-    const fetchEvents = useCallback(async (start: Date, end: Date) => {
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [createDialogDate, setCreateDialogDate] = useState<Date | undefined>();
+
+    const fetchEvents = useCallback(async (start: Date, end: Date, force = false) => {
         const startStr = start.toISOString().split('T')[0];
         const endStr = end.toISOString().split('T')[0];
 
-        if (lastFetchRange?.start === startStr && lastFetchRange?.end === endStr) return;
-        setLastFetchRange({ start: startStr, end: endStr });
+        if (!force && lastFetchRangeRef.current?.start === startStr && lastFetchRangeRef.current?.end === endStr) return;
+        lastFetchRangeRef.current = { start: startStr, end: endStr };
 
         try {
             const res = await api.get('/api/follow-up-calendar/events', { start: startStr, end: endStr });
@@ -64,7 +68,7 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
         } catch {
             setEvents([]);
         }
-    }, [lastFetchRange]);
+    }, []);
 
     useEffect(() => {
         const now = new Date();
@@ -79,6 +83,19 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
             router.visit(`/leads/${id.replace('lead-', '')}`);
         }
     }, []);
+
+    const handleNewEvent = useCallback((date: Date) => {
+        setCreateDialogDate(date);
+        setCreateDialogOpen(true);
+    }, []);
+
+    const handleEventCreated = useCallback(() => {
+        if (lastFetchRangeRef.current) {
+            const start = new Date(lastFetchRangeRef.current.start);
+            const end = new Date(lastFetchRangeRef.current.end);
+            fetchEvents(start, end, true);
+        }
+    }, [fetchEvents]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -98,7 +115,7 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
                                 Synced to {calendarEmail}
                             </Badge>
                             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-                                <Link href="/calendar">
+                                <Link href="/integrations/calendar/">
                                     <ExternalLink className="mr-1 size-3" />
                                     Settings
                                 </Link>
@@ -119,8 +136,16 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
                     onEventAdd={handleEventSelect}
                     onEventUpdate={() => {}}
                     onEventDelete={() => {}}
+                    onNewEvent={handleNewEvent}
                 />
             </div>
+
+            <CreateEventDialog
+                isOpen={createDialogOpen}
+                onClose={() => setCreateDialogOpen(false)}
+                onCreated={handleEventCreated}
+                defaultDate={createDialogDate}
+            />
         </AppLayout>
     );
 }

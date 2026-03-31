@@ -31,6 +31,7 @@ class Task extends Model
         'type',
         'assigned_to_id',
         'created_by_id',
+        'google_calendar_event_id',
     ];
 
     protected static function boot(): void

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CalendarIntegration;
 use App\Models\Lead;
+use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
@@ -83,6 +84,180 @@ class GoogleCalendarSyncService
         $this->refreshTokenIfNeeded($integration);
 
         return $this->createCalendarEvent($integration, $lead);
+    }
+
+    /**
+     * Sync a task to Google Calendar for the assigned user.
+     */
+    public function syncTaskToCalendar(Task $task): ?string
+    {
+        $user = $task->assignedTo;
+
+        if (! $user || ! $task->due_at) {
+            return null;
+        }
+
+        $integration = $this->getActiveIntegration($user);
+
+        if (! $integration || ! $this->isSyncLeadsEnabled($integration)) {
+            return null;
+        }
+
+        $this->refreshTokenIfNeeded($integration);
+
+        $calendarId = $integration->sync_preferences['defaultCalendarId'] ?? 'primary';
+        $eventData = $this->buildTaskEventPayload($task);
+
+        if ($task->google_calendar_event_id) {
+            return $this->updateTaskCalendarEvent($integration, $task, $calendarId, $eventData);
+        }
+
+        return $this->createTaskCalendarEvent($integration, $task, $calendarId, $eventData);
+    }
+
+    /**
+     * Remove a task's calendar event.
+     */
+    public function removeTaskFromCalendar(Task $task): bool
+    {
+        if (! $task->google_calendar_event_id) {
+            return true;
+        }
+
+        $user = $task->assignedTo;
+
+        if (! $user) {
+            return false;
+        }
+
+        $integration = $this->getActiveIntegration($user);
+
+        if (! $integration) {
+            return false;
+        }
+
+        $this->refreshTokenIfNeeded($integration);
+
+        $calendarId = $integration->sync_preferences['defaultCalendarId'] ?? 'primary';
+
+        try {
+            $response = Http::withToken($integration->access_token)
+                ->delete(self::CALENDAR_API_URL."/calendars/{$calendarId}/events/{$task->google_calendar_event_id}");
+
+            if ($response->successful() || $response->status() === 404 || $response->status() === 410) {
+                $task->updateQuietly(['google_calendar_event_id' => null]);
+
+                return true;
+            }
+
+            return false;
+        } catch (ConnectionException $e) {
+            Log::error('Connection failed deleting task calendar event', [
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function createTaskCalendarEvent(CalendarIntegration $integration, Task $task, string $calendarId, array $eventData): ?string
+    {
+        try {
+            $response = Http::withToken($integration->access_token)
+                ->post(self::CALENDAR_API_URL."/calendars/{$calendarId}/events", $eventData);
+
+            if (! $response->successful()) {
+                Log::error('Failed to create calendar event for task', [
+                    'task_id' => $task->id,
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $eventId = $response->json('id');
+            $task->updateQuietly(['google_calendar_event_id' => $eventId]);
+
+            return $eventId;
+        } catch (ConnectionException $e) {
+            Log::error('Connection failed creating task calendar event', [
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function updateTaskCalendarEvent(CalendarIntegration $integration, Task $task, string $calendarId, array $eventData): ?string
+    {
+        try {
+            $response = Http::withToken($integration->access_token)
+                ->put(self::CALENDAR_API_URL."/calendars/{$calendarId}/events/{$task->google_calendar_event_id}", $eventData);
+
+            if (! $response->successful()) {
+                if ($response->status() === 404) {
+                    $task->updateQuietly(['google_calendar_event_id' => null]);
+
+                    return $this->createTaskCalendarEvent($integration, $task, $calendarId, $eventData);
+                }
+
+                return null;
+            }
+
+            return $task->google_calendar_event_id;
+        } catch (ConnectionException $e) {
+            Log::error('Connection failed updating task calendar event', [
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Build the Google Calendar event payload from a task.
+     */
+    private function buildTaskEventPayload(Task $task): array
+    {
+        $timezone = config('app.timezone');
+        $start = Carbon::parse($task->due_at);
+        $end = $start->copy()->addHour();
+
+        $description = "Task: {$task->title}";
+        if ($task->description) {
+            $description .= "\n\n{$task->description}";
+        }
+        $description .= "\nPriority: {$task->priority?->value}";
+        $description .= "\nType: {$task->type?->value}";
+
+        return [
+            'summary' => "Task: {$task->title}",
+            'description' => $description,
+            'start' => [
+                'dateTime' => $start->toIso8601String(),
+                'timeZone' => $timezone,
+            ],
+            'end' => [
+                'dateTime' => $end->toIso8601String(),
+                'timeZone' => $timezone,
+            ],
+            'reminders' => [
+                'useDefault' => false,
+                'overrides' => [
+                    ['method' => 'popup', 'minutes' => 30],
+                    ['method' => 'popup', 'minutes' => 10],
+                ],
+            ],
+            'extendedProperties' => [
+                'private' => [
+                    'salf_crm_task_id' => (string) $task->id,
+                    'salf_crm_source' => 'task_sync',
+                ],
+            ],
+        ];
     }
 
     /**
