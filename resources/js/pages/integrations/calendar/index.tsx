@@ -88,9 +88,9 @@ export default function CalendarIntegrationPage({ authUrl }: CalendarIntegration
                         </div>
                     </div>
                     <CardHeader>
-                        <h1 className="text-xl font-bold">Sync your tickets to your calendar</h1>
+                        <h1 className="text-xl font-bold">Sync your leads to your calendar</h1>
                         <CardTitle className="text-sm font-normal">
-                            By connecting your email with calendar, {"you'll"} be able to instantly see followups on your tickets as an event in
+                            By connecting your email with calendar, {"you'll"} be able to instantly see follow-ups on your leads as events in your
                             calendar. Only you can see the content you sync.
                         </CardTitle>
                     </CardHeader>

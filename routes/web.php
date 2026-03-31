@@ -367,24 +367,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/sync-lead-forms', [FacebookIntegrationController::class, 'syncLeadForms'])->name('facebook.integration.sync-lead-forms');
             Route::post('/sync-leads', [FacebookIntegrationController::class, 'syncLeads'])->name('facebook.integration.sync-leads');
         });
+        Route::get('/calendar', [GoogleCalendarController::class, 'configure'])->name('integrations.calendar');
         //        Route::get('/google', [\App\Http\Controllers\IntegrationController::class, 'google']);
         //        Route::get('/linkedin', [\App\Http\Controllers\IntegrationController::class, 'linkedin']);
     });
 
     Route::middleware('calendar.errors')->group(function () {
         // Calendar Integration Routes
-        Route::prefix('calendar')->group(function () {
-            Route::get('/', [GoogleCalendarController::class, 'index']);
-            //        Route::get('/{id}', [GoogleCalendarController::class, 'show']);
-            Route::post('/authorize', [GoogleCalendarController::class, 'initiateOAuth']);
-            Route::get('/callback', [GoogleCalendarController::class, 'callback']);
-            //        Route::put('/{id}', [GoogleCalendarController::class, 'update']);
-            //        Route::delete('/{id}', [GoogleCalendarController::class, 'disconnect']);
-            //        Route::post('/{id}/refresh-token', [GoogleCalendarController::class, 'refreshToken']);
-            //        Route::get('/{id}/calendars', [GoogleCalendarController::class, 'getCalendars']);
-            //        Route::post('/{id}/events', [GoogleCalendarController::class, 'createEvent']);
-            //        Route::get('/{id}/status', [GoogleCalendarController::class, 'status']);
-            Route::get('/status', [GoogleCalendarController::class, 'isAnyCalendarConnected']);
+        Route::prefix('calendar')->name('calendar.')->group(function () {
+            Route::get('/', [GoogleCalendarController::class, 'index'])->name('index');
+            Route::get('/status', [GoogleCalendarController::class, 'isAnyCalendarConnected'])->name('status');
+            Route::post('/authorize', [GoogleCalendarController::class, 'initiateOAuth'])->name('authorize');
+            Route::get('/callback', [GoogleCalendarController::class, 'callback'])->name('callback');
+            Route::get('/{id}', [GoogleCalendarController::class, 'show'])->name('show');
+            Route::put('/{id}', [GoogleCalendarController::class, 'update'])->name('update');
+            Route::delete('/{id}', [GoogleCalendarController::class, 'disconnect'])->name('disconnect');
+            Route::post('/{id}/refresh-token', [GoogleCalendarController::class, 'refreshToken'])->name('refresh-token');
+            Route::get('/{id}/calendars', [GoogleCalendarController::class, 'getCalendars'])->name('calendars');
+            Route::post('/{id}/events', [GoogleCalendarController::class, 'createEvent'])->name('events.store');
+            Route::get('/{id}/status', [GoogleCalendarController::class, 'status'])->name('integration-status');
         });
     });
 

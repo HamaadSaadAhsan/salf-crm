@@ -10,16 +10,14 @@ class IntegrationController extends Controller
 {
     public function index()
     {
-        $integrations = Integration::all();
-        $calendar = CalendarIntegration::where('user_id', request()->user()->id)
-            ->with('user:id,name,email')
-            ->get();
+        $facebookIntegration = Integration::where('provider', 'facebook')->first();
+        $calendarIntegration = CalendarIntegration::where('user_id', request()->user()->id)->first();
 
         return inertia('integrations/index', [
-            'integrations' => $integrations,
-            'calendarStatus' => [
-                'isLinked' => $calendar->isNotEmpty(),
-                'message' => $calendar->isNotEmpty() ? 'Calendar integration connected successfully' : 'Connect your calendar',
+            'statuses' => [
+                'facebook' => $facebookIntegration?->active ?? false,
+                'whatsapp' => false,
+                'calendar' => (bool) $calendarIntegration?->is_active,
             ],
         ]);
     }
