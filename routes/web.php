@@ -212,6 +212,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Gmail OAuth integration
     Route::get('api/gmail/status', [GmailController::class, 'status'])->name('gmail.status');
     Route::get('api/gmail/connect', [GmailController::class, 'connect'])->name('gmail.connect');
+    Route::post('api/gmail/sync', [GmailController::class, 'sync'])->name('gmail.sync');
     Route::delete('api/gmail/disconnect', [GmailController::class, 'disconnect'])->name('gmail.disconnect');
 
     // Lead Activities

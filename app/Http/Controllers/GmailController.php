@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SyncGmailInbox;
 use App\Models\GmailIntegration;
 use App\Models\OAuthSession;
 use App\Services\GmailService;
@@ -19,6 +20,7 @@ class GmailController extends Controller
 
     private array $scopes = [
         'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
     ];
@@ -125,6 +127,24 @@ class GmailController extends Controller
             return redirect()->route('mail')
                 ->with('error', 'Failed to complete Gmail authorization.');
         }
+    }
+
+    /**
+     * Trigger an immediate inbox sync for the authenticated user.
+     */
+    public function sync(Request $request): JsonResponse
+    {
+        $integration = GmailIntegration::where('user_id', $request->user()->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $integration) {
+            return response()->json(['message' => 'Gmail not connected.'], 422);
+        }
+
+        SyncGmailInbox::dispatch($request->user()->id);
+
+        return response()->json(['success' => true]);
     }
 
     /**

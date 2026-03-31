@@ -20,7 +20,7 @@ class MessageReceived implements ShouldBroadcast
      */
     public function __construct(
         public Message $message,
-        public User $sender,
+        public ?User $sender,
         public array $recipientIds,
     ) {}
 
@@ -41,8 +41,8 @@ class MessageReceived implements ShouldBroadcast
             'message_id' => $this->message->id,
             'subject' => $this->message->subject,
             'preview' => Str::limit(strip_tags($this->message->body), 100),
-            'sender_id' => $this->sender->id,
-            'sender_name' => $this->sender->name,
+            'sender_id' => $this->sender?->id,
+            'sender_name' => $this->sender?->name ?? $this->message->external_sender_name ?? 'Unknown',
             'sent_at' => $this->message->sent_at?->toIso8601String(),
         ];
     }

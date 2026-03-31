@@ -553,14 +553,17 @@ class MailController extends Controller
     {
         $recipient = $message->recipients->firstWhere('user_id', $currentUser->id);
 
+        $senderName = $message->sender?->name ?? $message->external_sender_name ?? 'Unknown';
+        $senderEmail = $message->sender?->email ?? $message->external_sender_email ?? '';
+
         return [
             'id' => $message->id,
-            'sender' => $message->sender ? [
-                'id' => $message->sender->id,
-                'name' => $message->sender->name,
-                'email' => $message->sender->email,
-                'initials' => $this->getInitials($message->sender->name),
-            ] : null,
+            'sender' => [
+                'id' => $message->sender?->id,
+                'name' => $senderName,
+                'email' => $senderEmail,
+                'initials' => $this->getInitials($senderName),
+            ],
             'recipients' => $message->recipients->map(fn (MessageRecipient $r) => [
                 'id' => $r->user_id,
                 'name' => $r->user?->name,
@@ -572,7 +575,7 @@ class MailController extends Controller
             'preview' => Str::limit(strip_tags($message->body), 120),
             'type' => $message->type,
             'is_draft' => $message->is_draft,
-            'is_read' => $recipient?->is_read ?? ($message->sender_id === $currentUser->id),
+            'is_read' => $recipient?->is_read ?? ($message->sender_id !== null && $message->sender_id === $currentUser->id),
             'is_starred' => $recipient?->is_starred ?? false,
             'parent_id' => $message->parent_id,
             'thread_id' => $message->thread_id,

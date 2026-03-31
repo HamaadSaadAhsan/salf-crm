@@ -171,6 +171,16 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         }, [fetchMessages, fetchCounts]),
     });
 
+    const handleSync = useCallback(async () => {
+        try {
+            await api.post('/api/gmail/sync');
+            // Job is queued — poll after a short delay to pick up new messages
+            setTimeout(() => { fetchMessages(); fetchCounts(); }, 3000);
+        } catch {
+            // not connected — ignore silently
+        }
+    }, [fetchMessages, fetchCounts]);
+
     const handleMessageSent = useCallback(() => {
         fetchMessages();
         fetchCounts();
@@ -213,6 +223,8 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                     search={search}
                     onSearchChange={setSearch}
                     onRefresh={fetchMessages}
+                    onSync={handleSync}
+                    gmailConnected={gmailConnected}
                     loading={loading}
                 />
 

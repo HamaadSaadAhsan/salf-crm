@@ -115,6 +115,98 @@ class GmailService
     }
 
     /**
+     * List Gmail message IDs received after a given timestamp.
+     *
+     * @return string[]
+     */
+    public function listInboxMessageIds(GmailIntegration $integration, \Carbon\Carbon $since): array
+    {
+        $accessToken = $this->getValidAccessToken($integration);
+
+        $response = Http::withToken($accessToken)
+            ->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
+                'q' => "in:inbox after:{$since->timestamp}",
+                'maxResults' => 50,
+            ]);
+
+        if (! $response->successful()) {
+            Log::error('Gmail list messages failed', ['response' => $response->body()]);
+
+            return [];
+        }
+
+        return collect($response->json('messages', []))->pluck('id')->all();
+    }
+
+    /**
+     * Fetch and parse a single Gmail message into a structured array.
+     *
+     * @return array{gmail_id: string, subject: string, body: string, from_name: string, from_email: string, sent_at: \Carbon\Carbon}|null
+     */
+    public function getMessageDetail(GmailIntegration $integration, string $gmailMessageId): ?array
+    {
+        $accessToken = $this->getValidAccessToken($integration);
+
+        $response = Http::withToken($accessToken)
+            ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$gmailMessageId}", [
+                'format' => 'full',
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $data = $response->json();
+        $headers = collect($data['payload']['headers'] ?? []);
+
+        $subject = $headers->firstWhere('name', 'Subject')['value'] ?? '(no subject)';
+        $fromRaw = $headers->firstWhere('name', 'From')['value'] ?? '';
+        $dateRaw = $headers->firstWhere('name', 'Date')['value'] ?? null;
+
+        [$fromName, $fromEmail] = $this->parseFrom($fromRaw);
+        $body = $this->extractBody($data['payload'] ?? []);
+
+        return [
+            'gmail_id' => $data['id'],
+            'subject' => $subject,
+            'body' => $body,
+            'from_name' => $fromName,
+            'from_email' => $fromEmail,
+            'sent_at' => $dateRaw ? \Carbon\Carbon::parse($dateRaw) : now(),
+        ];
+    }
+
+    private function parseFrom(string $from): array
+    {
+        if (preg_match('/^(.*?)\s*<([^>]+)>/', $from, $m)) {
+            return [trim($m[1], '"\'') ?: $m[2], $m[2]];
+        }
+
+        return [$from, $from];
+    }
+
+    private function extractBody(array $payload): string
+    {
+        if (! empty($payload['body']['data'])) {
+            return quoted_printable_decode(base64_decode(strtr($payload['body']['data'], '-_', '+/')));
+        }
+
+        foreach ($payload['parts'] ?? [] as $part) {
+            if ($part['mimeType'] === 'text/plain' && ! empty($part['body']['data'])) {
+                return quoted_printable_decode(base64_decode(strtr($part['body']['data'], '-_', '+/')));
+            }
+        }
+
+        foreach ($payload['parts'] ?? [] as $part) {
+            if ($part['mimeType'] === 'text/html' && ! empty($part['body']['data'])) {
+                return strip_tags(base64_decode(strtr($part['body']['data'], '-_', '+/')));
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Build a MIME email message string.
      */
     private function buildMimeMessage(array $payload): string

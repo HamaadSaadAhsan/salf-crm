@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
-import { Search, Star, RefreshCw, Inbox } from 'lucide-react';
+import { Search, Star, RefreshCw, Inbox, MailCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ interface MailListProps {
     search: string;
     onSearchChange: (search: string) => void;
     onRefresh: () => void;
+    onSync?: () => Promise<void>;
+    gmailConnected?: boolean;
     loading: boolean;
     className?: string;
 }
@@ -45,9 +47,20 @@ export function MailList({
     search,
     onSearchChange,
     onRefresh,
+    onSync,
+    gmailConnected,
     loading,
     className,
 }: MailListProps) {
+    const [syncing, setSyncing] = useState(false);
+
+    const handleSync = useCallback(async () => {
+        if (!onSync) return;
+        setSyncing(true);
+        await onSync();
+        setSyncing(false);
+    }, [onSync]);
+
     const handleStarClick = useCallback(
         (e: React.MouseEvent, messageId: number) => {
             e.stopPropagation();
@@ -72,6 +85,18 @@ export function MailList({
                 <Button variant="ghost" size="icon" className="size-9 shrink-0 rounded-full" onClick={onRefresh} disabled={loading}>
                     <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
                 </Button>
+                {gmailConnected && onSync && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-9 shrink-0 rounded-full"
+                        onClick={handleSync}
+                        disabled={syncing}
+                        title="Sync Gmail inbox"
+                    >
+                        <MailCheck className={cn('size-4', syncing && 'animate-pulse')} />
+                    </Button>
+                )}
             </div>
 
             {/* Folder heading */}

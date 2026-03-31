@@ -1,6 +1,8 @@
 <?php
 
 use App\Jobs\CalculateDailyMetricsJob;
+use App\Jobs\SyncGmailInbox;
+use App\Models\GmailIntegration;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -43,6 +45,16 @@ Schedule::command('meetings:check-reminders')
     ->name('check-meeting-reminders')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Sync Gmail inbox every minute for all active integrations
+Schedule::call(function () {
+    GmailIntegration::where('is_active', true)->each(
+        fn (GmailIntegration $integration) => SyncGmailInbox::dispatch($integration->user_id)
+    );
+})
+    ->everyMinute()
+    ->name('sync-gmail-inboxes')
+    ->withoutOverlapping();
 
 // Extend Facebook tokens before expiry (runs daily, extends tokens expiring within 48h)
 Schedule::command('facebook:extend-tokens')
