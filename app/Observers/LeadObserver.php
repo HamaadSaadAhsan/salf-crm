@@ -5,6 +5,8 @@ namespace App\Observers;
 use App\Enums\TaskStatus;
 use App\Events\AssignmentQueueUpdated;
 use App\Events\LeadUpdated;
+use App\Jobs\RemoveLeadFromCalendar;
+use App\Jobs\SyncLeadToCalendar;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\Task;
@@ -20,6 +22,7 @@ class LeadObserver
     {
         $this->trackFieldChanges($lead);
         $this->broadcastLeadUpdated($lead);
+        $this->syncCalendarIfNeeded($lead);
     }
 
     /**
@@ -46,6 +49,38 @@ class LeadObserver
     }
 
     /**
+     * Dispatch calendar sync job when follow-up date or assignment changes.
+     */
+    private function syncCalendarIfNeeded(Lead $lead): void
+    {
+        $calendarRelevantFields = ['next_follow_up_at', 'assigned_to', 'name', 'inquiry_status', 'priority'];
+        $changedFields = array_keys($lead->getChanges());
+
+        if (empty(array_intersect($calendarRelevantFields, $changedFields))) {
+            return;
+        }
+
+        // If assigned_to changed, remove event from old assignee's calendar
+        if ($lead->wasChanged('assigned_to') && $lead->getOriginal('assigned_to') && $lead->google_calendar_event_id) {
+            RemoveLeadFromCalendar::dispatch($lead);
+        }
+
+        // If follow-up was cleared, remove the calendar event
+        if ($lead->wasChanged('next_follow_up_at') && ! $lead->next_follow_up_at) {
+            if ($lead->google_calendar_event_id) {
+                RemoveLeadFromCalendar::dispatch($lead);
+            }
+
+            return;
+        }
+
+        // Sync to calendar if there's a follow-up date
+        if ($lead->next_follow_up_at && $lead->assigned_to) {
+            SyncLeadToCalendar::dispatch($lead);
+        }
+    }
+
+    /**
      * Track field changes and create activities
      */
     private function trackFieldChanges(Lead $lead): void
@@ -59,7 +94,7 @@ class LeadObserver
             $oldValue = $original[$field] ?? null;
 
             // Skip certain fields that shouldn't create activities
-            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count', 'advisor_stage', 'phone'])) {
+            if (in_array($field, ['updated_at', 'last_activity_at', 'lead_score', 'pending_activities_count', 'advisor_stage', 'phone', 'google_calendar_event_id'])) {
                 continue;
             }
 

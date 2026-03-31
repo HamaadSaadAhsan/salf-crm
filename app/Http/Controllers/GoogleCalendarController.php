@@ -51,6 +51,22 @@ class GoogleCalendarController extends Controller
     }
 
     /**
+     * Calendar integration configuration page
+     */
+    public function configure(Request $request)
+    {
+        $integration = CalendarIntegration::where('user_id', $request->user()->id)->first();
+
+        if (! $integration) {
+            return redirect()->route('integrations');
+        }
+
+        return Inertia::render('integrations/calendar/configure', [
+            'integration' => $integration,
+        ]);
+    }
+
+    /**
      * Get specific calendar integration
      */
     public function show(Request $request, string $id): JsonResponse
@@ -182,7 +198,7 @@ class GoogleCalendarController extends Controller
                         : now()->addHour(),
                     'is_active' => true,
                     'sync_preferences' => $calendarIntegration->sync_preferences ?? [
-                        'syncTickets' => true,
+                        'syncLeads' => true,
                         'syncFollowUps' => true,
                         'defaultCalendarId' => 'primary',
                     ],
@@ -219,7 +235,7 @@ class GoogleCalendarController extends Controller
             $request->validate([
                 'is_active' => 'sometimes|boolean',
                 'sync_preferences' => 'sometimes|array',
-                'sync_preferences.syncTickets' => 'sometimes|boolean',
+                'sync_preferences.syncLeads' => 'sometimes|boolean',
                 'sync_preferences.syncFollowUps' => 'sometimes|boolean',
                 'sync_preferences.defaultCalendarId' => 'sometimes|string',
             ]);

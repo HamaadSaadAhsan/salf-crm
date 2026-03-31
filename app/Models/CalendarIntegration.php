@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class CalendarIntegration extends Model
 {
+    use HasFactory;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -57,7 +60,7 @@ class CalendarIntegration extends Model
     public function getDefaultSyncPreferences(): array
     {
         return [
-            'syncTickets' => true,
+            'syncLeads' => true,
             'syncFollowUps' => true,
             'defaultCalendarId' => 'primary',
         ];

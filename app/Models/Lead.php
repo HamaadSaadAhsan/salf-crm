@@ -28,7 +28,7 @@ class Lead extends Model implements HasMedia
         'custom_fields', 'inquiry_status', 'priority', 'inquiry_type',
         'inquiry_country', 'assigned_to', 'assigned_date', 'ticket_id',
         'ticket_date', 'import_id', 'external_id', 'lead_score',
-        'last_activity_at', 'viewed_at', 'next_follow_up_at', 'tags',
+        'last_activity_at', 'viewed_at', 'next_follow_up_at', 'google_calendar_event_id', 'tags',
         'form_external_id', 'lead_form_id', 'ad_external_id',
         'loss_reason', 'requalify_reason',
         'advisor_stage', 'qualified_by', 'qualified_at',
