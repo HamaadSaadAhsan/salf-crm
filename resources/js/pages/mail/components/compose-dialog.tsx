@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Minus, Maximize2, X, Minimize2, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -526,7 +527,7 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
         setError(null);
 
         try {
-            await api.post('/api/mail/messages', {
+            const res = await api.post('/api/mail/messages', {
                 to: to.map((u) => u.isExternal ? u.email : u.id),
                 cc: cc.map((u) => u.isExternal ? u.email : u.id),
                 bcc: [],
@@ -536,8 +537,30 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
                 type: replyTo ? 'reply' : forwardFrom ? 'forward' : 'new',
                 is_draft: isDraft,
             });
+
             onSent();
             onClose();
+
+            if (!isDraft) {
+                const messageId = res.message?.id;
+                toast.success('Email sent', {
+                    duration: 5000,
+                    action: messageId ? {
+                        label: 'Undo',
+                        onClick: async () => {
+                            try {
+                                await api.delete(`/api/mail/messages/${messageId}/unsend`);
+                                toast.success('Email unsent');
+                                onSent(); // refresh list
+                            } catch {
+                                toast.error('Unsend window expired');
+                            }
+                        },
+                    } : undefined,
+                });
+            } else {
+                toast.success('Draft saved');
+            }
         } catch (err: any) {
             setError(err?.response?.data?.message || 'Failed to send message.');
         } finally {

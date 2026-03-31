@@ -201,6 +201,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('api/mail/messages/{message}/trash', [MailController::class, 'trash'])->name('mail.trash');
     Route::post('api/mail/messages/{message}/restore', [MailController::class, 'restore'])->name('mail.restore');
     Route::delete('api/mail/messages/{message}', [MailController::class, 'destroy'])->name('mail.destroy');
+    Route::delete('api/mail/messages/{message}/unsend', [MailController::class, 'unsend'])->name('mail.unsend');
     Route::get('api/mail/labels', [MailController::class, 'labels'])->name('mail.labels');
     Route::post('api/mail/labels', [MailController::class, 'storeLabel'])->name('mail.labels.store');
     Route::delete('api/mail/labels/{label}', [MailController::class, 'deleteLabel'])->name('mail.labels.destroy');

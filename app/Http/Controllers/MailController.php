@@ -285,6 +285,23 @@ class MailController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function unsend(Request $request, Message $message): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($message->sender_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        if ($message->created_at->diffInSeconds(now()) > 10) {
+            return response()->json(['message' => 'Unsend window has expired.'], 422);
+        }
+
+        $message->forceDelete();
+
+        return response()->json(['success' => true]);
+    }
+
     // Labels
 
     public function labels(Request $request): JsonResponse
