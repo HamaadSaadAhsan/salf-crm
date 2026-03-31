@@ -1,3 +1,4 @@
+import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +9,8 @@ import { PageProps } from '@/types/global';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Plug, Settings2, Unplug } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, Plug, Settings2, Unplug } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
     AlertDialog,
@@ -79,10 +80,12 @@ function IntegrationCard({
     integration,
     onConnect,
     onDisconnect,
+    isConnecting,
 }: {
     integration: Integration;
     onConnect: () => void;
     onDisconnect: (id: string) => void;
+    isConnecting?: boolean;
 }) {
     const isActive = integration.status === 'active';
 
@@ -140,9 +143,14 @@ function IntegrationCard({
                                 variant="outline"
                                 size="sm"
                                 onClick={onConnect}
+                                disabled={isConnecting}
                             >
-                                <Plug className="size-3.5" />
-                                Connect
+                                {isConnecting ? (
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                    <Plug className="size-3.5" />
+                                )}
+                                {isConnecting ? 'Connecting...' : 'Connect'}
                             </Button>
                         )}
                     </div>
@@ -155,6 +163,9 @@ function IntegrationCard({
 export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
     const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
     const [isDisconnecting, setIsDisconnecting] = useState(false);
+    const [connectingFacebook, setConnectingFacebook] = useState(false);
+    const popupRef = useRef<Window | null>(null);
+    const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const toStatus = (linked: boolean): 'active' | 'inactive' => (linked ? 'active' : 'inactive');
 
@@ -199,9 +210,63 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
         }
     };
 
+    const connectFacebook = async () => {
+        setConnectingFacebook(true);
+
+        try {
+            // Open popup first (must be in direct click handler to avoid popup blocker)
+            const popup = window.open('about:blank', 'facebook_oauth', 'width=600,height=700');
+            popupRef.current = popup;
+
+            const res = await api.post('/integrations/facebook/oauth/authorize', {});
+            if (res.success && res.auth_url) {
+                if (popup && !popup.closed) {
+                    popup.location.href = res.auth_url;
+                } else {
+                    popupRef.current = window.open(res.auth_url, 'facebook_oauth', 'width=600,height=700');
+                }
+
+                // Poll for popup close
+                popupCheckRef.current = setInterval(async () => {
+                    if (popupRef.current && popupRef.current.closed) {
+                        if (popupCheckRef.current) {
+                            clearInterval(popupCheckRef.current);
+                            popupCheckRef.current = null;
+                        }
+
+                        // Check if OAuth completed (token saved)
+                        try {
+                            const statusRes = await api.get('/workflows/facebook/token-status');
+                            if (statusRes.connected) {
+                                toast.success('Facebook connected successfully');
+                                router.reload();
+                            } else {
+                                toast.error('Facebook login was not completed');
+                            }
+                        } catch {
+                            toast.error('Failed to verify Facebook connection');
+                        }
+
+                        setConnectingFacebook(false);
+                    }
+                }, 1000);
+            } else {
+                popup?.close();
+                setConnectingFacebook(false);
+                toast.error('Failed to get Facebook auth URL');
+            }
+        } catch (err: any) {
+            setConnectingFacebook(false);
+            const message = err?.response?.data?.message || err?.message || 'Failed to connect Facebook';
+            toast.error(message);
+        }
+    };
+
     const handleConnect = (id: string) => {
         if (id === 'calendar') {
             connectCalendar();
+        } else if (id === 'facebook') {
+            connectFacebook();
         }
     };
 
@@ -231,6 +296,15 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
         }
     };
 
+    // Clean up popup interval on unmount
+    useEffect(() => {
+        return () => {
+            if (popupCheckRef.current) {
+                clearInterval(popupCheckRef.current);
+            }
+        };
+    }, []);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Integrations" />
@@ -258,6 +332,7 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
                             integration={integration}
                             onConnect={() => handleConnect(integration.id)}
                             onDisconnect={setDisconnectTarget}
+                            isConnecting={integration.id === 'facebook' && connectingFacebook}
                         />
                     ))}
                 </div>
