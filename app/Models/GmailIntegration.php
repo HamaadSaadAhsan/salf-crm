@@ -14,12 +14,14 @@ class GmailIntegration extends Model
         'refresh_token',
         'token_expires_at',
         'is_active',
+        'last_synced_at',
     ];
 
     protected function casts(): array
     {
         return [
             'token_expires_at' => 'datetime',
+            'last_synced_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }

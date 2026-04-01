@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useLayout } from './layout-context';
 import { Sidebar } from './sidebar';
@@ -11,10 +12,17 @@ interface LayoutProps {
   breadcrumbs?: BreadcrumbItem[];
   hideContentHeader?: boolean;
   fullHeight?: boolean;
+  collapseSidebar?: boolean;
 }
 
-export function Layout({ children, breadcrumbs = [], hideContentHeader = false, fullHeight = false }: LayoutProps) {
-  const { isSidebarResizing } = useLayout();
+export function Layout({ children, breadcrumbs = [], hideContentHeader = false, fullHeight = false, collapseSidebar = false }: LayoutProps) {
+  const { isSidebarResizing, setSidebarCollapse } = useLayout();
+
+  useEffect(() => {
+    if (collapseSidebar) {
+      setSidebarCollapse(true);
+    }
+  }, [collapseSidebar, setSidebarCollapse]);
   const { impersonation } = usePage<SharedData>().props;
   const bannerHeight = impersonation?.isImpersonating ? '40px' : '0px';
 

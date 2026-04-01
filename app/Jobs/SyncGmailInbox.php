@@ -69,18 +69,29 @@ class SyncGmailInbox implements ShouldQueue
                 continue;
             }
 
-            $message = Message::create([
-                'sender_id' => null,
-                'external_sender_name' => $detail['from_name'],
-                'external_sender_email' => $detail['from_email'],
-                'gmail_message_id' => $detail['gmail_id'],
-                'subject' => $detail['subject'],
-                'body' => $detail['body'],
-                'type' => 'new',
-                'is_draft' => false,
-                'thread_id' => Str::uuid()->toString(),
-                'sent_at' => $detail['sent_at'],
-            ]);
+            // Match to existing thread by Gmail's threadId
+            $threadId = $this->resolveThreadId($detail['gmail_thread_id']);
+            $isReply = str_starts_with(strtolower($detail['subject']), 're:')
+                || str_starts_with(strtolower($detail['subject']), 'fwd:');
+
+            try {
+                $message = Message::create([
+                    'sender_id' => null,
+                    'external_sender_name' => $detail['from_name'],
+                    'external_sender_email' => $detail['from_email'],
+                    'gmail_message_id' => $detail['gmail_id'],
+                    'gmail_thread_id' => $detail['gmail_thread_id'],
+                    'subject' => $detail['subject'],
+                    'body' => $this->stripQuotedReply($detail['body']),
+                    'type' => $isReply ? 'reply' : 'new',
+                    'is_draft' => false,
+                    'thread_id' => $threadId,
+                    'sent_at' => $detail['sent_at'],
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                // Another concurrent job already imported this message — skip
+                continue;
+            }
 
             MessageRecipient::create([
                 'message_id' => $message->id,
@@ -99,5 +110,40 @@ class SyncGmailInbox implements ShouldQueue
         if ($imported > 0) {
             Log::info("Gmail sync: imported {$imported} messages for user {$this->gmailIntegrationUserId}");
         }
+    }
+
+    /**
+     * Find an existing CRM thread_id by Gmail's conversation threadId.
+     */
+    private function resolveThreadId(?string $gmailThreadId): string
+    {
+        if ($gmailThreadId) {
+            $existing = Message::where('gmail_thread_id', $gmailThreadId)
+                ->whereNotNull('thread_id')
+                ->orderBy('sent_at')
+                ->first();
+
+            if ($existing) {
+                return $existing->thread_id;
+            }
+        }
+
+        return Str::uuid()->toString();
+    }
+
+    /**
+     * Remove quoted reply text (the "On ... wrote:" block and everything after).
+     */
+    private function stripQuotedReply(string $body): string
+    {
+        // Pattern: "On Mon, 1 Apr 2026 at 2:22 pm, Name <email> wrote:" followed by quoted text
+        $cleaned = preg_replace('/\r?\nOn .+? wrote:\s*\r?\n>.*$/s', '', $body);
+
+        // Also handle the non-">" style: "On ... wrote:\n" followed by remaining text
+        if ($cleaned === $body) {
+            $cleaned = preg_replace('/\r?\nOn .+? wrote:\s*$/s', '', $body);
+        }
+
+        return trim($cleaned ?? $body);
     }
 }

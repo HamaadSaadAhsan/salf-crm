@@ -4,17 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Events\MessageReceived;
 use App\Http\Requests\SendMessageRequest;
+use App\Jobs\SendGmailMessage;
 use App\Models\GmailIntegration;
 use App\Models\Label;
 use App\Models\Message;
 use App\Models\MessageLabel;
 use App\Models\MessageRecipient;
 use App\Models\User;
-use App\Services\GmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -132,7 +131,7 @@ class MailController extends Controller
             }
 
             // Send via Gmail API (network call, non-blocking on failure)
-            $this->dispatchViaGmail($user, $validated);
+            $this->dispatchViaGmail($user, $validated, $message);
         }
 
         return response()->json([
@@ -141,7 +140,7 @@ class MailController extends Controller
         ], 201);
     }
 
-    private function dispatchViaGmail(User $user, array $validated): void
+    private function dispatchViaGmail(User $user, array $validated, Message $message): void
     {
         $integration = GmailIntegration::where('user_id', $user->id)
             ->where('is_active', true)
@@ -151,28 +150,22 @@ class MailController extends Controller
             return;
         }
 
-        try {
-            $gmailService = app(GmailService::class);
+        $toEmails = $this->resolveEmails($validated['to'] ?? []);
+        $ccEmails = $this->resolveEmails($validated['cc'] ?? []);
 
-            // Resolve recipient email addresses
-            $toEmails = $this->resolveEmails($validated['to'] ?? []);
-            $ccEmails = $this->resolveEmails($validated['cc'] ?? []);
-
-            if (empty($toEmails)) {
-                return;
-            }
-
-            $gmailService->sendEmail($integration, [
-                'from_name' => $user->name,
-                'from_email' => $integration->google_account_email,
-                'to' => $toEmails,
-                'cc' => $ccEmails,
-                'subject' => $validated['subject'],
-                'body' => $validated['body'],
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('Gmail dispatch failed (message still saved internally): '.$e->getMessage());
+        if (empty($toEmails)) {
+            return;
         }
+
+        // Delay send by 12 seconds so the user's "unsend" window (10s) can cancel it
+        SendGmailMessage::dispatch($message->id, $user->id, [
+            'from_name' => $user->name,
+            'from_email' => $integration->google_account_email,
+            'to' => $toEmails,
+            'cc' => $ccEmails,
+            'subject' => $validated['subject'],
+            'body' => $validated['body'],
+        ])->delay(now()->addSeconds(12));
     }
 
     private function resolveEmails(array $recipients): array

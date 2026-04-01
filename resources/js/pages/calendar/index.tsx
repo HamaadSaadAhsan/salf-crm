@@ -81,7 +81,7 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
     }, []);
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout breadcrumbs={breadcrumbs} collapseSidebar>
             <Head title="Follow-Up Calendar" />
 
             <div className="flex flex-1 flex-col p-4 sm:p-5">

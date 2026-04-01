@@ -198,7 +198,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
     }, []);
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs} fullHeight>
+        <AppLayout breadcrumbs={breadcrumbs} fullHeight collapseSidebar>
             <Head title="Mail" />
 
             <div className="flex h-full overflow-hidden">
@@ -211,10 +211,12 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                     counts={counts}
                     onCompose={handleCompose}
                     onCreateLabel={() => setCreateLabelOpen(true)}
+                    userName={auth.user.name}
+                    userEmail={auth.user.email}
                 />
 
                 <MailList
-                    className="ml-2"
+                    className=""
                     messages={messages}
                     selectedId={selectedMessage?.id ?? null}
                     onSelect={handleSelectMessage}

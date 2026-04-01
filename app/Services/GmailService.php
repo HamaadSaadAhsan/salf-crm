@@ -24,7 +24,10 @@ class GmailService
      *
      * @param  array{to: string[], cc: string[], subject: string, body: string, from_name: string, from_email: string}  $payload
      */
-    public function sendEmail(GmailIntegration $integration, array $payload): bool
+    /**
+     * @return array{id: string, threadId: string}|null Returns Gmail IDs on success, null on failure.
+     */
+    public function sendEmail(GmailIntegration $integration, array $payload): ?array
     {
         $accessToken = $this->getValidAccessToken($integration);
 
@@ -39,10 +42,13 @@ class GmailService
         if (! $response->successful()) {
             Log::error('Gmail send failed', ['response' => $response->body()]);
 
-            return false;
+            return null;
         }
 
-        return true;
+        return [
+            'id' => $response->json('id'),
+            'threadId' => $response->json('threadId'),
+        ];
     }
 
     /**
@@ -175,6 +181,7 @@ class GmailService
 
         return [
             'gmail_id' => $data['id'],
+            'gmail_thread_id' => $data['threadId'] ?? null,
             'subject' => $subject,
             'body' => $body,
             'from_name' => $fromName,
@@ -194,23 +201,42 @@ class GmailService
 
     private function extractBody(array $payload): string
     {
+        // Prefer HTML for rich rendering, fall back to plain text
+        $html = $this->findBodyByMime($payload, 'text/html');
+        if ($html !== null) {
+            return base64_decode(strtr($html, '-_', '+/'));
+        }
+
+        $plain = $this->findBodyByMime($payload, 'text/plain');
+        if ($plain !== null) {
+            return quoted_printable_decode(base64_decode(strtr($plain, '-_', '+/')));
+        }
+
+        // Top-level body (single-part message)
         if (! empty($payload['body']['data'])) {
             return quoted_printable_decode(base64_decode(strtr($payload['body']['data'], '-_', '+/')));
         }
 
-        foreach ($payload['parts'] ?? [] as $part) {
-            if ($part['mimeType'] === 'text/plain' && ! empty($part['body']['data'])) {
-                return quoted_printable_decode(base64_decode(strtr($part['body']['data'], '-_', '+/')));
-            }
-        }
-
-        foreach ($payload['parts'] ?? [] as $part) {
-            if ($part['mimeType'] === 'text/html' && ! empty($part['body']['data'])) {
-                return strip_tags(base64_decode(strtr($part['body']['data'], '-_', '+/')));
-            }
-        }
-
         return '';
+    }
+
+    /**
+     * Recursively search for a MIME part's body data.
+     */
+    private function findBodyByMime(array $payload, string $mimeType): ?string
+    {
+        if (($payload['mimeType'] ?? '') === $mimeType && ! empty($payload['body']['data'])) {
+            return $payload['body']['data'];
+        }
+
+        foreach ($payload['parts'] ?? [] as $part) {
+            $found = $this->findBodyByMime($part, $mimeType);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -231,7 +257,7 @@ class GmailService
         }
         $headers .= "Subject: {$subject}\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "Content-Transfer-Encoding: quoted-printable\r\n";
 
         return $headers."\r\n".$body;

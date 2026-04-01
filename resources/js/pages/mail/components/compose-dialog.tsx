@@ -1,12 +1,54 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Minus, Maximize2, X, Minimize2, ChevronDown } from 'lucide-react';
+import {
+    Loader2,
+    Minus,
+    Maximize2,
+    X,
+    Minimize2,
+    ChevronDown,
+    Bold,
+    Italic,
+    Underline as UnderlineIcon,
+    Strikethrough,
+    Link2,
+    List,
+    ListOrdered,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { type MailUser, type MailMessage } from '../types';
+
+// Lexical imports
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { ListNode, ListItemNode } from '@lexical/list';
+import { LinkNode, AutoLinkNode } from '@lexical/link';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { $generateHtmlFromNodes } from '@lexical/html';
+import {
+    $getRoot,
+    $createParagraphNode,
+    $createTextNode,
+    FORMAT_TEXT_COMMAND,
+    $getSelection,
+    $isRangeSelection,
+    COMMAND_PRIORITY_LOW,
+    SELECTION_CHANGE_COMMAND,
+} from 'lexical';
+import {
+    INSERT_ORDERED_LIST_COMMAND,
+    INSERT_UNORDERED_LIST_COMMAND,
+} from '@lexical/list';
 
 interface ComposeDialogProps {
     isOpen: boolean;
@@ -24,6 +66,178 @@ type ComposeMode = 'normal' | 'minimized' | 'fullscreen';
 
 const spring = { type: 'spring', stiffness: 420, damping: 34, mass: 0.8 } as const;
 const fastFade = { duration: 0.15 } as const;
+
+// ─── Lexical config ───────────────────────────────────────────────────────────
+
+const EDITOR_THEME = {
+    paragraph: 'text-sm leading-6',
+    list: {
+        ul: 'list-disc ps-[4ch]',
+        ol: 'list-decimal ps-[4ch]',
+        listitem: 'text-sm leading-6',
+    },
+    link: 'text-blue-500 underline cursor-pointer',
+    text: {
+        bold: 'font-bold',
+        italic: 'italic',
+        underline: 'underline',
+        strikethrough: 'line-through',
+    },
+};
+
+const EDITOR_NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode];
+
+// ─── LexicalErrorBoundary ─────────────────────────────────────────────────────
+
+function LexicalErrorBoundary({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+}
+
+// ─── HtmlExtractPlugin ────────────────────────────────────────────────────────
+
+function HtmlExtractPlugin({ onHtmlChange }: { onHtmlChange: (html: string) => void }) {
+    const [editor] = useLexicalComposerContext();
+    const callbackRef = useRef(onHtmlChange);
+    callbackRef.current = onHtmlChange;
+
+    useEffect(() => {
+        return editor.registerUpdateListener(({ editorState }) => {
+            editorState.read(() => {
+                const raw = $generateHtmlFromNodes(editor);
+                // Strip Lexical theme classes and inline styles for clean email HTML
+                const html = raw
+                    .replace(/ class="[^"]*"/g, '')
+                    .replace(/ style="[^"]*"/g, '');
+                callbackRef.current(html);
+            });
+        });
+    }, [editor]);
+
+    return null;
+}
+
+// ─── FormattingToolbar ────────────────────────────────────────────────────────
+
+function FormattingToolbar() {
+    const [editor] = useLexicalComposerContext();
+    const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        return editor.registerCommand(
+            SELECTION_CHANGE_COMMAND,
+            () => {
+                const selection = $getSelection();
+                if ($isRangeSelection(selection)) {
+                    const formats = new Set<string>();
+                    if (selection.hasFormat('bold')) formats.add('bold');
+                    if (selection.hasFormat('italic')) formats.add('italic');
+                    if (selection.hasFormat('underline')) formats.add('underline');
+                    if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
+                    setActiveFormats(formats);
+                }
+                return false;
+            },
+            COMMAND_PRIORITY_LOW,
+        );
+    }, [editor]);
+
+    const formatActions = [
+        { format: 'bold' as const, Icon: Bold, title: 'Bold' },
+        { format: 'italic' as const, Icon: Italic, title: 'Italic' },
+        { format: 'underline' as const, Icon: UnderlineIcon, title: 'Underline' },
+        { format: 'strikethrough' as const, Icon: Strikethrough, title: 'Strikethrough' },
+    ];
+
+    return (
+        <div className="flex items-center gap-0.5 border-t border-border/40 px-2 py-1.5">
+            {formatActions.map(({ format, Icon, title }) => (
+                <button
+                    key={format}
+                    type="button"
+                    title={title}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
+                    }}
+                    className={cn(
+                        'flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                        activeFormats.has(format) && 'bg-muted text-foreground',
+                    )}
+                >
+                    <Icon className="size-3.5" />
+                </button>
+            ))}
+
+            <Separator orientation="vertical" className="mx-1 h-4" />
+
+            <button
+                type="button"
+                title="Insert link"
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    const url = window.prompt('Enter URL:');
+                    if (url) {
+                        editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
+                    }
+                }}
+                className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+                <Link2 className="size-3.5" />
+            </button>
+
+            <button
+                type="button"
+                title="Bullet list"
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+                }}
+                className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+                <List className="size-3.5" />
+            </button>
+
+            <button
+                type="button"
+                title="Numbered list"
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+                }}
+                className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+                <ListOrdered className="size-3.5" />
+            </button>
+        </div>
+    );
+}
+
+// ─── SetInitialContentPlugin ──────────────────────────────────────────────────
+
+function SetInitialContentPlugin({ content }: { content: string }) {
+    const [editor] = useLexicalComposerContext();
+    const appliedRef = useRef(false);
+
+    useEffect(() => {
+        if (!content || appliedRef.current) return;
+        appliedRef.current = true;
+
+        editor.update(() => {
+            const root = $getRoot();
+            root.clear();
+            const lines = content.split('\n');
+            for (const line of lines) {
+                const paragraph = $createParagraphNode();
+                if (line.trim()) {
+                    paragraph.append($createTextNode(line));
+                }
+                root.append(paragraph);
+            }
+        });
+    }, [editor, content]);
+
+    return null;
+}
 
 // ─── RecipientInput ────────────────────────────────────────────────────────────
 
@@ -125,10 +339,10 @@ function RecipientInput({
     return (
         <div className="relative border-b border-border/60">
             <div
-                className="flex min-h-[42px] flex-wrap items-center gap-1 px-3 py-1.5 cursor-text"
+                className="flex min-h-[42px] cursor-text flex-wrap items-center gap-1 px-3 py-1.5"
                 onClick={() => inputRef.current?.focus()}
             >
-                <span className="shrink-0 text-xs text-muted-foreground w-7">{label}</span>
+                <span className="w-7 shrink-0 text-xs text-muted-foreground">{label}</span>
 
                 <AnimatePresence initial={false} mode="popLayout">
                     {recipients.map((user) => (
@@ -144,7 +358,10 @@ function RecipientInput({
                                 {user.name}
                                 <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); onRemove(user.id); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemove(user.id);
+                                    }}
                                     className="ml-0.5 opacity-60 hover:opacity-100"
                                 >
                                     <X className="size-2.5" />
@@ -166,7 +383,7 @@ function RecipientInput({
                             commitQuery();
                         }, 150);
                     }}
-                    className="h-5 flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                    className="h-5 min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
                     placeholder={recipients.length === 0 ? 'Recipients' : ''}
                 />
 
@@ -201,7 +418,7 @@ function RecipientInput({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.14, ease: 'easeOut' }}
-                        className="absolute left-0 right-0 top-full z-50 rounded-b-lg border border-t-0 border-border bg-popover shadow-lg overflow-hidden"
+                        className="absolute left-0 right-0 top-full z-50 overflow-hidden rounded-b-lg border border-t-0 border-border bg-popover shadow-lg"
                     >
                         {suggestions.map((user, i) => (
                             <motion.button
@@ -249,7 +466,7 @@ function ComposeHeader({
     onClose: () => void;
 }) {
     return (
-        <div className="flex items-center justify-between bg-zinc-800 px-4 py-2.5 dark:bg-zinc-900 cursor-default select-none">
+        <div className="flex cursor-default select-none items-center justify-between bg-zinc-800 px-4 py-2.5 dark:bg-zinc-900">
             <motion.span
                 key={title}
                 initial={{ opacity: 0, y: 4 }}
@@ -268,7 +485,11 @@ function ComposeHeader({
                     className="flex size-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
                     title={mode === 'minimized' ? 'Restore' : 'Minimize'}
                 >
-                    {mode === 'minimized' ? <ChevronDown className="size-4 rotate-180" /> : <Minus className="size-4" />}
+                    {mode === 'minimized' ? (
+                        <ChevronDown className="size-4 rotate-180" />
+                    ) : (
+                        <Minus className="size-4" />
+                    )}
                 </motion.button>
                 <motion.button
                     type="button"
@@ -278,7 +499,11 @@ function ComposeHeader({
                     className="flex size-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
                     title={mode === 'fullscreen' ? 'Exit fullscreen' : 'Expand'}
                 >
-                    {mode === 'fullscreen' ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+                    {mode === 'fullscreen' ? (
+                        <Minimize2 className="size-3.5" />
+                    ) : (
+                        <Maximize2 className="size-3.5" />
+                    )}
                 </motion.button>
                 <motion.button
                     type="button"
@@ -298,17 +523,64 @@ function ComposeHeader({
 // ─── ComposeBody ───────────────────────────────────────────────────────────────
 
 function ComposeBody({
-    to, cc, showCc, onAddTo, onRemoveTo, onAddCc, onRemoveCc, onShowCc, onHideCc,
-    subject, onSubjectChange, body, onBodyChange, error, fullscreen = false,
+    to,
+    cc,
+    showCc,
+    onAddTo,
+    onRemoveTo,
+    onAddCc,
+    onRemoveCc,
+    onShowCc,
+    onHideCc,
+    subject,
+    onSubjectChange,
+    body,
+    onBodyChange,
+    error,
+    fullscreen = false,
+    initialBodyText,
+    editorKey,
 }: {
-    to: MailUser[]; cc: MailUser[]; showCc: boolean;
-    onAddTo: (u: MailUser) => void; onRemoveTo: (id: number) => void;
-    onAddCc: (u: MailUser) => void; onRemoveCc: (id: number) => void;
-    onShowCc: () => void; onHideCc: () => void;
-    subject: string; onSubjectChange: (s: string) => void;
-    body: string; onBodyChange: (s: string) => void;
-    error: string | null; fullscreen?: boolean;
+    to: MailUser[];
+    cc: MailUser[];
+    showCc: boolean;
+    onAddTo: (u: MailUser) => void;
+    onRemoveTo: (id: number) => void;
+    onAddCc: (u: MailUser) => void;
+    onRemoveCc: (id: number) => void;
+    onShowCc: () => void;
+    onHideCc: () => void;
+    subject: string;
+    onSubjectChange: (s: string) => void;
+    body: string;
+    onBodyChange: (html: string) => void;
+    error: string | null;
+    fullscreen?: boolean;
+    initialBodyText: string;
+    editorKey: number;
 }) {
+    const initialConfig = {
+        namespace: 'ComposeEditor',
+        theme: EDITOR_THEME,
+        nodes: EDITOR_NODES,
+        onError: (error: Error) => {
+            console.error('Lexical compose error:', error);
+        },
+        editorState: initialBodyText
+            ? () => {
+                  const root = $getRoot();
+                  const lines = initialBodyText.split('\n');
+                  for (const line of lines) {
+                      const paragraph = $createParagraphNode();
+                      if (line.trim()) {
+                          paragraph.append($createTextNode(line));
+                      }
+                      root.append(paragraph);
+                  }
+              }
+            : undefined,
+    };
+
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             {/* Error banner */}
@@ -319,7 +591,7 @@ function ComposeBody({
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive overflow-hidden"
+                        className="overflow-hidden border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive"
                     >
                         {error}
                     </motion.div>
@@ -366,16 +638,35 @@ function ComposeBody({
                 />
             </div>
 
-            {/* Body */}
-            <textarea
-                value={body}
-                onChange={(e) => onBodyChange(e.target.value)}
-                placeholder="Compose email"
-                className={cn(
-                    'flex-1 resize-none bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/40',
-                    fullscreen ? 'min-h-[320px]' : 'min-h-0',
-                )}
-            />
+            {/* Rich text editor */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+                <LexicalComposer key={editorKey} initialConfig={initialConfig}>
+                    <div
+                        className={cn(
+                            'relative flex-1 overflow-auto',
+                            fullscreen ? 'min-h-[320px]' : 'min-h-0',
+                        )}
+                    >
+                        <RichTextPlugin
+                            contentEditable={
+                                <ContentEditable className="min-h-[200px] px-3 py-3 text-sm outline-none" />
+                            }
+                            placeholder={
+                                <div className="pointer-events-none absolute left-3 top-3 text-sm text-muted-foreground/40">
+                                    Compose email
+                                </div>
+                            }
+                            ErrorBoundary={LexicalErrorBoundary}
+                        />
+                        <HistoryPlugin />
+                        <ListPlugin />
+                        <LinkPlugin />
+                        <HtmlExtractPlugin onHtmlChange={onBodyChange} />
+                    </div>
+                    {/* Formatting toolbar */}
+                    <FormattingToolbar />
+                </LexicalComposer>
+            </div>
         </div>
     );
 }
@@ -477,7 +768,15 @@ function ComposeFooter({
 
 // ─── ComposeDialog (main) ──────────────────────────────────────────────────────
 
-export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, gmailConnected = false, gmailEmail }: ComposeDialogProps) {
+export function ComposeDialog({
+    isOpen,
+    onClose,
+    onSent,
+    replyTo,
+    forwardFrom,
+    gmailConnected = false,
+    gmailEmail,
+}: ComposeDialogProps) {
     const [to, setTo] = useState<MailUser[]>([]);
     const [cc, setCc] = useState<MailUser[]>([]);
     const [showCc, setShowCc] = useState(false);
@@ -486,21 +785,28 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mode, setMode] = useState<ComposeMode>('normal');
+    const [initialBodyText, setInitialBodyText] = useState('');
+    const [editorKey, setEditorKey] = useState(0);
 
     useEffect(() => {
         if (isOpen) {
             resetForm();
             setMode('normal');
+
+            let bodyText = '';
             if (replyTo) {
                 setSubject(`Re: ${replyTo.subject.replace(/^(Re|Fwd): /i, '')}`);
-                setBody(`\n\n— ${replyTo.sender?.name} wrote:\n${replyTo.body}`);
+                bodyText = `\n\n--- ${replyTo.sender?.name} wrote:\n${replyTo.body}`;
                 if (replyTo.sender) {
                     setTo([{ id: replyTo.sender.id, name: replyTo.sender.name, email: replyTo.sender.email }]);
                 }
             } else if (forwardFrom) {
                 setSubject(`Fwd: ${forwardFrom.subject.replace(/^(Re|Fwd): /i, '')}`);
-                setBody(`\n\n— Forwarded from ${forwardFrom.sender?.name}:\n${forwardFrom.body}`);
+                bodyText = `\n\n--- Forwarded from ${forwardFrom.sender?.name}:\n${forwardFrom.body}`;
             }
+
+            setInitialBodyText(bodyText);
+            setEditorKey((k) => k + 1);
         }
     }, [isOpen, replyTo, forwardFrom]);
 
@@ -510,6 +816,7 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
         setShowCc(false);
         setSubject('');
         setBody('');
+        setInitialBodyText('');
         setError(null);
     };
 
@@ -528,11 +835,11 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
 
         try {
             const res = await api.post('/api/mail/messages', {
-                to: to.map((u) => u.isExternal ? u.email : u.id),
-                cc: cc.map((u) => u.isExternal ? u.email : u.id),
+                to: to.map((u) => (u.isExternal ? u.email : u.id)),
+                cc: cc.map((u) => (u.isExternal ? u.email : u.id)),
                 bcc: [],
                 subject: subject.trim(),
-                body: body.trim(),
+                body: body,
                 parent_id: replyTo?.id || forwardFrom?.id || null,
                 type: replyTo ? 'reply' : forwardFrom ? 'forward' : 'new',
                 is_draft: isDraft,
@@ -545,18 +852,20 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
                 const messageId = res.message?.id;
                 toast.success('Email sent', {
                     duration: 5000,
-                    action: messageId ? {
-                        label: 'Undo',
-                        onClick: async () => {
-                            try {
-                                await api.delete(`/api/mail/messages/${messageId}/unsend`);
-                                toast.success('Email unsent');
-                                onSent(); // refresh list
-                            } catch {
-                                toast.error('Unsend window expired');
-                            }
-                        },
-                    } : undefined,
+                    action: messageId
+                        ? {
+                              label: 'Undo',
+                              onClick: async () => {
+                                  try {
+                                      await api.delete(`/api/mail/messages/${messageId}/unsend`);
+                                      toast.success('Email unsent');
+                                      onSent();
+                                  } catch {
+                                      toast.error('Unsend window expired');
+                                  }
+                              },
+                          }
+                        : undefined,
                 });
             } else {
                 toast.success('Draft saved');
@@ -571,16 +880,25 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
     const title = replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message';
 
     const bodyProps = {
-        to, cc, showCc,
+        to,
+        cc,
+        showCc,
         onAddTo: (u: MailUser) => setTo([...to, u]),
-        onRemoveTo: (id: number) => setTo(to.filter(u => u.id !== id)),
+        onRemoveTo: (id: number) => setTo(to.filter((u) => u.id !== id)),
         onAddCc: (u: MailUser) => setCc([...cc, u]),
-        onRemoveCc: (id: number) => setCc(cc.filter(u => u.id !== id)),
+        onRemoveCc: (id: number) => setCc(cc.filter((u) => u.id !== id)),
         onShowCc: () => setShowCc(true),
-        onHideCc: () => { setShowCc(false); setCc([]); },
-        subject, onSubjectChange: setSubject,
-        body, onBodyChange: setBody,
+        onHideCc: () => {
+            setShowCc(false);
+            setCc([]);
+        },
+        subject,
+        onSubjectChange: setSubject,
+        body,
+        onBodyChange: setBody,
         error,
+        initialBodyText,
+        editorKey,
     };
 
     const footerProps = {
@@ -609,16 +927,16 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
                     )}
 
                     {mode === 'fullscreen' ? (
-                        /* ── Fullscreen panel ── */
+                        /* Fullscreen panel */
                         <motion.div
                             key="fullscreen"
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
                             transition={spring}
-                            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+                            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
                         >
-                            <div className="flex w-full max-w-3xl flex-col rounded-xl shadow-2xl overflow-hidden bg-background border border-border pointer-events-auto">
+                            <div className="pointer-events-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
                                 <ComposeHeader
                                     title={title}
                                     mode={mode}
@@ -631,14 +949,14 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
                             </div>
                         </motion.div>
                     ) : (
-                        /* ── Bottom-right panel (normal / minimized) ── */
+                        /* Bottom-right panel (normal / minimized) */
                         <motion.div
                             key="panel"
                             initial={{ opacity: 0, y: 40 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 40 }}
                             transition={spring}
-                            className="fixed bottom-0 right-6 z-50 flex w-[500px] flex-col rounded-t-xl shadow-2xl overflow-hidden border border-border border-b-0 bg-background"
+                            className="fixed bottom-0 right-6 z-50 flex w-[500px] flex-col overflow-hidden rounded-t-xl border border-b-0 border-border bg-background shadow-2xl"
                         >
                             <ComposeHeader
                                 title={title}
@@ -657,7 +975,7 @@ export function ComposeDialog({ isOpen, onClose, onSent, replyTo, forwardFrom, g
                                         exit={{ opacity: 0, height: 0 }}
                                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                                         className="flex flex-col overflow-hidden"
-                                        style={{ minHeight: mode === 'minimized' ? 0 : 476 }}
+                                        style={{ minHeight: 476 }}
                                     >
                                         <ComposeBody {...bodyProps} />
                                         <ComposeFooter {...footerProps} />
