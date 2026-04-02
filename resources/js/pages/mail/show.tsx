@@ -113,7 +113,7 @@ export default function MailShowPage({
             setThread((prev) =>
                 prev.map((m) => (m.id === messageId ? { ...m, is_starred: res.is_starred } : m)),
             );
-        } catch {}
+        } catch { /* ignore */ }
     }, [message.id]);
 
     const handleToggleRead = useCallback(async (messageId: number) => {
@@ -122,7 +122,7 @@ export default function MailShowPage({
             if (message.id === messageId) {
                 setMessage((prev) => ({ ...prev, is_read: res.is_read }));
             }
-        } catch {}
+        } catch { /* ignore */ }
     }, [message.id]);
 
     const handleTrash = useCallback(async (messageId: number) => {
@@ -136,7 +136,7 @@ export default function MailShowPage({
             } else {
                 handleBack();
             }
-        } catch {}
+        } catch { /* ignore */ }
     }, [nextId, prevId, navigateTo, handleBack]);
 
     const handleReply = useCallback((msg: MailMessage) => {

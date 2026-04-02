@@ -89,12 +89,12 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         try {
             const res = await api.get('/api/mail/counts');
             setCounts(res);
-        } catch {}
+        } catch { /* ignore */ }
     }, []);
 
     useEffect(() => {
         fetchMessages();
-    }, [activeFolder, activeLabel, search]);
+    }, [activeFolder, activeLabel, search, fetchMessages]);
 
     useEffect(() => {
         fetchLabels();
@@ -103,7 +103,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
             setGmailConnected(res.connected);
             setGmailEmail(res.email ?? null);
         }).catch(() => {});
-    }, []);
+    }, [fetchLabels, fetchCounts]);
 
     const handleSelectMessage = useCallback((message: MailMessage) => {
         router.visit(`/mail/messages/${message.id}?folder=${activeFolder}`);
@@ -113,7 +113,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         try {
             const res = await api.post(`/api/mail/messages/${messageId}/star`);
             setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, is_starred: res.is_starred } : m)));
-        } catch {}
+        } catch { /* ignore */ }
     }, []);
 
     const handleCompose = useCallback(() => {
@@ -135,7 +135,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         try {
             await api.post('/api/gmail/sync');
             setTimeout(() => { fetchMessages(); fetchCounts(); }, 3000);
-        } catch {}
+        } catch { /* ignore */ }
     }, [fetchMessages, fetchCounts]);
 
     const handleMessageSent = useCallback(() => {

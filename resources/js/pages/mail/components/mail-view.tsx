@@ -137,7 +137,7 @@ function ExpandedMessage({
     message,
     onToggleStar,
     onReply,
-    onForward,
+    onForward: _onForward,
 }: {
     message: MailMessage;
     onToggleStar?: (id: number) => void;
@@ -399,13 +399,13 @@ function ThreadMessage({
 export function MailView({
     message,
     thread,
-    onBack,
+    onBack: _onBack,
     onReply,
     onForward,
     onToggleStar,
-    onToggleRead,
-    onTrash,
-    hideToolbar = false,
+    onToggleRead: _onToggleRead,
+    onTrash: _onTrash,
+    hideToolbar: _hideToolbar = false,
 }: MailViewProps) {
     if (!message) {
         return (
