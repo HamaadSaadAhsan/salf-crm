@@ -192,6 +192,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Mail
     Route::get('mail', [MailController::class, 'index'])->name('mail');
+    Route::get('mail/messages/{message}', [MailController::class, 'showPage'])->name('mail.view');
     Route::get('api/mail/messages', [MailController::class, 'messages'])->name('mail.messages');
     Route::get('api/mail/messages/{message}', [MailController::class, 'show'])->name('mail.show');
     Route::post('api/mail/messages', [MailController::class, 'send'])->name('mail.send');

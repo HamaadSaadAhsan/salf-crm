@@ -1,13 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { format, isToday, isThisYear } from 'date-fns';
 import {
-    ArrowLeft,
     Reply,
     Forward,
     Star,
-    Trash2,
     MailIcon,
-    MailOpen,
     ChevronDown,
     MoreVertical,
     EllipsisVertical,
@@ -16,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { type MailMessage } from '../types';
 
 interface MailViewProps {
@@ -28,6 +24,7 @@ interface MailViewProps {
     onToggleStar: (messageId: number) => void;
     onToggleRead: (messageId: number) => void;
     onTrash: (messageId: number) => void;
+    hideToolbar?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -408,6 +405,7 @@ export function MailView({
     onToggleStar,
     onToggleRead,
     onTrash,
+    hideToolbar = false,
 }: MailViewProps) {
     if (!message) {
         return (
@@ -423,80 +421,7 @@ export function MailView({
     }
 
     return (
-        <div className="flex min-w-0 flex-1 flex-col">
-            {/* Toolbar */}
-            <div className="flex items-center gap-1 border-b border-border/60 px-2 py-1.5">
-                {/* Left group */}
-                <Button
-                    variant="ghost"
-                    mode="icon"
-                    size="sm"
-                    onClick={onBack}
-                    className="lg:hidden"
-                >
-                    <ArrowLeft className="size-4" />
-                </Button>
-
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="sm"
-                            onClick={() => onTrash(message.id)}
-                        >
-                            <Trash2 className="size-4" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="sm"
-                            onClick={() => onToggleRead(message.id)}
-                        >
-                            {message.is_read ? (
-                                <MailOpen className="size-4" />
-                            ) : (
-                                <MailIcon className="size-4" />
-                            )}
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {message.is_read ? 'Mark as unread' : 'Mark as read'}
-                    </TooltipContent>
-                </Tooltip>
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Right group */}
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="sm"
-                            onClick={() => onToggleStar(message.id)}
-                        >
-                            <Star
-                                className={cn(
-                                    'size-4',
-                                    message.is_starred && 'fill-amber-400 text-amber-400',
-                                )}
-                            />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {message.is_starred ? 'Unstar' : 'Star'}
-                    </TooltipContent>
-                </Tooltip>
-            </div>
-
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Scrollable content */}
             <ScrollArea className="flex-1">
                 <div className="mx-auto max-w-4xl">

@@ -59,6 +59,57 @@ class MailController extends Controller
         ]);
     }
 
+    public function showPage(Request $request, Message $message): Response
+    {
+        $user = $request->user();
+        $folder = $request->query('folder', 'inbox');
+
+        $message->load(['sender:id,name,email', 'recipients.user:id,name,email']);
+
+        // Mark as read
+        MessageRecipient::where('message_id', $message->id)
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['is_read' => true, 'read_at' => now()]);
+
+        // Thread messages
+        $thread = [];
+        if ($message->thread_id) {
+            $thread = Message::where('thread_id', $message->thread_id)
+                ->where('id', '!=', $message->id)
+                ->with(['sender:id,name,email', 'recipients.user:id,name,email'])
+                ->orderBy('sent_at')
+                ->get()
+                ->map(fn (Message $m) => $this->formatMessage($m, $user));
+        }
+
+        // Prev/next navigation within the folder
+        $folderMessages = match ($folder) {
+            'sent' => $this->getSent($user, null),
+            'drafts' => $this->getDrafts($user, null),
+            'starred' => $this->getStarred($user, null),
+            'trash' => $this->getTrash($user, null),
+            default => $this->getInbox($user, null),
+        };
+
+        $ids = $folderMessages->pluck('id')->values()->toArray();
+        $currentIndex = array_search($message->id, $ids);
+        $prevId = $currentIndex !== false && $currentIndex > 0 ? $ids[$currentIndex - 1] : null;
+        $nextId = $currentIndex !== false && $currentIndex < count($ids) - 1 ? $ids[$currentIndex + 1] : null;
+        $total = count($ids);
+        $position = $currentIndex !== false ? $currentIndex + 1 : null;
+
+        return Inertia::render('mail/show', [
+            'message' => $this->formatMessage($message, $user),
+            'thread' => $thread,
+            'folder' => $folder,
+            'prevId' => $prevId,
+            'nextId' => $nextId,
+            'position' => $position,
+            'total' => $total,
+        ]);
+    }
+
     public function show(Request $request, Message $message): JsonResponse
     {
         $user = $request->user();
@@ -565,7 +616,7 @@ class MailController extends Controller
             ]),
             'subject' => $message->subject,
             'body' => $message->body,
-            'preview' => Str::limit(strip_tags($message->body), 120),
+            'preview' => Str::limit($this->extractPreview($message->body), 120),
             'type' => $message->type,
             'is_draft' => $message->is_draft,
             'is_read' => $recipient?->is_read ?? ($message->sender_id !== null && $message->sender_id === $currentUser->id),
@@ -614,6 +665,18 @@ class MailController extends Controller
         }
 
         return Str::uuid()->toString();
+    }
+
+    private function extractPreview(string $body): string
+    {
+        // Remove style/script blocks before stripping tags
+        $text = preg_replace('/<(style|script|head)[^>]*>.*?<\/\1>/si', '', $body);
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Collapse whitespace
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        return trim($text);
     }
 
     private function getInitials(string $name): string

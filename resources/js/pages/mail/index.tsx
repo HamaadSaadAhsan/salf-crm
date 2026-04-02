@@ -1,16 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { PageProps } from '@/types/global';
 import { api } from '@/lib/api';
 import { useMailListener } from '@/hooks/useMailListener';
+import { WifiOff } from 'lucide-react';
 import { MailSidebar } from './components/mail-sidebar';
 import { MailList } from './components/mail-list';
-import { MailView } from './components/mail-view';
 import { ComposeDialog } from './components/compose-dialog';
 import { CreateLabelDialog } from './components/create-label-dialog';
 import { type MailMessage, type MailFolder, type MailLabel, type MailCounts } from './types';
+
+function useOnlineStatus() {
+    const [isOnline, setIsOnline] = useState(
+        typeof navigator !== 'undefined' ? navigator.onLine : true,
+    );
+
+    useEffect(() => {
+        const goOnline = () => setIsOnline(true);
+        const goOffline = () => setIsOnline(false);
+        window.addEventListener('online', goOnline);
+        window.addEventListener('offline', goOffline);
+        return () => {
+            window.removeEventListener('online', goOnline);
+            window.removeEventListener('offline', goOffline);
+        };
+    }, []);
+
+    return isOnline;
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -24,11 +43,10 @@ interface MailPageProps {
 
 export default function MailPage({ folder: initialFolder, labelId: initialLabelId }: MailPageProps) {
     const { auth } = usePage<PageProps>().props;
+    const isOnline = useOnlineStatus();
     const [activeFolder, setActiveFolder] = useState<MailFolder>((initialFolder as MailFolder) || 'inbox');
     const [activeLabel, setActiveLabel] = useState<number | null>(initialLabelId ?? null);
     const [messages, setMessages] = useState<MailMessage[]>([]);
-    const [selectedMessage, setSelectedMessage] = useState<MailMessage | null>(null);
-    const [threadMessages, setThreadMessages] = useState<MailMessage[]>([]);
     const [labels, setLabels] = useState<MailLabel[]>([]);
     const [counts, setCounts] = useState<MailCounts>({ inbox: 0, drafts: 0, starred: 0 });
     const [search, setSearch] = useState('');
@@ -71,9 +89,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         try {
             const res = await api.get('/api/mail/counts');
             setCounts(res);
-        } catch {
-            // ignore
-        }
+        } catch {}
     }, []);
 
     useEffect(() => {
@@ -89,71 +105,15 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         }).catch(() => {});
     }, []);
 
-    const handleSelectMessage = useCallback(async (message: MailMessage) => {
-        setSelectedMessage(message);
-        try {
-            const res = await api.get(`/api/mail/messages/${message.id}`);
-            setSelectedMessage(res.message);
-            setThreadMessages(res.thread || []);
-
-            // Update read status in list
-            setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, is_read: true } : m)));
-            fetchCounts();
-        } catch {
-            // keep the message from list
-            setThreadMessages([]);
-        }
-    }, [fetchCounts]);
+    const handleSelectMessage = useCallback((message: MailMessage) => {
+        router.visit(`/mail/messages/${message.id}?folder=${activeFolder}`);
+    }, [activeFolder]);
 
     const handleToggleStar = useCallback(async (messageId: number) => {
         try {
             const res = await api.post(`/api/mail/messages/${messageId}/star`);
             setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, is_starred: res.is_starred } : m)));
-            if (selectedMessage?.id === messageId) {
-                setSelectedMessage((prev) => (prev ? { ...prev, is_starred: res.is_starred } : prev));
-            }
-        } catch {
-            // ignore
-        }
-    }, [selectedMessage]);
-
-    const handleToggleRead = useCallback(async (messageId: number) => {
-        try {
-            const res = await api.post(`/api/mail/messages/${messageId}/read`);
-            setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, is_read: res.is_read } : m)));
-            if (selectedMessage?.id === messageId) {
-                setSelectedMessage((prev) => (prev ? { ...prev, is_read: res.is_read } : prev));
-            }
-            fetchCounts();
-        } catch {
-            // ignore
-        }
-    }, [selectedMessage, fetchCounts]);
-
-    const handleTrash = useCallback(async (messageId: number) => {
-        try {
-            await api.post(`/api/mail/messages/${messageId}/trash`);
-            setMessages((prev) => prev.filter((m) => m.id !== messageId));
-            if (selectedMessage?.id === messageId) {
-                setSelectedMessage(null);
-                setThreadMessages([]);
-            }
-            fetchCounts();
-        } catch {
-            // ignore
-        }
-    }, [selectedMessage, fetchCounts]);
-
-    const handleReply = useCallback((message: MailMessage) => {
-        setReplyTo(message);
-        setForwardFrom(null);
-        setComposeOpen(true);
-    }, []);
-
-    const handleForward = useCallback((message: MailMessage) => {
-        setForwardFrom(message);
-        setReplyTo(null);
-        setComposeOpen(true);
+        } catch {}
     }, []);
 
     const handleCompose = useCallback(() => {
@@ -162,7 +122,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
         setComposeOpen(true);
     }, []);
 
-    // Live inbox updates — silently refresh list when a new message arrives
+    // Live inbox updates
     useMailListener({
         userId: auth.user.id,
         onMessageReceived: useCallback(() => {
@@ -174,11 +134,8 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
     const handleSync = useCallback(async () => {
         try {
             await api.post('/api/gmail/sync');
-            // Job is queued — poll after a short delay to pick up new messages
             setTimeout(() => { fetchMessages(); fetchCounts(); }, 3000);
-        } catch {
-            // not connected — ignore silently
-        }
+        } catch {}
     }, [fetchMessages, fetchCounts]);
 
     const handleMessageSent = useCallback(() => {
@@ -192,14 +149,21 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
 
     const handleFolderChange = useCallback((folder: MailFolder) => {
         setActiveFolder(folder);
-        setSelectedMessage(null);
-        setThreadMessages([]);
         setSearch('');
     }, []);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs} fullHeight collapseSidebar>
             <Head title="Mail" />
+
+            {!isOnline && (
+                <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
+                    <WifiOff className="size-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm text-amber-700 dark:text-amber-300">
+                        No internet connection. Some features may be unavailable.
+                    </span>
+                </div>
+            )}
 
             <div className="flex h-full overflow-hidden">
                 <MailSidebar
@@ -216,9 +180,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                 />
 
                 <MailList
-                    className=""
                     messages={messages}
-                    selectedId={selectedMessage?.id ?? null}
                     onSelect={handleSelectMessage}
                     onToggleStar={handleToggleStar}
                     folder={activeFolder}
@@ -228,17 +190,6 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                     onSync={handleSync}
                     gmailConnected={gmailConnected}
                     loading={loading}
-                />
-
-                <MailView
-                    message={selectedMessage}
-                    thread={threadMessages}
-                    onBack={() => setSelectedMessage(null)}
-                    onReply={handleReply}
-                    onForward={handleForward}
-                    onToggleStar={handleToggleStar}
-                    onToggleRead={handleToggleRead}
-                    onTrash={handleTrash}
                 />
             </div>
 
@@ -250,6 +201,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
                 forwardFrom={forwardFrom}
                 gmailConnected={gmailConnected}
                 gmailEmail={gmailEmail}
+                isOffline={!isOnline}
             />
 
             <CreateLabelDialog

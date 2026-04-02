@@ -58,6 +58,7 @@ interface ComposeDialogProps {
     forwardFrom?: MailMessage | null;
     gmailConnected?: boolean;
     gmailEmail?: string | null;
+    isOffline?: boolean;
 }
 
 type ComposeMode = 'normal' | 'minimized' | 'fullscreen';
@@ -679,12 +680,14 @@ function ComposeFooter({
     onDraft,
     gmailConnected,
     gmailEmail,
+    isOffline = false,
 }: {
     sending: boolean;
     onSend: () => void;
     onDraft: () => void;
     gmailConnected: boolean;
     gmailEmail?: string | null;
+    isOffline?: boolean;
 }) {
     const handleConnect = async () => {
         const res = await api.get('/api/gmail/connect');
@@ -748,7 +751,7 @@ function ComposeFooter({
 
             <div className="flex items-center justify-between px-3 py-2.5">
                 <motion.div whileTap={{ scale: 0.96 }}>
-                    <Button onClick={onSend} disabled={sending} size="sm" className="rounded-full px-5">
+                    <Button onClick={onSend} disabled={sending || isOffline} size="sm" className="rounded-full px-5">
                         {sending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                         Send
                     </Button>
@@ -776,6 +779,7 @@ export function ComposeDialog({
     forwardFrom,
     gmailConnected = false,
     gmailEmail,
+    isOffline = false,
 }: ComposeDialogProps) {
     const [to, setTo] = useState<MailUser[]>([]);
     const [cc, setCc] = useState<MailUser[]>([]);
@@ -907,6 +911,7 @@ export function ComposeDialog({
         onDraft: () => handleSend(true),
         gmailConnected,
         gmailEmail,
+        isOffline,
     };
 
     return (
