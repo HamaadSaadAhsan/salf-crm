@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useEcho } from '@laravel/echo-react';
 import { usePage, router } from '@inertiajs/react';
+import { useMailListener } from '@/hooks/useMailListener';
 import {
     Bell,
     Check,
@@ -281,6 +282,13 @@ export function HeaderNotifications() {
         setNotifications((prev) => [event, ...prev]);
         setUnreadCount((prev) => prev + 1);
         play('normal');
+    });
+
+    // Mail inbox listener — shows toast when not on the mail page
+    const currentUrl = typeof window !== 'undefined' ? window.location.pathname : '';
+    useMailListener({
+        userId,
+        enabled: !currentUrl.startsWith('/mail'),
     });
 
     const handleMarkAsRead = async (id: string) => {

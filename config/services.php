@@ -41,6 +41,12 @@ return [
         'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/calendar/callback'),
     ],
 
+    'gmail' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect_uri' => env('GMAIL_REDIRECT_URI', env('APP_URL').'/integrations/gmail/callback'),
+    ],
+
     'google_drive' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

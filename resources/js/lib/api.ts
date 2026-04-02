@@ -7,13 +7,13 @@ class ApiClient {
         return response.data;
     }
 
-    async post(endpoint: string, data: any) {
+    async post(endpoint: string, data?: any) {
         const url = `${endpoint}`;
         const response = await axios.post(url, data);
         return response.data;
     }
 
-    async put(endpoint: string, data: any) {
+    async put(endpoint: string, data?: any) {
         const url = `${endpoint}`;
         const response = await axios.put(url, data);
         return response.data;
