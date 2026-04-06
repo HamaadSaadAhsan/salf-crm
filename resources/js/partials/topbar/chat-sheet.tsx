@@ -104,7 +104,7 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="p-0 gap-0 sm:w-[450px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+      <SheetContent side="right" className="p-0 gap-0 sm:w-[450px] sm:max-w-none inset-5 start-auto h-auto rounded-lg **:data-[slot=sheet-close]:top-4.5 **:data-[slot=sheet-close]:end-5">
         <SheetHeader>
           <div className="flex items-center justify-between p-3 border-b border-border">
             <SheetTitle>Chat</SheetTitle>
@@ -121,7 +121,7 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                 </div>
                 <div>
                   <Link
-                    to="#"
+                    href="#"
                     className="text-sm font-semibold text-mono hover:text-blue-600"
                   >
                     HR Team
@@ -156,7 +156,7 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                     align="end"
                   >
                     <DropdownMenuItem asChild>
-                      <Link href="/account/members/teams">
+                      <Link href="#">
                         <Users /> Invite Users
                       </Link>
                     </DropdownMenuItem>
@@ -168,18 +168,18 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent className="w-44">
                           <DropdownMenuItem asChild>
-                            <Link href="/account/members/import-members">
+                            <Link href="#">
                               <Shield />
                               Find Members
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/account/members/import-members">
+                            <Link href="#">
                               <Calendar /> Meetings
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/account/members/import-members">
+                            <Link href="#">
                               <Shield /> Group Settings
                             </Link>
                           </DropdownMenuItem>
@@ -187,7 +187,7 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                       </DropdownMenuPortal>
                     </DropdownMenuSub>
                     <DropdownMenuItem asChild>
-                      <Link href="/account/security/privacy-settings">
+                      <Link href="#">
                         <Shield /> Group Settings
                       </Link>
                     </DropdownMenuItem>
@@ -198,68 +198,76 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
           </div>
         </SheetHeader>
         <SheetBody className="scrollable-y-auto grow space-y-3.5">
-          {messages.map((message, index) =>
-            message.out ? (
-              <div
-                key={index}
-                className="flex items-end justify-end gap-3 px-5"
-              >
-                <div className="flex flex-col gap-1">
-                  <div
-                    className="bg-primary text-primary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
-                    dangerouslySetInnerHTML={{ __html: message.text }}
-                  />
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="text-xs text-secondary-foreground">
-                      {message.time}
-                    </span>
-                    <CheckCheck
-                      className={cn(
-                        'w-4 h-4',
-                        message.read
-                          ? 'text-green-500'
-                          : 'text-muted-foreground',
-                      )}
+          {messages.map((message, index) => {
+            if (message.out) {
+              return (
+                <div
+                  key={index}
+                  className="flex items-end justify-end gap-3 px-5"
+                >
+                  <div className="flex flex-col gap-1">
+                    <div
+                      className="bg-primary text-primary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
+                      dangerouslySetInnerHTML={{ __html: message.text }}
                     />
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-xs text-secondary-foreground">
+                        {message.time}
+                      </span>
+                      <CheckCheck
+                        className={cn(
+                          'w-4 h-4',
+                          message.read
+                            ? 'text-green-500'
+                            : 'text-muted-foreground',
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <Avatar className="size-9">
+                      <AvatarImage
+                        src={toAbsoluteUrl('/media/avatars/300-2.png')}
+                        alt=""
+                      />
+                      <AvatarFallback>CH</AvatarFallback>
+                      <AvatarIndicator className="-end-2 -bottom-2">
+                        <AvatarStatus variant="online" className="size-2.5" />
+                      </AvatarIndicator>
+                    </Avatar>
                   </div>
                 </div>
-                <div className="relative">
+              );
+            }
+
+            if (message.in) {
+              return (
+                <div key={index} className="flex items-end gap-3 px-5">
                   <Avatar className="size-9">
-                    <AvatarImage
-                      src={toAbsoluteUrl('/media/avatars//300-2.png')}
-                      alt=""
-                    />
+                    <AvatarImage src={toAbsoluteUrl(message.avatar)} alt="" />
                     <AvatarFallback>CH</AvatarFallback>
-                    <AvatarIndicator className="-end-2 -bottom-2">
-                      <AvatarStatus variant="online" className="size-2.5" />
-                    </AvatarIndicator>
                   </Avatar>
+                  <div className="flex flex-col gap-1">
+                    <div
+                      className="bg-accent/50 text-secondary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
+                      dangerouslySetInnerHTML={{ __html: message.text }}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {message.time}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ) : message.in ? (
-              <div key={index} className="flex items-end gap-3 px-5">
-                <Avatar className="size-9">
-                  <AvatarImage src={toAbsoluteUrl(message.avatar)} alt="" />
-                  <AvatarFallback>CH</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col gap-1">
-                  <div
-                    className="bg-accent/50 text-secondary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
-                    dangerouslySetInnerHTML={{ __html: message.text }}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {message.time}
-                  </span>
-                </div>
-              </div>
-            ) : null,
-          )}
+              );
+            }
+
+            return null;
+          })}
         </SheetBody>
         <SheetFooter className="block p-0 sm:space-x-0">
           <div className="p-4 bg-accent/50 flex gap-2">
             <Avatar className="size-9">
               <AvatarImage
-                src={toAbsoluteUrl('/media/avatars//300-14.png')}
+                src={toAbsoluteUrl('/media/avatars/300-14.png')}
                 alt=""
               />
               <AvatarFallback>CH</AvatarFallback>
@@ -271,7 +279,7 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
               <div className="flex flex-col">
                 <div className="inline-flex gap-0.5 text-sm">
                   <Link
-                    to="#"
+                    href="#"
                     className="font-semibold text-mono hover:text-primary"
                   >
                     Jane Perez

@@ -369,7 +369,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+            <SheetContent className="h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
                     <SheetHeader className="border-b border-border px-5 py-3.5">
                         <SheetTitle className="flex items-center gap-2.5">
                             <Globe2 className="size-4 text-primary" />
@@ -381,7 +381,7 @@ export function ZoneSheet({ open, onOpenChange, zone }: ZoneSheetProps) {
                     </SheetHeader>
 
                     <SheetBody className="p-0">
-                        <ScrollArea className="me-1 h-[calc(100dvh-11.75rem)] pe-2 ps-3">
+                        <ScrollArea className="me-1 h-[calc(90dvh-11.75rem)] pe-2 ps-3">
                             <form id="zone-form" onSubmit={handleSubmit} className="space-y-5 px-2 py-4">
                                 {success && (
                                     <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">

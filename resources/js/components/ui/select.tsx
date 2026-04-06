@@ -1,30 +1,30 @@
 'use client';
 
 import * as React from 'react';
-import { isValidElement, ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { cva, VariantProps } from 'class-variance-authority';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Select as SelectPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
-// Create a Context for `indicatorPosition` and `indicator` control
 const SelectContext = React.createContext<{
   indicatorPosition: 'left' | 'right';
   indicatorVisibility: boolean;
   indicator: ReactNode;
 }>({ indicatorPosition: 'left', indicator: null, indicatorVisibility: true });
 
-// Root Component
-const Select = ({
+interface SelectProps extends React.ComponentProps<typeof SelectPrimitive.Root> {
+  indicatorPosition?: 'left' | 'right';
+  indicatorVisibility?: boolean;
+  indicator?: ReactNode;
+}
+
+function Select({
   indicatorPosition = 'left',
   indicatorVisibility = true,
   indicator,
   ...props
-}: {
-  indicatorPosition?: 'left' | 'right';
-  indicatorVisibility?: boolean;
-  indicator?: ReactNode;
-} & React.ComponentProps<typeof SelectPrimitive.Root>) => {
+}: SelectProps) {
   return (
     <SelectContext.Provider
       value={{ indicatorPosition, indicatorVisibility, indicator }}
@@ -32,7 +32,7 @@ const Select = ({
       <SelectPrimitive.Root {...props} />
     </SelectContext.Provider>
   );
-};
+}
 
 function SelectGroup({
   ...props
@@ -140,7 +140,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          'bg-popover text-popover-foreground relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border shadow-md shadow-black/5 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+          'bg-popover text-popover-foreground relative z-[200] max-h-64 min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border shadow-md shadow-black/5 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
           position === 'popper' &&
             'data-[side=bottom]:translate-y-1.5 data-[side=left]:-translate-x-1.5 data-[side=right]:translate-x-1.5 data-[side=top]:-translate-y-1.5',
           className,
@@ -199,7 +199,7 @@ function SelectItem({
       {...props}
     >
       {indicatorVisibility &&
-        (indicator && isValidElement(indicator) ? (
+        (indicator && React.isValidElement(indicator) ? (
           indicator
         ) : (
           <span
