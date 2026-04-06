@@ -326,7 +326,7 @@ export function NewCompanySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:w-[600px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+      <SheetContent className="sm:w-[600px] sm:max-w-none h-auto rounded-lg p-0 [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
         <SheetHeader className="border-b py-3.5 px-5 border-border">
           <SheetTitle className="flex items-center gap-2.5">
             <GalleryVerticalEnd className="text-primary size-4" />
@@ -334,7 +334,7 @@ export function NewCompanySheet({
           </SheetTitle>
         </SheetHeader>
         <SheetBody className="py-0">
-          <ScrollArea className="h-[calc(100dvh-11.75rem)] ps-3 pe-2 me-1">
+          <ScrollArea className="h-[calc(90dvh-11.75rem)] ps-3 pe-2 me-1">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}

@@ -34,6 +34,8 @@
     --accent-foreground: var(--color-zinc-900);
     --destructive: var(--color-red-600);
     --destructive-foreground: var(--color-white);
+    --mono: var(--color-zinc-950);
+    --mono-foreground: var(--color-white);
     --chart-1: var(--color-blue-500);
     --chart-2: var(--color-green-500);
     --chart-3: var(--color-yellow-500);
@@ -69,6 +71,8 @@
     --accent-foreground: #EEEFF1;
     --destructive: var(--color-red-600);
     --destructive-foreground: var(--color-white);
+    --mono: var(--color-zinc-300);
+    --mono-foreground: var(--color-black);
     --chart-1: var(--color-blue-500);
     --chart-2: var(--color-green-500);
     --chart-3: var(--color-yellow-500);
@@ -181,6 +185,7 @@
 /** Smooth scroll **/
 html {
     scroll-behavior: smooth;
+    font-size: 18px;
 }
 
 /** Custom Containers **/

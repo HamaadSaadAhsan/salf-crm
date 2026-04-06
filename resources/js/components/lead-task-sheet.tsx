@@ -241,8 +241,8 @@ export function LeadTaskSheet({
             <SheetContent
                 className={cn(
                     'p-0 sm:w-[540px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5',
-                    // Full-screen on mobile, rounded sheet on desktop
-                    isMobile ? 'inset-0 h-full w-full rounded-none' : 'inset-5 start-auto h-auto rounded-lg',
+                    // Full-screen on mobile, centered modal on desktop
+                    isMobile ? 'inset-0 h-full w-full rounded-none' : 'h-auto rounded-lg',
                 )}
             >
                 <SheetHeader className="border-b border-border px-5 py-3.5">
@@ -253,7 +253,7 @@ export function LeadTaskSheet({
                 </SheetHeader>
 
                 <SheetBody className="p-0">
-                    <ScrollArea className="h-[calc(100dvh-11.75rem)] px-5 py-4">
+                    <ScrollArea className="h-[calc(90dvh-11.75rem)] px-5 py-4">
                         <form id="task-form" onSubmit={handleSubmit} className="space-y-5">
                             {/* Title */}
                             <div className="space-y-2">

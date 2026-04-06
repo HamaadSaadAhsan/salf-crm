@@ -54,11 +54,13 @@ const sheetVariants = cva(
           'inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
         left: 'inset-y-0 start-0 h-full w-3/4 border-e data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm rtl:data-[state=closed]:slide-out-to-right rtl:data-[state=open]:slide-in-from-right',
         right:
-          'inset-y-0 end-0 h-full w-3/4  border-s data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm rtl:data-[state=closed]:slide-out-to-left rtl:data-[state=open]:slide-in-from-left',
+          'inset-y-0 end-0 h-full w-3/4 border-s data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm rtl:data-[state=closed]:slide-out-to-left rtl:data-[state=open]:slide-in-from-left',
+        center:
+          'top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] h-auto max-h-[90dvh] w-full max-w-lg rounded-lg border overflow-hidden data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       },
     },
     defaultVariants: {
-      side: 'right',
+      side: 'center',
     },
   },
 );
@@ -71,14 +73,14 @@ interface SheetContentProps
 }
 
 function SheetContent({
-  side = 'right',
+  side = 'center',
   overlay = true,
   close = true,
   className,
   children,
   onPointerDownOutside,
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & SheetContentProps) {
+}: SheetContentProps) {
   return (
     <SheetPortal>
       {overlay && <SheetOverlay />}

@@ -227,12 +227,12 @@ export function NewLeadSheet({ open, onOpenChange, leadSources }: NewLeadSheetPr
 
                     {/* Detail / Notes */}
                     <div className="space-y-2">
-                        <Label htmlFor="detail">Notes</Label>
+                        <Label htmlFor="detail">Comments</Label>
                         <Textarea
                             id="detail"
                             value={data.detail}
                             onChange={(e) => setData('detail', e.target.value)}
-                            placeholder="Add any additional notes about this lead..."
+                            placeholder="Add any additional comments on this lead..."
                             disabled={processing}
                             rows={4}
                         />

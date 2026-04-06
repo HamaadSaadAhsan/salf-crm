@@ -93,7 +93,7 @@ export function StatusSheet({ open, onOpenChange, status }: StatusSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent close={false} className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none">
+      <SheetContent close={false} className="h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none">
         <SheetHeader className="border-b border-border px-5 py-3.5">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">

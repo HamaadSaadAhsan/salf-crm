@@ -117,7 +117,7 @@ export function EditZoneSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="inset-5 start-auto h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5">
+      <SheetContent className="h-auto rounded-lg p-0 sm:w-[600px] sm:max-w-none [&_[data-slot=sheet-close]]:end-5 [&_[data-slot=sheet-close]]:top-4.5">
         <SheetHeader className="border-b border-border px-5 py-3.5">
           <SheetTitle className="flex items-center gap-2.5">
             <Globe className="size-4 text-primary" />
@@ -126,7 +126,7 @@ export function EditZoneSheet({
         </SheetHeader>
 
         <SheetBody className="p-0">
-          <ScrollArea className="h-[calc(100dvh-11.75rem)] ps-3 pe-2 me-1">
+          <ScrollArea className="h-[calc(90dvh-11.75rem)] ps-3 pe-2 me-1">
             <form id="zone-form" onSubmit={handleSubmit} className="space-y-6">
           {success && (
             <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
