@@ -262,7 +262,7 @@ export function NewLeadSheet({ open, onOpenChange, leadSources, services }: NewL
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {leadSources.map((source) => (
+                                    {[...leadSources].sort((a, b) => (a.name === 'Facebook Ads' ? -1 : b.name === 'Facebook Ads' ? 1 : 0)).map((source) => (
                                         <SelectItem key={source.id} value={String(source.id)}>
                                             {source.name}
                                         </SelectItem>

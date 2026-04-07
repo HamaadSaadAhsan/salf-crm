@@ -32,6 +32,7 @@ class LeadSourceSeeder extends Seeder
             'Telegram',
             'Print Advertisement',
             'Radio Advertisement',
+            "CEO's Reference",
         ];
 
         foreach ($leadSources as $source) {
