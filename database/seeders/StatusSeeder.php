@@ -58,6 +58,11 @@ class StatusSeeder extends Seeder
                 'color' => '#84CC16', // Lime
                 'order' => 9,
             ],
+            [
+                'name' => 'closed',
+                'color' => '#6B7280', // Gray
+                'order' => 10,
+            ],
         ];
 
         foreach ($statuses as $status) {

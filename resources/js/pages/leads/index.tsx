@@ -58,6 +58,7 @@ interface LeadsPageProps {
     };
     filters: LeadFilters;
     leadSources: LeadSource[];
+    services: Array<{ id: number; name: string }>;
     pendingDueTasks?: PendingDueTask[];
 }
 
@@ -479,6 +480,7 @@ export default function LeadsInterface() {
                 open={isNewLeadSheetOpen}
                 onOpenChange={setIsNewLeadSheetOpen}
                 leadSources={pageProps.leadSources ?? []}
+                services={pageProps.services ?? []}
             />
 
             <SavedFiltersDialog
