@@ -218,6 +218,7 @@ export function NewLeadSheet({ open, onOpenChange, leadSources, services }: NewL
                                             {status.label}
                                         </SelectItem>
                                     ))}
+                                    <SelectItem value="closed">Closed</SelectItem>
                                 </SelectContent>
                             </Select>
                             {errors.inquiry_status && (
