@@ -23,7 +23,7 @@ class Lead extends Model implements HasMedia
     use HasFactory, HasUuids, InteractsWithMedia, Searchable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'email', 'phone', 'occupation', 'address', 'country', 'city',
+        'name', 'email', 'phone', 'secondary_phone', 'occupation', 'address', 'country', 'city',
         'latitude', 'longitude', 'service_id', 'lead_source_id', 'detail', 'budget',
         'custom_fields', 'inquiry_status', 'priority', 'inquiry_type',
         'inquiry_country', 'assigned_to', 'assigned_date', 'ticket_id',
@@ -640,6 +640,7 @@ class Lead extends Model implements HasMedia
             'won' => 'emerald',
             'lost' => 'red',
             'nurturing' => 'gray',
+            'closed' => 'red',
             default => 'gray'
         };
     }
@@ -832,6 +833,7 @@ class Lead extends Model implements HasMedia
             'unqualified' => 'Unqualified',
             'requalify' => 'Re-qualification',
             'nurturing' => 'Nurturing',
+            'closed' => 'Closed',
         ];
     }
 

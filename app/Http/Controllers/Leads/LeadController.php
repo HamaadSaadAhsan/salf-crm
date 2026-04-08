@@ -130,6 +130,9 @@ class LeadController extends Controller
                 ->where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'services' => Service::query()
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'search_info' => $result['search_info'] ?? null,
             'cache_info' => [
                 'cached' => $fromCache,
@@ -166,10 +169,18 @@ class LeadController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
+            'secondary_phone' => $request->secondary_phone,
             'occupation' => $request->occupation,
             'inquiry_status' => $request->inquiry_status ?? 'new',
             'priority' => $request->priority ?? 'medium',
             'lead_source_id' => $request->lead_source_id,
+            'service_id' => $request->service_id,
+            'country' => $request->country,
+            'city' => $request->city,
+            'budget' => $request->budget ? array_filter([
+                'amount' => $request->input('budget.amount'),
+                'currency' => $request->input('budget.currency') ?? 'USD',
+            ], fn ($v) => $v !== null && $v !== '') : null,
             'detail' => $request->detail,
         ]);
 
@@ -524,7 +535,7 @@ class LeadController extends Controller
                 },
             ])
             ->select([
-                'id', 'name', 'email', 'phone', 'occupation', 'address', 'city', 'country',
+                'id', 'name', 'email', 'phone', 'secondary_phone', 'occupation', 'address', 'city', 'country',
                 'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
                 'inquiry_status', 'priority', 'inquiry_type', 'inquiry_country',
                 'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',

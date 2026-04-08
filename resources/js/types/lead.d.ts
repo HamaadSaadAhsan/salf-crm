@@ -7,6 +7,7 @@ export interface Lead {
     name: string;
     email: string;
     phone?: string;
+    secondary_phone?: string;
     occupation?: string;
     address?: string;
     city?: string;
@@ -73,7 +74,7 @@ export type Status = {
     name: LeadStatus;
 };
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'requalify' | 'proposal' | 'won' | 'lost' | 'nurturing' | 'converted';
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'assigned_to_advisor' | 'requalify' | 'proposal' | 'won' | 'lost' | 'nurturing' | 'converted' | 'closed';
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 

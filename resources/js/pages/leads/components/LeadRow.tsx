@@ -72,6 +72,7 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; variant: BadgeVariant; 
     lost: { label: 'Lost', variant: 'destructive', appearance: 'light' },
     nurturing: { label: 'Nurturing', variant: 'secondary', appearance: 'light' },
     converted: { label: 'Converted', variant: 'success', appearance: 'light' },
+    closed: { label: 'Closed', variant: 'destructive', appearance: 'light' },
 };
 
 // Helper to extract source data
@@ -162,7 +163,7 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
     const { leads, selectedLeads, onSelectLead, onLeadClick } = data;
     const lead = leads[index] as Lead | undefined;
 
-    const isSelected = useMemo(() => (lead ? selectedLeads.has(lead.id) : false), [selectedLeads, lead?.id]);
+    const isSelected = useMemo(() => (lead ? selectedLeads.has(lead.id) : false), [selectedLeads, lead]);
 
     const rowClasses = useMemo(() => {
         let classes =
