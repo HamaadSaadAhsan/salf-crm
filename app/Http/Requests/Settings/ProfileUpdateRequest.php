@@ -30,6 +30,7 @@ class ProfileUpdateRequest extends FormRequest
             ],
 
             'availability' => ['sometimes', 'boolean'],
+            'avatar' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ];
     }
 }
