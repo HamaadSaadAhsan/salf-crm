@@ -351,7 +351,7 @@ export function LeadTaskSheet({
                                             />
                                             <div className="border-t p-3 sm:border-t-0 sm:border-l">
                                                 <p className="mb-2 text-sm font-medium">{dueDate ? format(dueDate, 'EEE, MMM d') : 'Select time'}</p>
-                                                <ScrollArea className="h-48">
+                                                <div className="h-48 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                                     <div className="grid grid-cols-2 gap-1.5">
                                                         {TIME_SLOTS.map((time) => (
                                                             <Button
@@ -366,7 +366,7 @@ export function LeadTaskSheet({
                                                             </Button>
                                                         ))}
                                                     </div>
-                                                </ScrollArea>
+                                                </div>
                                             </div>
                                         </div>
                                     </PopoverContent>

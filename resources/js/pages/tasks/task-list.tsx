@@ -32,7 +32,8 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { complete, destroy } from '@/routes/tasks';
-import { Task, User } from '@/types';
+import { Task } from '@/types/task';
+import { User } from '@/types';
 import { router } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -106,14 +107,14 @@ export function TaskList({ tasks, users }: TaskListProps) {
     }, [tasks, selectedTask, editTaskSheetOpen]);
 
     const handleComplete = (task: Task) => {
-        router.patch(
+        router.post(
             complete(task.id),
             {},
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     toast.success(
-                        task.status === 'completed'
+                        task.status.value === 'completed'
                             ? 'Task marked as incomplete'
                             : 'Task marked as complete',
                     );
@@ -154,8 +155,9 @@ export function TaskList({ tasks, users }: TaskListProps) {
         });
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
+    const getStatusBadge = (status: Task['status'] | string) => {
+        const statusValue = typeof status === 'string' ? status : status.value;
+        switch (statusValue) {
             case 'completed':
                 return (
                     <Badge variant="success" appearance="light">
@@ -174,8 +176,9 @@ export function TaskList({ tasks, users }: TaskListProps) {
         }
     };
 
-    const getPriorityBadge = (priority: Task['priority']) => {
-        switch (priority) {
+    const getPriorityBadge = (priority: Task['priority'] | string) => {
+        const priorityValue = typeof priority === 'string' ? priority : priority.value;
+        switch (priorityValue) {
             case 'high':
                 return (
                     <Badge
@@ -225,12 +228,12 @@ export function TaskList({ tasks, users }: TaskListProps) {
             // Filter by status
             const matchesStatus =
                 !selectedStatuses?.length ||
-                selectedStatuses.includes(task.status);
+                selectedStatuses.includes(task.status.value);
 
             // Filter by priority
             const matchesPriority =
                 !selectedPriorities?.length ||
-                selectedPriorities.includes(task.priority);
+                selectedPriorities.includes(task.priority.value);
 
             // Filter by search query
             const searchLower = searchQuery.toLowerCase();
@@ -246,7 +249,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
     const statusCounts = useMemo(() => {
         return tasks.reduce(
             (acc, task) => {
-                const status = task.status;
+                const status = task.status.value;
                 acc[status] = (acc[status] || 0) + 1;
                 return acc;
             },
@@ -257,7 +260,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
     const priorityCounts = useMemo(() => {
         return tasks.reduce(
             (acc, task) => {
-                acc[task.priority] = (acc[task.priority] || 0) + 1;
+                acc[task.priority.value] = (acc[task.priority.value] || 0) + 1;
                 return acc;
             },
             {} as Record<string, number>,
@@ -289,7 +292,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
                             <Checkbox
                                 size="sm"
                                 id={task.id.toString()}
-                                checked={task.status === 'completed'}
+                                checked={task.status.value === 'completed'}
                                 onCheckedChange={() => handleComplete(task)}
                             />
                         </div>
@@ -323,7 +326,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
                                 <div
                                     className={cn(
                                         'font-medium',
-                                        task.status === 'completed' &&
+                                        task.status.value === 'completed' &&
                                             'line-through',
                                         taskIsOverdue && 'text-destructive',
                                         isDueSoon && !taskIsOverdue && 'text-orange-500',
@@ -383,7 +386,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
                                         alt={row.original?.assigned_to?.name}
                                     />
                                     <AvatarFallback className="border-0 bg-green-500 text-[11px] font-semibold text-white">
-                                        {row.original?.assigned_to?.name.charAt(
+                                        {row.original?.assigned_to?.name?.charAt(
                                             0,
                                         )}
                                     </AvatarFallback>
@@ -419,17 +422,16 @@ export function TaskList({ tasks, users }: TaskListProps) {
                         task.priority ? (
                             <Badge
                                 variant={
-                                    task.priority === 'high'
+                                    task.priority.value === 'high'
                                         ? 'destructive'
-                                        : task.priority === 'medium'
+                                        : task.priority.value === 'medium'
                                           ? 'warning'
                                           : 'success'
                                 }
                                 appearance="light"
                                 className="px-1.5 py-0.5 text-xs"
                             >
-                                {task.priority.charAt(0).toUpperCase() +
-                                    task.priority.slice(1)}
+                                {task.priority.label}
                             </Badge>
                         ) : (
                             <span className="text-muted-foreground">None</span>
@@ -646,7 +648,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
                                                             className="flex grow items-center justify-between gap-1.5 font-normal"
                                                         >
                                                             {getStatusBadge(
-                                                                status.id as Task['status'],
+                                                                status.id,
                                                             )}
                                                             <span className="me-2.5 font-semibold text-muted-foreground">
                                                                 {count}
@@ -723,7 +725,7 @@ export function TaskList({ tasks, users }: TaskListProps) {
                                                             className="flex grow items-center justify-between gap-1.5 font-normal"
                                                         >
                                                             {getPriorityBadge(
-                                                                priority.id as Task['priority'],
+                                                                priority.id,
                                                             )}
                                                             <span className="me-2.5 font-semibold text-muted-foreground">
                                                                 {count}

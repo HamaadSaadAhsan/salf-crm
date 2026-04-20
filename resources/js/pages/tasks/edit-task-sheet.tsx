@@ -25,7 +25,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { update } from '@/routes/tasks';
-import { Task, User } from '@/types';
+import { Task } from '@/types/task';
+import { User } from '@/types';
 import { useForm } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { CalendarIcon, Edit } from 'lucide-react';
@@ -49,8 +50,8 @@ export function EditTaskSheet({
         title: task?.title || '',
         description: task?.description || '',
         assigned_to_id: task?.assigned_to?.id?.toString() || '',
-        priority: task?.priority || 'medium',
-        status: task?.status || 'pending',
+        priority: task?.priority?.value || 'medium',
+        status: task?.status?.value || 'pending',
         due_at: task?.due_at || '',
     });
 
@@ -68,8 +69,8 @@ export function EditTaskSheet({
                 title: task.title,
                 description: task.description || '',
                 assigned_to_id: task.assigned_to?.id?.toString() || '',
-                priority: task.priority,
-                status: task.status,
+                priority: task.priority?.value || 'medium',
+                status: task.status?.value || 'pending',
                 due_at: task.due_at || '',
             });
 
@@ -145,11 +146,10 @@ export function EditTaskSheet({
     useEffect(() => {
         if (availabilityDate && availabilityTime) {
             const [hours, minutes] = availabilityTime.split(':');
-            const dueDate = new Date(availabilityDate);
-            dueDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+            const dateTimeString = `${format(availabilityDate, 'yyyy-MM-dd')} ${hours}:${minutes}:00`;
             setData((prev) => ({
                 ...prev,
-                due_at: dueDate.toISOString(),
+                due_at: dateTimeString,
             }));
         } else if (!availabilityDate && !availabilityTime) {
             setData((prev) => ({

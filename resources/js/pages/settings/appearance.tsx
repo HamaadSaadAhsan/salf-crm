@@ -60,7 +60,7 @@ export default function Appearance() {
                     <Card>
                         <CardHeader>
                             <CardHeading>
-                                <CardTitle>Theme</CardTitle>
+                                <CardTitle className="pb-0 mb-0">Theme</CardTitle>
                                 <CardDescription>Choose how the interface looks for you</CardDescription>
                             </CardHeading>
                         </CardHeader>
