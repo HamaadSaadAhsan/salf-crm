@@ -352,8 +352,21 @@ export function NewLeadSheet({ open, onOpenChange, leadSources, services }: NewL
                     <div className="flex items-end gap-4">
                         <div className="flex-1 space-y-2">
                             <Label htmlFor="budget_amount">Budget</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
+                            <div className="flex gap-2">
+                                <Select
+                                    value={data.budget.currency}
+                                    onValueChange={(value) => setData('budget', { ...data.budget, currency: value })}
+                                    disabled={processing}
+                                >
+                                    <SelectTrigger className="w-[100px]">
+                                        <SelectValue placeholder="Currency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="USD">$ USD</SelectItem>
+                                        <SelectItem value="EUR">€ EUR</SelectItem>
+                                        <SelectItem value="PKR">₨ PKR</SelectItem>
+                                    </SelectContent>
+                                </Select>
                                 <Input
                                     id="budget_amount"
                                     type="number"
@@ -363,7 +376,7 @@ export function NewLeadSheet({ open, onOpenChange, leadSources, services }: NewL
                                     onChange={(e) => setData('budget', { ...data.budget, amount: e.target.value })}
                                     placeholder="0.00"
                                     disabled={processing}
-                                    className="pl-7"
+                                    className="flex-1"
                                 />
                             </div>
                             {errors['budget.amount'] && (

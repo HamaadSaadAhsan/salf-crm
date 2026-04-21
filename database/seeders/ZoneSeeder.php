@@ -101,7 +101,10 @@ class ZoneSeeder extends Seeder
         ];
 
         foreach ($zones as $zoneData) {
-            Zone::create($zoneData);
+            Zone::updateOrCreate(
+                ['name' => $zoneData['name']],
+                $zoneData,
+            );
         }
     }
 }
