@@ -66,6 +66,19 @@ class WorkflowController extends Controller
         ]);
     }
 
+    public function createNew(Request $request)
+    {
+        $workflow = $this->workflowService->createWorkflow([
+            'name' => 'Untitled Workflow',
+            'description' => '',
+            'status' => 'draft',
+            'metadata' => ['is_new' => true],
+            'steps' => [],
+        ], $request->user());
+
+        return redirect()->route('workflows.show', $workflow);
+    }
+
     public function store(StoreWorkflowRequest $request)
     {
         try {

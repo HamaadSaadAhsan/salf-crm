@@ -106,7 +106,7 @@ export const MAIN_NAV: NavConfig = [
                 },
                 {
                     title: 'Create New',
-                    path: '/workflows/create',
+                    path: '/workflows/new',
                 },
             ],
         },
