@@ -83,7 +83,7 @@ const data = {
                 },
                 {
                     title: 'Create New',
-                    href: '/workflows/create',
+                    href: '/workflows/new',
                 },
                 {
                     title: 'Templates',
