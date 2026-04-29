@@ -25,7 +25,7 @@ export default function HealthStatus({ showActions = true }: HealthStatusProps) 
         switch (connectionStatus) {
             case 'connected':
                 return (
-                    <Badge variant="default" className="bg-green-600">
+                    <Badge variant="primary" className="bg-green-600">
                         <CheckCircle className="mr-1 h-3 w-3" />
                         Connected
                     </Badge>

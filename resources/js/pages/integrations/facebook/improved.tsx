@@ -14,18 +14,11 @@ import ErrorRecovery from '@/components/facebook/ErrorRecovery';
 import HealthStatus from '@/components/facebook/HealthStatus';
 import SyncStatus from '@/components/facebook/SyncStatus';
 import { FacebookIntegrationProvider, useFacebookIntegration } from '@/contexts/FacebookIntegrationContext';
-import { useFacebookWebSocket } from '@/hooks/useFacebookWebSocket';
 
 function FacebookIntegrationContent() {
     const { state, actions } = useFacebookIntegration();
 
-    const { config, connectionStatus, isConfigured, isLoading, activeTab, errors, warnings } = state;
-
-    // Initialize WebSocket connection for real-time updates
-    const webSocket = useFacebookWebSocket(
-        state.config?.integrationId, // You'll need to add this to your config
-        window.Laravel?.user?.id,
-    );
+    const { config, connectionStatus, isLoading, activeTab, errors, warnings } = state;
 
     const handleConfigChange = (field: string, value: string | boolean) => {
         actions.saveConfig({ [field]: value });

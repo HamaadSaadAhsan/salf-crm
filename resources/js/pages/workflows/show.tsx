@@ -1,4 +1,14 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +36,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function WorkflowShowPage({ workflow }: WorkflowShowPageProps) {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     const getStatusBadge = (status: Workflow['status']) => {
         switch (status) {
@@ -78,10 +89,7 @@ export default function WorkflowShowPage({ workflow }: WorkflowShowPageProps) {
     };
 
     const handleDelete = () => {
-        if (!confirm('Are you sure you want to delete this workflow? This action cannot be undone.')) {
-            return;
-        }
-
+        setDeleteOpen(false);
         setActionLoading('delete');
 
         router.delete(`/workflows/${workflow.id}`, {
@@ -163,7 +171,7 @@ export default function WorkflowShowPage({ workflow }: WorkflowShowPageProps) {
                         Duplicate
                     </Button>
 
-                    <Button variant="destructive" onClick={handleDelete} disabled={actionLoading === 'delete'}>
+                    <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={actionLoading === 'delete'}>
                         {actionLoading === 'delete' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         Delete
                     </Button>
@@ -268,6 +276,23 @@ export default function WorkflowShowPage({ workflow }: WorkflowShowPageProps) {
                     </Card>
                 </div>
             </div>
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this workflow?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this workflow? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AppLayout>
     );
 }
