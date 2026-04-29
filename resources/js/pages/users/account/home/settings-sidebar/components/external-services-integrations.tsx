@@ -74,13 +74,13 @@ const ExternalServicesIntegrations = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <Link
-                to="#"
+                href="#"
                 className="text-sm font-medium text-mono hover:text-primary-active"
               >
                 {item.title}
               </Link>
               <Link
-                to="#"
+                href="#"
                 className="text-sm text-secondary-foreground hover:text-primary-active"
               >
                 {item.email}

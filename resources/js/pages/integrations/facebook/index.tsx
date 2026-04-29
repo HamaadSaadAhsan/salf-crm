@@ -1,6 +1,6 @@
 import { ErrorRecoveryCard } from '@/components/error-recovery-card';
 import { IntegrationHealthWidget } from '@/components/integration-health-widget';
-import { IntegrationTemplateSelector } from '@/components/integration-templates';
+import { IntegrationTemplate, IntegrationTemplateSelector } from '@/components/integration-templates';
 import SetupWizard from '@/components/setup-wizard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -100,9 +100,10 @@ export default function FacebookIntegrationPage() {
                 });
                 setError(response.data.message);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error fetching health data:', error);
-            setError(error.response?.data?.message || 'Failed to load integration status');
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            setError(axiosError.response?.data?.message || 'Failed to load integration status');
             setIntegrationData({
                 health_status: {
                     api: false,
@@ -128,9 +129,10 @@ export default function FacebookIntegrationPage() {
             } else {
                 toast.error(response.data.message || 'Connection test failed');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error testing connection:', error);
-            toast.error(error.response?.data?.message || 'Failed to test connection');
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to test connection');
         }
     };
 
@@ -144,9 +146,10 @@ export default function FacebookIntegrationPage() {
             } else {
                 toast.error(response.data.message || 'Failed to sync data');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error syncing data:', error);
-            toast.error(error.response?.data?.message || 'Failed to sync data');
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            toast.error(axiosError.response?.data?.message || 'Failed to sync data');
         }
     };
 
@@ -176,14 +179,14 @@ export default function FacebookIntegrationPage() {
         canAutoRecover: true,
     };
 
-    const handleWizardComplete = (config: any) => {
+    const handleWizardComplete = (config: Record<string, unknown>) => {
         console.log('Setup completed with config:', config);
         setShowWizard(false);
         fetchHealthData(); // Refresh health data after setup
         toast.success('Facebook integration completed successfully!');
     };
 
-    const handleTemplateSelect = (template: any) => {
+    const handleTemplateSelect = (template: IntegrationTemplate) => {
         console.log('Template selected:', template);
         setShowTemplates(false);
         setShowWizard(true);

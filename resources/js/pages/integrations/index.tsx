@@ -278,9 +278,10 @@ export default function IntegrationsPage({ statuses }: IntegrationsPageProps) {
                 setConnectingFacebook(false);
                 toast.error('Failed to get Facebook auth URL');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setConnectingFacebook(false);
-            const message = err?.response?.data?.message || err?.message || 'Failed to connect Facebook';
+            const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+            const message = axiosErr?.response?.data?.message || axiosErr?.message || 'Failed to connect Facebook';
             toast.error(message);
         }
     };

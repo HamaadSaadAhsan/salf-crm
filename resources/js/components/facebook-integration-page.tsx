@@ -379,7 +379,7 @@ export default function FacebookIntegrationPage() {
                 const response = await axios.get('/integrations/facebook/webhook-config');
 
                 if (response.data.success) {
-                    setWebhookUrl(response.data.webhook_url || '');
+                    _setWebhookUrl(response.data.webhook_url || '');
                 }
             } catch (error) {
                 console.error('Failed to load webhook configuration', error);
@@ -446,7 +446,7 @@ export default function FacebookIntegrationPage() {
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-foreground">API Connection</span>
                                 {healthStatus.api ? (
-                                    <Badge variant="default" className="bg-green-600 text-white dark:bg-green-700">
+                                    <Badge variant="primary" className="bg-green-600 text-white dark:bg-green-700">
                                         <CheckCircle className="mr-1 h-3 w-3" />
                                         Active
                                     </Badge>
@@ -460,7 +460,7 @@ export default function FacebookIntegrationPage() {
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-foreground">Webhooks</span>
                                 {healthStatus.webhooks ? (
-                                    <Badge variant="default" className="bg-green-600 text-white dark:bg-green-700">
+                                    <Badge variant="primary" className="bg-green-600 text-white dark:bg-green-700">
                                         <CheckCircle className="mr-1 h-3 w-3" />
                                         Active
                                     </Badge>
@@ -474,7 +474,7 @@ export default function FacebookIntegrationPage() {
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-foreground">Permissions</span>
                                 {healthStatus.permissions ? (
-                                    <Badge variant="default" className="bg-green-600 text-white dark:bg-green-700">
+                                    <Badge variant="primary" className="bg-green-600 text-white dark:bg-green-700">
                                         <CheckCircle className="mr-1 h-3 w-3" />
                                         Granted
                                     </Badge>
@@ -676,7 +676,7 @@ export default function FacebookIntegrationPage() {
                                             >
                                                 <CardContent className="p-4">
                                                     <div className="flex items-center space-x-3">
-                                                        <Checkbox checked={selectedPageId === page.page_id} readOnly />
+                                                        <Checkbox checked={selectedPageId === page.page_id} onCheckedChange={() => {}} />
                                                         <div>
                                                             <p className="font-medium text-foreground">{page.name}</p>
                                                             <p className="text-sm text-muted-foreground">ID: {page.page_id}</p>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, CheckCircle, MessageSquare, Users } from 'lucide-react';
 
-interface IntegrationTemplate {
+export interface IntegrationTemplate {
     id: string;
     name: string;
     description: string;
