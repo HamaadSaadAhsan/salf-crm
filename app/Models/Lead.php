@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTeam;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -20,7 +21,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Lead extends Model implements HasMedia
 {
-    use HasFactory, HasUuids, InteractsWithMedia, Searchable, SoftDeletes;
+    use BelongsToTeam, HasFactory, HasUuids, InteractsWithMedia, Searchable, SoftDeletes;
 
     protected $fillable = [
         'name', 'email', 'phone', 'secondary_phone', 'occupation', 'address', 'country', 'city',
@@ -35,6 +36,7 @@ class Lead extends Model implements HasMedia
         'requalified_from_advisor_id',
         'converted_at',
         'zone_id',
+        'team_id',
     ];
 
     protected $attributes = [

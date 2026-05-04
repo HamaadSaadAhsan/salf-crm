@@ -9,6 +9,7 @@ use App\Http\Requests\UserFilterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\LeadActivity;
 use App\Models\Service;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\CacheService;
 use Carbon\Carbon;
@@ -77,6 +78,11 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
+        $teams = Team::query()
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('users/index', [
             'users' => [
                 'data' => $result['data']->resolve(),
@@ -86,6 +92,7 @@ class UserController extends Controller
             'offices' => $offices,
             'services' => $services,
             'roles' => $roles,
+            'teams' => $teams,
         ]);
     }
 
@@ -437,6 +444,15 @@ class UserController extends Controller
             // Assign roles if provided
             if (! empty($validated['roles'])) {
                 $user->syncRoles($validated['roles']);
+            }
+
+            // Add to team if provided
+            if (! empty($validated['team_id'])) {
+                $team = Team::find($validated['team_id']);
+                if ($team) {
+                    $team->members()->attach($user->id, ['role' => 'member']);
+                    $user->forceFill(['current_team_id' => $team->id])->save();
+                }
             }
 
             // Assign services if provided

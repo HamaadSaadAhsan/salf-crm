@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\EnsureUserHasTeam::class,
         ]);
 
         $middleware->alias([
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'team' => \App\Http\Middleware\EnsureUserHasTeam::class,
         ]);
     })
     ->withSchedule(function ($schedule) {

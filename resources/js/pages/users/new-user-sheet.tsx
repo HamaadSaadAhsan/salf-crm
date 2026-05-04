@@ -34,18 +34,26 @@ interface Role {
   name: string;
 }
 
+interface Team {
+  id: number;
+  name: string;
+}
+
 interface NewUserSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roles?: Role[];
+  teams?: Team[];
 }
 
-export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetProps) {
+export function NewUserSheet({ open, onOpenChange, roles = [], teams = [] }: NewUserSheetProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [rolePopoverOpen, setRolePopoverOpen] = useState(false);
+  const [teamPopoverOpen, setTeamPopoverOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,10 +62,12 @@ export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetPro
   });
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRole);
+  const selectedTeamObj = teams.find((t) => t.id === selectedTeamId);
 
   const resetForm = () => {
     setFormData({ name: '', email: '', password: '', password_confirmation: '' });
     setSelectedRole('');
+    setSelectedTeamId(null);
     setError(null);
     setSuccess(null);
   };
@@ -71,6 +81,9 @@ export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetPro
     const payload: Record<string, unknown> = { ...formData };
     if (selectedRole) {
       payload.roles = [selectedRole];
+    }
+    if (selectedTeamId) {
+      payload.team_id = selectedTeamId;
     }
 
     try {
@@ -90,6 +103,7 @@ export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetPro
         errors?.name?.[0] ||
         errors?.password?.[0] ||
         errors?.roles?.[0] ||
+        errors?.team_id?.[0] ||
         axiosErr.response?.data?.message ||
         'Failed to create user. Please try again.';
       setError(errorMessage);
@@ -247,6 +261,70 @@ export function NewUserSheet({ open, onOpenChange, roles = [] }: NewUserSheetPro
                             )}
                           />
                           {role.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Team</Label>
+            <Popover open={teamPopoverOpen} onOpenChange={setTeamPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={teamPopoverOpen}
+                  className="w-full justify-between"
+                  disabled={isLoading}
+                >
+                  <span className="truncate">
+                    {selectedTeamObj ? selectedTeamObj.name : 'Select a team...'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0 z-102" align="start">
+                <Command>
+                  <CommandInput placeholder="Search teams..." />
+                  <CommandList>
+                    <CommandEmpty>No team found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__none__"
+                        onSelect={() => {
+                          setSelectedTeamId(null);
+                          setTeamPopoverOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            !selectedTeamId ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span className="text-muted-foreground">No team</span>
+                      </CommandItem>
+                      {teams.map((team) => (
+                        <CommandItem
+                          key={team.id}
+                          value={team.name}
+                          onSelect={() => {
+                            setSelectedTeamId(team.id);
+                            setTeamPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedTeamId === team.id ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          {team.name}
                         </CommandItem>
                       ))}
                     </CommandGroup>
