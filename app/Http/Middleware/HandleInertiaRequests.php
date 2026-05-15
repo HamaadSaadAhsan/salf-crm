@@ -118,6 +118,12 @@ class HandleInertiaRequests extends Middleware
                     ? Ticket::query()->whereIn('status', ['open', 'in_progress'])->count()
                     : 0,
             ],
+            'currentTeam' => fn () => $user?->currentTeam,
+            'allTeams' => fn () => $user ? $user->allTeams()->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'personal_team' => $t->personal_team,
+            ]) : [],
             'impersonation' => [
                 'isImpersonating' => ImpersonationController::isImpersonating(),
                 'impersonator' => ImpersonationController::getImpersonator(),

@@ -3,14 +3,16 @@ import {
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
+    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppearance } from '@/hooks/use-appearance';
 import { logout } from '@/routes';
 import { SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { ChevronDown, LogOut, Moon, Settings, Sun, User, UserRoundPlus } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Check, ChevronDown, LogOut, Moon, Plus, Settings, Sun, User, UserRoundPlus, Users } from 'lucide-react';
+import * as currentTeamActions from '@/actions/App/Http/Controllers/CurrentTeamController';
 import { SidebarCollapseButton } from './sidebar-default-header';
 import { useLayout } from './layout-context';
 
@@ -37,9 +39,15 @@ export function SidebarAttioHeader() {
     const {
         props: {
             auth: { user },
+            currentTeam,
+            allTeams,
         },
     } = usePage<SharedData>();
     const { appearance, updateAppearance } = useAppearance();
+
+    const handleSwitchTeam = (teamId: number) => {
+        router.put(currentTeamActions.update().url, { team_id: teamId }, { preserveScroll: false });
+    };
 
     const handleExpandToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -119,6 +127,45 @@ export function SidebarAttioHeader() {
                         {appearance === 'dark' ? <Sun /> : appearance === 'light' ? <Moon /> : <Settings />}
                         <span>{appearance === 'dark' ? 'Light' : appearance === 'light' ? 'Dark' : 'System'} mode</span>
                     </DropdownMenuItem>
+
+                    {/* Teams */}
+                    {allTeams.length > 0 && (
+                        <>
+                            <DropdownMenuSeparator className={darkSeparatorClass} />
+                            <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                                Switch team
+                            </DropdownMenuLabel>
+                            {allTeams.map((team) => (
+                                <DropdownMenuItem
+                                    key={team.id}
+                                    onClick={() => handleSwitchTeam(team.id)}
+                                    className={darkItemClass}
+                                >
+                                    <Users />
+                                    <span className="flex-1 truncate">{team.name}</span>
+                                    {currentTeam?.id === team.id && (
+                                        <Check className="ml-auto size-3.5 text-primary" />
+                                    )}
+                                </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuItem
+                                onClick={() => router.visit('/teams/create')}
+                                className={darkItemClass}
+                            >
+                                <Plus />
+                                <span>Create team</span>
+                            </DropdownMenuItem>
+                            {currentTeam && (
+                                <DropdownMenuItem
+                                    onClick={() => router.visit(`/teams/${currentTeam.id}`)}
+                                    className={darkItemClass}
+                                >
+                                    <Settings />
+                                    <span>Manage team</span>
+                                </DropdownMenuItem>
+                            )}
+                        </>
+                    )}
 
                     <DropdownMenuSeparator className={darkSeparatorClass} />
 

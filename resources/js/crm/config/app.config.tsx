@@ -1,4 +1,4 @@
-import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy, CalendarDays, Mail } from 'lucide-react';
+import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy, CalendarDays, Mail, UsersRound } from 'lucide-react';
 
 import { NavConfig } from '../types';
 import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
@@ -207,6 +207,22 @@ export const MAIN_NAV: NavConfig = [
                     title: 'All Tickets',
                     path: '/admin/tickets',
                     superAdminOnly: true,
+                },
+            ],
+        },
+        {
+            id: 'teams',
+            title: 'Teams',
+            path: '/teams/current',
+            icon: UsersRound,
+            items: [
+                {
+                    title: 'Current Team',
+                    path: '/teams/current',
+                },
+                {
+                    title: 'Create Team',
+                    path: '/teams/create',
                 },
             ],
         },

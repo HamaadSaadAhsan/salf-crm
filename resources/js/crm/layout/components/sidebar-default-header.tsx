@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppearance } from '@/hooks/use-appearance';
 import { SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { ChevronDown, LogOut, Moon, Settings, Sun, User } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Check, ChevronDown, LogOut, Moon, Plus, Settings, Sun, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useLayout } from './layout-context';
 import { logout } from '@/routes';
+import * as currentTeamActions from '@/actions/App/Http/Controllers/CurrentTeamController';
 
 export function SidebarCollapseButton({ collapsed, onClick, className }: { collapsed: boolean; onClick: (e: React.MouseEvent) => void; className?: string }) {
     const [hovering, setHovering] = useState(false);
@@ -98,12 +99,13 @@ export function SidebarCollapseButton({ collapsed, onClick, className }: { colla
 
 export function SidebarDefaultHeader() {
     const { sidebarCollapse, setSidebarCollapse } = useLayout();
-    const {
-        props: {
-            auth: { user },
-        },
-    } = usePage<SharedData>();
+    const { auth, currentTeam, allTeams } = usePage<SharedData>().props;
+    const { user } = auth;
     const { appearance, updateAppearance } = useAppearance();
+
+    const handleSwitchTeam = (teamId: number) => {
+        router.put(currentTeamActions.update().url, { team_id: teamId }, { preserveScroll: false });
+    };
 
     return (
         <div className="group flex h-11 shrink-0 items-center justify-between gap-2.5 border-b border-border px-2.5 lg:h-(--sidebar-header-height)">
@@ -142,7 +144,7 @@ export function SidebarDefaultHeader() {
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
 
-                        {/* Workspaces Section */}
+                        {/* Theme */}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => updateAppearance(appearance === 'dark' ? 'light' : appearance === 'light' ? 'system' : 'dark')}
@@ -156,6 +158,45 @@ export function SidebarDefaultHeader() {
                             )}
                             <span>{appearance === 'dark' ? 'Light' : appearance === 'light' ? 'Dark' : 'System'} Mode</span>
                         </DropdownMenuItem>
+
+                        {/* Teams */}
+                        {allTeams.length > 0 && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                    Teams
+                                </DropdownMenuLabel>
+                                {allTeams.map((team) => (
+                                    <DropdownMenuItem
+                                        key={team.id}
+                                        onClick={() => handleSwitchTeam(team.id)}
+                                        className="gap-2"
+                                    >
+                                        <Users className="size-4 shrink-0 text-muted-foreground" />
+                                        <span className="flex-1 truncate">{team.name}</span>
+                                        {currentTeam?.id === team.id && (
+                                            <Check className="size-4 text-primary" />
+                                        )}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuItem
+                                    onClick={() => router.visit('/teams/create')}
+                                    className="gap-2 text-muted-foreground"
+                                >
+                                    <Plus className="size-4" />
+                                    <span>Create team</span>
+                                </DropdownMenuItem>
+                                {currentTeam && (
+                                    <DropdownMenuItem
+                                        onClick={() => router.visit(`/teams/${currentTeam.id}`)}
+                                        className="gap-2 text-muted-foreground"
+                                    >
+                                        <Settings className="size-4" />
+                                        <span>Manage team</span>
+                                    </DropdownMenuItem>
+                                )}
+                            </>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

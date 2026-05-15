@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Enums\TaskType;
+use App\Traits\BelongsToTeam;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Task extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use BelongsToTeam, HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'taskable_type',
@@ -31,6 +32,7 @@ class Task extends Model
         'type',
         'assigned_to_id',
         'created_by_id',
+        'team_id',
     ];
 
     protected static function boot(): void

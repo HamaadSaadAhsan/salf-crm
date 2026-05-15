@@ -48,6 +48,7 @@ const SECTIONS: NavSection[] = [
   { label: 'Reports', ids: ['reports'] },
   { label: 'Management', ids: ['workflows', 'management', 'integrations'] },
   { label: 'Support', ids: ['support'] },
+  { label: 'Teams', ids: ['teams'] },
   { label: 'Settings', ids: ['settings'] },
 ];
 

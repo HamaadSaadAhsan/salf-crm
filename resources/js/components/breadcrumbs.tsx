@@ -41,17 +41,17 @@ export function Breadcrumbs({ breadcrumbs }: { breadcrumbs: BreadcrumbItemType[]
     return (
         <>
             {breadcrumbs.length > 0 && (
-                <Breadcrumb>
-                    <BreadcrumbList>
+                <Breadcrumb className="min-w-0 overflow-hidden">
+                    <BreadcrumbList className="flex-nowrap overflow-hidden">
                         {breadcrumbs.map((item, index) => {
                             const isLast = index === breadcrumbs.length - 1;
                             return (
                                 <Fragment key={index}>
-                                    <BreadcrumbItem>
+                                    <BreadcrumbItem className={isLast ? 'min-w-0 overflow-hidden' : 'shrink-0'}>
                                         {isLast ? (
-                                            <BreadcrumbPage>
+                                            <BreadcrumbPage className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                                                 <BreadcrumbIcon item={item} />
-                                                {item.title}
+                                                <span className="truncate">{item.title}</span>
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink asChild>
@@ -62,7 +62,7 @@ export function Breadcrumbs({ breadcrumbs }: { breadcrumbs: BreadcrumbItemType[]
                                             </BreadcrumbLink>
                                         )}
                                     </BreadcrumbItem>
-                                    {!isLast && <BreadcrumbSeparator />}
+                                    {!isLast && <BreadcrumbSeparator className="shrink-0" />}
                                 </Fragment>
                             );
                         })}

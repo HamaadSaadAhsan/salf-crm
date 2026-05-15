@@ -44,6 +44,35 @@ export interface SidebarCounts {
     support: number;
 }
 
+export interface Team {
+    id: number;
+    name: string;
+    personal_team: boolean;
+    user_id: number;
+    owner?: User;
+    members?: TeamMember[];
+    invitations?: TeamInvitation[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TeamMember extends User {
+    pivot: {
+        role: string;
+        team_id: number;
+        user_id: number;
+    };
+}
+
+export interface TeamInvitation {
+    id: number;
+    team_id: number;
+    email: string;
+    role: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
@@ -55,6 +84,8 @@ export interface SharedData {
     statuses: Array<{ id: number; name: string; order: number; color: string }>;
     services: Service[];
     sources: LeadSource[];
+    currentTeam: Team | null;
+    allTeams: Array<{ id: number; name: string; personal_team: boolean }>;
     [key: string]: unknown;
 }
 

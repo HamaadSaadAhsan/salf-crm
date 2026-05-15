@@ -27,6 +27,7 @@ class StoreUserRequest extends FormRequest
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['string', 'exists:roles,name'],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'services' => ['nullable', 'array'],
             'services.*' => ['integer', 'exists:services,id'],
             'service_metadata' => ['nullable', 'array'],
@@ -50,6 +51,7 @@ class StoreUserRequest extends FormRequest
             'password.min' => 'The password must be at least 8 characters.',
             'password.confirmed' => 'The password confirmation does not match.',
             'roles.*.exists' => 'The selected role is invalid.',
+            'team_id.exists' => 'The selected team is invalid.',
             'services.*.exists' => 'The selected service is invalid.',
         ];
     }
