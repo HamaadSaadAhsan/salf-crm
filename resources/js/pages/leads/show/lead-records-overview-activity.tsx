@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/collapsible';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { LeadActivity } from '@/types/lead';
+import { AttributeChangePopover } from './components/attribute-change-popover';
 
 type TimeFilter = 'today' | 'week' | 'month' | 'year';
 
@@ -86,6 +87,8 @@ export function LeadRecordsOverviewActivity({
                 return 'changed';
             case 'assignment_change':
                 return 'assigned';
+            case 'attribute_change':
+                return 'changed';
             case 'task':
                 return 'created';
             case 'follow_up':
@@ -240,9 +243,16 @@ export function LeadRecordsOverviewActivity({
                                                                     <span className="text-muted-foreground shrink-0">
                                                                         {getActivityAction(activity.type)}
                                                                     </span>
-                                                                    <span className="font-medium truncate">
-                                                                        {activity.subject || activity.type}
-                                                                    </span>
+                                                                    {activity.type === 'attribute_change' && activity.metadata?.changes ? (
+                                                                        <AttributeChangePopover
+                                                                            changes={activity.metadata.changes}
+                                                                            subject={activity.subject}
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="font-medium truncate">
+                                                                            {activity.subject || activity.type}
+                                                                        </span>
+                                                                    )}
                                                                     {activity.type === 'meeting' && activity.scheduled_at && (
                                                                         <Badge size="sm" variant="outline" className="shrink-0">
                                                                             {formatScheduledDate(activity.scheduled_at)}

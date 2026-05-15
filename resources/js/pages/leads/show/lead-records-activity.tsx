@@ -10,6 +10,7 @@ import {
     ClipboardList,
     UserCheck,
     RefreshCw,
+    PenLine,
     Loader2,
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
@@ -24,6 +25,7 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import type { LeadActivity } from '@/types/lead';
+import { AttributeChangePopover } from './components/attribute-change-popover';
 import { useLeadActivitiesMonthSummary, useLoadMoreMonthActivities, MonthGroup } from '@/hooks/useLead';
 
 interface LeadRecordsActivityProps {
@@ -93,6 +95,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                 return 'changed';
             case 'assignment_change':
                 return 'assigned';
+            case 'attribute_change':
+                return 'changed';
             case 'task':
                 return 'created a task';
             case 'follow_up':
@@ -116,6 +120,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                 return <UserCheck className="size-3.5 text-muted-foreground" />;
             case 'status_change':
                 return <RefreshCw className="size-3.5 text-muted-foreground" />;
+            case 'attribute_change':
+                return <PenLine className="size-3.5 text-muted-foreground" />;
             default:
                 return <Settings className="size-3.5 text-muted-foreground" />;
         }
@@ -293,11 +299,16 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                         <span className="text-muted-foreground text-sm">
                                                             {getActivityAction(activity.type)}
                                                         </span>
-                                                        {activity.subject && (
+                                                        {activity.type === 'attribute_change' && activity.metadata?.changes ? (
+                                                            <AttributeChangePopover
+                                                                changes={activity.metadata.changes}
+                                                                subject={activity.subject}
+                                                            />
+                                                        ) : activity.subject ? (
                                                             <span className="font-semibold text-sm">
                                                                 {activity.subject}
                                                             </span>
-                                                        )}
+                                                        ) : null}
                                                         {activity.type === 'meeting' && activity.scheduled_at && (
                                                             <Badge size="sm" variant="outline" className="shrink-0">
                                                                 {formatScheduledDate(activity.scheduled_at)}

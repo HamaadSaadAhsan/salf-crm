@@ -89,6 +89,7 @@ class LeadObserver
         $original = $lead->getOriginal();
         $userId = Auth::id();
         $isSystem = ! $userId;
+        $batchedChanges = [];
 
         foreach ($changes as $field => $newValue) {
             $oldValue = $original[$field] ?? null;
@@ -98,8 +99,83 @@ class LeadObserver
                 continue;
             }
 
-            $this->createFieldChangeActivity($lead, $field, $oldValue, $newValue, $userId, $isSystem);
+            // Special fields still get individual activities
+            if (in_array($field, ['inquiry_status', 'assigned_to', 'tags'])) {
+                $this->createFieldChangeActivity($lead, $field, $oldValue, $newValue, $userId, $isSystem);
+
+                continue;
+            }
+
+            // Collect regular field changes for batching
+            $batchedChanges[] = [
+                'field' => $field,
+                'field_name' => $this->getFieldDisplayName($field),
+                'old_value' => $this->formatValueForDisplay($field, $oldValue),
+                'new_value' => $this->formatValueForDisplay($field, $newValue),
+            ];
         }
+
+        // Create or merge into a recent attribute_change activity
+        if (! empty($batchedChanges)) {
+            $this->createOrMergeAttributeChangeActivity($lead, $batchedChanges, $userId);
+        }
+    }
+
+    /**
+     * Create a new attribute_change activity or merge into a recent one (within 60 seconds).
+     *
+     * @param  array<int, array{field: string, field_name: string, old_value: string, new_value: string}>  $newChanges
+     */
+    private function createOrMergeAttributeChangeActivity(Lead $lead, array $newChanges, ?int $userId): void
+    {
+        $recentActivity = LeadActivity::query()
+            ->where('lead_id', $lead->id)
+            ->where('user_id', $userId)
+            ->where('type', 'attribute_change')
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->latest()
+            ->first();
+
+        if ($recentActivity) {
+            $existingChanges = $recentActivity->metadata['changes'] ?? [];
+
+            // Replace existing field entries with new values, or append new fields
+            $existingByField = collect($existingChanges)->keyBy('field');
+            foreach ($newChanges as $change) {
+                $existingByField[$change['field']] = $change;
+            }
+            $mergedChanges = $existingByField->values()->all();
+
+            $count = count($mergedChanges);
+            $recentActivity->updateQuietly([
+                'subject' => $count === 1
+                    ? "Updated {$mergedChanges[0]['field_name']}"
+                    : "Changed {$count} attributes",
+                'metadata' => [
+                    'changes' => $mergedChanges,
+                    'change_type' => 'attribute_change',
+                ],
+            ]);
+
+            return;
+        }
+
+        $count = count($newChanges);
+        LeadActivity::create([
+            'lead_id' => $lead->id,
+            'user_id' => $userId,
+            'type' => 'attribute_change',
+            'status' => 'completed',
+            'subject' => $count === 1
+                ? "Updated {$newChanges[0]['field_name']}"
+                : "Changed {$count} attributes",
+            'completed_at' => now(),
+            'category' => 'system',
+            'metadata' => [
+                'changes' => $newChanges,
+                'change_type' => 'attribute_change',
+            ],
+        ]);
     }
 
     /**

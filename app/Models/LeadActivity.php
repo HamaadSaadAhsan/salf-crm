@@ -328,6 +328,7 @@ class LeadActivity extends Model
             'follow_up' => 'Follow Up',
             'status_change' => 'Status Change',
             'assignment_change' => 'Assignment Change',
+            'attribute_change' => 'Attribute Change',
         ];
     }
 
