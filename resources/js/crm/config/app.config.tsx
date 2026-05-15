@@ -213,9 +213,13 @@ export const MAIN_NAV: NavConfig = [
         {
             id: 'teams',
             title: 'Teams',
-            path: '/teams/current',
+            path: '/teams',
             icon: UsersRound,
             items: [
+                {
+                    title: 'All Teams',
+                    path: '/teams',
+                },
                 {
                     title: 'Current Team',
                     path: '/teams/current',

@@ -9,6 +9,24 @@ use Inertia\Response;
 
 class TeamController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $this->authorize('viewAny', Team::class);
+
+        $teams = Team::withoutGlobalScopes()
+            ->withCount(['members', 'invitations'])
+            ->with('owner:id,name,email')
+            ->when($request->search, fn ($q) => $q->where('name', 'ilike', "%{$request->search}%"))
+            ->orderBy('name')
+            ->paginate($request->integer('per_page', 25))
+            ->withQueryString();
+
+        return inertia('Teams/Index', [
+            'teams' => $teams,
+            'filters' => $request->only('search', 'per_page'),
+        ]);
+    }
+
     public function create(): Response
     {
         return inertia('Teams/Create');

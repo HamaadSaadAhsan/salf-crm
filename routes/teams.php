@@ -10,6 +10,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Switch current team
     Route::put('current-team', [CurrentTeamController::class, 'update'])->name('current-team.update');
 
+    // Teams list (super-admin only)
+    Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
+
     // Team CRUD
     Route::get('teams/create', [TeamController::class, 'create'])->name('teams.create');
     Route::get('teams/current', [TeamController::class, 'current'])->name('teams.current');
