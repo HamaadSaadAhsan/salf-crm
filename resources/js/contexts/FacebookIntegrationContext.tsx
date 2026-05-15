@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from '@/lib/http';
 import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 import { toast } from 'sonner';
 

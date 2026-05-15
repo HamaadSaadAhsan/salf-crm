@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,9 +107,9 @@ export function StatusSheet({ open, onOpenChange, status }: StatusSheetProps) {
                   : 'Create a new status for lead lifecycle management.'}
               </SheetDescription>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={() => onOpenChange(false)}
             >
@@ -240,15 +240,15 @@ export function StatusSheet({ open, onOpenChange, status }: StatusSheetProps) {
 function getContrastColor(hexColor: string): string {
   // Remove # if present
   const color = hexColor.replace('#', '');
-  
+
   // Convert to RGB
   const r = parseInt(color.substring(0, 2), 16);
   const g = parseInt(color.substring(2, 4), 16);
   const b = parseInt(color.substring(4, 6), 16);
-  
+
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
+
   // Return black for light colors, white for dark colors
   return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }

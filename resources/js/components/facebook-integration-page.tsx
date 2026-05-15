@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Link } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 

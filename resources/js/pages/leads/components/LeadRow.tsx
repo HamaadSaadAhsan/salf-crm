@@ -24,8 +24,27 @@ import {
 } from 'lucide-react';
 import React, { memo, useCallback, useMemo } from 'react';
 import type { ListChildComponentProps } from 'react-window';
+import { cn } from '@/lib/utils';
+import { differenceInCalendarDays, isPast, parseISO } from 'date-fns';
 
-// Source icon mapping
+type FollowUpState = 'overdue' | 'today' | 'soon' | null;
+
+function getFollowUpState(nextFollowUpAt?: string): FollowUpState {
+    if (!nextFollowUpAt) return null;
+    const date = parseISO(nextFollowUpAt);
+    if (isPast(date) && differenceInCalendarDays(new Date(), date) >= 1) return 'overdue';
+    const diff = differenceInCalendarDays(date, new Date());
+    if (diff === 0) return 'today';
+    if (diff <= 3) return 'soon';
+    return null;
+}
+
+const FOLLOW_UP_ROW_CLASSES: Record<NonNullable<FollowUpState>, string> = {
+    overdue: 'bg-red-50/70 hover:bg-red-100/60 dark:bg-red-950/20 dark:hover:bg-red-950/30',
+    today:   'bg-amber-50/70 hover:bg-amber-100/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/30',
+    soon:    'bg-yellow-50/50 hover:bg-yellow-100/40 dark:bg-yellow-950/10 dark:hover:bg-yellow-950/20',
+};
+
 const SOURCE_ICONS = {
     'cold-call': Phone,
     'direct-mail': Mailbox,
@@ -50,7 +69,6 @@ const SOURCE_ICON_COLORS = {
     'website-contact-form': 'text-cyan-500',
 } as const;
 
-// Priority bars configuration: 1 bar = low, 2 = medium, 3 = high, 4 = urgent
 const PRIORITY_BAR_CONFIG = {
     low: { bars: 1, color: 'bg-cyan-400', label: 'Low' },
     medium: { bars: 2, color: 'bg-green-500', label: 'Medium' },
@@ -58,7 +76,6 @@ const PRIORITY_BAR_CONFIG = {
     urgent: { bars: 4, color: 'bg-red-500', label: 'Urgent' },
 } as const;
 
-// Status badge configuration
 type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive';
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; variant: BadgeVariant; appearance: 'light' | 'outline' }> = {
@@ -75,7 +92,6 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; variant: BadgeVariant; 
     closed: { label: 'Closed', variant: 'destructive', appearance: 'light' },
 };
 
-// Helper to extract source data
 function getSourceData(source?: { data?: { slug: string; name: string } } | { slug: string; name: string }) {
     if (!source) return null;
     if ('data' in source) return source.data || null;
@@ -83,7 +99,6 @@ function getSourceData(source?: { data?: { slug: string; name: string } } | { sl
     return null;
 }
 
-// Priority bars component (1-4 bars)
 const PriorityBars = memo(({ priority }: { priority?: string }) => {
     if (!priority) return <span className="inline-flex h-4 w-[18px]" />;
     const config = PRIORITY_BAR_CONFIG[priority as keyof typeof PRIORITY_BAR_CONFIG];
@@ -105,7 +120,6 @@ const PriorityBars = memo(({ priority }: { priority?: string }) => {
 });
 PriorityBars.displayName = 'PriorityBars';
 
-// Source icon component
 const SourceIcon = memo(({ source }: { source?: { data?: { slug: string; name: string } } | { slug: string; name: string } }) => {
     const sourceData = getSourceData(source);
     const IconComponent = sourceData?.slug ? SOURCE_ICONS[sourceData.slug as keyof typeof SOURCE_ICONS] : null;
@@ -119,7 +133,6 @@ const SourceIcon = memo(({ source }: { source?: { data?: { slug: string; name: s
 });
 SourceIcon.displayName = 'SourceIcon';
 
-// Status badge component
 const StatusBadge = memo(({ status, isRequalified }: { status: LeadStatus; isRequalified?: boolean }) => {
     const config = STATUS_CONFIG[status];
     if (!config) return null;
@@ -140,37 +153,29 @@ const StatusBadge = memo(({ status, isRequalified }: { status: LeadStatus; isReq
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Loading skeleton
 const LoadingSkeleton = memo(({ style }: { style: React.CSSProperties }) => (
-    <div
-        style={style}
-        className="flex items-center gap-2 border-b px-3 py-1.5"
-    >
+    <div style={style} className="flex items-center gap-2 border-b border-border/30 px-2 py-2">
         <div className="h-4 w-4 animate-pulse rounded bg-muted" />
         <div className="h-4 w-[18px] animate-pulse rounded bg-muted" />
-        <div className="flex-1 space-y-1.5">
-            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+        <div className="w-[180px] shrink-0 space-y-1">
+            <div className="h-3.5 w-28 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="flex flex-1 items-baseline gap-1">
+            <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
         </div>
         <div className="h-5 w-16 animate-pulse rounded bg-muted" />
-        <div className="hidden h-4 w-20 animate-pulse rounded bg-muted lg:block" />
+        <div className="h-3 w-14 animate-pulse rounded bg-muted" />
     </div>
 ));
 LoadingSkeleton.displayName = 'LoadingSkeleton';
 
-// Main lead row component
 const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
     const { leads, selectedLeads, onSelectLead, onLeadClick } = data;
     const lead = leads[index] as Lead | undefined;
 
     const isSelected = useMemo(() => (lead ? selectedLeads.has(lead.id) : false), [selectedLeads, lead]);
-
-    const rowClasses = useMemo(() => {
-        let classes =
-            'flex items-center gap-2 border-b px-3 py-1.5 cursor-pointer transition-colors duration-75 hover:bg-muted/50';
-        if (isSelected) classes += ' bg-[#c2dbff] dark:bg-[#003569]';
-        return classes;
-    }, [isSelected]);
 
     const handleClick = useCallback(
         (e: React.MouseEvent) => {
@@ -219,28 +224,39 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
     const assignedUser = lead.assigned_to?.data;
     const qualifiedByUser = lead.qualified_by?.data;
     const qualifiedAt = lead.qualified_at;
+    const isNew = lead.inquiry_status === 'new';
+    const followUpState = getFollowUpState(lead.next_follow_up_at);
 
     return (
         <div
             style={style}
-            className={rowClasses}
+            className={cn(
+                'group flex cursor-pointer items-center gap-2 border-b border-border/30 px-2 py-2 text-left transition-colors hover:shadow-[inset_2px_0_0_0] hover:shadow-border/80',
+                isSelected
+                    ? 'bg-[#c2dbff] dark:bg-[#003569]'
+                    : followUpState
+                      ? FOLLOW_UP_ROW_CLASSES[followUpState]
+                      : isNew
+                        ? 'bg-background hover:bg-muted/30'
+                        : 'bg-muted/10 hover:bg-muted/30',
+            )}
             onClick={handleClick}
             role="row"
             aria-selected={isSelected}
             tabIndex={0}
         >
             {/* Checkbox */}
-            <div className="shrink-0">
+            <div className="flex shrink-0 items-center px-1" onClick={handleCheckboxClick}>
                 <Checkbox
                     checked={isSelected}
                     onCheckedChange={handleCheckboxChange}
-                    onClick={handleCheckboxClick}
                     aria-label={`Select ${lead.name}`}
+                    className="size-4"
                 />
             </div>
 
-            {/* Priority Bars */}
-            <div className="shrink-0">
+            {/* Priority bars */}
+            <div className="shrink-0 px-0.5">
                 {lead.priority ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -257,8 +273,8 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 )}
             </div>
 
-            {/* Source Icon - desktop only */}
-            <div className="hidden shrink-0 md:flex">
+            {/* Source icon — md+ */}
+            <div className="hidden shrink-0 px-0.5 md:flex">
                 {sourceData?.name ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -273,77 +289,79 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 )}
             </div>
 
-            {/* Name + Detail column — constrained width on desktop */}
-            <div className="min-w-0 flex-1 md:max-w-[220px] lg:max-w-[260px] xl:max-w-[280px]">
-                <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium">{lead.name}</span>
-                    {lead.is_hot_lead && <FlameIcon className="shrink-0 text-orange-400" size={14} />}
+            {/* Name column — fixed width like mail sender */}
+            <span
+                className={cn(
+                    'w-[160px] shrink-0 truncate px-1 text-sm md:w-[180px] lg:w-[200px]',
+                    isNew ? 'font-semibold text-foreground' : 'text-foreground/80',
+                )}
+            >
+                <span className="flex items-center gap-1">
+                    <span className="truncate">{lead.name}</span>
+                    {lead.is_hot_lead && <FlameIcon className="shrink-0 text-orange-400" size={15} />}
+                </span>
+            </span>
+
+            {/* Subject + preview area — flex-1, like mail body */}
+            <div className="flex min-w-0 flex-1 items-baseline gap-1 truncate px-1">
+                {/* Service as "subject" */}
+                {serviceName ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span
+                                className={cn(
+                                    'shrink-0 truncate text-sm',
+                                    isNew ? 'font-semibold text-foreground' : 'text-foreground/80',
+                                )}
+                            >
+                                {serviceName}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{serviceHierarchy}</TooltipContent>
+                    </Tooltip>
+                ) : null}
+
+                {/* Detail + budget as "preview" */}
+                {(lead.detail || lead.formatted_budget) && (
+                    <>
+                        {serviceName && <span className="shrink-0 text-sm text-muted-foreground/50">—</span>}
+                        <span className="min-w-0 truncate text-sm text-muted-foreground/60">
+                            {lead.detail}
+                            {lead.detail && lead.formatted_budget && ' · '}
+                            {lead.formatted_budget && (
+                                <span className="inline-flex items-center gap-0.5">
+                                    <DollarSign size={13} className="inline" />
+                                    {lead.formatted_budget}
+                                </span>
+                            )}
+                        </span>
+                    </>
+                )}
+
+                {/* Inline badges — follow-up / tasks */}
+                <span className="hidden shrink-0 items-center gap-1 sm:inline-flex">
                     {hasFollowUp && (
-                        <Badge variant="warning" appearance="light" size="xs" className="shrink-0">
-                            <CalendarClock className="h-2.5 w-2.5" />
+                        <Badge variant="warning" appearance="light" size="xs">
+                            <CalendarClock className="h-3 w-3" />
                             Follow-up
                         </Badge>
                     )}
                     {hasDueTask && !hasFollowUp && (
-                        <Badge variant={hasOverdueTask ? 'destructive' : 'info'} appearance="light" size="xs" className="shrink-0">
-                            <ListTodo className="h-2.5 w-2.5" />
+                        <Badge variant={hasOverdueTask ? 'destructive' : 'info'} appearance="light" size="xs">
+                            <ListTodo className="h-3 w-3" />
                             {hasOverdueTask ? 'Overdue' : 'Due Task'}
                         </Badge>
                     )}
-                </div>
-                {/* Second line: detail (+ service on mobile) */}
-                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {lead.detail && (
-                        <span className="truncate">{lead.detail}</span>
-                    )}
-                    {serviceName && (
-                        <span className="flex shrink-0 items-center gap-1 md:hidden">
-                            {lead.detail && <span className="text-muted-foreground/50">·</span>}
-                            <span className="truncate font-medium">{serviceName}</span>
-                            {lead.formatted_budget && (
-                                <>
-                                    <span className="text-muted-foreground/50">·</span>
-                                    <span>{lead.formatted_budget}</span>
-                                </>
-                            )}
-                        </span>
-                    )}
-                </div>
+                </span>
             </div>
 
-            {/* Desktop: Service + Budget column — takes remaining space */}
-            <div className="hidden min-w-0 flex-1 md:block">
-                {serviceName ? (
-                    <div>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="truncate text-sm text-muted-foreground">
-                                    {serviceHierarchy}
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                                {serviceHierarchy}
-                            </TooltipContent>
-                        </Tooltip>
-                        {lead.formatted_budget && (
-                            <div className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground/70">
-                                <DollarSign size={10} />
-                                <span>{lead.formatted_budget}</span>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <span className="text-sm text-muted-foreground/50">--</span>
-                )}
-            </div>
-
-            {/* Call stats — xl only */}
-            <div className="hidden shrink-0 items-center gap-2.5 xl:flex" style={{ minWidth: '80px' }}>
+            {/* Call + activity + task indicators — xl */}
+            <div className="hidden shrink-0 items-center gap-2 xl:flex" style={{ minWidth: '80px' }}>
                 {totalCalls > 0 ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                                <Phone size={12} />
+                                <Phone size={14} />
                                 {totalCalls}
                             </span>
                         </TooltipTrigger>
@@ -352,16 +370,15 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                         </TooltipContent>
                     </Tooltip>
                 ) : (
-                    <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/40">
-                        <Phone size={12} />
-                        0
+                    <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/30">
+                        <Phone size={14} />0
                     </span>
                 )}
                 {missedCalls > 0 && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-0.5 text-xs text-red-500">
-                                <PhoneMissed size={12} />
+                                <PhoneMissed size={14} />
                                 {missedCalls}
                             </span>
                         </TooltipTrigger>
@@ -370,31 +387,24 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                         </TooltipContent>
                     </Tooltip>
                 )}
-            </div>
-
-            {/* Metadata indicators - desktop only */}
-            <div className="hidden shrink-0 items-center gap-1.5 md:flex">
-                {/* Activity count */}
                 {activityCount > 0 && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                                <Activity size={12} />
+                                <Activity size={14} />
                                 {activityCount}
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">
                             {activityCount} {activityCount === 1 ? 'activity' : 'activities'}
-                            {lead.last_activity_at && <div className="text-xs opacity-75">{lead.last_activity_at}</div>}
                         </TooltipContent>
                     </Tooltip>
                 )}
-                {/* Pending tasks */}
                 {pendingTaskCount > 0 && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-0.5 text-xs text-orange-500">
-                                <ListTodo size={12} />
+                                <ListTodo size={14} />
                                 {pendingTaskCount}
                             </span>
                         </TooltipTrigger>
@@ -416,14 +426,14 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 )}
             </div>
 
-            {/* Assigned user — xl only */}
+            {/* Assigned user — xl */}
             {assignedUser && (
-                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '90px' }}>
+                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '80px' }}>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <User size={12} />
-                                <span className="max-w-[70px] truncate">{assignedUser.name.split(' ')[0]}</span>
+                                <User size={14} />
+                                <span className="max-w-[60px] truncate">{assignedUser.name.split(' ')[0]}</span>
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">{assignedUser.name}</TooltipContent>
@@ -431,14 +441,14 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 </div>
             )}
 
-            {/* Qualified by — xl only */}
+            {/* Qualified by — xl */}
             {qualifiedByUser && (
-                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '100px' }}>
+                <div className="hidden shrink-0 xl:flex" style={{ minWidth: '90px' }}>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <ShieldCheck size={12} className="text-emerald-500" />
-                                <span className="max-w-[80px] truncate">{qualifiedByUser.name.split(' ')[0]}</span>
+                                <ShieldCheck size={14} className="text-emerald-500" />
+                                <span className="max-w-[70px] truncate">{qualifiedByUser.name.split(' ')[0]}</span>
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">
@@ -451,26 +461,29 @@ const LeadRow = memo(({ index, style, data }: ListChildComponentProps) => {
                 </div>
             )}
 
-            {/* Status badge - always visible */}
+            {/* Status badge */}
             <div className="shrink-0">
-                <StatusBadge
-                    status={lead.inquiry_status}
-                    isRequalified={isRequalified}
-                />
+                <StatusBadge status={lead.inquiry_status} isRequalified={isRequalified} />
             </div>
 
-            {/* Country - desktop only */}
+            {/* Country — lg */}
             {country && (
                 <div className="hidden shrink-0 items-center gap-1 lg:flex">
-                    <MapPin size={12} className="text-muted-foreground" />
+                    <MapPin size={14} className="text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{country}</span>
                 </div>
             )}
 
-            {/* Created date - desktop only */}
-            <div className="hidden shrink-0 text-right text-xs text-muted-foreground lg:block" style={{ minWidth: '70px' }}>
+            {/* Date — tabular, right-aligned like mail */}
+            <span
+                className={cn(
+                    'hidden shrink-0 px-2 text-xs tabular-nums lg:block',
+                    isNew ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                )}
+                style={{ minWidth: '70px', textAlign: 'right' }}
+            >
                 {lead.created_at}
-            </div>
+            </span>
         </div>
     );
 });

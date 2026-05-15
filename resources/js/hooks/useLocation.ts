@@ -3,7 +3,7 @@
 import { SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import axios from '@/lib/http';
 
 export interface Country {
     id: number;

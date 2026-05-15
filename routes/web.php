@@ -65,6 +65,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
         Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
         Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
+        Route::post('leads/bulk/assign', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'assign'])->name('leads.bulk.assign');
+        Route::post('leads/bulk/status', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'status'])->name('leads.bulk.status');
+        Route::post('leads/bulk/delete', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'destroy'])->name('leads.bulk.destroy');
         Route::get('leads/{lead}/{tab?}', [LeadController::class, 'show'])->name('leads.show')
             ->where('tab', 'overview|activity|notes|tasks|calls|files|documents');
     });

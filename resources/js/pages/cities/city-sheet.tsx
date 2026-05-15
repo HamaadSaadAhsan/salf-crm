@@ -28,7 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle2, ChevronsUpDown, Check } from 'lucide-react';
 import { City } from './index';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { cn } from '@/lib/utils';
 
 interface CitySheetProps {

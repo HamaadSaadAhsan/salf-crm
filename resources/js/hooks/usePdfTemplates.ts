@@ -1,4 +1,4 @@
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import type { LeadPdfSubmission, PdfTemplate, ScannedPdfFieldResponse } from '@/types/pdf-template';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

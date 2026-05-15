@@ -1,5 +1,5 @@
 import { LeadsAPI } from '@/lib/api/leads';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { Lead, LeadActivity, LeadFilters, Meta } from '@/types/lead';
 import { ApiResponse } from '@/types/user';
 import { router } from '@inertiajs/react';

@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Loader2, ChevronRightIcon } from 'lucide-react'
 import { Workflow } from '@/types/workflow'
 import { cn } from '@/lib/utils'
-import axios from '@/lib/axios'
+import axios from '@/lib/http'
 
 interface TestInterfaceProps {
   workflow: Workflow

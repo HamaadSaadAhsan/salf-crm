@@ -18,7 +18,7 @@ import { useInfiniteLeadAllActivities, useInfiniteLeadComments, useLead, useOpti
 import type { Lead, LeadActivity } from '@/types/lead';
 import { IconBrandFacebook, IconBrandGoogle, IconBrandLinkedin } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import {
     ChevronDown,

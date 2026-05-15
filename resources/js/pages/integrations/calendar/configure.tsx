@@ -18,7 +18,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { PageProps } from '@/types/global';
 import { Head, router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { format, parseISO } from 'date-fns';
 import { ArrowLeft, CalendarDays, RefreshCw, Unplug } from 'lucide-react';
 import { useState } from 'react';

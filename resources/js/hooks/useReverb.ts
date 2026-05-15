@@ -1,4 +1,4 @@
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { configureEcho } from '@laravel/echo-react';
 
 const useReverbConnection = (session: any, _status: any) => {

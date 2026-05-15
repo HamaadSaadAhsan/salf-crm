@@ -1,4 +1,4 @@
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 
 class ApiClient {
     async get(endpoint: string, params?: Record<string, string | number | boolean>) {

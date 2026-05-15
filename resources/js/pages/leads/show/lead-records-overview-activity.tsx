@@ -248,17 +248,31 @@ export function LeadRecordsOverviewActivity({
                                                                             changes={activity.metadata.changes}
                                                                             subject={activity.subject}
                                                                         />
-                                                                    ) : (
+                                                                    ) : activity.type !== 'note' ? (
                                                                         <span className="font-medium truncate">
                                                                             {activity.subject || activity.type}
                                                                         </span>
-                                                                    )}
+                                                                    ) : null}
                                                                     {activity.type === 'meeting' && activity.scheduled_at && (
                                                                         <Badge size="sm" variant="outline" className="shrink-0">
                                                                             {formatScheduledDate(activity.scheduled_at)}
                                                                         </Badge>
                                                                     )}
                                                                 </div>
+                                                                {activity.type === 'note' && (
+                                                                    <div className="mt-1 rounded-md border bg-muted/30 px-2.5 py-2 text-xs">
+                                                                        {activity.subject && activity.subject !== 'Note' && (
+                                                                            <p className="font-medium text-foreground mb-0.5">
+                                                                                {activity.subject}
+                                                                            </p>
+                                                                        )}
+                                                                        {activity.description && (
+                                                                            <p className="text-muted-foreground line-clamp-2 leading-relaxed">
+                                                                                {activity.description}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                                 <span className="text-xs text-muted-foreground">
                                                                     {formatTimeAgo(activity.created_at)}
                                                                 </span>

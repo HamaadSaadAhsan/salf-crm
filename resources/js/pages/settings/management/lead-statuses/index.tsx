@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { StatusList } from './status-list';
 import { StatusSheet } from './status-sheet';
 import { Content } from '@/crm/layout/components/content';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { router } from '@inertiajs/react';
 import { ListChecks, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -1,5 +1,5 @@
 // lib/api/users.ts
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { ServiceAssignmentData, User, UserFilters, UserListResponse, UserStats, UserWithRelations } from '@/types/user.d';
 export class UsersAPI {
     public baseURL: string;

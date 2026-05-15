@@ -12,7 +12,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { INSERT_IMAGE_COMMAND } from './lexical-image-plugin';
 import { useCreateDialog } from '@/providers/CreateDialogProvider';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { toast } from 'sonner';
 
 const BLOCK_OPTIONS = [

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Loader2, ChevronRightIcon } from 'lucide-react'
 import { Workflow } from '@/types/workflow'
-import axios from '@/lib/axios'
+import axios from '@/lib/http'
 import { cn } from '@/lib/utils'
 
 interface TestInterfaceProps {
@@ -21,9 +21,9 @@ export default function TestInterface({ workflow, currentTrigger }: TestInterfac
   const [error, setError] = useState<string | null>(null)
   const [selectedResult, setSelectedResult] = useState<any>(null)
   const [showFieldsPopover, setShowFieldsPopover] = useState(false)
-  
+
   // Memoize expensive computations
-  const triggerStep = useMemo(() => 
+  const triggerStep = useMemo(() =>
     workflow.steps.find(s => s.step_type === 'trigger' && s.service === currentTrigger),
     [workflow.steps, currentTrigger]
   )
@@ -55,7 +55,7 @@ export default function TestInterface({ workflow, currentTrigger }: TestInterfac
         form_id: triggerStep?.configuration?.form_id,
         limit: 1,
       })
-      
+
       if (response.data && response.data.leads) {
         setTestResults(response.data.leads)
       } else {
@@ -107,9 +107,9 @@ export default function TestInterface({ workflow, currentTrigger }: TestInterfac
       </div>
 
       <div className="flex w-full my-3">
-        <Button 
-          onClick={handleTest} 
-          variant="outline" 
+        <Button
+          onClick={handleTest}
+          variant="outline"
           className="w-full cursor-pointer border-dashed"
           disabled={testing}
         >
@@ -138,9 +138,9 @@ export default function TestInterface({ workflow, currentTrigger }: TestInterfac
 
                   <Popover open={showFieldsPopover} onOpenChange={setShowFieldsPopover}>
                     <PopoverTrigger asChild>
-                      <Button 
-                        title="Show fields" 
-                        size={'icon'} 
+                      <Button
+                        title="Show fields"
+                        size={'icon'}
                         variant="ghost"
                         onClick={handleShowFields}
                       >

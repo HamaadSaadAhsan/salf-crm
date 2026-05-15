@@ -1,35 +1,7 @@
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { WorkflowResponse, WorkflowsResponse } from '@/types/workflow';
-import { AxiosResponse } from 'axios';
 
-const _API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-
-// Create axios instance with default config
 const apiClient = axios;
-
-// Handle response errors
-apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            return Promise.reject(new Error('Session expired. Please login again.'));
-        }
-
-        if (error.response?.status === 403) {
-            return Promise.reject(new Error('You do not have permission to perform this action.'));
-        }
-
-        if (error.response?.status >= 500) {
-            return Promise.reject(new Error('Server error. Please try again later.'));
-        }
-
-        if (error.code === 'ECONNABORTED') {
-            return Promise.reject(new Error('Request timeout. Please check your connection.'));
-        }
-
-        return Promise.reject(error);
-    },
-);
 
 export class WorkflowService {
     static async getWorkflows(page: number = 1, search?: string, status?: string): Promise<WorkflowsResponse> {
@@ -43,7 +15,7 @@ export class WorkflowService {
                 params.append('status', status);
             }
 
-            const response: AxiosResponse<WorkflowsResponse> = await apiClient.get(`/api/workflows?${params.toString()}`);
+            const response = await apiClient.get(`/api/workflows?${params.toString()}`);
             return response.data;
         } catch (error: any) {
             throw this.handleError(error);
@@ -52,7 +24,7 @@ export class WorkflowService {
 
     static async getWorkflow(id: number): Promise<WorkflowResponse> {
         try {
-            const response: AxiosResponse<WorkflowResponse> = await apiClient.get(`/api/workflows/${id}`);
+            const response = await apiClient.get(`/api/workflows/${id}`);
             return response.data;
         } catch (error: any) {
             throw this.handleError(error);
@@ -61,7 +33,7 @@ export class WorkflowService {
 
     static async createWorkflow(workflowData: any): Promise<WorkflowResponse> {
         try {
-            const response: AxiosResponse<WorkflowResponse> = await apiClient.post('/api/workflows', workflowData);
+            const response = await apiClient.post('/api/workflows', workflowData);
             return response.data;
         } catch (error: any) {
             throw this.handleError(error);
@@ -70,7 +42,7 @@ export class WorkflowService {
 
     static async updateWorkflow(id: number, workflowData: any): Promise<WorkflowResponse> {
         try {
-            const response: AxiosResponse<WorkflowResponse> = await apiClient.put(`/api/workflows/${id}`, workflowData);
+            const response = await apiClient.put(`/api/workflows/${id}`, workflowData);
             return response.data;
         } catch (error: any) {
             throw this.handleError(error);
@@ -88,7 +60,7 @@ export class WorkflowService {
 
     static async activateWorkflow(id: number): Promise<WorkflowResponse> {
         try {
-            const response: AxiosResponse<WorkflowResponse> = await apiClient.patch(`/api/workflows/${id}/activate`);
+            const response = await apiClient.patch(`/api/workflows/${id}/activate`);
             return response.data;
         } catch (error: any) {
             throw this.handleError(error);
@@ -97,7 +69,7 @@ export class WorkflowService {
 
     static async pauseWorkflow(id: number): Promise<WorkflowResponse> {
         try {
-            const response: AxiosResponse<WorkflowResponse> = await apiClient.put(`/api/workflows/${id}`, {
+            const response = await apiClient.put(`/api/workflows/${id}`, {
                 status: 'paused',
             });
             return response.data;

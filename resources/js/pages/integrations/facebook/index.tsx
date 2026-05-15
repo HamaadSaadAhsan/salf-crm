@@ -5,7 +5,7 @@ import SetupWizard from '@/components/setup-wizard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';

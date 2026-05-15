@@ -105,8 +105,10 @@ export function useTaskReminders(options: TaskReminderOptions = {}) {
             action: {
                 label: 'View Task',
                 onClick: () => {
-                    if (task.taskable_type === 'App\\Models\\Lead') {
+                    if (task.taskable_type === 'App\\Models\\Lead' && task.taskable_id) {
                         router.visit(`/leads/${task.taskable_id}`);
+                    } else {
+                        router.visit('/tasks');
                     }
                 },
             },
@@ -118,8 +120,8 @@ export function useTaskReminders(options: TaskReminderOptions = {}) {
                 border: 'none',
             },
             classNames: {
-                toast: 'toast',
-                actionButton: 'action-button',
+                toast: 'group toast pointer-events-auto',
+                actionButton: 'pointer-events-auto',
             },
         });
     }, [config.soundEnabled, hasPermission, play, getSoundType]);

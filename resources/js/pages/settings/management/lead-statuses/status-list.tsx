@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { router } from '@inertiajs/react';
 import { type Status } from './index';
 

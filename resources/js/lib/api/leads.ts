@@ -1,4 +1,4 @@
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { ApiResponse, Lead, LeadFilters, LeadStats } from '@/types/lead';
 
 export class LeadsAPI {
@@ -9,25 +9,20 @@ export class LeadsAPI {
     }
 
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-        // Import axios at the top of your file: import axios, { AxiosRequestConfig } from 'axios';
-        const url = `${this.baseURL}/${endpoint}`;
-
-        // Map RequestInit to AxiosRequestConfig
-        const axiosConfig: any = {
-            url,
-            method: options.method || 'GET',
-            data: options.body,
-            // You can add more mappings if needed (e.g., credentials, params, etc.)
-        };
+        const url = `${this.baseURL}${endpoint}`;
+        const method = (options.method ?? 'GET').toUpperCase();
+        const data = options.body ? JSON.parse(options.body as string) : undefined;
 
         try {
-            const response = await axios(axiosConfig);
+            const response = method === 'GET'
+                ? await axios.get<ApiResponse<T>>(url)
+                : await axios.post<ApiResponse<T>>(url, data);
             return response.data;
         } catch (error: any) {
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data.message || `HTTP error! status: ${error.response.status}`);
+            if (error.response?.data) {
+                throw new Error(error.response.data.message ?? `HTTP error! status: ${error.response.status}`);
             }
-            throw new Error(error.message || 'Unknown error');
+            throw new Error(error.message ?? 'Unknown error');
         }
     }
 

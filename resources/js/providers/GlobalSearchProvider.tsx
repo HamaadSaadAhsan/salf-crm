@@ -26,7 +26,7 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'k') {
                 e.preventDefault();
                 setOpen((prev) => !prev);
             }

@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import {
   AlertDialog,
   AlertDialogAction,

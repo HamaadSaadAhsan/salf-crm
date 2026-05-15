@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { AlertCircle, Check, CheckCircle2, ChevronsUpDown, Globe2, MapPin, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Zone } from './index';

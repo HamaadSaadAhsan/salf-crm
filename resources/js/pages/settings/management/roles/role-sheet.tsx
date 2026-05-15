@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

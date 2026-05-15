@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, X, ChevronDown, Search, Loader2 } from 'lucide-react'
 import {IconBrandFacebook as Facebook} from "@tabler/icons-react"
 import { WorkflowFieldMapping } from '@/types/workflow'
-import axios from '@/lib/axios'
+import axios from '@/lib/http'
 
 
 interface FieldMappingInterfaceProps {

@@ -59,9 +59,11 @@ export function ContentHeader({
               </div>
 
               {/* Right side: actions */}
-              <div className="flex shrink-0 items-center gap-2">
-                  <HeaderNew />
-                  <Separator orientation="vertical" className="mx-1 h-4 bg-border" />
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                  <div className="hidden sm:block">
+                      <HeaderNew />
+                  </div>
+                  <Separator orientation="vertical" className="mx-1 hidden h-4 bg-border sm:block" />
                   <HeaderMobileSearchTrigger />
                   <AiChatSheet />
                   <HeaderNotifications />

@@ -81,8 +81,10 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
             action: {
                 label: 'View Task',
                 onClick: () => {
-                    if (task.taskable_type === 'App\\Models\\Lead') {
+                    if (task.taskable_type === 'App\\Models\\Lead' && task.taskable_id) {
                         router.visit(`/leads/${task.taskable_id}`);
+                    } else {
+                        router.visit('/tasks');
                     }
                 },
             },
@@ -94,8 +96,8 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
                 border: 'none',
             },
             classNames: {
-                toast: 'toast',
-                actionButton: 'action-button',
+                toast: 'group toast pointer-events-auto',
+                actionButton: 'pointer-events-auto',
             },
         });
     }, [enabled, soundEnabled, hasPermission, play, getSoundType]);
@@ -121,8 +123,10 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
             action: {
                 label: 'View Task',
                 onClick: () => {
-                    if (task.taskable_type === 'App\\Models\\Lead') {
-                        router.visit(`/leads/${task.taskable_id}`);
+                    if (task.taskable_type === 'App\\Models\\Lead' && task.taskable_id) {
+                           router.visit(`/leads/${task.taskable_id}`);
+                    } else {
+                        router.visit('/tasks');
                     }
                 },
             },
@@ -134,7 +138,8 @@ export function useTaskReminderListener(options: UseTaskReminderListenerOptions)
                 border: 'none',
             },
             classNames: {
-                toast: 'border-destructive bg-destructive/10',
+                toast: 'group toast pointer-events-auto border-destructive bg-destructive/10',
+                actionButton: 'pointer-events-auto',
             },
         });
     }, [enabled, soundEnabled, hasPermission, play, getSoundType]);

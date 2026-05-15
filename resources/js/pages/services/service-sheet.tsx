@@ -22,7 +22,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Service } from './index';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 

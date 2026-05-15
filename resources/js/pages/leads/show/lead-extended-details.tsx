@@ -15,7 +15,7 @@ import { type SharedData } from '@/types';
 import type { CustomFields, Lead, LeadStatus } from '@/types/lead';
 import { router, usePage } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import {
     Activity,

@@ -64,6 +64,9 @@ export function useLeadFilters(): UseLeadFiltersReturn {
     const [searchInput, setSearchInputState] = useState(serverFilters.search || '');
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const filtersRef = useRef<LeadFilters>(localFilters);
+    // Track the last search value WE navigated to — used to distinguish our own
+    // responses from external navigation (back/forward, direct URL entry)
+    const ownSearchRef = useRef<string>(serverFilters.search || '');
 
     // Keep ref in sync with latest state
     filtersRef.current = localFilters;
@@ -71,14 +74,22 @@ export function useLeadFilters(): UseLeadFiltersReturn {
     // Sync local state from server props (handles browser back/forward, initial load, external navigation)
     useEffect(() => {
         setLocalFilters(serverFilters);
-        setSearchInputState(serverFilters.search || '');
+        // Only reset the visible input when the search value was changed externally
+        // (e.g. back/forward navigation) — not when it's our own debounced request
+        const serverSearch = serverFilters.search || '';
+        if (serverSearch !== ownSearchRef.current) {
+            setSearchInputState(serverSearch);
+            ownSearchRef.current = serverSearch;
+        }
     }, [serverFilters]);
 
-    const navigate = useCallback((filters: LeadFilters) => {
+    const navigate = useCallback((filters: LeadFilters, options?: { replace?: boolean }) => {
         const cleaned = cleanFilters(filters);
         router.get('/leads', cleaned as Record<string, string>, {
             preserveState: true,
             preserveScroll: true,
+            only: ['leads', 'meta', 'filters'],
+            replace: options?.replace ?? false,
         });
     }, []);
 
@@ -108,6 +119,7 @@ export function useLeadFilters(): UseLeadFiltersReturn {
         };
         setLocalFilters(next);
         setSearchInputState('');
+        ownSearchRef.current = '';
         navigate(next);
     }, [navigate]);
 
@@ -134,8 +146,9 @@ export function useLeadFilters(): UseLeadFiltersReturn {
             debounceRef.current = setTimeout(() => {
                 const next = { ...filtersRef.current, search: value || undefined, page: 1 };
                 setLocalFilters(next);
-                navigate(next);
-            }, 300);
+                ownSearchRef.current = value || '';
+                navigate(next, { replace: true });
+            }, 400);
         },
         [navigate],
     );

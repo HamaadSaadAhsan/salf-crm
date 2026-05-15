@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,9 +139,9 @@ export function LeadSourceSheet({ open, onOpenChange, source }: LeadSourceSheetP
                   : 'Create a new lead source to track where leads come from.'}
               </SheetDescription>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={() => onOpenChange(false)}
             >

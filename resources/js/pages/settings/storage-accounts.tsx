@@ -23,7 +23,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 

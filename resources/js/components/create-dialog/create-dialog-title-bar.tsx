@@ -11,7 +11,7 @@ import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { Link2, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { destroy } from '@/actions/App/Http/Controllers/Api/LeadActivityController';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';

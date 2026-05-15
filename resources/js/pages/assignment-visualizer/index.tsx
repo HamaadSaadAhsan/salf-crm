@@ -3,7 +3,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEcho } from '@laravel/echo-react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ServiceCard } from './service-card';

@@ -1,6 +1,6 @@
 import { useEcho } from '@laravel/echo-react';
 import { usePage } from '@inertiajs/react';
-import axios, { AxiosError } from 'axios';
+import axios, { HttpError as AxiosError } from '@/lib/http';
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { callNotes, callLead } from '@/routes/api/asterisk';

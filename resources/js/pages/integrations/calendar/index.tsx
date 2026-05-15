@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { PageProps } from '@/types/global';
 import { Head, router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { PlusIcon } from 'lucide-react';
 import React, { useState } from 'react';
 

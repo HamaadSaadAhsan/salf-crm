@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class)->beforeEach(function () {
-    $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
 
     // Create role for API access
     Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);

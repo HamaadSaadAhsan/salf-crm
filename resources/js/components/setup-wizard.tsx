@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { ArrowLeft, ArrowRight, BarChart3, CheckCircle, Loader2, MessageSquare, Shield, Users, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

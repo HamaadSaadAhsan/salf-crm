@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from '@/lib/http';
 import { outboundCall } from '@/routes/asterisk';
 import type { WebSocketMessageData } from '../types';
 import { getSessionId, getLeadId, mapToOutboundEvent, logWs } from '../utils';

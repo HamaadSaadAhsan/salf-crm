@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { PageProps } from '@/types/global';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { Loader2, Plug, Settings2, Unplug } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';

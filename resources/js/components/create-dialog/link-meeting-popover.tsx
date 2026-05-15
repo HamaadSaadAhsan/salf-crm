@@ -4,7 +4,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useCreateDialog } from '@/providers/CreateDialogProvider';
 import { index } from '@/actions/App/Http/Controllers/Api/LeadActivityController';
 import { useQuery } from '@tanstack/react-query';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { CalendarDays, Loader2, Search, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, parseISO } from 'date-fns';

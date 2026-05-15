@@ -35,7 +35,7 @@ import {
 import { Lead, LeadStatus } from '@/types/lead';
 import { store } from '@/actions/App/Http/Controllers/Api/LeadActivityController';
 import { router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { format, parseISO } from 'date-fns';
 import {
     CalendarCheck,

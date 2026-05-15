@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

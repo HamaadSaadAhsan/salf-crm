@@ -1,7 +1,7 @@
 'use client';
 
 import { UsersAPI } from '@/lib/api/users';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { PaginationMeta, ServiceAssignmentData, User, UserFilters, UserListResponse, UserSortField, UserWithRelations } from '@/types/user.d';
 import { InfiniteData, keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

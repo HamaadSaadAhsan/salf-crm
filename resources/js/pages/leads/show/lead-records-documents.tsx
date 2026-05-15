@@ -35,7 +35,7 @@ import type { LeadPdfSubmission, PdfTemplate, PdfTemplateField } from '@/types/p
 import { ArrowLeft, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 
 type Props = {
     lead: Lead;

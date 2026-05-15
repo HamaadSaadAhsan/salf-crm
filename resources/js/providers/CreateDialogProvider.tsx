@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { store, update, show } from '@/actions/App/Http/Controllers/Api/LeadActivityController';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

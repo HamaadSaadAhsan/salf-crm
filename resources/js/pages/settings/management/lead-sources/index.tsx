@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { LeadSourceList } from './lead-source-list';
 import { LeadSourceSheet } from './lead-source-sheet';
 import { Content } from '@/crm/layout/components/content';
-import axios from '@/lib/axios';
+import axios from '@/lib/http';
 import { router } from '@inertiajs/react';
 import { Plus, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

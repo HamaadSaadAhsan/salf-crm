@@ -138,9 +138,10 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
             });
 
             // Append new activities to the existing ones
+            const moreActivities = (result.data as { data?: LeadActivity[] } | undefined)?.data ?? [];
             setAdditionalActivities((prev) => ({
                 ...prev,
-                [monthGroup.month]: [...(prev[monthGroup.month] || []), ...(result.data?.data || [])],
+                [monthGroup.month]: [...(prev[monthGroup.month] || []), ...moreActivities],
             }));
 
             setLoadedPages((prev) => ({
@@ -203,7 +204,7 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
         );
     }
 
-    const monthGroups = monthSummary?.data || [];
+    const monthGroups: MonthGroup[] = (monthSummary as { data?: MonthGroup[] } | undefined)?.data ?? [];
 
     if (monthGroups.length === 0) {
         return (
@@ -277,7 +278,7 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                     <div className="flex items-center gap-2 flex-wrap relative">
                                                         <Avatar className="size-6 relative border-2 border-background">
                                                             {!isLast && (
-                                                                <div className="absolute w-px !h-full min-h-10 bg-border left-2.5 top-5.5" />
+                                                                <div className="absolute w-px h-full! min-h-10 bg-border left-2.5 top-5.5" />
                                                             )}
                                                             {user?.avatar ? (
                                                                 <AvatarImage
@@ -304,7 +305,7 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                                 changes={activity.metadata.changes}
                                                                 subject={activity.subject}
                                                             />
-                                                        ) : activity.subject ? (
+                                                        ) : activity.type !== 'note' && activity.subject ? (
                                                             <span className="font-semibold text-sm">
                                                                 {activity.subject}
                                                             </span>
@@ -316,7 +317,31 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                         )}
                                                     </div>
 
-                                                    {activity.description && (
+                                                    {activity.type === 'note' ? (
+                                                        <div className="ml-8 mt-1.5">
+                                                            <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
+                                                                {activity.subject && activity.subject !== 'Note' && (
+                                                                    <p className="font-medium text-foreground mb-1">
+                                                                        {activity.subject}
+                                                                    </p>
+                                                                )}
+                                                                {activity.description && (
+                                                                    <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">
+                                                                        {activity.description}
+                                                                    </p>
+                                                                )}
+                                                                {activity.metadata?.task_refs && activity.metadata.task_refs.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1 mt-2">
+                                                                        {activity.metadata.task_refs.map((ref: { task_id: string; title: string }) => (
+                                                                            <Badge key={ref.task_id} size="sm" variant="outline" className="text-xs">
+                                                                                {ref.title}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ) : activity.description && activity.type !== 'attribute_change' ? (
                                                         <div className="ml-8 text-xs text-muted-foreground mt-0.5">
                                                             <div className={expandedDescriptions[activity.id] ? '' : 'line-clamp-2'}>
                                                                 {activity.description}
@@ -334,7 +359,7 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                                 </button>
                                                             )}
                                                         </div>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
                                                     {formatTimeAgo(activity.created_at)}

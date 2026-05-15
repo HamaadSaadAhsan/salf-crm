@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { toast } from 'sonner';
 import type { OriginateCallParams, AsteriskWebSocketAction } from '../types';
 
