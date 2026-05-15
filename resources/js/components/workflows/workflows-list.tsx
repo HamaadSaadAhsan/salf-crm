@@ -8,6 +8,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Search,
   Plus,
   MoreHorizontal,
@@ -37,6 +47,7 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
+  const [deleteWorkflowId, setDeleteWorkflowId] = useState<number | null>(null)
 
   // Transform API workflow data to a component format
   const transformWorkflowData = (apiWorkflow: Workflow): WorkflowListItem => {
@@ -186,11 +197,8 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
   }
 
   const handleDelete = (workflowId: number) => {
-    if (!confirm('Are you sure you want to delete this workflow? This action cannot be undone.')) {
-      return
-    }
-
     setActionLoading(workflowId)
+    setDeleteWorkflowId(null)
 
     router.delete(`/workflows/${workflowId}`, {
       onSuccess: () => {
@@ -398,7 +406,10 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
-                          onClick={() => handleDelete(workflow.id)}
+                          onSelect={(e) => {
+                            e.preventDefault()
+                            setDeleteWorkflowId(workflow.id)
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -443,6 +454,31 @@ export default function WorkflowsList({ workflows, onEditWorkflowAction }: Workf
           )}
         </Card>
       </div>
+
+      <AlertDialog
+        open={deleteWorkflowId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteWorkflowId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this workflow?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this workflow? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteWorkflowId !== null && handleDelete(deleteWorkflowId)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

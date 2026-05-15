@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Integration;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 
@@ -24,14 +23,11 @@ it('shows facebook as disconnected when no integration exists', function () {
     );
 });
 
-it('shows facebook as connected when integration exists and is active', function () {
-    Integration::create([
-        'provider' => 'facebook',
-        'name' => 'Facebook - Test Page',
-        'config' => [
-            'page_info' => ['name' => 'Test Page'],
-        ],
-        'active' => true,
+it('shows facebook as connected when user has a valid oauth token', function () {
+    $this->user->update([
+        'facebook_user_access_token' => encrypt('test-access-token'),
+        'facebook_token_expires_at' => now()->addDays(60),
+        'facebook_connected_at' => now(),
     ]);
 
     $response = $this->actingAs($this->user)->get(route('integrations'));
@@ -43,14 +39,11 @@ it('shows facebook as connected when integration exists and is active', function
     );
 });
 
-it('shows facebook as disconnected when integration exists but is inactive', function () {
-    Integration::create([
-        'provider' => 'facebook',
-        'name' => 'Facebook - Test Page',
-        'config' => [
-            'page_info' => ['name' => 'Test Page'],
-        ],
-        'active' => false,
+it('shows facebook as disconnected when user oauth token is expired', function () {
+    $this->user->update([
+        'facebook_user_access_token' => encrypt('test-access-token'),
+        'facebook_token_expires_at' => now()->subDay(),
+        'facebook_connected_at' => now()->subDays(61),
     ]);
 
     $response = $this->actingAs($this->user)->get(route('integrations'));

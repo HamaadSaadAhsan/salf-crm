@@ -223,9 +223,11 @@ class OfficeSeeder extends Seeder
             $zone = $zones->get($zoneCode);
 
             if ($zone) {
-                Office::create(array_merge($officeData, [
-                    'zone_id' => $zone->id,
-                ]));
+                $data = array_merge($officeData, ['zone_id' => $zone->id]);
+                Office::updateOrCreate(
+                    ['code' => $data['code']],
+                    $data,
+                );
             }
         }
     }

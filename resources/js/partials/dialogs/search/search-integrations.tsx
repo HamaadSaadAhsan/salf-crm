@@ -42,7 +42,7 @@ export function SearchIntegrations({
                   {/* Name and description */}
                   <div className="flex flex-col gap-0.5">
                     <Link
-                      to="#"
+                      href="#"
                       className="text-sm font-semibold text-mono hover:text-primary-active"
                     >
                       {item.name}

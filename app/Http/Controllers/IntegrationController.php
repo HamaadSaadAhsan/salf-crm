@@ -4,21 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarIntegration;
 use App\Models\GmailIntegration;
-use App\Models\Integration;
 use Inertia\Inertia;
 
 class IntegrationController extends Controller
 {
     public function index()
     {
-        $userId = request()->user()->id;
-        $facebookIntegration = Integration::where('provider', 'facebook')->first();
-        $calendarIntegration = CalendarIntegration::where('user_id', $userId)->first();
-        $gmailIntegration = GmailIntegration::where('user_id', $userId)->where('is_active', true)->first();
+        $user = auth()->user();
+        $calendarIntegration = CalendarIntegration::where('user_id', $user->id)->first();
+        $gmailIntegration = GmailIntegration::where('user_id', $user->id)->where('is_active', true)->first();
 
         return inertia('integrations/index', [
             'statuses' => [
-                'facebook' => $facebookIntegration?->active ?? false,
+                'facebook' => $user->hasFacebookToken() && ! $user->isFacebookTokenExpired(),
                 'whatsapp' => false,
                 'calendar' => (bool) $calendarIntegration?->is_active,
                 'gmail' => (bool) $gmailIntegration,

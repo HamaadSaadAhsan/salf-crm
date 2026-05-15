@@ -33,7 +33,7 @@ export default function SyncStatus() {
                 );
             case 'success':
                 return (
-                    <Badge variant="default" className="bg-green-600">
+                    <Badge variant="primary" className="bg-green-600">
                         Success
                     </Badge>
                 );

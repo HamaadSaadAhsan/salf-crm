@@ -32,7 +32,7 @@ export default function CalendarIntegrationPage({ authUrl }: CalendarIntegration
                 if (response.data?.auth_url) {
                     window.location.href = response.data.auth_url;
                 }
-            } catch (error) {
+            } catch (_error) {
                 setError('Failed to initiate calendar connection');
                 setIsLoading(false);
             }
@@ -136,7 +136,7 @@ export default function CalendarIntegrationPage({ authUrl }: CalendarIntegration
                     <Separator orientation="horizontal" />
                     <CardFooter className="flex justify-center-safe p-1">
                         <p className="text-sm">
-                            <Button variant="link" className="cursor-pointer" onClick={handleSkip}>
+                            <Button variant="ghost" className="cursor-pointer" onClick={handleSkip}>
                                 {"I'll"} setup later
                             </Button>
                         </p>

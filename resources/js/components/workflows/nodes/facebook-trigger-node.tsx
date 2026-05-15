@@ -47,7 +47,7 @@ function FacebookTriggerNode({ data }: { data: FacebookTriggerNodeData }) {
           <div className="font-medium">Facebook Lead Ads</div>
           <div className="text-xs text-gray-500">Trigger</div>
         </div>
-        <Badge variant={isConfigured ? "default" : "secondary"}>
+        <Badge variant={isConfigured ? "primary" : "secondary"}>
           {isConfigured ? "Configured" : "Setup Required"}
         </Badge>
       </div>
@@ -77,7 +77,7 @@ function FacebookTriggerNode({ data }: { data: FacebookTriggerNodeData }) {
       {/* Configure Button */}
       <Button
         onClick={onConfigure}
-        variant={isConfigured ? "outline" : "default"}
+        variant={isConfigured ? "outline" : "primary"}
         size="sm"
         className="w-full"
       >

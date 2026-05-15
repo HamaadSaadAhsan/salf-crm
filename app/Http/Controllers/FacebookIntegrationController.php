@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\FacebookIntegrationRequest;
+use App\Jobs\SyncFacebookPageData;
 use App\Models\FacebookWebhookConfig;
 use App\Models\Integration;
 use App\Models\LeadForm;
 use App\Models\MetaPage;
+use App\Models\User;
 use App\Services\FacebookSdkService;
 use App\Services\FacebookService;
 use Exception;
@@ -18,15 +20,10 @@ use Inertia\Inertia;
 
 class FacebookIntegrationController extends Controller
 {
-    protected FacebookService $facebookService;
-
-    protected FacebookSdkService $facebookSdkService;
-
-    public function __construct(FacebookService $facebookService, FacebookSdkService $facebookSdkService)
-    {
-        $this->facebookService = $facebookService;
-        $this->facebookSdkService = $facebookSdkService;
-    }
+    public function __construct(
+        protected FacebookService $facebookService,
+        protected FacebookSdkService $facebookSdkService,
+    ) {}
 
     /**
      * Get available integration templates
@@ -101,17 +98,14 @@ class FacebookIntegrationController extends Controller
         $integration = Integration::where('provider', 'facebook')->first();
 
         if (! $integration) {
-            return response()->json([
-                'success' => true,
+            return Inertia::render('integrations/facebook/index', [
                 'exists' => false,
-                'message' => 'Facebook integration not configured yet',
-                'webhook_url' => $this->getWebhookUrlFromDatabase(),
+                'webhook_url' => route('facebook.webhook'),
             ]);
         }
 
         $config = $integration->config;
 
-        // Mask sensitive data
         $safeConfig = [
             'appId' => $config['app_id'] ?? '',
             'pageId' => $config['page_id'] ?? '',
@@ -127,7 +121,6 @@ class FacebookIntegrationController extends Controller
         ];
 
         return Inertia::render('integrations/facebook/index', [
-            'success' => true,
             'exists' => true,
             'integration' => [
                 'id' => $integration->id,
@@ -138,7 +131,7 @@ class FacebookIntegrationController extends Controller
                 'created_at' => $integration->created_at,
                 'updated_at' => $integration->updated_at,
             ],
-            'webhook_url' => $this->getWebhookUrlFromDatabase(),
+            'webhook_url' => ! empty($config['webhook_url']) ? $config['webhook_url'] : route('facebook.webhook'),
         ]);
     }
 
@@ -149,16 +142,14 @@ class FacebookIntegrationController extends Controller
     {
         try {
             $validatedData = $request->validated();
-            $userId = $request->user()->id;
+            $user = $request->user();
+            $accessToken = $user->getFacebookAccessToken();
+            $templateConfig = cache()->get("facebook_template_config_{$user->id}");
 
-            // Get template configuration if applied
-            $templateConfig = cache()->get("facebook_template_config_{$userId}");
-
-            // Use SDK for credential verification
             $verificationResult = $this->facebookSdkService->verifyCredentials([
                 'app_id' => $validatedData['appId'],
                 'app_secret' => $validatedData['appSecret'],
-                'access_token' => auth()->user()->getFacebookAccessToken(),
+                'access_token' => $accessToken,
                 'page_id' => $validatedData['pageId'] ?? null,
             ]);
 
@@ -170,26 +161,21 @@ class FacebookIntegrationController extends Controller
                 ], 400);
             }
 
-            // Merge template configuration with user input
-            $features = [];
-            if ($templateConfig) {
-                $features = $templateConfig['features'];
-            } else {
-                // Fallback to individual toggles if no template applied
-                $features = [
+            $features = $templateConfig
+                ? $templateConfig['features']
+                : [
                     'messaging' => $validatedData['enableMessaging'] ?? false,
                     'posts' => $validatedData['enablePosts'] ?? false,
                     'insights' => $validatedData['enableInsights'] ?? false,
                     'comments' => $validatedData['enableComments'] ?? false,
                     'leadgen' => $validatedData['enableLeadGen'] ?? false,
                 ];
-            }
 
             $config = [
                 'app_id' => $validatedData['appId'],
                 'app_secret' => encrypt($validatedData['appSecret']),
                 'page_id' => $validatedData['pageId'],
-                'access_token' => encrypt(auth()->user()->getFacebookAccessToken()),
+                'access_token' => encrypt($accessToken),
                 'webhook_verify_token' => $validatedData['webhook_verify_token'] ?? null,
                 'features' => $features,
                 'template' => $templateConfig ? [
@@ -218,7 +204,7 @@ class FacebookIntegrationController extends Controller
             // Clear any cached data including template config
             Cache::forget('facebook_integration');
             Cache::forget('facebook_pages');
-            cache()->forget("facebook_template_config_{$userId}");
+            cache()->forget("facebook_template_config_{$user->id}");
 
             return response()->json([
                 'success' => true,
@@ -336,7 +322,7 @@ class FacebookIntegrationController extends Controller
             // Add token expiry information for super admins only
             if ($isSuperAdmin) {
                 // Get users with Facebook tokens
-                $usersWithTokens = \App\Models\User::withFacebookToken()
+                $usersWithTokens = User::withFacebookToken()
                     ->select(['id', 'name', 'email', 'facebook_token_expires_at', 'facebook_connected_at'])
                     ->get();
 
@@ -659,28 +645,27 @@ class FacebookIntegrationController extends Controller
     {
         try {
             $allowedSubscriptions = [
-                'feed, mention, name, picture, category, description, conversations, feature_access_list,
-                inbox_labels, standby, message_mention, messages, message_reactions, messaging_account_linking,
-                messaging_checkout_updates, messaging_customer_information, message_echoes, message_edits,
-                message_deliveries, message_context, messaging_game_plays, messaging_optins, messaging_optouts,
-                messaging_payments, messaging_postbacks, messaging_pre_checkouts, message_reads, messaging_referrals,
-                messaging_handovers, messaging_policy_enforcement,
-                marketing_message_delivery_failed, messaging_appointments,
-                messaging_direct_sends,
-                messaging_fblogin_account_linking, user_action, messaging_feedback, send_cart,
-                group_feed, calls, call_permission_reply, response_feedback, messaging_integrity,
-                messaging_in_thread_lead_form_submit,
-                message_template_status_update,
-                founded, company_overview, mission,
-                products,
-                 general_info, leadgen, leadgen_fat,
-                 location, hours, parking, public_transit, page_about_story,
-                 mcom_invoice_change, invoice_access_invoice_change, invoice_access_invoice_draft_change,
-                 invoice_access_onboarding_status_active, invoice_access_bank_slip_events, local_delivery, phone, email, website, ratings,
-                 attire, payment_options, culinary_team, general_manager, price_range, awards, hometown, current_location, bio, affiliation,
-                 birthday, personal_info, personal_interests, members, checkins, page_upcoming_change, page_change_proposal, merchant_review,
-                 product_review, videos, live_videos, video_text_question_responses, registration, payment_request_update, publisher_subscriptions,
-                 invalid_topic_placeholder',
+                'feed', 'mention', 'name', 'picture', 'category', 'description', 'conversations',
+                'feature_access_list', 'inbox_labels', 'standby', 'message_mention', 'messages',
+                'message_reactions', 'messaging_account_linking', 'messaging_checkout_updates',
+                'messaging_customer_information', 'message_echoes', 'message_edits', 'message_deliveries',
+                'message_context', 'messaging_game_plays', 'messaging_optins', 'messaging_optouts',
+                'messaging_payments', 'messaging_postbacks', 'messaging_pre_checkouts', 'message_reads',
+                'messaging_referrals', 'messaging_handovers', 'messaging_policy_enforcement',
+                'marketing_message_delivery_failed', 'messaging_appointments', 'messaging_direct_sends',
+                'messaging_fblogin_account_linking', 'user_action', 'messaging_feedback', 'send_cart',
+                'group_feed', 'calls', 'call_permission_reply', 'response_feedback', 'messaging_integrity',
+                'messaging_in_thread_lead_form_submit', 'message_template_status_update',
+                'founded', 'company_overview', 'mission', 'products', 'general_info', 'leadgen', 'leadgen_fat',
+                'location', 'hours', 'parking', 'public_transit', 'page_about_story',
+                'mcom_invoice_change', 'invoice_access_invoice_change', 'invoice_access_invoice_draft_change',
+                'invoice_access_onboarding_status_active', 'invoice_access_bank_slip_events',
+                'local_delivery', 'phone', 'email', 'website', 'ratings', 'attire', 'payment_options',
+                'culinary_team', 'general_manager', 'price_range', 'awards', 'hometown', 'current_location',
+                'bio', 'affiliation', 'birthday', 'personal_info', 'personal_interests', 'members', 'checkins',
+                'page_upcoming_change', 'page_change_proposal', 'merchant_review', 'product_review',
+                'videos', 'live_videos', 'video_text_question_responses', 'registration',
+                'payment_request_update', 'publisher_subscriptions', 'invalid_topic_placeholder',
             ];
 
             $validated = $request->validate([
@@ -688,12 +673,12 @@ class FacebookIntegrationController extends Controller
                 'subscriptions.*' => 'boolean',
             ]);
 
-            $invalidSubscriptions = array_diff($validated['subscriptions'], $allowedSubscriptions);
-            if (empty($invalidSubscriptions)) {
-                throw new \Illuminate\Validation\ValidationException(
-                    validator([], []),
-                    ['subscriptions' => ['Invalid subscription types: '.implode(', ', $invalidSubscriptions)]]
-                );
+            $invalidSubscriptions = array_diff(array_keys($validated['subscriptions']), $allowedSubscriptions);
+            if (! empty($invalidSubscriptions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid subscription types: '.implode(', ', $invalidSubscriptions),
+                ], 422);
             }
 
             $enabledSubscriptions = array_keys(array_filter($validated['subscriptions']));
@@ -940,8 +925,7 @@ class FacebookIntegrationController extends Controller
                 ], 404);
             }
 
-            // Dispatch background job for data sync
-            \App\Jobs\SyncFacebookPageData::dispatch(
+            SyncFacebookPageData::dispatch(
                 $integration->id,
                 $request->only(['sync_posts', 'sync_comments', 'sync_messages', 'sync_forms', 'limit'])
             );

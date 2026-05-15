@@ -431,7 +431,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super-admin')->group(function () {
         Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
         Route::get('workflows/facebook/token-status', [\App\Http\Controllers\WorkflowController::class, 'facebookTokenStatus'])->name('workflows.facebook-token-status');
-        Route::resource('workflows', \App\Http\Controllers\WorkflowController::class)->names('workflows');
+        Route::get('workflows/new', [\App\Http\Controllers\WorkflowController::class, 'createNew'])->name('workflows.new');
+        Route::resource('workflows', \App\Http\Controllers\WorkflowController::class)->except(['create'])->names('workflows');
         Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
         Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
         Route::get('workflows/{workflow}/pages', [\App\Http\Controllers\WorkflowController::class, 'getPages'])->name('workflows.pages');
