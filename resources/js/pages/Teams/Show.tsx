@@ -80,7 +80,7 @@ function getInitials(name: string) {
 
 function RoleBadge({ role }: { role: string }) {
     return (
-        <Badge variant={role === 'admin' ? 'default' : 'secondary'} className="capitalize">
+        <Badge variant={role === 'admin' ? 'primary' : 'secondary'} className="capitalize">
             {ROLE_LABELS[role] ?? role}
         </Badge>
     );
