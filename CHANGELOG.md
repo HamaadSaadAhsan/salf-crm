@@ -14,7 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - SSR: configure null Echo broadcaster in `ssr.tsx` so `useEcho` hooks don't throw "Echo has not been configured" during server-side rendering
-- Replace `resolvePageComponent` with inline `import.meta.glob` in `app.tsx` and `ssr.tsx` to fix Inertia v3 TypeScript type mismatch (`TS2769`)
+- Replace `resolvePageComponent` with typed `import.meta.glob` in `app.tsx` (lazy, `ComponentType<PageProps>`) and `ssr.tsx` (eager, `{ default: ComponentType }`) to fix Inertia v3 `TS2769` type mismatch
 
 ### Changed
 - Upgraded Laravel framework from v12 to v13

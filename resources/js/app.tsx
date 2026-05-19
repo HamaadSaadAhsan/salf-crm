@@ -2,6 +2,8 @@ import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { configureEcho } from '@laravel/echo-react';
+import type { ComponentType } from 'react';
+import type { PageProps } from '@/types/global';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 import ReactQueryProvider from './providers/react-query-provider';
@@ -27,7 +29,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) => {
-        const pages = import.meta.glob('./pages/**/*.tsx');
+        const pages = import.meta.glob<ComponentType<PageProps>>('./pages/**/*.tsx');
         return pages[`./pages/${name}.tsx`]();
     },
     setup({ el, App, props }) {
