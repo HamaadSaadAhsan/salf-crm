@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import {
     ColumnDef,
     ColumnFiltersState,
@@ -16,7 +17,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 
 import AppLayout from '@/layouts/app-layout';
 import { Content } from '@/crm/layout/components/content';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardHeader, CardTable } from '@/components/ui/card';
@@ -35,7 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
-import { type BreadcrumbItem, type Team } from '@/types';
+import { type BreadcrumbItem, type SharedData, type Team } from '@/types';
 import * as teamActions from '@/actions/App/Http/Controllers/TeamController';
 
 interface TeamRow extends Omit<Team, 'owner'> {
@@ -70,6 +71,8 @@ function getInitials(name: string) {
 }
 
 export default function TeamsIndex({ teams, filters }: TeamsIndexProps) {
+    const { auth } = usePage<SharedData>().props;
+    const isSuperAdmin = auth.isSuperAdmin;
     const teamsList = teams?.data ?? [];
 
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -124,9 +127,12 @@ export default function TeamsIndex({ teams, filters }: TeamsIndexProps) {
                 const team = row.original;
                 return (
                     <div className="flex items-center gap-3">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                            <Users className="size-4 text-primary" />
-                        </div>
+                        <Avatar className="size-8 shrink-0 rounded-lg">
+                            {team.avatar_url && <AvatarImage src={team.avatar_url} alt={team.name} className="rounded-lg object-cover" />}
+                            <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                                {getInitials(team.name)}
+                            </AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 overflow-hidden">
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -311,10 +317,12 @@ export default function TeamsIndex({ teams, filters }: TeamsIndexProps) {
                                         </Button>
                                     }
                                 />
-                                <Button size="sm" onClick={() => router.visit(teamActions.create().url)}>
-                                    <Plus />
-                                    New Team
-                                </Button>
+                                {isSuperAdmin && (
+                                    <Button size="sm" onClick={() => router.visit(teamActions.create().url)}>
+                                        <Plus />
+                                        New Team
+                                    </Button>
+                                )}
                             </div>
                         </CardHeader>
                         <CardTable>

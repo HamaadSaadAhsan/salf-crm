@@ -2,20 +2,23 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData, type Team, type TeamInvitation, type TeamMember } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
+    Camera,
     Crown,
     Mail,
     MoreHorizontal,
+    Pencil,
     Plus,
-    Settings,
     Shield,
     Trash2,
     UserMinus,
     UserPlus,
     Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { api } from '@/lib/api';
+import MentionUserController from '@/actions/App/Http/Controllers/Api/MentionUserController';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,8 +36,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     Select,
     SelectContent,
@@ -62,6 +67,7 @@ interface TeamShowProps {
         members: TeamMember[];
         invitations: TeamInvitation[];
     };
+    systemRoles: string[];
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -87,56 +93,174 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 // ─── Add Member Sheet ─────────────────────────────────────────────────────────
+interface UserOption { id: number; name: string; email: string; avatar?: string | null; }
+
 function AddMemberSheet({
     open,
     onOpenChange,
     teamId,
+    systemRoles,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     teamId: number;
+    systemRoles: string[];
 }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         role: 'member',
+        system_role: '',
     });
+
+    const [search, setSearch] = useState('');
+    const [userOptions, setUserOptions] = useState<UserOption[]>([]);
+    const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+    const [popoverOpen, setPopoverOpen] = useState(false);
+    const [searching, setSearching] = useState(false);
+
+    useEffect(() => {
+        if (!search.trim()) { setUserOptions([]); return; }
+        const timer = setTimeout(async () => {
+            setSearching(true);
+            try {
+                const res = await api.get(MentionUserController().url, { search, per_page: 10 });
+                setUserOptions(res.data ?? []);
+            } finally {
+                setSearching(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const handleSelectUser = (user: UserOption) => {
+        setSelectedUser(user);
+        setData('email', user.email);
+        setPopoverOpen(false);
+        setSearch('');
+    };
+
+    const handleReset = () => {
+        reset();
+        setSelectedUser(null);
+        setSearch('');
+        setUserOptions([]);
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post(memberActions.store({ team: teamId }).url, {
             preserveScroll: true,
             onSuccess: () => {
-                reset();
+                handleReset();
                 onOpenChange(false);
             },
         });
     };
 
+    const formatRoleName = (role: string) =>
+        role.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
     return (
-        <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+        <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) handleReset(); }}>
             <SheetContent className="sm:max-w-md">
                 <SheetHeader>
                     <SheetTitle>Add Team Member</SheetTitle>
                     <SheetDescription>
-                        Add an existing user to this team by their email address.
+                        Search for an existing user to add to this team.
                     </SheetDescription>
                 </SheetHeader>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="member-email">Email address</Label>
-                        <Input
-                            id="member-email"
-                            type="email"
-                            placeholder="colleague@example.com"
-                            value={data.email}
-                            onChange={(e) => setData('email', e.target.value)}
-                        />
+                        <Label>User</Label>
+                        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        'flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm ring-offset-background',
+                                        'hover:bg-accent transition-colors text-left',
+                                        !selectedUser && 'text-muted-foreground',
+                                    )}
+                                >
+                                    {selectedUser ? (
+                                        <>
+                                            <Avatar className="size-5 shrink-0">
+                                                {selectedUser.avatar && <AvatarImage src={`/storage/${selectedUser.avatar}`} />}
+                                                <AvatarFallback className="text-[10px]">{selectedUser.name[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="flex-1 truncate">{selectedUser.name}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{selectedUser.email}</span>
+                                        </>
+                                    ) : (
+                                        <span>Search users…</span>
+                                    )}
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[340px] p-0" align="start">
+                                <Command shouldFilter={false}>
+                                    <CommandInput
+                                        placeholder="Search by name or email…"
+                                        value={search}
+                                        onValueChange={setSearch}
+                                    />
+                                    <CommandList>
+                                        {searching && (
+                                            <div className="py-3 text-center text-sm text-muted-foreground">Searching…</div>
+                                        )}
+                                        {!searching && search && userOptions.length === 0 && (
+                                            <CommandEmpty>No users found.</CommandEmpty>
+                                        )}
+                                        {!searching && userOptions.length > 0 && (
+                                            <CommandGroup>
+                                                {userOptions.map((user) => (
+                                                    <CommandItem
+                                                        key={user.id}
+                                                        value={user.email}
+                                                        onSelect={() => handleSelectUser(user)}
+                                                        className="flex items-center gap-2.5 cursor-pointer"
+                                                    >
+                                                        <Avatar className="size-6 shrink-0">
+                                                            {user.avatar && <AvatarImage src={`/storage/${user.avatar}`} />}
+                                                            <AvatarFallback className="text-xs">{user.name[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate text-sm font-medium">{user.name}</p>
+                                                            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                                                        </div>
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        )}
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                         {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="member-role">Role</Label>
+                        <Label htmlFor="member-system-role">
+                            System Role
+                            <span className="ml-1 text-xs text-muted-foreground">(optional — overwrites existing)</span>
+                        </Label>
+                        <Select value={data.system_role} onValueChange={(v) => setData('system_role', v)}>
+                            <SelectTrigger id="member-system-role">
+                                <SelectValue placeholder="Keep existing role…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {systemRoles.map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                        {formatRoleName(role)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.system_role && <p className="text-sm text-destructive">{errors.system_role}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="member-role">Team Role</Label>
                         <Select value={data.role} onValueChange={(v) => setData('role', v)}>
                             <SelectTrigger id="member-role">
                                 <SelectValue />
@@ -166,14 +290,17 @@ function InviteMemberSheet({
     open,
     onOpenChange,
     teamId,
+    systemRoles,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     teamId: number;
+    systemRoles: string[];
 }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         role: 'member',
+        system_role: '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -187,13 +314,16 @@ function InviteMemberSheet({
         });
     };
 
+    const formatRoleName = (role: string) =>
+        role.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
     return (
         <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
             <SheetContent className="sm:max-w-md">
                 <SheetHeader>
                     <SheetTitle>Invite by Email</SheetTitle>
                     <SheetDescription>
-                        Send an invitation email. The recipient will join after accepting.
+                        Send an invitation email. The recipient will create their account and join the team.
                     </SheetDescription>
                 </SheetHeader>
 
@@ -211,7 +341,24 @@ function InviteMemberSheet({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="invite-role">Role</Label>
+                        <Label htmlFor="invite-system-role">System Role</Label>
+                        <Select value={data.system_role} onValueChange={(v) => setData('system_role', v)}>
+                            <SelectTrigger id="invite-system-role">
+                                <SelectValue placeholder="Select a role…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {systemRoles.map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                        {formatRoleName(role)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.system_role && <p className="text-sm text-destructive">{errors.system_role}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="invite-role">Team Role</Label>
                         <Select value={data.role} onValueChange={(v) => setData('role', v)}>
                             <SelectTrigger id="invite-role">
                                 <SelectValue />
@@ -237,16 +384,27 @@ function InviteMemberSheet({
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function TeamShow({ team }: TeamShowProps) {
+export default function TeamShow({ team, systemRoles }: TeamShowProps) {
     const { auth } = usePage<SharedData>().props;
     const isOwner = team.user_id === auth.user.id;
+    const isSuperAdmin = auth.isSuperAdmin;
 
     const [addMemberOpen, setAddMemberOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
-    const { data: renameData, setData: setRenameData, put: putRename, processing: renaming, reset: resetRename } = useForm({ name: team.name });
+    const { data: renameData, setData: setRenameData, post: postUpdate, processing: renaming, reset: resetRename } = useForm<{
+        name: string;
+        avatar: File | null;
+        _method: string;
+    }>({
+        name: team.name,
+        avatar: null,
+        _method: 'PUT',
+    });
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -254,12 +412,32 @@ export default function TeamShow({ team }: TeamShowProps) {
         { title: team.name, href: `/teams/${team.id}` },
     ];
 
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setAvatarPreview(URL.createObjectURL(file));
+            setRenameData('avatar', file);
+        }
+    };
+
     const handleRename = (e: React.FormEvent) => {
         e.preventDefault();
-        putRename(teamActions.update({ team: team.id }).url, {
+        postUpdate(teamActions.update({ team: team.id }).url, {
+            forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => setRenameDialogOpen(false),
+            onSuccess: () => {
+                setRenameDialogOpen(false);
+                setAvatarPreview(null);
+            },
         });
+    };
+
+    const handleSettingsDialogClose = (open: boolean) => {
+        if (!open) {
+            resetRename();
+            setAvatarPreview(null);
+        }
+        setRenameDialogOpen(open);
     };
 
     const handleDeleteTeam = () => {
@@ -291,9 +469,12 @@ export default function TeamShow({ team }: TeamShowProps) {
             {/* Page header */}
             <div className="flex items-center gap-4 border-b px-6 py-4">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <Users className="size-5 text-primary" />
-                    </div>
+                    <Avatar className="size-10 shrink-0 rounded-lg">
+                        {team.avatar_url && <AvatarImage src={team.avatar_url} alt={team.name} className="rounded-lg object-cover" />}
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-semibold">
+                            {getInitials(team.name)}
+                        </AvatarFallback>
+                    </Avatar>
                     <div className="min-w-0">
                         <h1 className="truncate text-lg font-semibold leading-none">{team.name}</h1>
                         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -305,12 +486,12 @@ export default function TeamShow({ team }: TeamShowProps) {
                 {isOwner && (
                     <div className="flex shrink-0 items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setRenameDialogOpen(true)}>
-                            <Settings className="size-4" />
-                            Settings
+                            <Pencil className="size-3" />
+                            Edit
                         </Button>
                         {!team.personal_team && (
                             <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-                                <Trash2 className="size-4" />
+                                <Trash2 className="size-3" />
                                 Delete
                             </Button>
                         )}
@@ -329,7 +510,7 @@ export default function TeamShow({ team }: TeamShowProps) {
                             <Users className="size-4" />
                             Members
                         </TabsTrigger>
-                        {isOwner && (
+                        {isSuperAdmin && (
                             <TabsTrigger
                                 value="invitations"
                                 className="rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:shadow-none"
@@ -352,7 +533,7 @@ export default function TeamShow({ team }: TeamShowProps) {
                         <p className="text-sm text-muted-foreground">
                             {(team.members?.length ?? 0) + 1} member{(team.members?.length ?? 0) !== 0 ? 's' : ''}
                         </p>
-                        {isOwner && (
+                        {isSuperAdmin && (
                             <div className="flex items-center gap-2">
                                 <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
                                     <Mail className="size-4" />
@@ -395,16 +576,18 @@ export default function TeamShow({ team }: TeamShowProps) {
                 </TabsContent>
 
                 {/* Invitations tab */}
-                {isOwner && (
+                {isSuperAdmin && (
                     <TabsContent value="invitations" className="mt-0 flex-1">
                         <div className="flex items-center justify-between px-6 py-4">
                             <p className="text-sm text-muted-foreground">
                                 {team.invitations?.length ?? 0} pending invitation{(team.invitations?.length ?? 0) !== 1 ? 's' : ''}
                             </p>
-                            <Button size="sm" onClick={() => setInviteOpen(true)}>
-                                <Mail className="size-4" />
-                                Invite
-                            </Button>
+                            {isSuperAdmin && (
+                                <Button size="sm" onClick={() => setInviteOpen(true)}>
+                                    <Mail className="size-4" />
+                                    Invite
+                                </Button>
+                            )}
                         </div>
 
                         {(team.invitations?.length ?? 0) === 0 ? (
@@ -428,17 +611,50 @@ export default function TeamShow({ team }: TeamShowProps) {
             </Tabs>
 
             {/* Sheets */}
-            <AddMemberSheet open={addMemberOpen} onOpenChange={setAddMemberOpen} teamId={team.id} />
-            <InviteMemberSheet open={inviteOpen} onOpenChange={setInviteOpen} teamId={team.id} />
+            <AddMemberSheet open={addMemberOpen} onOpenChange={setAddMemberOpen} teamId={team.id} systemRoles={systemRoles} />
+            <InviteMemberSheet open={inviteOpen} onOpenChange={setInviteOpen} teamId={team.id} systemRoles={systemRoles} />
 
-            {/* Rename dialog */}
-            <Dialog open={renameDialogOpen} onOpenChange={(v) => { setRenameDialogOpen(v); if (!v) resetRename(); }}>
+            {/* Settings dialog */}
+            <Dialog open={renameDialogOpen} onOpenChange={handleSettingsDialogClose}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Rename Team</DialogTitle>
-                        <DialogDescription>Update the display name for this team.</DialogDescription>
+                        <DialogTitle>Team Settings</DialogTitle>
+                        <DialogDescription>Update the team name and avatar.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleRename} className="space-y-4">
+                    <form onSubmit={handleRename} className="space-y-5">
+                        {/* Avatar upload */}
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="relative group">
+                                <Avatar className="size-20 rounded-xl">
+                                    {(avatarPreview ?? team.avatar_url) && (
+                                        <AvatarImage
+                                            src={avatarPreview ?? team.avatar_url!}
+                                            alt={team.name}
+                                            className="rounded-xl object-cover"
+                                        />
+                                    )}
+                                    <AvatarFallback className="size-20 rounded-xl bg-primary/10 text-primary text-xl font-semibold">
+                                        {getInitials(renameData.name || team.name)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <button
+                                    type="button"
+                                    onClick={() => avatarInputRef.current?.click()}
+                                    className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                                >
+                                    <Camera className="size-5 text-white" />
+                                </button>
+                                <input
+                                    ref={avatarInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={handleAvatarChange}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">Click to upload · JPG, PNG, WEBP · max 2MB</p>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="team-name">Team name</Label>
                             <Input
@@ -449,7 +665,7 @@ export default function TeamShow({ team }: TeamShowProps) {
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setRenameDialogOpen(false)}>
+                            <Button type="button" variant="outline" onClick={() => handleSettingsDialogClose(false)}>
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={renaming}>

@@ -47,6 +47,7 @@ export interface SidebarCounts {
 export interface Team {
     id: number;
     name: string;
+    avatar_url?: string | null;
     personal_team: boolean;
     user_id: number;
     owner?: User;
@@ -85,7 +86,7 @@ export interface SharedData {
     services: Service[];
     sources: LeadSource[];
     currentTeam: Team | null;
-    allTeams: Array<{ id: number; name: string; personal_team: boolean }>;
+    allTeams: Array<{ id: number; name: string; avatar_url?: string | null; personal_team: boolean }>;
     [key: string]: unknown;
 }
 

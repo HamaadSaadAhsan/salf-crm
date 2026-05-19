@@ -11,10 +11,12 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { logout } from '@/routes';
 import { SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Check, ChevronDown, LogOut, Moon, Plus, Settings, Sun, User, UserRoundPlus, Users } from 'lucide-react';
+import { Check, ChevronDown, LogOut, Moon, Plus, Settings, Sun, User, UserRoundPlus } from 'lucide-react';
+
 import * as currentTeamActions from '@/actions/App/Http/Controllers/CurrentTeamController';
 import { SidebarCollapseButton } from './sidebar-default-header';
 import { useLayout } from './layout-context';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Attio-style dark dropdown classes
 const darkContentClass = [
@@ -34,11 +36,26 @@ const darkItemClass = [
 
 const darkSeparatorClass = 'bg-border -mx-1 my-0.5';
 
+function getInitials(name: string): string {
+    return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function TeamAvatar({ name, avatarUrl, className = 'size-6 rounded-md' }: { name: string; avatarUrl?: string | null; className?: string }) {
+    return (
+        <Avatar className={className}>
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={name} className="object-cover" />}
+            <AvatarFallback className="bg-emerald-500 text-white text-xs font-semibold rounded-[inherit]">
+                {getInitials(name)}
+            </AvatarFallback>
+        </Avatar>
+    );
+}
+
 export function SidebarAttioHeader() {
     const { sidebarCollapse, setSidebarCollapse, sidebarPeeking, setSidebarPeeking } = useLayout();
     const {
         props: {
-            auth: { user },
+            auth: { user, isSuperAdmin },
             currentTeam,
             allTeams,
         },
@@ -64,10 +81,10 @@ export function SidebarAttioHeader() {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 px-3 py-2.5 transition-colors duration-[140ms] hover:bg-accent">
-                        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-emerald-500 text-sm text-white">
-                            {user.name[0]}
+                        <TeamAvatar name={currentTeam?.name ?? user.name} avatarUrl={currentTeam?.avatar_url} />
+                        <span className="truncate text-sm font-medium text-sidebar-foreground">
+                            {currentTeam?.name ?? user.name}
                         </span>
-                        <span className="truncate text-sm font-medium text-sidebar-foreground">{user.name}</span>
                         <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
                     </button>
                 </DropdownMenuTrigger>
@@ -109,13 +126,18 @@ export function SidebarAttioHeader() {
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
 
-                    <DropdownMenuSeparator className={darkSeparatorClass} />
-
-                    {/* Invite */}
-                    <DropdownMenuItem className={darkItemClass}>
-                        <UserRoundPlus />
-                        <span>Invite team members</span>
-                    </DropdownMenuItem>
+                    {isSuperAdmin && (
+                        <>
+                            <DropdownMenuSeparator className={darkSeparatorClass} />
+                            <DropdownMenuItem
+                                className={darkItemClass}
+                                onClick={() => currentTeam && router.visit(`/teams/${currentTeam.id}`)}
+                            >
+                                <UserRoundPlus />
+                                <span>Invite team members</span>
+                            </DropdownMenuItem>
+                        </>
+                    )}
 
                     <DropdownMenuSeparator className={darkSeparatorClass} />
 
@@ -133,7 +155,7 @@ export function SidebarAttioHeader() {
                         <>
                             <DropdownMenuSeparator className={darkSeparatorClass} />
                             <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                                Switch team
+                                {isSuperAdmin ? 'Switch team' : 'My team'}
                             </DropdownMenuLabel>
                             {allTeams.map((team) => (
                                 <DropdownMenuItem
@@ -141,21 +163,23 @@ export function SidebarAttioHeader() {
                                     onClick={() => handleSwitchTeam(team.id)}
                                     className={darkItemClass}
                                 >
-                                    <Users />
+                                    <TeamAvatar name={team.name} avatarUrl={team.avatar_url} />
                                     <span className="flex-1 truncate">{team.name}</span>
                                     {currentTeam?.id === team.id && (
                                         <Check className="ml-auto size-3.5 text-primary" />
                                     )}
                                 </DropdownMenuItem>
                             ))}
-                            <DropdownMenuItem
-                                onClick={() => router.visit('/teams/create')}
-                                className={darkItemClass}
-                            >
-                                <Plus />
-                                <span>Create team</span>
-                            </DropdownMenuItem>
-                            {currentTeam && (
+                            {isSuperAdmin && (
+                                <DropdownMenuItem
+                                    onClick={() => router.visit('/teams/create')}
+                                    className={darkItemClass}
+                                >
+                                    <Plus />
+                                    <span>Create team</span>
+                                </DropdownMenuItem>
+                            )}
+                            {isSuperAdmin && currentTeam && (
                                 <DropdownMenuItem
                                     onClick={() => router.visit(`/teams/${currentTeam.id}`)}
                                     className={darkItemClass}
