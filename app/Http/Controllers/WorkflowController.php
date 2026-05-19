@@ -7,8 +7,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreWorkflowRequest;
 use App\Http\Requests\UpdateWorkflowRequest;
 use App\Http\Resources\WorkflowResource;
+use App\Jobs\AutoSetupFacebookJob;
 use App\Models\Lead;
+use App\Models\MetaPage;
 use App\Models\Workflow;
+use App\Services\FacebookService;
 use App\Services\WorkflowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -425,7 +428,7 @@ class WorkflowController extends Controller
         $hasToken = $user->hasFacebookToken();
         $isExpired = $hasToken && $user->isFacebookTokenExpired();
 
-        $pages = \App\Models\MetaPage::where('user_id', $user->id)->get();
+        $pages = MetaPage::where('user_id', $user->id)->get();
         $hasPages = $pages->isNotEmpty();
 
         // Build per-page subscription status
@@ -462,7 +465,7 @@ class WorkflowController extends Controller
     {
         $this->authorize('view', $workflow);
 
-        $pages = \App\Models\MetaPage::where('user_id', $request->user()->id)
+        $pages = MetaPage::where('user_id', $request->user()->id)
             ->select('page_id as id', 'name')
             ->get()
             ->toArray();
@@ -489,7 +492,7 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
+            $pageQuery = MetaPage::where('user_id', $user->id)
                 ->whereNotNull('access_token')
                 ->where('access_token', '!=', '');
 
@@ -503,7 +506,7 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'No Facebook pages found. Run Page Sync first.'], 400);
             }
 
-            $facebookService = app(\App\Services\FacebookService::class);
+            $facebookService = app(FacebookService::class);
 
             $result = $facebookService->subscribeToWebhook(
                 $page->access_token,
@@ -555,7 +558,7 @@ class WorkflowController extends Controller
                 return response()->json(['success' => false, 'message' => 'No Facebook access token. Complete OAuth first.'], 400);
             }
 
-            $pageQuery = \App\Models\MetaPage::where('user_id', $user->id)
+            $pageQuery = MetaPage::where('user_id', $user->id)
                 ->whereNotNull('access_token')
                 ->where('access_token', '!=', '');
 
@@ -648,9 +651,10 @@ class WorkflowController extends Controller
 
             // Store pages in meta_pages table
             foreach ($pages as $pageData) {
-                \App\Models\MetaPage::updateOrCreate(
+                MetaPage::updateOrCreate(
                     ['user_id' => $user->id, 'page_id' => $pageData['id']],
                     [
+                        'team_id' => $user->current_team_id,
                         'name' => $pageData['name'],
                         'access_token' => $pageData['access_token'] ?? '',
                         'last_updated' => now(),
@@ -695,7 +699,7 @@ class WorkflowController extends Controller
             return response()->json(['success' => false, 'message' => 'No Facebook access token.'], 400);
         }
 
-        \App\Jobs\AutoSetupFacebookJob::dispatch($user->id, $workflow->id);
+        AutoSetupFacebookJob::dispatch($user->id, $workflow->id);
 
         return response()->json([
             'success' => true,
@@ -714,7 +718,7 @@ class WorkflowController extends Controller
 
         try {
             $user = $request->user();
-            $page = \App\Models\MetaPage::where('user_id', $user->id)
+            $page = MetaPage::where('user_id', $user->id)
                 ->where('page_id', $request->input('page_id'))
                 ->whereNotNull('access_token')
                 ->where('access_token', '!=', '')
@@ -776,7 +780,7 @@ class WorkflowController extends Controller
 
         try {
             $user = $request->user();
-            $page = \App\Models\MetaPage::where('user_id', $user->id)
+            $page = MetaPage::where('user_id', $user->id)
                 ->where('page_id', $request->input('page_id'))
                 ->whereNotNull('access_token')
                 ->where('access_token', '!=', '')

@@ -639,7 +639,7 @@ class FacebookService
             // Find the form
             $form = LeadForm::where('external_id', $formId)->first();
             if (! $form) {
-                throw new \Exception("Form not found: {$formId}");
+                throw new Exception("Form not found: {$formId}");
             }
 
             // Check if lead already exists by Facebook ID first
@@ -688,7 +688,7 @@ class FacebookService
                 );
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             $result = [
@@ -935,6 +935,14 @@ class FacebookService
         $leadAttributes['external_id'] = $leadData['id'];
         $leadAttributes['form_external_id'] = $leadData['form_id'];
         $leadAttributes['ad_external_id'] = $leadData['ad_id'] ?? null;
+
+        // Resolve team_id from the form's Meta page. Facebook webhooks are
+        // unauthenticated, so BelongsToTeam's auto-assignment cannot infer a team
+        // from the request context — we must set it explicitly here.
+        $teamId = $form->page?->team_id ?? null;
+        if ($teamId) {
+            $leadAttributes['team_id'] = $teamId;
+        }
 
         $lead = Lead::create($leadAttributes);
 

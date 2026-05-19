@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Integration;
 use App\Models\MetaPage;
 use App\Models\OAuthSession;
+use App\Models\User;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -134,7 +135,7 @@ class FacebookOAuthController extends Controller
             $tokens = $this->exchangeCodeForTokens($code);
 
             // Get user from OAuth session
-            $user = \App\Models\User::find($oauthSession->user_id);
+            $user = User::find($oauthSession->user_id);
 
             if (! $user) {
                 throw new Exception('User not found');
@@ -166,7 +167,7 @@ class FacebookOAuthController extends Controller
 
             // Store pages in the meta_pages table
             foreach ($pages as $pageData) {
-                $this->storeMetaPage($user->id, $pageData);
+                $this->storeMetaPage($user->id, $pageData, $user->current_team_id);
             }
 
             // Store temporary data for page selection
@@ -200,7 +201,7 @@ class FacebookOAuthController extends Controller
         }
     }
 
-    private function storeMetaPage(string $userId, array $pageData): void
+    private function storeMetaPage(string $userId, array $pageData, ?int $teamId = null): void
     {
         MetaPage::updateOrCreate(
             [
@@ -208,6 +209,7 @@ class FacebookOAuthController extends Controller
                 'page_id' => $pageData['id'],
             ],
             [
+                'team_id' => $teamId,
                 'name' => $pageData['name'],
                 'access_token' => $pageData['access_token'] ?? '',
                 'last_updated' => now(),

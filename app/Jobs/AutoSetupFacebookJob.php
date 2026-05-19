@@ -77,6 +77,7 @@ class AutoSetupFacebookJob implements ShouldQueue
             $page = MetaPage::updateOrCreate(
                 ['user_id' => $user->id, 'page_id' => $pageData['id']],
                 [
+                    'team_id' => $user->current_team_id,
                     'name' => $pageData['name'],
                     'access_token' => $pageData['access_token'] ?? '',
                     'last_updated' => now(),
