@@ -33,6 +33,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { type BreadcrumbItem, type Team } from '@/types';
 import * as teamActions from '@/actions/App/Http/Controllers/TeamController';
@@ -126,13 +127,18 @@ export default function TeamsIndex({ teams, filters }: TeamsIndexProps) {
                         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                             <Users className="size-4 text-primary" />
                         </div>
-                        <div className="min-w-0">
-                            <Link
-                                href={teamActions.show({ team: team.id }).url}
-                                className="truncate font-medium hover:text-primary transition-colors"
-                            >
-                                {team.name}
-                            </Link>
+                        <div className="min-w-0 overflow-hidden">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Link
+                                        href={teamActions.show({ team: team.id }).url}
+                                        className="block truncate font-medium hover:text-primary transition-colors"
+                                    >
+                                        {team.name}
+                                    </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>{team.name}</TooltipContent>
+                            </Tooltip>
                             {team.personal_team && (
                                 <p className="text-xs text-muted-foreground">Personal team</p>
                             )}
