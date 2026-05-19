@@ -5,6 +5,7 @@
 namespace App\Models;
 
 use App\Policies\WorkflowPolicy;
+use App\Traits\BelongsToTeam;
 use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +15,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[UsePolicy(WorkflowPolicy::class)]
 class Workflow extends Model
 {
-    use HasFactory;
+    use BelongsToTeam, HasFactory;
 
     protected $fillable = [
+        'team_id',
         'name',
         'description',
         'status',

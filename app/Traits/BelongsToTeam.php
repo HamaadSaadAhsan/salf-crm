@@ -31,7 +31,11 @@ trait BelongsToTeam
             }
 
             if ($user->current_team_id) {
-                $query->where($query->getModel()->getTable().'.team_id', $user->current_team_id);
+                $table = $query->getModel()->getTable();
+                $query->where(function ($q) use ($table, $user) {
+                    $q->where("{$table}.team_id", $user->current_team_id)
+                        ->orWhereNull("{$table}.team_id");
+                });
             }
         });
     }

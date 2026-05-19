@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Enums\TicketType;
+use App\Traits\BelongsToTeam;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +15,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ticket extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToTeam, HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'team_id',
         'user_id',
         'assigned_to_id',
         'type',

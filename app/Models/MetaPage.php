@@ -15,6 +15,7 @@ class MetaPage extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'team_id',
         'user_id',
         'page_id',
         'access_token',
