@@ -12,6 +12,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `AGENTS.md` — comprehensive business logic and codebase reference for AI agents
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit
 
+### Fixed
+- SSR: configure null Echo broadcaster in `ssr.tsx` so `useEcho` hooks don't throw "Echo has not been configured" during server-side rendering
+
 ### Changed
 - Upgraded Laravel framework from v12 to v13
 - Upgraded Inertia.js (server + client) from v2 to v3
