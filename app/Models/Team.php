@@ -6,20 +6,29 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Team extends Model
 {
     protected $fillable = [
         'name',
+        'avatar',
         'user_id',
         'personal_team',
     ];
+
+    protected $appends = ['avatar_url'];
 
     protected function casts(): array
     {
         return [
             'personal_team' => 'boolean',
         ];
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? Storage::disk('public')->url($this->avatar) : null;
     }
 
     public function owner(): BelongsTo

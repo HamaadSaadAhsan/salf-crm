@@ -10,7 +10,9 @@ class TeamInvitation extends Model
     protected $fillable = [
         'team_id',
         'email',
+        'token',
         'role',
+        'system_role',
     ];
 
     public function team(): BelongsTo

@@ -6,6 +6,7 @@ use App\Models\Team;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class TeamController extends Controller
 {
@@ -70,6 +71,9 @@ class TeamController extends Controller
 
         return inertia('Teams/Show', [
             'team' => $team,
+            'systemRoles' => Role::where('name', '!=', 'super-admin')
+                ->orderBy('name')
+                ->pluck('name'),
         ]);
     }
 
@@ -77,11 +81,17 @@ class TeamController extends Controller
     {
         $this->authorize('update', $team);
 
-        $validated = $request->validate([
+        $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
         ]);
 
-        $team->update($validated);
+        $team->update(['name' => $request->input('name')]);
+
+        if ($request->hasFile('avatar')) {
+            $team->addMediaFromRequest('avatar')
+                ->toMediaCollection('avatar');
+        }
 
         return back()->with('success', 'Team updated.');
     }

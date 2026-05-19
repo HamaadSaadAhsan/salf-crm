@@ -6,6 +6,10 @@ use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamMemberController;
 use Illuminate\Support\Facades\Route;
 
+// Public invitation acceptance (no auth required)
+Route::get('invitations/{token}', [TeamInvitationController::class, 'show'])->name('invitations.accept');
+Route::post('invitations/{token}', [TeamInvitationController::class, 'register'])->name('invitations.register');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     // Switch current team
     Route::put('current-team', [CurrentTeamController::class, 'update'])->name('current-team.update');

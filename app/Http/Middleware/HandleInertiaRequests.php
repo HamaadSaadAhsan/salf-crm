@@ -122,6 +122,7 @@ class HandleInertiaRequests extends Middleware
             'allTeams' => fn () => $user ? $user->allTeams()->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,
+                'avatar_url' => $t->avatar_url,
                 'personal_team' => $t->personal_team,
             ]) : [],
             'impersonation' => [

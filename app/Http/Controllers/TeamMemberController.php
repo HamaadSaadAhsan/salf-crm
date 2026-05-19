@@ -6,6 +6,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
 
 class TeamMemberController extends Controller
 {
@@ -13,9 +14,12 @@ class TeamMemberController extends Controller
     {
         $this->authorize('addTeamMember', $team);
 
+        $validRoles = Role::pluck('name')->toArray();
+
         $validated = $request->validate([
             'email' => ['required', 'email', 'exists:users,email'],
             'role' => ['required', 'string', 'in:admin,member'],
+            'system_role' => ['nullable', 'string', 'in:'.implode(',', $validRoles)],
         ]);
 
         $user = User::where('email', $validated['email'])->firstOrFail();
@@ -25,6 +29,10 @@ class TeamMemberController extends Controller
         }
 
         $team->members()->attach($user, ['role' => $validated['role']]);
+
+        if (! empty($validated['system_role'])) {
+            $user->syncRoles([$validated['system_role']]);
+        }
 
         return back()->with('success', 'Team member added.');
     }

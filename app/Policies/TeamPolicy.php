@@ -19,10 +19,10 @@ class TeamPolicy
         return $user->isMemberOfTeam($team);
     }
 
-    /** Any authenticated user can create a new team. */
+    /** Only super admins can create teams. */
     public function create(User $user): bool
     {
-        return true;
+        return $user->hasRole('super-admin');
     }
 
     /** Only the team owner can update team settings. */
@@ -37,10 +37,10 @@ class TeamPolicy
         return ! $team->personal_team && $user->isOwnerOfTeam($team);
     }
 
-    /** Only the team owner can add members. */
+    /** Only super admins can add members. */
     public function addTeamMember(User $user, Team $team): bool
     {
-        return $user->isOwnerOfTeam($team);
+        return $user->hasRole('super-admin');
     }
 
     /** Only the team owner can remove members; members can remove themselves. */
@@ -49,10 +49,10 @@ class TeamPolicy
         return $user->isOwnerOfTeam($team);
     }
 
-    /** Only the team owner can send invitations. */
+    /** Only super admins can send invitations. */
     public function inviteTeamMember(User $user, Team $team): bool
     {
-        return $user->isOwnerOfTeam($team);
+        return $user->hasRole('super-admin');
     }
 
     /** Only the team owner can update member roles. */
