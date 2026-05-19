@@ -3,6 +3,7 @@
 use App\Events\LeadRequalified;
 use App\Events\LeadStageChanged;
 use App\Jobs\WarmDashboardCacheJob;
+use App\Listeners\SendLeadRequalifiedNotification;
 use App\Models\Lead;
 use App\Models\User;
 use App\Notifications\LeadRequalifiedNotification;
@@ -18,11 +19,11 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
-    $this->croRole = Role::create(['name' => 'support-agent']);
-    $this->advisorRole = Role::create(['name' => 'sales-rep']);
+    $this->croRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $this->advisorRole = Role::firstOrCreate(['name' => 'sales-rep']);
 
-    $editPermission = Permission::create(['name' => 'edit leads']);
-    $viewPermission = Permission::create(['name' => 'view leads']);
+    $editPermission = Permission::firstOrCreate(['name' => 'edit leads']);
+    $viewPermission = Permission::firstOrCreate(['name' => 'view leads']);
     $this->croRole->givePermissionTo([$editPermission, $viewPermission]);
     $this->advisorRole->givePermissionTo([$editPermission, $viewPermission]);
 
@@ -76,13 +77,13 @@ it('sends LeadRequalifiedNotification to the CRO who qualified the lead', functi
     ]);
 
     // Directly dispatch the event and let the listener handle it
-    $event = new \App\Events\LeadRequalified(
+    $event = new LeadRequalified(
         lead: $lead,
         requalifiedBy: $this->advisor,
         reason: 'Budget too low'
     );
 
-    $listener = new \App\Listeners\SendLeadRequalifiedNotification;
+    $listener = new SendLeadRequalifiedNotification;
     $listener->handle($event);
 
     Notification::assertSentTo($this->cro, LeadRequalifiedNotification::class, function ($notification) use ($lead) {

@@ -17,14 +17,14 @@ beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
     // Create roles
-    $this->croRole = Role::create(['name' => 'support-agent']);
-    $this->advisorRole = Role::create(['name' => 'sales-rep']);
-    Role::create(['name' => 'senior-sales-rep']);
-    $this->adminRole = Role::create(['name' => 'super-admin']);
+    $this->croRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $this->advisorRole = Role::firstOrCreate(['name' => 'sales-rep']);
+    Role::firstOrCreate(['name' => 'senior-sales-rep']);
+    $this->adminRole = Role::firstOrCreate(['name' => 'super-admin']);
 
     // Create permissions and assign to roles
-    $editPermission = Permission::create(['name' => 'edit leads']);
-    $viewPermission = Permission::create(['name' => 'view leads']);
+    $editPermission = Permission::firstOrCreate(['name' => 'edit leads']);
+    $viewPermission = Permission::firstOrCreate(['name' => 'view leads']);
     $this->croRole->givePermissionTo([$editPermission, $viewPermission]);
     $this->advisorRole->givePermissionTo([$editPermission, $viewPermission]);
     $this->adminRole->givePermissionTo([$editPermission, $viewPermission]);

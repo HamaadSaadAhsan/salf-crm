@@ -5,18 +5,20 @@ use App\Models\LeadActivity;
 use App\Models\LeadCase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
-    $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
-    $adminRole = \Spatie\Permission\Models\Role::create(['name' => 'super-admin']);
+    $salesRepRole = Role::firstOrCreate(['name' => 'sales-rep']);
+    $supportAgentRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $adminRole = Role::firstOrCreate(['name' => 'super-admin']);
 
-    $viewLeads = \Spatie\Permission\Models\Permission::create(['name' => 'view leads']);
-    $editLeads = \Spatie\Permission\Models\Permission::create(['name' => 'edit leads']);
+    $viewLeads = Permission::firstOrCreate(['name' => 'view leads']);
+    $editLeads = Permission::firstOrCreate(['name' => 'edit leads']);
     $salesRepRole->givePermissionTo([$viewLeads, $editLeads]);
     $supportAgentRole->givePermissionTo([$viewLeads, $editLeads]);
 

@@ -9,19 +9,19 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create permissions
-    $viewDashboard = Permission::create(['name' => 'view dashboard']);
-    $viewAnalytics = Permission::create(['name' => 'view analytics']);
+    $viewDashboard = Permission::firstOrCreate(['name' => 'view dashboard']);
+    $viewAnalytics = Permission::firstOrCreate(['name' => 'view analytics']);
 
     // Create all necessary roles
-    Role::create(['name' => 'super-admin']);
-    $admin = Role::create(['name' => 'admin']);
-    $manager = Role::create(['name' => 'manager']);
-    $teamLead = Role::create(['name' => 'team-lead']);
-    $supportAgent = Role::create(['name' => 'support-agent']);
-    Role::create(['name' => 'senior-support-agent']);
-    $salesRep = Role::create(['name' => 'sales-rep']);
-    Role::create(['name' => 'senior-sales-rep']);
-    Role::create(['name' => 'customer']);
+    Role::firstOrCreate(['name' => 'super-admin']);
+    $admin = Role::firstOrCreate(['name' => 'admin']);
+    $manager = Role::firstOrCreate(['name' => 'manager']);
+    $teamLead = Role::firstOrCreate(['name' => 'team-lead']);
+    $supportAgent = Role::firstOrCreate(['name' => 'support-agent']);
+    Role::firstOrCreate(['name' => 'senior-support-agent']);
+    $salesRep = Role::firstOrCreate(['name' => 'sales-rep']);
+    Role::firstOrCreate(['name' => 'senior-sales-rep']);
+    Role::firstOrCreate(['name' => 'customer']);
 
     // Assign permissions to roles
     $admin->givePermissionTo([$viewDashboard, $viewAnalytics]);

@@ -65,20 +65,18 @@ class LeadActivity extends Model
         });
 
         static::created(function ($activity) {
-            // Update lead's pending activities count
-            $activity->lead->increment('pending_activities_count');
+            $activity->lead?->increment('pending_activities_count');
         });
 
         static::updated(function ($activity) {
-            // Update lead's pending activities count when status changes
             if ($activity->isDirty('status')) {
                 $oldStatus = $activity->getOriginal('status');
                 $newStatus = $activity->status;
 
                 if ($oldStatus === 'pending' && $newStatus !== 'pending') {
-                    $activity->lead->decrement('pending_activities_count');
+                    $activity->lead?->decrement('pending_activities_count');
                 } elseif ($oldStatus !== 'pending' && $newStatus === 'pending') {
-                    $activity->lead->increment('pending_activities_count');
+                    $activity->lead?->increment('pending_activities_count');
                 }
             }
         });

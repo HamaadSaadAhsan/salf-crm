@@ -12,11 +12,11 @@ beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
     // Create roles
-    $this->supportAgentRole = Role::create(['name' => 'support-agent']);
-    $this->seniorSupportAgentRole = Role::create(['name' => 'senior-support-agent']);
-    $this->salesRepRole = Role::create(['name' => 'sales-rep']);
-    $this->seniorSalesRepRole = Role::create(['name' => 'senior-sales-rep']);
-    $this->superAdminRole = Role::create(['name' => 'super-admin']);
+    $this->supportAgentRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $this->seniorSupportAgentRole = Role::firstOrCreate(['name' => 'senior-support-agent']);
+    $this->salesRepRole = Role::firstOrCreate(['name' => 'sales-rep']);
+    $this->seniorSalesRepRole = Role::firstOrCreate(['name' => 'senior-sales-rep']);
+    $this->superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
 
     // Create permissions (firstOrCreate since migration may have pre-created some)
     $manageTeamAgents = Permission::firstOrCreate(['name' => 'manage team agents']);

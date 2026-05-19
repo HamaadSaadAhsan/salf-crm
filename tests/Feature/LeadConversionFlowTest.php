@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -16,8 +17,8 @@ beforeEach(function () {
 
     $this->assignmentService = app(LeadAssignmentService::class);
 
-    $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $supportAgentRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $salesRepRole = Role::firstOrCreate(['name' => 'sales-rep']);
 
     // Create city, zone, and service for strict matching
     $this->city = City::factory()->create(['name' => 'Dubai']);
@@ -181,7 +182,7 @@ it('calculates weighted round-robin score correctly', function () {
         'conversion_rate' => 5.0,
         'performance_weight' => 0.8,
     ]);
-    $supportAgentRole = \Spatie\Permission\Models\Role::firstWhere('name', 'support-agent');
+    $supportAgentRole = Role::firstWhere('name', 'support-agent');
     $lowPerformingCRO->assignRole($supportAgentRole);
 
     $lead = Lead::factory()->create(['assigned_to' => null]);
@@ -193,7 +194,7 @@ it('calculates weighted round-robin score correctly', function () {
 
 it('does not assign to unavailable CROs', function () {
     // Delete all existing support agents from previous tests and create only unavailable one
-    \Spatie\Permission\Models\Role::where('name', 'support-agent')->first()?->users()->detach();
+    Role::where('name', 'support-agent')->first()?->users()->detach();
     User::whereHas('roles', fn ($q) => $q->where('name', 'support-agent'))->delete();
 
     $unavailableCro = User::factory()->create([

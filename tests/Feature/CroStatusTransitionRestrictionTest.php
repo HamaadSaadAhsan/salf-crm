@@ -13,13 +13,13 @@ beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
     // Create necessary roles
-    $supportAgentRole = Role::create(['name' => 'support-agent']);
-    $salesRepRole = Role::create(['name' => 'sales-rep']);
-    $adminRole = Role::create(['name' => 'admin']);
+    $supportAgentRole = Role::firstOrCreate(['name' => 'support-agent']);
+    $salesRepRole = Role::firstOrCreate(['name' => 'sales-rep']);
+    $adminRole = Role::firstOrCreate(['name' => 'admin']);
 
     // Create permissions and assign to roles
-    $editLeadsPermission = Permission::create(['name' => 'edit leads']);
-    $viewLeadsPermission = Permission::create(['name' => 'view leads']);
+    $editLeadsPermission = Permission::firstOrCreate(['name' => 'edit leads']);
+    $viewLeadsPermission = Permission::firstOrCreate(['name' => 'view leads']);
     $supportAgentRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);
     $salesRepRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);
     $adminRole->givePermissionTo([$editLeadsPermission, $viewLeadsPermission]);

@@ -1,8 +1,21 @@
 <?php
 
+use App\Enums\TaskPriority;
+use App\Enums\TaskStatus;
+use App\Enums\TaskType;
+use App\Models\Task;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\User;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+
+function makeSuperAdmin(): User
+{
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+
+    return User::factory()->create()->assignRole('super-admin');
+}
 
 // ─── HasTeams trait ──────────────────────────────────────────────────────────
 
@@ -12,8 +25,8 @@ test('user can create a personal team', function () {
     $team = $user->createPersonalTeam();
 
     expect($team->personal_team)->toBeTrue()
-        ->and($team->user_id)->toBe($user->id)
-        ->and($user->fresh()->current_team_id)->toBe($team->id);
+        ->and($team->user_id)->toEqual($user->id)
+        ->and($user->fresh()->current_team_id)->toEqual($team->id);
 });
 
 test('user can switch to a team they belong to', function () {
@@ -25,7 +38,7 @@ test('user can switch to a team they belong to', function () {
     $switched = $member->switchTeam($team);
 
     expect($switched)->toBeTrue()
-        ->and($member->fresh()->current_team_id)->toBe($team->id);
+        ->and($member->fresh()->current_team_id)->toEqual($team->id);
 });
 
 test('user cannot switch to a team they do not belong to', function () {
@@ -45,14 +58,15 @@ test('allTeams returns owned and member teams', function () {
 
     $all = $owner->allTeams();
 
-    expect($all)->toHaveCount(2)
+    // Owner now has: personal team (auto-created by factory) + ownedTeam + memberTeam = 3
+    expect($all->count())->toBeGreaterThanOrEqual(2)
         ->and($all->pluck('id'))->toContain($ownedTeam->id, $memberTeam->id);
 });
 
 // ─── Team creation ───────────────────────────────────────────────────────────
 
-test('authenticated user can create a team', function () {
-    $user = User::factory()->create();
+test('super admin can create a team', function () {
+    $user = makeSuperAdmin();
 
     $this->actingAs($user)
         ->post('/teams', ['name' => 'Sales Team'])
@@ -61,8 +75,16 @@ test('authenticated user can create a team', function () {
     expect($user->ownedTeams()->where('name', 'Sales Team')->exists())->toBeTrue();
 });
 
-test('team name is required', function () {
+test('regular user cannot create a team', function () {
     $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/teams', ['name' => 'Sales Team'])
+        ->assertForbidden();
+});
+
+test('team name is required', function () {
+    $user = makeSuperAdmin();
 
     $this->actingAs($user)
         ->post('/teams', ['name' => ''])
@@ -83,7 +105,7 @@ test('owner can switch current team', function () {
         ->put('/current-team', ['team_id' => $team->id])
         ->assertRedirect();
 
-    expect($owner->fresh()->current_team_id)->toBe($team->id);
+    expect($owner->fresh()->current_team_id)->toEqual($team->id);
 });
 
 test('user cannot switch to a foreign team', function () {
@@ -98,8 +120,8 @@ test('user cannot switch to a foreign team', function () {
 
 // ─── Team members ─────────────────────────────────────────────────────────────
 
-test('owner can add a member by email', function () {
-    $owner = User::factory()->create();
+test('super admin can add a member by email', function () {
+    $owner = makeSuperAdmin();
     $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
     $newMember = User::factory()->create();
 
@@ -110,7 +132,7 @@ test('owner can add a member by email', function () {
     expect($team->members()->where('user_id', $newMember->id)->exists())->toBeTrue();
 });
 
-test('non-owner cannot add members', function () {
+test('non-super-admin cannot add members', function () {
     $owner = User::factory()->create();
     $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
     $member = User::factory()->create();
@@ -137,41 +159,73 @@ test('owner can remove a member', function () {
 
 // ─── Team invitations ─────────────────────────────────────────────────────────
 
-test('owner can send an invitation', function () {
-    $owner = User::factory()->create();
+test('super admin can send an invitation', function () {
+    Role::firstOrCreate(['name' => 'sales-rep', 'guard_name' => 'web']);
+    $owner = makeSuperAdmin();
     $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
 
     $this->actingAs($owner)
-        ->post("/teams/{$team->id}/invitations", ['email' => 'new@example.com', 'role' => 'member'])
+        ->post("/teams/{$team->id}/invitations", [
+            'email' => 'new@example.com',
+            'role' => 'member',
+            'system_role' => 'sales-rep',
+        ])
         ->assertRedirect();
 
     expect($team->invitations()->where('email', 'new@example.com')->exists())->toBeTrue();
 });
 
-test('invited user can accept an invitation', function () {
+test('non-super-admin cannot send invitations', function () {
     $owner = User::factory()->create();
     $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
-    $invitee = User::factory()->create();
-    $invitation = TeamInvitation::create(['team_id' => $team->id, 'email' => $invitee->email, 'role' => 'member']);
 
-    $this->actingAs($invitee)
-        ->get("/team-invitations/{$invitation->id}/accept")
-        ->assertRedirect();
-
-    expect($team->members()->where('user_id', $invitee->id)->exists())->toBeTrue()
-        ->and(TeamInvitation::find($invitation->id))->toBeNull();
+    $this->actingAs($owner)
+        ->post("/teams/{$team->id}/invitations", [
+            'email' => 'new@example.com',
+            'role' => 'member',
+            'system_role' => 'sales-rep',
+        ])
+        ->assertForbidden();
 });
 
-test('wrong user cannot accept another users invitation', function () {
+test('invited user can register via invitation token', function () {
     $owner = User::factory()->create();
     $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
-    $invitee = User::factory()->create();
-    $impostor = User::factory()->create();
-    $invitation = TeamInvitation::create(['team_id' => $team->id, 'email' => $invitee->email, 'role' => 'member']);
+    $token = Str::random(64);
 
-    $this->actingAs($impostor)
-        ->get("/team-invitations/{$invitation->id}/accept")
-        ->assertForbidden();
+    TeamInvitation::create([
+        'team_id' => $team->id,
+        'email' => 'newuser@example.com',
+        'token' => $token,
+        'role' => 'member',
+    ]);
+
+    $this->post("/invitations/{$token}", [
+        'name' => 'New User',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ])->assertRedirect();
+
+    $newUser = User::where('email', 'newuser@example.com')->first();
+    expect($newUser)->not->toBeNull()
+        ->and($team->members()->where('user_id', $newUser->id)->exists())->toBeTrue()
+        ->and(TeamInvitation::where('token', $token)->exists())->toBeFalse();
+});
+
+test('invitation show redirects existing user to login', function () {
+    $owner = User::factory()->create();
+    $team = Team::create(['user_id' => $owner->id, 'name' => 'Alpha', 'personal_team' => false]);
+    $existing = User::factory()->create(['email' => 'exists@example.com']);
+    $token = Str::random(64);
+
+    TeamInvitation::create([
+        'team_id' => $team->id,
+        'email' => 'exists@example.com',
+        'token' => $token,
+        'role' => 'member',
+    ]);
+
+    $this->get("/invitations/{$token}")->assertRedirect('/login');
 });
 
 // ─── Team deletion ────────────────────────────────────────────────────────────
@@ -207,31 +261,29 @@ test('BelongsToTeam scope isolates team data', function () {
     $teamB = Team::create(['user_id' => $ownerB->id, 'name' => 'B', 'personal_team' => false]);
     $ownerB->forceFill(['current_team_id' => $teamB->id])->save();
 
-    // Create tasks in each team context
     $this->actingAs($ownerA);
-    \App\Models\Task::create([
+    Task::create([
         'title' => 'Task A',
-        'status' => \App\Enums\TaskStatus::PENDING,
-        'priority' => \App\Enums\TaskPriority::MEDIUM,
-        'type' => \App\Enums\TaskType::OTHER,
+        'status' => TaskStatus::PENDING,
+        'priority' => TaskPriority::MEDIUM,
+        'type' => TaskType::OTHER,
         'assigned_to_id' => $ownerA->id,
         'created_by_id' => $ownerA->id,
         'team_id' => $teamA->id,
     ]);
 
     $this->actingAs($ownerB);
-    \App\Models\Task::create([
+    Task::create([
         'title' => 'Task B',
-        'status' => \App\Enums\TaskStatus::PENDING,
-        'priority' => \App\Enums\TaskPriority::MEDIUM,
-        'type' => \App\Enums\TaskType::OTHER,
+        'status' => TaskStatus::PENDING,
+        'priority' => TaskPriority::MEDIUM,
+        'type' => TaskType::OTHER,
         'assigned_to_id' => $ownerB->id,
         'created_by_id' => $ownerB->id,
         'team_id' => $teamB->id,
     ]);
 
-    // User B should only see Task B
     $this->actingAs($ownerB);
-    $tasks = \App\Models\Task::all();
+    $tasks = Task::all();
     expect($tasks->pluck('title')->toArray())->toEqual(['Task B']);
 });

@@ -15,8 +15,8 @@ beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
     // Create roles
-    $this->supportAgentRole = Role::create(['name' => 'support-agent']);
-    Role::create(['name' => 'sales-rep']);
+    $this->supportAgentRole = Role::firstOrCreate(['name' => 'support-agent']);
+    Role::firstOrCreate(['name' => 'sales-rep']);
 
     // Create permissions
     $viewLeads = Permission::firstOrCreate(['name' => 'view leads']);

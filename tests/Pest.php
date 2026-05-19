@@ -1,5 +1,10 @@
 <?php
 
+use App\Models\Team;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,12 +16,12 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Browser');
 
 /*
@@ -48,4 +53,19 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Add a user to a team and set it as their current team.
+ * Used to ensure test users can see records scoped to a specific team.
+ */
+function joinTeam(Team|int $team, User $user): void
+{
+    if (is_int($team)) {
+        $team = Team::findOrFail($team);
+    }
+    if (! $team->hasUser($user)) {
+        $team->members()->attach($user->id, ['role' => 'member']);
+    }
+    $user->forceFill(['current_team_id' => $team->id])->save();
 }
