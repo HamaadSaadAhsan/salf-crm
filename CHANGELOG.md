@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Forms automation: 6 migrations — `programs`, `form_templates`, `template_fields`, `field_mappings`, `applications`, `application_generations` (with GIN index on `applications.data`)
+- Forms automation: 5 enums (`FileType`, `MappingMode`, `FieldType`, `ApplicationStatus`, `GenerationStatus`) in `App\Enums\Forms\`
+- Forms automation: 6 Eloquent models (`Program`, `FormTemplate`, `TemplateField`, `FieldMapping`, `Application`, `ApplicationGeneration`) in `App\Models\Forms\` with factories, casts, and relationships
+- Forms automation: model relationship tests and application code generation tests (20 passing)
 - `CHANGELOG.md` — project changelog tracking all notable changes
 - `AGENTS.md` — comprehensive business logic and codebase reference for AI agents
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit
