@@ -127,6 +127,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'forms' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/forms.log'),
+            'level' => env('FORMS_LOG_LEVEL', 'info'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

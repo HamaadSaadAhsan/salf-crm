@@ -1,4 +1,5 @@
 *
 !private/
 !public/
+!forms_output/
 !.gitignore

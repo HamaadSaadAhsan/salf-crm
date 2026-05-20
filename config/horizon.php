@@ -256,6 +256,17 @@ return [
                 'timeout' => 180,
                 'nice' => 10,
             ],
+            // Forms generation queue — long-running PDF/DOCX jobs
+            'supervisor-forms' => [
+                'connection' => 'redis',
+                'queue' => ['forms'],
+                'balance' => 'simple',
+                'minProcesses' => 1,
+                'maxProcesses' => 3,
+                'memory' => 256,
+                'tries' => 3,
+                'timeout' => 600,
+            ],
         ],
 
         'local' => [
@@ -268,14 +279,14 @@ return [
                 'tries' => 3,
                 'timeout' => 300,
             ],
-            // Default queue
+            // Default queue (includes forms for local simplicity)
             'supervisor-default' => [
                 'connection' => 'redis',
-                'queue' => ['default'],
+                'queue' => ['default', 'forms'],
                 'maxProcesses' => 3,
                 'memory' => 128,
                 'tries' => 3,
-                'timeout' => 300,
+                'timeout' => 600,
             ],
             // Low priority queue
             'supervisor-low' => [

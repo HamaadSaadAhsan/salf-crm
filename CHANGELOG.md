@@ -12,6 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Forms automation: 5 enums (`FileType`, `MappingMode`, `FieldType`, `ApplicationStatus`, `GenerationStatus`) in `App\Enums\Forms\`
 - Forms automation: 6 Eloquent models (`Program`, `FormTemplate`, `TemplateField`, `FieldMapping`, `Application`, `ApplicationGeneration`) in `App\Models\Forms\` with factories, casts, and relationships
 - Forms automation: model relationship tests and application code generation tests (20 passing)
+- Forms automation: `config/forms.php`, `forms_service` block in `config/services.php`, `forms_output` disk in `config/filesystems.php`, `forms` log channel in `config/logging.php`, `supervisor-forms` in Horizon production config, `.env.example` vars, `storage/app/forms_output/.gitkeep`
 - `CHANGELOG.md` — project changelog tracking all notable changes
 - `AGENTS.md` — comprehensive business logic and codebase reference for AI agents
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit

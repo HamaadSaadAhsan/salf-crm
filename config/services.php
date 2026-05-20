@@ -66,4 +66,10 @@ return [
         'path' => env('PYTHON_PATH', 'python3'),
     ],
 
+    'forms_service' => [
+        'url' => env('FORMS_SERVICE_URL', 'http://127.0.0.1:8002'),
+        'token' => env('FORMS_SERVICE_TOKEN'),
+        'timeout' => (int) env('FORMS_SERVICE_TIMEOUT', 30),
+    ],
+
 ];
