@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Database\Seeders\Forms\DominicaCbiSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -45,5 +46,10 @@ class DatabaseSeeder extends Seeder
         //            LeadConversionSeeder::class,
         //            MetricsSeeder::class,
         //        ]);
+
+        // Forms Automation
+        $this->call([
+            DominicaCbiSeeder::class,
+        ]);
     }
 }
