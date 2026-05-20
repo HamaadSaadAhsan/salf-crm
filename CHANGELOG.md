@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Forms automation: 6 migrations — `programs`, `form_templates`, `template_fields`, `field_mappings`, `applications`, `application_generations` (with GIN index on `applications.data`)
 - `CHANGELOG.md` — project changelog tracking all notable changes
 - `AGENTS.md` — comprehensive business logic and codebase reference for AI agents
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit
