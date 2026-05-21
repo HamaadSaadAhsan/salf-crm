@@ -36,6 +36,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit
 
 ### Fixed
+- Forms automation: PDF page preview "Could not load preview" — custom http client (`@/lib/http`) always calls `response.json()` on binary PNG responses, causing `URL.createObjectURL(null)` to throw; fixed `useTemplatePage` hook to use native `fetch` + `response.blob()` instead
 - `FormsServiceClient::fillPdf()`: renamed field `applicant_data` → `applicant` to match forms-service API contract; cast empty mapping array to `stdClass` so JSON encodes as `{}` not `[]`
 - SSR: configure null Echo broadcaster in `ssr.tsx` so `useEcho` hooks don't throw "Echo has not been configured" during server-side rendering
 - Replace `resolvePageComponent` with typed `import.meta.glob` in `app.tsx` (lazy, `ComponentType<PageProps>`) and `ssr.tsx` (eager, `{ default: ComponentType }`) to fix Inertia v3 `TS2769` type mismatch

@@ -41,10 +41,22 @@ export function useTemplatePage(templateId: number | null, page: number | null) 
     return useQuery<string>({
         queryKey: ['forms-template-page', templateId, page],
         queryFn: async () => {
-            const response = await axios.get(`/api/forms/templates/${templateId}/pages/${page}`, {
-                responseType: 'blob',
+            // Use native fetch — the custom http client always calls response.json(), which
+            // fails on binary PNG responses. We need response.blob() here.
+            const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+            const csrfToken = match ? decodeURIComponent(match[1]) : '';
+
+            const res = await fetch(`/api/forms/templates/${templateId}/pages/${page}`, {
+                credentials: 'include',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': csrfToken },
             });
-            return URL.createObjectURL(response.data as Blob);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const blob = await res.blob();
+            return URL.createObjectURL(blob);
         },
         enabled: !!templateId && !!page,
         staleTime: 60 * 60 * 1000,
