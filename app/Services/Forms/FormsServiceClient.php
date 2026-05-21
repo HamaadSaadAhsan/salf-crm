@@ -58,8 +58,8 @@ class FormsServiceClient
     {
         return $this->send('/pdf/fill', [
             'template_path' => $templatePath,
-            'mapping' => $mapping,
-            'applicant_data' => $applicantData,
+            'mapping' => empty($mapping) ? new \stdClass : $mapping,
+            'applicant' => $applicantData,
             'flatten' => $flatten ?? config('forms.flatten_pdfs'),
         ])->body();
     }
