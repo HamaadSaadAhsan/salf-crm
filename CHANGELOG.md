@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Forms automation UI: Full-screen image viewer dialog in field mapping — click preview thumbnail or "Expand" button to open dialog; toolbar shows page number, active field badge, prev/next buttons, page pills, close; keyboard ← → arrows navigate pages; legend footer; SVG field overlays preserved at full scale
 - Forms automation UI: PDF page thumbnail preview in field mapping — two-column layout with clickable field rows; right panel shows the actual PDF page rendered as PNG with SVG overlay highlighting all fields (yellow) and the selected field (blue); page selector tabs; field info card below preview; `TemplatePageController` + `GET /api/forms/templates/{formTemplate}/pages/{page}` streams PNG from forms-service; `useTemplatePage` React Query hook caches rendered pages 1hr
 - Forms automation UI: Structured applicant data entry form — after admin maps PDF fields to canonical paths, processing users see labeled section cards (Main Applicant, Spouse, etc.) instead of raw JSON; falls back to raw JSON editor if no mappings exist or via "Edit raw JSON" toggle
 - `ProgramSchemaController` + `GET /api/forms/programs/{program}/schema` — derives structured data-entry schema from program's active field mappings, groups fields by dot-notation prefix (e.g. `main_applicant.*`), returns human-readable labels

@@ -1,12 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { type FieldMappingRow, useGetMappings, useSaveMappings, useSyncInventory, useTemplatePage } from '@/hooks/useFormsAutomation';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, FileText, Loader2, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, FileText, Loader2, Maximize2, RefreshCw, Save, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface TemplateField {
@@ -54,7 +55,7 @@ function fieldTypeBadge(type: string) {
 
 const TRANSFORMS = ['', 'uppercase', 'lowercase', 'date:d/m/Y', 'date:Y-m-d', 'date:m/d/Y'];
 
-// ─── Page preview panel ───────────────────────────────────────────────────
+// ─── Shared field-overlay SVG ─────────────────────────────────────────────
 
 interface FieldBox {
     fieldName: string;
@@ -63,19 +64,60 @@ interface FieldBox {
     active: boolean;
 }
 
+function FieldOverlaySvg({ fields, imgSize, activeFieldName }: { fields: FieldBox[]; imgSize: { w: number; h: number }; activeFieldName: string | null }) {
+    if (imgSize.w === 0 || fields.length === 0) { return null; }
+
+    return (
+        <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
+            preserveAspectRatio="none"
+        >
+            {fields.map((f) => {
+                if (!f.rect || !f.pageSize) { return null; }
+                const [x1, , x2, y2] = f.rect;
+                const [, ph] = f.pageSize;
+                const scale = imgSize.h / ph;
+                const sx = x1 * scale;
+                const sy = (ph - y2) * scale; // flip Y: PDF bottom-left → image top-left
+                const sw = (x2 - x1) * scale;
+                const sh = (f.rect[3] - f.rect[1]) * scale;
+                const isActive = f.fieldName === activeFieldName;
+
+                return (
+                    <rect
+                        key={f.fieldName}
+                        x={sx}
+                        y={sy}
+                        width={sw}
+                        height={sh}
+                        fill={isActive ? 'rgba(59,130,246,0.25)' : 'rgba(251,191,36,0.15)'}
+                        stroke={isActive ? '#3b82f6' : '#f59e0b'}
+                        strokeWidth={isActive ? 2 : 1}
+                        rx={1}
+                    />
+                );
+            })}
+        </svg>
+    );
+}
+
+// ─── Page preview thumbnail ───────────────────────────────────────────────
+
 function PagePreview({
     templateId,
     page,
     fields,
     activeFieldName,
+    onExpand,
 }: {
     templateId: number;
     page: number;
     fields: FieldBox[];
     activeFieldName: string | null;
+    onExpand: () => void;
 }) {
     const { data: imageUrl, isLoading, isError } = useTemplatePage(templateId, page);
-    const imgRef = useRef<HTMLImageElement>(null);
     const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
 
     useEffect(() => {
@@ -103,50 +145,167 @@ function PagePreview({
     }
 
     return (
-        <div className="relative inline-block w-full">
+        <div className="group relative inline-block w-full cursor-zoom-in" onClick={onExpand}>
             <img
-                ref={imgRef}
                 src={imageUrl}
                 alt={`Page ${page}`}
                 className="w-full h-auto rounded border"
                 style={{ display: 'block' }}
             />
-            {/* SVG overlay for field bounding boxes */}
-            {imgSize.w > 0 && fields.length > 0 && (
-                <svg
-                    className="absolute inset-0 w-full h-full pointer-events-none"
-                    viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
-                    preserveAspectRatio="none"
-                >
-                    {fields.map((f) => {
-                        if (!f.rect || !f.pageSize) { return null; }
-                        const [x1, y1, x2, y2] = f.rect;
-                        const [, ph] = f.pageSize;
-                        // Scale from PDF pts to image pixels (assume 144dpi render, 72dpi PDF = 2x)
-                        const scale = imgSize.h / ph;
-                        const sx = x1 * scale;
-                        const sy = (ph - y2) * scale; // flip Y: PDF bottom-left → image top-left
-                        const sw = (x2 - x1) * scale;
-                        const sh = (y2 - y1) * scale;
-                        const isActive = f.fieldName === activeFieldName;
-
-                        return (
-                            <rect
-                                key={f.fieldName}
-                                x={sx}
-                                y={sy}
-                                width={sw}
-                                height={sh}
-                                fill={isActive ? 'rgba(59,130,246,0.25)' : 'rgba(251,191,36,0.15)'}
-                                stroke={isActive ? '#3b82f6' : '#f59e0b'}
-                                strokeWidth={isActive ? 2 : 1}
-                                rx={1}
-                            />
-                        );
-                    })}
-                </svg>
-            )}
+            <FieldOverlaySvg fields={fields} imgSize={imgSize} activeFieldName={activeFieldName} />
+            {/* Expand hint */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-background/80 backdrop-blur-sm border rounded p-1">
+                    <Maximize2 className="size-3.5 text-foreground" />
+                </div>
+            </div>
         </div>
+    );
+}
+
+// ─── Full-screen image viewer dialog ─────────────────────────────────────
+
+function ImageViewerDialog({
+    open,
+    onClose,
+    templateId,
+    page,
+    pageCount,
+    fields,
+    activeFieldName,
+    onPageChange,
+}: {
+    open: boolean;
+    onClose: () => void;
+    templateId: number;
+    page: number;
+    pageCount: number | null;
+    fields: FieldBox[];
+    activeFieldName: string | null;
+    onPageChange: (p: number) => void;
+}) {
+    const { data: imageUrl, isLoading, isError } = useTemplatePage(templateId, page);
+    const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
+
+    useEffect(() => {
+        if (!imageUrl) { return; }
+        const img = new Image();
+        img.onload = () => setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
+        img.src = imageUrl;
+    }, [imageUrl]);
+
+    // Keyboard navigation
+    useEffect(() => {
+        if (!open) { return; }
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft' && page > 1) { onPageChange(page - 1); }
+            if (e.key === 'ArrowRight' && pageCount && page < pageCount) { onPageChange(page + 1); }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [open, page, pageCount, onPageChange]);
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); } }}>
+            <DialogContent className="max-w-5xl w-full p-0 gap-0 overflow-hidden">
+                <DialogTitle className="sr-only">Page {page} preview</DialogTitle>
+
+                {/* Toolbar */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">Page {page}</span>
+                        {pageCount && (
+                            <span className="text-xs text-muted-foreground">of {pageCount}</span>
+                        )}
+                        {activeFieldName && (
+                            <Badge variant="outline" className="font-mono text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                {activeFieldName}
+                            </Badge>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={page <= 1}
+                            onClick={() => onPageChange(page - 1)}
+                            title="Previous page (←)"
+                        >
+                            <ChevronLeft className="size-4" />
+                        </Button>
+                        {/* Page number pills */}
+                        {pageCount && pageCount > 1 && (
+                            <div className="flex items-center gap-1 px-1">
+                                {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => onPageChange(p)}
+                                        className={`min-w-6 h-6 rounded text-xs font-medium transition-colors px-1.5 ${
+                                            p === page
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!pageCount || page >= pageCount}
+                            onClick={() => onPageChange(page + 1)}
+                            title="Next page (→)"
+                        >
+                            <ChevronRight className="size-4" />
+                        </Button>
+                        <div className="w-px h-5 bg-border mx-1" />
+                        <Button variant="ghost" size="icon" onClick={onClose}>
+                            <X className="size-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Image area */}
+                <div className="overflow-auto bg-muted/30 max-h-[80vh] p-4">
+                    {isLoading && (
+                        <div className="flex items-center justify-center h-96">
+                            <Loader2 className="size-8 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
+                    {isError && (
+                        <div className="flex items-center justify-center h-96 text-muted-foreground text-sm">
+                            Could not load page
+                        </div>
+                    )}
+                    {imageUrl && !isLoading && (
+                        <div className="relative inline-block mx-auto">
+                            <img
+                                src={imageUrl}
+                                alt={`Page ${page}`}
+                                className="max-w-full h-auto rounded border shadow-sm"
+                                style={{ display: 'block' }}
+                            />
+                            <FieldOverlaySvg fields={fields} imgSize={imgSize} activeFieldName={activeFieldName} />
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer legend */}
+                <div className="flex items-center gap-4 px-4 py-2 border-t bg-background text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 h-3 rounded-sm bg-amber-300/60 border border-amber-400" />
+                        All fields
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 h-3 rounded-sm bg-blue-400/40 border border-blue-500" />
+                        Selected field
+                    </span>
+                    <span className="ml-auto">Use ← → arrow keys to navigate pages</span>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -161,6 +320,7 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     const [dirty, setDirty] = useState(false);
     const [activeField, setActiveField] = useState<TemplateField | null>(null);
     const [previewPage, setPreviewPage] = useState<number | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
 
     // Seed rows from Inertia props on first load
     useEffect(() => {
@@ -237,6 +397,20 @@ export default function FieldMappingsPage({ program, template, fields, existingP
             <datalist id="canonical-paths">
                 {existingPaths.map((p) => <option key={p} value={p} />)}
             </datalist>
+
+            {/* Image viewer dialog */}
+            {previewPage !== null && (
+                <ImageViewerDialog
+                    open={viewerOpen}
+                    onClose={() => setViewerOpen(false)}
+                    templateId={template.id}
+                    page={previewPage}
+                    pageCount={template.page_count}
+                    fields={pageFieldBoxes}
+                    activeFieldName={activeField?.field_name ?? null}
+                    onPageChange={(p) => setPreviewPage(p)}
+                />
+            )}
 
             {/* Header */}
             <div className="flex w-full items-center justify-between px-4 py-2 border-b">
@@ -418,16 +592,26 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                             )}
 
                             {/* Page image */}
-                            <div className="text-xs text-muted-foreground font-medium">Page {previewPage}</div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground font-medium">Page {previewPage}</span>
+                                <button
+                                    onClick={() => setViewerOpen(true)}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    <Maximize2 className="size-3" />
+                                    Expand
+                                </button>
+                            </div>
                             <PagePreview
                                 templateId={template.id}
                                 page={previewPage}
                                 fields={pageFieldBoxes}
                                 activeFieldName={activeField?.field_name ?? null}
+                                onExpand={() => setViewerOpen(true)}
                             />
 
                             <p className="text-xs text-muted-foreground">
-                                Yellow boxes = all fields on this page. Blue = selected field.
+                                Yellow = all fields · Blue = selected
                             </p>
                         </div>
                     )}
