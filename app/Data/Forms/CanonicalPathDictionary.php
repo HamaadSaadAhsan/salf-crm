@@ -11,7 +11,7 @@ class CanonicalPathDictionary
     public static function forProgram(string $programCode): array
     {
         return match ($programCode) {
-            'DOM_CBI' => self::dominicanCbi(),
+            'dominica-cbi' => self::dominicanCbi(),
             default => [],
         };
     }
