@@ -347,10 +347,15 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // When fresh data arrives from API (after sync), replace rows
+    // When fresh data arrives from API (after sync), replace rows — re-apply suggestions for unmapped fields
     useEffect(() => {
         if (freshData?.data) {
-            setRows(freshData.data);
+            setRows(freshData.data.map((row) => {
+                if (row.canonical_path) { return row; }
+                const field = fields.find((f) => f.field_name === row.field_name);
+                const suggestedPath = field?.suggested_path ?? null;
+                return { ...row, canonical_path: suggestedPath ?? '', is_suggested: !!suggestedPath };
+            }));
             setDirty(false);
         }
     }, [freshData]);
