@@ -326,23 +326,22 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     // Seed rows from Inertia props on first load
     useEffect(() => {
         if (rows.length === 0 && fields.length > 0) {
-            setRows(
-                fields.map((f) => {
-                    const hasSaved = !!f.mapping?.canonical_path;
-                    const canonicalPath = f.mapping?.canonical_path ?? f.suggested_path ?? '';
-                    return {
-                        field_name: f.field_name,
-                        field_type: f.field_type,
-                        page: f.page,
-                        export_values: f.export_values,
-                        canonical_path: canonicalPath,
-                        value_for_truthy: f.mapping?.value_for_truthy ?? '',
-                        transform: f.mapping?.transform ?? '',
-                        notes: f.mapping?.notes ?? '',
-                        is_suggested: !hasSaved && !!f.suggested_path,
-                    };
-                }),
-            );
+            const seeded = fields.map((f) => {
+                const hasSaved = !!f.mapping?.canonical_path;
+                return {
+                    field_name: f.field_name,
+                    field_type: f.field_type,
+                    page: f.page,
+                    export_values: f.export_values,
+                    canonical_path: f.mapping?.canonical_path ?? f.suggested_path ?? '',
+                    value_for_truthy: f.mapping?.value_for_truthy ?? '',
+                    transform: f.mapping?.transform ?? '',
+                    notes: f.mapping?.notes ?? '',
+                    is_suggested: !hasSaved && !!f.suggested_path,
+                };
+            });
+            setRows(seeded);
+            if (seeded.some((r) => r.is_suggested)) { setDirty(true); }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -350,13 +349,14 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     // When fresh data arrives from API (after sync), replace rows — re-apply suggestions for unmapped fields
     useEffect(() => {
         if (freshData?.data) {
-            setRows(freshData.data.map((row) => {
+            const merged = freshData.data.map((row) => {
                 if (row.canonical_path) { return row; }
                 const field = fields.find((f) => f.field_name === row.field_name);
                 const suggestedPath = field?.suggested_path ?? null;
                 return { ...row, canonical_path: suggestedPath ?? '', is_suggested: !!suggestedPath };
-            }));
-            setDirty(false);
+            });
+            setRows(merged);
+            setDirty(merged.some((r) => r.is_suggested));
         }
     }, [freshData]);
 
