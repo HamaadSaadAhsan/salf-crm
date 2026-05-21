@@ -35,6 +35,24 @@ export function useProgramSchema(programId: number | null) {
     });
 }
 
+// ───────────────────────────── Template page preview ─────────────────────────────
+
+export function useTemplatePage(templateId: number | null, page: number | null) {
+    return useQuery<string>({
+        queryKey: ['forms-template-page', templateId, page],
+        queryFn: async () => {
+            const response = await axios.get(`/api/forms/templates/${templateId}/pages/${page}`, {
+                responseType: 'blob',
+            });
+            return URL.createObjectURL(response.data as Blob);
+        },
+        enabled: !!templateId && !!page,
+        staleTime: 60 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+}
+
 // ───────────────────────────── Templates ─────────────────────────────
 
 export function useSyncInventory() {

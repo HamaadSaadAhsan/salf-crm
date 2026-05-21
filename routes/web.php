@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Forms\ApplicationApiController;
 use App\Http\Controllers\Api\Forms\FormTemplateApiController;
 use App\Http\Controllers\Api\Forms\GenerationApiController;
 use App\Http\Controllers\Api\Forms\ProgramSchemaController;
+use App\Http\Controllers\Api\Forms\TemplatePageController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\LeadActivityController;
 use App\Http\Controllers\Api\LeadFileController;
@@ -120,6 +121,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Forms Automation API (Admin)
     Route::middleware('role:super-admin')->prefix('api/forms')->name('api.forms.')->group(function () {
         Route::get('/programs/{program}/schema', [ProgramSchemaController::class, 'show'])->name('programs.schema');
+        Route::get('/templates/{formTemplate}/pages/{page}', [TemplatePageController::class, 'show'])->name('templates.page')->where('page', '[0-9]+');
         Route::post('/templates/{formTemplate}/sync', [FormTemplateApiController::class, 'syncInventory'])->name('templates.sync');
         Route::get('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'getMappings'])->name('templates.mappings');
         Route::put('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'saveMappings'])->name('templates.save-mappings');
