@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Forms automation UI: Programs & templates list at `/settings/management/pdf-templates` — expandable program cards with template rows, per-template Sync Inventory button (calls `inspectPdf`), "Map Fields" link
+- Forms automation UI: Field mapping page at `/settings/management/forms/programs/{program}/templates/{template}/mappings` — table of all PDF fields, inline `canonical_path` input with autocomplete, truthy-value and transform columns, save-all button
+- Forms automation UI: Applications list at `/settings/management/forms/applications` — paginated table of all applications with status badges and navigation
+- Forms automation UI: Application create/edit form at `/settings/management/forms/applications/create` — program select, applicant name/passport fields, JSON data editor with default schema
+- Forms automation UI: Application detail + generation status at `/settings/management/forms/applications/{application}` — applicant details, Generate Forms button, generation history table with real-time polling, Download ZIP button
+- `useFormsAutomation.ts` React Query hooks — `useSyncInventory`, `useGetMappings`, `useSaveMappings`, `useCreateApplication`, `useUpdateApplication`, `useDeleteApplication`, `useGenerateApplicationForms`, `useApplicationGenerations` (with auto-refresh when generation is running)
+- 4 Settings Inertia controllers: `ProgramsController`, `TemplatesMappingsController`, `ApplicationsController` in `App\Http\Controllers\Settings\Forms\`
+- 3 JSON API controllers: `FormTemplateApiController` (sync inventory, get/save mappings), `ApplicationApiController` (CRUD + generate), `GenerationApiController` (list + download ZIP) in `App\Http\Controllers\Api\Forms\`
+- 9 API routes under `api/forms/` prefix and 6 Inertia page routes under `settings/management/forms/`
 - Forms automation: 6 migrations — `programs`, `form_templates`, `template_fields`, `field_mappings`, `applications`, `application_generations` (with GIN index on `applications.data`)
 - Forms automation: 5 enums (`FileType`, `MappingMode`, `FieldType`, `ApplicationStatus`, `GenerationStatus`) in `App\Enums\Forms\`
 - Forms automation: 6 Eloquent models (`Program`, `FormTemplate`, `TemplateField`, `FieldMapping`, `Application`, `ApplicationGeneration`) in `App\Models\Forms\` with factories, casts, and relationships

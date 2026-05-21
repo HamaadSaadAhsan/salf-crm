@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Settings\Forms\ApplicationsController as FormsApplicationsController;
+use App\Http\Controllers\Settings\Forms\ProgramsController as FormsProgramsController;
+use App\Http\Controllers\Settings\Forms\TemplatesMappingsController as FormsTemplatesMappingsController;
 use App\Http\Controllers\Settings\GoogleDriveController;
 use App\Http\Controllers\Settings\LeadSourceManagementController;
 use App\Http\Controllers\Settings\LeadStatusManagementController;
@@ -7,6 +10,7 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RoleManagementController;
+use App\Http\Controllers\Settings\StorageAccountController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,7 +31,7 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('settings/appearance');
     })->name('appearance');
 
-    Route::get('settings/storage-accounts', [\App\Http\Controllers\Settings\StorageAccountController::class, 'index'])
+    Route::get('settings/storage-accounts', [StorageAccountController::class, 'index'])
         ->name('settings.storage-accounts');
 
     Route::prefix('settings/storage-accounts/google-drive')->group(function () {
@@ -45,6 +49,27 @@ Route::middleware('auth')->group(function () {
         Route::get('settings/management/permissions', [PermissionManagementController::class, 'index'])->name('settings.management.permissions');
         Route::get('settings/management/lead-sources', [LeadSourceManagementController::class, 'index'])->name('settings.management.lead-sources');
         Route::get('settings/management/lead-statuses', [LeadStatusManagementController::class, 'index'])->name('settings.management.lead-statuses');
-        Route::get('settings/management/pdf-templates', fn () => \Inertia\Inertia::render('settings/management/pdf-templates/index'))->name('settings.management.pdf-templates');
+        // Forms automation — Programs list (keeps the existing URL)
+        Route::get('settings/management/pdf-templates', [FormsProgramsController::class, 'index'])->name('settings.management.pdf-templates');
+
+        // Forms automation — sub-pages
+        Route::prefix('settings/management/forms')->name('settings.management.forms.')->group(function () {
+            Route::get('programs/{program}', [FormsProgramsController::class, 'show'])
+                ->where('program', '[0-9]+')
+                ->name('programs.show');
+
+            Route::get('programs/{program}/templates/{formTemplate}/mappings', [FormsTemplatesMappingsController::class, 'show'])
+                ->where(['program' => '[0-9]+', 'formTemplate' => '[0-9]+'])
+                ->name('templates.mappings');
+
+            Route::get('applications', [FormsApplicationsController::class, 'index'])->name('applications.index');
+            Route::get('applications/create', [FormsApplicationsController::class, 'create'])->name('applications.create');
+            Route::get('applications/{application}', [FormsApplicationsController::class, 'show'])
+                ->where('application', '[0-9]+')
+                ->name('applications.show');
+            Route::get('applications/{application}/edit', [FormsApplicationsController::class, 'edit'])
+                ->where('application', '[0-9]+')
+                ->name('applications.edit');
+        });
     });
 });

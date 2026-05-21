@@ -1,7 +1,14 @@
 <?php
 
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\FacebookTokenController;
+use App\Http\Controllers\Api\AiChatController;
 use App\Http\Controllers\Api\CallSessionController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\Forms\ApplicationApiController;
+use App\Http\Controllers\Api\Forms\FormTemplateApiController;
+use App\Http\Controllers\Api\Forms\GenerationApiController;
+use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\LeadActivityController;
 use App\Http\Controllers\Api\LeadFileController;
 use App\Http\Controllers\Api\LeadFolderController;
@@ -12,8 +19,14 @@ use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\PdfTemplateController;
 use App\Http\Controllers\Api\Roles\PermissionController;
 use App\Http\Controllers\Api\Roles\RoleController;
+use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\UserPerformanceController;
 use App\Http\Controllers\AssignmentVisualizerController;
+use App\Http\Controllers\AsteriskCallController;
+use App\Http\Controllers\CallController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\CountryController;
+use App\Http\Controllers\DynamicWebhookController;
 use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
@@ -22,14 +35,24 @@ use App\Http\Controllers\GmailController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\Leads\LeadBulkActionController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OfficeController;
+use App\Http\Controllers\ProvinceController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\Settings\GoogleDriveController;
+use App\Http\Controllers\Settings\StorageAccountController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WorkflowController;
+use App\Http\Controllers\ZoneController;
 use App\Http\Resources\SourceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -46,14 +69,14 @@ Route::get('/facebook/webhook', [FacebookWebhookController::class, 'verify'])->n
 Route::post('/facebook/webhook', [FacebookWebhookController::class, 'handle'])->name('facebook.webhook');
 
 // Dynamic Workflow Webhooks - auto-generated per workflow, no manual config needed
-Route::get('/webhooks/workflow/{token}', [\App\Http\Controllers\DynamicWebhookController::class, 'verify'])->name('webhooks.workflow.verify');
-Route::post('/webhooks/workflow/{token}', [\App\Http\Controllers\DynamicWebhookController::class, 'handle'])->name('webhooks.workflow.handle');
+Route::get('/webhooks/workflow/{token}', [DynamicWebhookController::class, 'verify'])->name('webhooks.workflow.verify');
+Route::post('/webhooks/workflow/{token}', [DynamicWebhookController::class, 'handle'])->name('webhooks.workflow.handle');
 
 // Asterisk Call Webhooks - needs to be publicly accessible or restricted by IP
-Route::post('/asterisk/inbound-call', [\App\Http\Controllers\AsteriskCallController::class, 'handleInboundCall'])->name('asterisk.inbound-call');
-Route::post('/asterisk/outbound-call', [\App\Http\Controllers\AsteriskCallController::class, 'handleOutboundCall'])->name('asterisk.outbound-call');
+Route::post('/asterisk/inbound-call', [AsteriskCallController::class, 'handleInboundCall'])->name('asterisk.inbound-call');
+Route::post('/asterisk/outbound-call', [AsteriskCallController::class, 'handleOutboundCall'])->name('asterisk.outbound-call');
 Route::post('/asterisk/call-recording', [CallSessionController::class, 'updateRecording'])->name('asterisk.call-recording');
-Route::post('/asterisk/ring-group-member', [\App\Http\Controllers\AsteriskCallController::class, 'handleRingGroupMember'])->name('asterisk.ring-group-member');
+Route::post('/asterisk/ring-group-member', [AsteriskCallController::class, 'handleRingGroupMember'])->name('asterisk.ring-group-member');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
@@ -65,9 +88,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('leads/stats', [LeadController::class, 'stats'])->name('leads.stats');
         Route::post('leads/export', [LeadController::class, 'export'])->name('leads.export');
         Route::put('leads/{lead}/advisor-stage', [LeadController::class, 'updateAdvisorStage'])->name('leads.update-advisor-stage');
-        Route::post('leads/bulk/assign', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'assign'])->name('leads.bulk.assign');
-        Route::post('leads/bulk/status', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'status'])->name('leads.bulk.status');
-        Route::post('leads/bulk/delete', [\App\Http\Controllers\Leads\LeadBulkActionController::class, 'destroy'])->name('leads.bulk.destroy');
+        Route::post('leads/bulk/assign', [LeadBulkActionController::class, 'assign'])->name('leads.bulk.assign');
+        Route::post('leads/bulk/status', [LeadBulkActionController::class, 'status'])->name('leads.bulk.status');
+        Route::post('leads/bulk/delete', [LeadBulkActionController::class, 'destroy'])->name('leads.bulk.destroy');
         Route::get('leads/{lead}/{tab?}', [LeadController::class, 'show'])->name('leads.show')
             ->where('tab', 'overview|activity|notes|tasks|calls|files|documents');
     });
@@ -92,6 +115,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/assignment-visualizer', [AssignmentVisualizerController::class, 'index'])
         ->middleware('role:super-admin')
         ->name('api.assignment-visualizer');
+
+    // Forms Automation API (Admin)
+    Route::middleware('role:super-admin')->prefix('api/forms')->name('api.forms.')->group(function () {
+        Route::post('/templates/{formTemplate}/sync', [FormTemplateApiController::class, 'syncInventory'])->name('templates.sync');
+        Route::get('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'getMappings'])->name('templates.mappings');
+        Route::put('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'saveMappings'])->name('templates.save-mappings');
+        Route::post('/applications', [ApplicationApiController::class, 'store'])->name('applications.store');
+        Route::put('/applications/{application}', [ApplicationApiController::class, 'update'])->name('applications.update');
+        Route::delete('/applications/{application}', [ApplicationApiController::class, 'destroy'])->name('applications.destroy');
+        Route::post('/applications/{application}/generate', [ApplicationApiController::class, 'generate'])->name('applications.generate');
+        Route::get('/applications/{application}/generations', [GenerationApiController::class, 'index'])->name('applications.generations');
+        Route::get('/generations/{generation}/download', [GenerationApiController::class, 'download'])->name('generations.download');
+    });
 
     // PDF Templates (Admin)
     Route::middleware('role:super-admin')->prefix('api')->group(function () {
@@ -122,34 +158,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Zones Management
-        Route::get('/zones', [\App\Http\Controllers\ZoneController::class, 'index'])->name('zones.index');
-        Route::post('/zones', [\App\Http\Controllers\ZoneController::class, 'store'])->name('zones.store');
-        Route::patch('/zones/{zone}', [\App\Http\Controllers\ZoneController::class, 'update'])->name('zones.update');
-        Route::delete('/zones/{zone}', [\App\Http\Controllers\ZoneController::class, 'destroy'])->name('zones.destroy');
+        Route::get('/zones', [ZoneController::class, 'index'])->name('zones.index');
+        Route::post('/zones', [ZoneController::class, 'store'])->name('zones.store');
+        Route::patch('/zones/{zone}', [ZoneController::class, 'update'])->name('zones.update');
+        Route::delete('/zones/{zone}', [ZoneController::class, 'destroy'])->name('zones.destroy');
 
         // Offices Management
-        Route::get('/offices', [\App\Http\Controllers\OfficeController::class, 'index'])->name('offices.index');
-        Route::post('/offices', [\App\Http\Controllers\OfficeController::class, 'store'])->name('offices.store');
-        Route::patch('/offices/{office}', [\App\Http\Controllers\OfficeController::class, 'update'])->name('offices.update');
-        Route::delete('/offices/{office}', [\App\Http\Controllers\OfficeController::class, 'destroy'])->name('offices.destroy');
+        Route::get('/offices', [OfficeController::class, 'index'])->name('offices.index');
+        Route::post('/offices', [OfficeController::class, 'store'])->name('offices.store');
+        Route::patch('/offices/{office}', [OfficeController::class, 'update'])->name('offices.update');
+        Route::delete('/offices/{office}', [OfficeController::class, 'destroy'])->name('offices.destroy');
 
         // Countries Management
-        Route::get('/countries', [\App\Http\Controllers\CountryController::class, 'index'])->name('countries.index');
-        Route::post('/countries', [\App\Http\Controllers\CountryController::class, 'store'])->name('countries.store');
-        Route::put('/countries/{country}', [\App\Http\Controllers\CountryController::class, 'update'])->name('countries.update');
-        Route::delete('/countries/{country}', [\App\Http\Controllers\CountryController::class, 'destroy'])->name('countries.destroy');
+        Route::get('/countries', [CountryController::class, 'index'])->name('countries.index');
+        Route::post('/countries', [CountryController::class, 'store'])->name('countries.store');
+        Route::put('/countries/{country}', [CountryController::class, 'update'])->name('countries.update');
+        Route::delete('/countries/{country}', [CountryController::class, 'destroy'])->name('countries.destroy');
 
         // Provinces Management
-        Route::get('/provinces', [\App\Http\Controllers\ProvinceController::class, 'index'])->name('provinces.index');
-        Route::post('/provinces', [\App\Http\Controllers\ProvinceController::class, 'store'])->name('provinces.store');
-        Route::put('/provinces/{province}', [\App\Http\Controllers\ProvinceController::class, 'update'])->name('provinces.update');
-        Route::delete('/provinces/{province}', [\App\Http\Controllers\ProvinceController::class, 'destroy'])->name('provinces.destroy');
+        Route::get('/provinces', [ProvinceController::class, 'index'])->name('provinces.index');
+        Route::post('/provinces', [ProvinceController::class, 'store'])->name('provinces.store');
+        Route::put('/provinces/{province}', [ProvinceController::class, 'update'])->name('provinces.update');
+        Route::delete('/provinces/{province}', [ProvinceController::class, 'destroy'])->name('provinces.destroy');
 
         // Cities Management
-        Route::get('/cities', [\App\Http\Controllers\CityController::class, 'index'])->name('cities.index');
-        Route::post('/cities', [\App\Http\Controllers\CityController::class, 'store'])->name('cities.store');
-        Route::put('/cities/{city}', [\App\Http\Controllers\CityController::class, 'update'])->name('cities.update');
-        Route::delete('/cities/{city}', [\App\Http\Controllers\CityController::class, 'destroy'])->name('cities.destroy');
+        Route::get('/cities', [CityController::class, 'index'])->name('cities.index');
+        Route::post('/cities', [CityController::class, 'store'])->name('cities.store');
+        Route::put('/cities/{city}', [CityController::class, 'update'])->name('cities.update');
+        Route::delete('/cities/{city}', [CityController::class, 'destroy'])->name('cities.destroy');
     });
 
     // Users - accessible by super-admin or senior agents with manage team agents permission
@@ -166,9 +202,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super-admin|support-agent|senior-support-agent|sales-rep')->group(function () {
         Route::prefix('api')->group(function () {
             // Location Hierarchy API
-            Route::apiResource('countries', \App\Http\Controllers\CountryController::class)->names('api.countries');
-            Route::apiResource('provinces', \App\Http\Controllers\ProvinceController::class)->names('api.provinces');
-            Route::apiResource('cities', \App\Http\Controllers\CityController::class)->names('api.cities');
+            Route::apiResource('countries', CountryController::class)->names('api.countries');
+            Route::apiResource('provinces', ProvinceController::class)->names('api.provinces');
+            Route::apiResource('cities', CityController::class)->names('api.cities');
         });
     });
 
@@ -176,7 +212,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/mention-users', MentionUserController::class)->name('api.mention-users');
 
     // Global Search (command palette)
-    Route::get('api/global-search', \App\Http\Controllers\Api\GlobalSearchController::class)->name('api.global-search');
+    Route::get('api/global-search', GlobalSearchController::class)->name('api.global-search');
 
     // Support Tickets - All authenticated users
     Route::resource('support', TicketController::class)->names('support')->parameters(['support' => 'ticket'])->whereNumber('ticket')->except(['edit']);
@@ -226,15 +262,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Notifications Page
-    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.page');
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
 
     // Notifications API
     Route::prefix('api/notifications')->group(function () {
-        Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
-        Route::get('/unread-count', [\App\Http\Controllers\NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
-        Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
-        Route::post('/{id}/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
-        Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+        Route::get('/', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     });
 
     // User Performance Board (authorization handled in controller)
@@ -242,13 +278,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Saved Filters
     Route::prefix('api')->group(function () {
-        Route::apiResource('saved-filters', \App\Http\Controllers\Api\SavedFilterController::class)
+        Route::apiResource('saved-filters', SavedFilterController::class)
             ->names('api.saved-filters');
     });
 
     // Call Sessions
     Route::prefix('api')->group(function () {
-        Route::get('/leads/{lead}', [\App\Http\Controllers\Api\Leads\LeadController::class, 'show'])->name('api.leads.show');
+        Route::get('/leads/{lead}', [App\Http\Controllers\Api\Leads\LeadController::class, 'show'])->name('api.leads.show');
         Route::get('/leads/{lead}/calls', [CallSessionController::class, 'leadCallHistory'])->name('api.leads.calls');
         Route::get('/leads/{lead}/recordings', [CallSessionController::class, 'leadRecordings'])->name('api.leads.recordings');
 
@@ -281,9 +317,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/leads/{lead}/google-drive-files/{linkedFile}', [LeadGoogleDriveFileController::class, 'destroy'])->name('api.leads.google-drive-files.destroy');
 
         // Storage Accounts API
-        Route::get('/storage-accounts', [\App\Http\Controllers\Settings\StorageAccountController::class, 'api'])->name('api.storage-accounts.index');
-        Route::get('/storage-accounts/{storageAccount}/files', [\App\Http\Controllers\Settings\GoogleDriveController::class, 'files'])->name('api.storage-accounts.files');
-        Route::get('/storage-accounts/{storageAccount}/files/{fileId}/download', [\App\Http\Controllers\Settings\GoogleDriveController::class, 'download'])->name('api.storage-accounts.files.download');
+        Route::get('/storage-accounts', [StorageAccountController::class, 'api'])->name('api.storage-accounts.index');
+        Route::get('/storage-accounts/{storageAccount}/files', [GoogleDriveController::class, 'files'])->name('api.storage-accounts.files');
+        Route::get('/storage-accounts/{storageAccount}/files/{fileId}/download', [GoogleDriveController::class, 'download'])->name('api.storage-accounts.files.download');
         Route::get('/calls/active', [CallSessionController::class, 'getActiveCall'])->name('api.calls.active');
         Route::get('/calls/{callSession}', [CallSessionController::class, 'show'])->name('api.calls.show');
         Route::get('/calls/{callSession}/recording', [CallSessionController::class, 'streamRecording'])->name('api.calls.recording');
@@ -314,19 +350,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Reports (Inertia Pages + API)
     Route::middleware('role_or_permission:super-admin|view reports')->group(function () {
-        Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
-        Route::get('/reports/{type}', [\App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{type}', [ReportController::class, 'show'])->name('reports.show');
     });
 
     Route::prefix('api/reports')->middleware('role_or_permission:super-admin|view reports')->group(function () {
-        Route::get('/leads-overall', [\App\Http\Controllers\Api\ReportController::class, 'leadsOverall'])->name('reports.leads-overall');
-        Route::get('/leads-by-office', [\App\Http\Controllers\Api\ReportController::class, 'leadsByOffice'])->name('reports.leads-by-office');
-        Route::get('/leads-by-support-agent', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySupportAgent'])->name('reports.leads-by-support-agent');
-        Route::get('/leads-by-sales-rep', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySalesRep'])->name('reports.leads-by-sales-rep');
-        Route::get('/leads-by-source', [\App\Http\Controllers\Api\ReportController::class, 'leadsBySource'])->name('reports.leads-by-source');
-        Route::get('/leads-by-service', [\App\Http\Controllers\Api\ReportController::class, 'leadsByService'])->name('reports.leads-by-service');
-        Route::get('/leads-conversion', [\App\Http\Controllers\Api\ReportController::class, 'leadsConversion'])->name('reports.leads-conversion');
-        Route::get('/leads-lost', [\App\Http\Controllers\Api\ReportController::class, 'leadsLost'])->name('reports.leads-lost');
+        Route::get('/leads-overall', [App\Http\Controllers\Api\ReportController::class, 'leadsOverall'])->name('reports.leads-overall');
+        Route::get('/leads-by-office', [App\Http\Controllers\Api\ReportController::class, 'leadsByOffice'])->name('reports.leads-by-office');
+        Route::get('/leads-by-support-agent', [App\Http\Controllers\Api\ReportController::class, 'leadsBySupportAgent'])->name('reports.leads-by-support-agent');
+        Route::get('/leads-by-sales-rep', [App\Http\Controllers\Api\ReportController::class, 'leadsBySalesRep'])->name('reports.leads-by-sales-rep');
+        Route::get('/leads-by-source', [App\Http\Controllers\Api\ReportController::class, 'leadsBySource'])->name('reports.leads-by-source');
+        Route::get('/leads-by-service', [App\Http\Controllers\Api\ReportController::class, 'leadsByService'])->name('reports.leads-by-service');
+        Route::get('/leads-conversion', [App\Http\Controllers\Api\ReportController::class, 'leadsConversion'])->name('reports.leads-conversion');
+        Route::get('/leads-lost', [App\Http\Controllers\Api\ReportController::class, 'leadsLost'])->name('reports.leads-lost');
     });
 
     Route::prefix('api/metrics')->middleware('role_or_permission:super-admin|view analytics')->group(function () {
@@ -340,10 +376,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // AI Chat
     Route::prefix('api/ai-chat')->group(function () {
-        Route::post('/message', [\App\Http\Controllers\Api\AiChatController::class, 'message'])->name('ai-chat.message');
-        Route::get('/conversations', [\App\Http\Controllers\Api\AiChatController::class, 'conversations'])->name('ai-chat.conversations');
-        Route::get('/conversations/{id}', [\App\Http\Controllers\Api\AiChatController::class, 'conversation'])->name('ai-chat.conversation');
-        Route::get('/suggestions', [\App\Http\Controllers\Api\AiChatController::class, 'suggestions'])->name('ai-chat.suggestions');
+        Route::post('/message', [AiChatController::class, 'message'])->name('ai-chat.message');
+        Route::get('/conversations', [AiChatController::class, 'conversations'])->name('ai-chat.conversations');
+        Route::get('/conversations/{id}', [AiChatController::class, 'conversation'])->name('ai-chat.conversation');
+        Route::get('/suggestions', [AiChatController::class, 'suggestions'])->name('ai-chat.suggestions');
     });
 
     // Roles
@@ -366,19 +402,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Admin Facebook Token Management (Super Admin Only)
     Route::prefix('admin/facebook-tokens')->middleware('role:super-admin')->group(function () {
-        Route::get('/overview', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'tokenOverview'])->name('admin.facebook.tokens.overview');
-        Route::get('/expired', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'expiredTokens'])->name('admin.facebook.tokens.expired');
-        Route::get('/expiring-soon', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'tokensExpiringSoon'])->name('admin.facebook.tokens.expiring');
-        Route::get('/user/{userId}/details', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'userTokenDetails'])->name('admin.facebook.tokens.user.details');
-        Route::post('/user/{userId}/revoke', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'revokeUserToken'])->name('admin.facebook.tokens.user.revoke');
-        Route::post('/user/{userId}/notify', [\App\Http\Controllers\Admin\FacebookTokenController::class, 'notifyUserTokenExpiry'])->name('admin.facebook.tokens.user.notify');
+        Route::get('/overview', [FacebookTokenController::class, 'tokenOverview'])->name('admin.facebook.tokens.overview');
+        Route::get('/expired', [FacebookTokenController::class, 'expiredTokens'])->name('admin.facebook.tokens.expired');
+        Route::get('/expiring-soon', [FacebookTokenController::class, 'tokensExpiringSoon'])->name('admin.facebook.tokens.expiring');
+        Route::get('/user/{userId}/details', [FacebookTokenController::class, 'userTokenDetails'])->name('admin.facebook.tokens.user.details');
+        Route::post('/user/{userId}/revoke', [FacebookTokenController::class, 'revokeUserToken'])->name('admin.facebook.tokens.user.revoke');
+        Route::post('/user/{userId}/notify', [FacebookTokenController::class, 'notifyUserTokenExpiry'])->name('admin.facebook.tokens.user.notify');
     });
 
     Route::get('/facebook/callback', [FacebookOAuthController::class, 'callback']);
     Route::get('/integrations/gmail/callback', [GmailController::class, 'callback'])->name('gmail.callback');
 
     Route::prefix('integrations')->middleware('role_or_permission:super-admin|manage integrations')->group(function () {
-        Route::get('/', [\App\Http\Controllers\IntegrationController::class, 'index'])->name('integrations');
+        Route::get('/', [IntegrationController::class, 'index'])->name('integrations');
         Route::prefix('/facebook')->group(function () {
             // Template management
             Route::get('/templates', [FacebookIntegrationController::class, 'getTemplates'])->name('facebook.integration.templates');
@@ -428,76 +464,76 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Call Management Routes
     Route::middleware('role_or_permission:super-admin|make calls')->group(function () {
-        Route::resource('calls', \App\Http\Controllers\CallController::class)->except(['edit', 'update', 'destroy'])->names('calls');
+        Route::resource('calls', CallController::class)->except(['edit', 'update', 'destroy'])->names('calls');
     });
 
     Route::middleware('role:super-admin')->group(function () {
-        Route::get('workflows/schema/leads', [\App\Http\Controllers\WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
-        Route::get('workflows/facebook/token-status', [\App\Http\Controllers\WorkflowController::class, 'facebookTokenStatus'])->name('workflows.facebook-token-status');
-        Route::get('workflows/new', [\App\Http\Controllers\WorkflowController::class, 'createNew'])->name('workflows.new');
-        Route::resource('workflows', \App\Http\Controllers\WorkflowController::class)->except(['create'])->names('workflows');
-        Route::post('workflows/{workflow}/duplicate', [\App\Http\Controllers\WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
-        Route::post('workflows/{workflow}/test', [\App\Http\Controllers\WorkflowController::class, 'testWorkflow'])->name('workflows.test');
-        Route::get('workflows/{workflow}/pages', [\App\Http\Controllers\WorkflowController::class, 'getPages'])->name('workflows.pages');
-        Route::post('workflows/{workflow}/subscribe-webhook', [\App\Http\Controllers\WorkflowController::class, 'subscribeWebhook'])->name('workflows.subscribe-webhook');
-        Route::post('workflows/{workflow}/subscribe-app', [\App\Http\Controllers\WorkflowController::class, 'subscribeApp'])->name('workflows.subscribe-app');
-        Route::post('workflows/{workflow}/sync-pages', [\App\Http\Controllers\WorkflowController::class, 'syncPages'])->name('workflows.sync-pages');
-        Route::post('workflows/{workflow}/auto-setup-facebook', [\App\Http\Controllers\WorkflowController::class, 'autoSetupFacebook'])->name('workflows.auto-setup-facebook');
-        Route::get('workflows/{workflow}/lead-forms', [\App\Http\Controllers\WorkflowController::class, 'getLeadForms'])->name('workflows.lead-forms');
-        Route::post('workflows/{workflow}/test-trigger', [\App\Http\Controllers\WorkflowController::class, 'testTrigger'])->name('workflows.test-trigger');
+        Route::get('workflows/schema/leads', [WorkflowController::class, 'getLeadSchema'])->name('workflows.schema.leads');
+        Route::get('workflows/facebook/token-status', [WorkflowController::class, 'facebookTokenStatus'])->name('workflows.facebook-token-status');
+        Route::get('workflows/new', [WorkflowController::class, 'createNew'])->name('workflows.new');
+        Route::resource('workflows', WorkflowController::class)->except(['create'])->names('workflows');
+        Route::post('workflows/{workflow}/duplicate', [WorkflowController::class, 'duplicate'])->name('workflows.duplicate');
+        Route::post('workflows/{workflow}/test', [WorkflowController::class, 'testWorkflow'])->name('workflows.test');
+        Route::get('workflows/{workflow}/pages', [WorkflowController::class, 'getPages'])->name('workflows.pages');
+        Route::post('workflows/{workflow}/subscribe-webhook', [WorkflowController::class, 'subscribeWebhook'])->name('workflows.subscribe-webhook');
+        Route::post('workflows/{workflow}/subscribe-app', [WorkflowController::class, 'subscribeApp'])->name('workflows.subscribe-app');
+        Route::post('workflows/{workflow}/sync-pages', [WorkflowController::class, 'syncPages'])->name('workflows.sync-pages');
+        Route::post('workflows/{workflow}/auto-setup-facebook', [WorkflowController::class, 'autoSetupFacebook'])->name('workflows.auto-setup-facebook');
+        Route::get('workflows/{workflow}/lead-forms', [WorkflowController::class, 'getLeadForms'])->name('workflows.lead-forms');
+        Route::post('workflows/{workflow}/test-trigger', [WorkflowController::class, 'testTrigger'])->name('workflows.test-trigger');
     });
 
     // Note: Task routes are defined above
-    Route::post('tasks/{task}/complete', [\App\Http\Controllers\TaskController::class, 'complete'])->name('tasks.complete');
+    Route::post('tasks/{task}/complete', [TaskController::class, 'complete'])->name('tasks.complete');
 
     // Task API endpoints
     Route::prefix('api/tasks')->group(function () {
-        Route::get('pending-reminders', [\App\Http\Controllers\Api\TaskController::class, 'pendingReminders'])->name('api.tasks.pending-reminders');
-        Route::post('{task}/complete', [\App\Http\Controllers\Api\TaskController::class, 'complete'])->name('api.tasks.complete');
-        Route::post('{task}/incomplete', [\App\Http\Controllers\Api\TaskController::class, 'incomplete'])->name('api.tasks.incomplete');
+        Route::get('pending-reminders', [App\Http\Controllers\Api\TaskController::class, 'pendingReminders'])->name('api.tasks.pending-reminders');
+        Route::post('{task}/complete', [App\Http\Controllers\Api\TaskController::class, 'complete'])->name('api.tasks.complete');
+        Route::post('{task}/incomplete', [App\Http\Controllers\Api\TaskController::class, 'incomplete'])->name('api.tasks.incomplete');
     });
 
     // Account Management Routes
     Route::prefix('account')->name('account.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\AccountController::class, 'index'])->name('index');
-        Route::get('/show', [\App\Http\Controllers\AccountController::class, 'show'])->name('show');
-        Route::post('/profile', [\App\Http\Controllers\AccountController::class, 'updateProfile'])->name('profile.update');
-        Route::post('/password', [\App\Http\Controllers\AccountController::class, 'updatePassword'])->name('password.update');
-        Route::delete('/', [\App\Http\Controllers\AccountController::class, 'destroy'])->name('destroy');
+        Route::get('/', [AccountController::class, 'index'])->name('index');
+        Route::get('/show', [AccountController::class, 'show'])->name('show');
+        Route::post('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
+        Route::post('/password', [AccountController::class, 'updatePassword'])->name('password.update');
+        Route::delete('/', [AccountController::class, 'destroy'])->name('destroy');
     });
 
     // Call API endpoints - Real-time call control
     Route::prefix('api/calls')->middleware('role_or_permission:super-admin|make calls')->group(function () {
         // Note: 'initiate' route is defined in CallSessionController (line 62) - removed duplicate here
-        Route::post('{id}/answer', [\App\Http\Controllers\Api\CallController::class, 'answer'])->name('api.calls.answer');
-        Route::post('{id}/hangup', [\App\Http\Controllers\Api\CallController::class, 'hangup'])->name('api.calls.hangup');
-        Route::post('{id}/mute', [\App\Http\Controllers\Api\CallController::class, 'mute'])->name('api.calls.mute');
-        Route::post('{id}/unmute', [\App\Http\Controllers\Api\CallController::class, 'unmute'])->name('api.calls.unmute');
-        Route::post('{id}/hold', [\App\Http\Controllers\Api\CallController::class, 'hold'])->name('api.calls.hold');
-        Route::post('{id}/resume', [\App\Http\Controllers\Api\CallController::class, 'resume'])->name('api.calls.resume');
-        Route::post('{id}/transfer', [\App\Http\Controllers\Api\CallController::class, 'transfer'])->name('api.calls.transfer');
-        Route::get('recent', [\App\Http\Controllers\Api\CallController::class, 'getRecent'])->name('api.calls.recent');
-        Route::get('active', [\App\Http\Controllers\Api\CallController::class, 'getActive'])->name('api.calls.active-list');
-        Route::get('{id}', [\App\Http\Controllers\Api\CallController::class, 'show'])->name('api.calls.detail');
+        Route::post('{id}/answer', [App\Http\Controllers\Api\CallController::class, 'answer'])->name('api.calls.answer');
+        Route::post('{id}/hangup', [App\Http\Controllers\Api\CallController::class, 'hangup'])->name('api.calls.hangup');
+        Route::post('{id}/mute', [App\Http\Controllers\Api\CallController::class, 'mute'])->name('api.calls.mute');
+        Route::post('{id}/unmute', [App\Http\Controllers\Api\CallController::class, 'unmute'])->name('api.calls.unmute');
+        Route::post('{id}/hold', [App\Http\Controllers\Api\CallController::class, 'hold'])->name('api.calls.hold');
+        Route::post('{id}/resume', [App\Http\Controllers\Api\CallController::class, 'resume'])->name('api.calls.resume');
+        Route::post('{id}/transfer', [App\Http\Controllers\Api\CallController::class, 'transfer'])->name('api.calls.transfer');
+        Route::get('recent', [App\Http\Controllers\Api\CallController::class, 'getRecent'])->name('api.calls.recent');
+        Route::get('active', [App\Http\Controllers\Api\CallController::class, 'getActive'])->name('api.calls.active-list');
+        Route::get('{id}', [App\Http\Controllers\Api\CallController::class, 'show'])->name('api.calls.detail');
     });
 
     // Legacy call control endpoints (AJAX) - kept for backward compatibility
     Route::middleware('role_or_permission:super-admin|make calls')->group(function () {
-        Route::post('calls/{call_session}/answer', [\App\Http\Controllers\CallController::class, 'answer'])->name('calls.answer');
-        Route::post('calls/{call_session}/hangup', [\App\Http\Controllers\CallController::class, 'hangup'])->name('calls.hangup');
-        Route::post('calls/{call_session}/hold', [\App\Http\Controllers\CallController::class, 'hold'])->name('calls.hold');
-        Route::post('calls/{call_session}/unhold', [\App\Http\Controllers\CallController::class, 'unhold'])->name('calls.unhold');
-        Route::post('calls/{call_session}/mute', [\App\Http\Controllers\CallController::class, 'mute'])->name('calls.mute');
-        Route::post('calls/{call_session}/unmute', [\App\Http\Controllers\CallController::class, 'unmute'])->name('calls.unmute');
-        Route::post('calls/{call_session}/start-recording', [\App\Http\Controllers\CallController::class, 'startRecording'])->name('calls.start-recording');
-        Route::post('calls/{call_session}/stop-recording', [\App\Http\Controllers\CallController::class, 'stopRecording'])->name('calls.stop-recording');
+        Route::post('calls/{call_session}/answer', [CallController::class, 'answer'])->name('calls.answer');
+        Route::post('calls/{call_session}/hangup', [CallController::class, 'hangup'])->name('calls.hangup');
+        Route::post('calls/{call_session}/hold', [CallController::class, 'hold'])->name('calls.hold');
+        Route::post('calls/{call_session}/unhold', [CallController::class, 'unhold'])->name('calls.unhold');
+        Route::post('calls/{call_session}/mute', [CallController::class, 'mute'])->name('calls.mute');
+        Route::post('calls/{call_session}/unmute', [CallController::class, 'unmute'])->name('calls.unmute');
+        Route::post('calls/{call_session}/start-recording', [CallController::class, 'startRecording'])->name('calls.start-recording');
+        Route::post('calls/{call_session}/stop-recording', [CallController::class, 'stopRecording'])->name('calls.stop-recording');
     });
 
     // Asterisk Inbound Call Management
     Route::prefix('api/asterisk')->group(function () {
-        Route::post('/call-lead', [\App\Http\Controllers\AsteriskCallController::class, 'storeCallLead'])->name('api.asterisk.call-lead');
-        Route::post('/call-notes', [\App\Http\Controllers\AsteriskCallController::class, 'saveCallNotes'])->name('api.asterisk.call-notes');
-        Route::patch('/call-sessions/{sessionId}/link-lead', [\App\Http\Controllers\AsteriskCallController::class, 'linkLeadToSession'])->name('api.asterisk.link-lead');
+        Route::post('/call-lead', [AsteriskCallController::class, 'storeCallLead'])->name('api.asterisk.call-lead');
+        Route::post('/call-notes', [AsteriskCallController::class, 'saveCallNotes'])->name('api.asterisk.call-notes');
+        Route::patch('/call-sessions/{sessionId}/link-lead', [AsteriskCallController::class, 'linkLeadToSession'])->name('api.asterisk.link-lead');
     });
 });
 
