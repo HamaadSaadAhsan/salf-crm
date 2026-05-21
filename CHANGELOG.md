@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `CanonicalPathDictionary` — static class seeding 130+ known canonical paths for Dominica CBI (`DOM_CBI`): main applicant personal/passport/contact/address/employment, spouse (mirrored), dependents 1–4, investment, application meta; merged with DB paths in `TemplatesMappingsController` so autocomplete shows full vocabulary on first use
 - Forms automation UI: Full-screen image viewer dialog in field mapping — click preview thumbnail or "Expand" button to open dialog; toolbar shows page number, active field badge, prev/next buttons, page pills, close; keyboard ← → arrows navigate pages; legend footer; SVG field overlays preserved at full scale
 - Forms automation UI: PDF page thumbnail preview in field mapping — two-column layout with clickable field rows; right panel shows the actual PDF page rendered as PNG with SVG overlay highlighting all fields (yellow) and the selected field (blue); page selector tabs; field info card below preview; `TemplatePageController` + `GET /api/forms/templates/{formTemplate}/pages/{page}` streams PNG from forms-service; `useTemplatePage` React Query hook caches rendered pages 1hr
 - Forms automation UI: Structured applicant data entry form — after admin maps PDF fields to canonical paths, processing users see labeled section cards (Main Applicant, Spouse, etc.) instead of raw JSON; falls back to raw JSON editor if no mappings exist or via "Edit raw JSON" toggle
@@ -37,6 +38,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `CLAUDE.md` rule: always update `CHANGELOG.md` on every commit
 
 ### Fixed
+- Forms automation: field mapping SVG overlays never rendered — `rect_pdf` and `page_size_pdf` were not included in the Inertia props from `TemplatesMappingsController`; added both fields to the fields map
 - Forms automation: PDF page preview "Could not load preview" — custom http client (`@/lib/http`) always calls `response.json()` on binary PNG responses, causing `URL.createObjectURL(null)` to throw; fixed `useTemplatePage` hook to use native `fetch` + `response.blob()` instead
 - `FormsServiceClient::fillPdf()`: renamed field `applicant_data` → `applicant` to match forms-service API contract; cast empty mapping array to `stdClass` so JSON encodes as `{}` not `[]`
 - SSR: configure null Echo broadcaster in `ssr.tsx` so `useEcho` hooks don't throw "Echo has not been configured" during server-side rendering

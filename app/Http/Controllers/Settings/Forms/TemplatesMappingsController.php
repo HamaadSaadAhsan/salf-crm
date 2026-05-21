@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings\Forms;
 
+use App\Data\Forms\CanonicalPathDictionary;
 use App\Http\Controllers\Controller;
 use App\Models\Forms\FieldMapping;
 use App\Models\Forms\FormTemplate;
@@ -27,6 +28,8 @@ class TemplatesMappingsController extends Controller
             'field_type' => $f->field_type->value,
             'page' => $f->page,
             'export_values' => $f->export_values,
+            'rect_pdf' => $f->rect_pdf,
+            'page_size_pdf' => $f->page_size_pdf,
             'mapping' => isset($mappingsIndexed[$f->field_name]) ? [
                 'id' => $mappingsIndexed[$f->field_name]->id,
                 'canonical_path' => $mappingsIndexed[$f->field_name]->canonical_path,
@@ -36,10 +39,15 @@ class TemplatesMappingsController extends Controller
             ] : null,
         ]);
 
-        $existingPaths = FieldMapping::query()
+        $dbPaths = FieldMapping::query()
             ->distinct()
             ->orderBy('canonical_path')
-            ->pluck('canonical_path');
+            ->pluck('canonical_path')
+            ->all();
+
+        $dictionaryPaths = CanonicalPathDictionary::forProgram($program->code);
+
+        $existingPaths = collect(array_unique([...$dictionaryPaths, ...$dbPaths]))->sort()->values();
 
         return Inertia::render('settings/management/forms/templates/mappings', [
             'program' => [
