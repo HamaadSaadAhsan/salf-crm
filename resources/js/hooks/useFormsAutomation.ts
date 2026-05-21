@@ -3,6 +3,38 @@ import { router } from '@inertiajs/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+// ───────────────────────────── Program schema ─────────────────────────────
+
+export interface SchemaField {
+    path: string;
+    key: string;
+    label: string;
+}
+
+export interface SchemaSection {
+    key: string;
+    label: string;
+    fields: SchemaField[];
+}
+
+export interface ProgramSchema {
+    sections: SchemaSection[];
+    has_mappings: boolean;
+}
+
+export function useProgramSchema(programId: number | null) {
+    return useQuery<ProgramSchema>({
+        queryKey: ['forms-program-schema', programId],
+        queryFn: async () => {
+            const response = await axios.get(`/api/forms/programs/${programId}/schema`);
+            return response.data;
+        },
+        enabled: !!programId,
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+}
+
 // ───────────────────────────── Templates ─────────────────────────────
 
 export function useSyncInventory() {

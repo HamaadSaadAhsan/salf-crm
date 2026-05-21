@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Forms automation UI: Structured applicant data entry form — after admin maps PDF fields to canonical paths, processing users see labeled section cards (Main Applicant, Spouse, etc.) instead of raw JSON; falls back to raw JSON editor if no mappings exist or via "Edit raw JSON" toggle
+- `ProgramSchemaController` + `GET /api/forms/programs/{program}/schema` — derives structured data-entry schema from program's active field mappings, groups fields by dot-notation prefix (e.g. `main_applicant.*`), returns human-readable labels
+- `useProgramSchema` React Query hook — fetches schema on program select, drives the structured form
 - Forms automation UI: Programs & templates list at `/settings/management/pdf-templates` — expandable program cards with template rows, per-template Sync Inventory button (calls `inspectPdf`), "Map Fields" link
 - Forms automation UI: Field mapping page at `/settings/management/forms/programs/{program}/templates/{template}/mappings` — table of all PDF fields, inline `canonical_path` input with autocomplete, truthy-value and transform columns, save-all button
 - Forms automation UI: Applications list at `/settings/management/forms/applications` — paginated table of all applications with status badges and navigation

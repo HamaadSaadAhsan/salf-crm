@@ -1,13 +1,14 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCreateApplication, useUpdateApplication } from '@/hooks/useFormsAutomation';
+import { type SchemaSection, useCreateApplication, useProgramSchema, useUpdateApplication } from '@/hooks/useFormsAutomation';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { FileText, Loader2, Save } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronRight, FileText, Loader2, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Program {
     id: number;
@@ -31,33 +32,91 @@ interface Props {
     application?: ExistingApplication;
 }
 
-const DEFAULT_DATA = `{
-  "main_applicant": {
-    "surname": "",
-    "given_names": "",
-    "date_of_birth": "",
-    "place_of_birth": "",
-    "nationality": "",
-    "passport_number": "",
-    "passport_expiry": "",
-    "occupation": "",
-    "gender": { "male": false, "female": false },
-    "marital_status": "",
-    "email": "",
-    "phone": "",
-    "address": {
-      "line1": "",
-      "city": "",
-      "country": ""
+// ─── helpers ───────────────────────────────────────────────────────────────
+
+function setNestedValue(obj: Record<string, unknown>, path: string, value: string): Record<string, unknown> {
+    const parts = path.split('.');
+    const result = { ...obj };
+    let current: Record<string, unknown> = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        current[part] = typeof current[part] === 'object' && current[part] !== null
+            ? { ...(current[part] as Record<string, unknown>) }
+            : {};
+        current = current[part] as Record<string, unknown>;
     }
-  },
-  "spouse": null,
-  "children": [],
-  "investment": {
-    "type": "",
-    "amount": ""
-  }
-}`;
+    current[parts[parts.length - 1]] = value;
+    return result;
+}
+
+function getNestedValue(obj: Record<string, unknown> | null | undefined, path: string): string {
+    if (!obj) { return ''; }
+    const parts = path.split('.');
+    let current: unknown = obj;
+    for (const part of parts) {
+        if (typeof current !== 'object' || current === null) { return ''; }
+        current = (current as Record<string, unknown>)[part];
+    }
+    return current === null || current === undefined ? '' : String(current);
+}
+
+// ─── section card ─────────────────────────────────────────────────────────
+
+function SectionCard({
+    section,
+    data,
+    onChange,
+}: {
+    section: SchemaSection;
+    data: Record<string, unknown>;
+    onChange: (path: string, value: string) => void;
+}) {
+    const [open, setOpen] = useState(true);
+
+    const filledCount = section.fields.filter((f) => getNestedValue(data, f.path) !== '').length;
+
+    return (
+        <Card>
+            <CardHeader
+                className="px-4 py-3 cursor-pointer select-none"
+                onClick={() => setOpen((v) => !v)}
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        {open ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronRight className="size-4 text-muted-foreground" />}
+                        <span className="font-semibold text-sm">{section.label}</span>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                        {filledCount}/{section.fields.length} filled
+                    </Badge>
+                </div>
+            </CardHeader>
+            {open && (
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        {section.fields.map((field) => (
+                            <div key={field.path} className="space-y-1">
+                                <Label htmlFor={field.path} className="text-xs">
+                                    {field.label}
+                                    <span className="text-muted-foreground ml-1.5 font-normal font-mono">({field.path})</span>
+                                </Label>
+                                <Input
+                                    id={field.path}
+                                    value={getNestedValue(data, field.path)}
+                                    onChange={(e) => onChange(field.path, e.target.value)}
+                                    placeholder={`Enter ${field.label.toLowerCase()}…`}
+                                    className="h-8 text-sm"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            )}
+        </Card>
+    );
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────
 
 export default function ApplicationCreatePage({ programs, application }: Props) {
     const isEditing = Boolean(application);
@@ -65,49 +124,60 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
     const [programId, setProgramId] = useState<string>(application?.program_id?.toString() ?? '');
     const [name, setName] = useState(application?.main_applicant_name ?? '');
     const [passport, setPassport] = useState(application?.main_applicant_passport ?? '');
-    const [dataText, setDataText] = useState(
-        application?.data ? JSON.stringify(application.data, null, 2) : DEFAULT_DATA,
-    );
+    const [data, setData] = useState<Record<string, unknown>>(application?.data ?? {});
+    const [showRawJson, setShowRawJson] = useState(false);
+    const [rawJson, setRawJson] = useState('');
     const [jsonError, setJsonError] = useState('');
+
+    const programIdNum = programId ? parseInt(programId) : null;
+    const { data: schema, isLoading: schemaLoading } = useProgramSchema(programIdNum);
+
+    // When switching to raw JSON mode, populate textarea from current data
+    useEffect(() => {
+        if (showRawJson) {
+            setRawJson(JSON.stringify(data, null, 2));
+        }
+    }, [showRawJson]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const createApp = useCreateApplication();
     const updateApp = useUpdateApplication();
-
     const isPending = createApp.isPending || updateApp.isPending;
 
-    const validateJson = (text: string) => {
-        try {
-            JSON.parse(text);
-            setJsonError('');
-            return true;
-        } catch (e) {
-            setJsonError((e as Error).message);
-            return false;
-        }
+    const handleFieldChange = (path: string, value: string) => {
+        setData((prev) => setNestedValue(prev, path, value));
     };
 
     const handleSubmit = () => {
-        if (!programId) { return; }
-        if (!validateJson(dataText)) { return; }
+        let finalData = data;
 
-        const data = JSON.parse(dataText) as Record<string, unknown>;
+        if (showRawJson) {
+            try {
+                finalData = JSON.parse(rawJson) as Record<string, unknown>;
+                setJsonError('');
+            } catch (e) {
+                setJsonError((e as Error).message);
+                return;
+            }
+        }
 
         if (isEditing && application) {
             updateApp.mutate({
                 applicationId: application.id,
                 main_applicant_name: name,
                 main_applicant_passport: passport,
-                data,
+                data: finalData,
             });
         } else {
             createApp.mutate({
                 program_id: parseInt(programId),
                 main_applicant_name: name,
                 main_applicant_passport: passport,
-                data,
+                data: finalData,
             });
         }
     };
+
+    const hasSections = schema?.has_mappings && (schema?.sections?.length ?? 0) > 0;
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Management', href: '/settings/management' },
@@ -139,19 +209,23 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
             </div>
 
             <div className="p-4 max-w-4xl space-y-4">
+
                 {/* Basic details */}
                 <Card>
                     <CardHeader className="px-4 py-3 border-b">
                         <h2 className="font-semibold text-sm">Application Details</h2>
                     </CardHeader>
-                    <CardContent className="p-4 space-y-4">
+                    <CardContent className="p-4">
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-1.5">
                                 <Label htmlFor="program">Program *</Label>
                                 <select
                                     id="program"
                                     value={programId}
-                                    onChange={(e) => setProgramId(e.target.value)}
+                                    onChange={(e) => {
+                                        setProgramId(e.target.value);
+                                        setData({});
+                                    }}
                                     disabled={isEditing}
                                     className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
                                 >
@@ -184,32 +258,77 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
                 </Card>
 
                 {/* Applicant data */}
-                <Card>
-                    <CardHeader className="px-4 py-3 border-b">
+                {programId && (
+                    <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-sm">Applicant Data (JSON)</h2>
-                            <p className="text-xs text-muted-foreground">
-                                This data is used to fill all forms in the program. Use dot-notation canonical paths from field mappings.
-                            </p>
+                            <h2 className="font-semibold text-sm">Applicant Information</h2>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-muted-foreground"
+                                onClick={() => setShowRawJson((v) => !v)}
+                            >
+                                {showRawJson ? 'Switch to form view' : 'Edit raw JSON'}
+                            </Button>
                         </div>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                        <textarea
-                            value={dataText}
-                            onChange={(e) => {
-                                setDataText(e.target.value);
-                                if (jsonError) { validateJson(e.target.value); }
-                            }}
-                            onBlur={() => validateJson(dataText)}
-                            rows={28}
-                            className="w-full font-mono text-xs rounded-md border border-input bg-background p-3 resize-y focus:outline-none focus:ring-2 focus:ring-ring"
-                            spellCheck={false}
-                        />
-                        {jsonError && (
-                            <p className="mt-1 text-xs text-red-600 font-mono">{jsonError}</p>
+
+                        {schemaLoading ? (
+                            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                                <Loader2 className="size-4 animate-spin" /> Loading required fields…
+                            </div>
+                        ) : showRawJson ? (
+                            <Card>
+                                <CardContent className="p-4">
+                                    <textarea
+                                        value={rawJson}
+                                        onChange={(e) => {
+                                            setRawJson(e.target.value);
+                                            if (jsonError) {
+                                                try { JSON.parse(e.target.value); setJsonError(''); } catch { /* ignore */ }
+                                            }
+                                        }}
+                                        rows={20}
+                                        className="w-full font-mono text-xs rounded-md border border-input bg-background p-3 resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                                        spellCheck={false}
+                                    />
+                                    {jsonError && <p className="mt-1 text-xs text-red-600 font-mono">{jsonError}</p>}
+                                </CardContent>
+                            </Card>
+                        ) : hasSections ? (
+                            <>
+                                {schema!.sections.map((section) => (
+                                    <SectionCard
+                                        key={section.key}
+                                        section={section}
+                                        data={data}
+                                        onChange={handleFieldChange}
+                                    />
+                                ))}
+                            </>
+                        ) : (
+                            <Card>
+                                <CardContent className="py-8 text-center">
+                                    <p className="text-sm text-muted-foreground">
+                                        No field mappings configured for this program yet.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        An admin needs to sync and map the PDF template fields first.
+                                        Until then you can{' '}
+                                        <button
+                                            className="underline"
+                                            onClick={() => {
+                                                setShowRawJson(true);
+                                                setRawJson(JSON.stringify(data, null, 2) || '{}');
+                                            }}
+                                        >
+                                            enter the data as raw JSON
+                                        </button>.
+                                    </p>
+                                </CardContent>
+                            </Card>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
