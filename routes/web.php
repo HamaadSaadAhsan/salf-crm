@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Forms\ApplicationApiController;
 use App\Http\Controllers\Api\Forms\FormTemplateApiController;
 use App\Http\Controllers\Api\Forms\GenerationApiController;
+use App\Http\Controllers\Api\Forms\LeadApplicationController;
 use App\Http\Controllers\Api\Forms\ProgramSchemaController;
 use App\Http\Controllers\Api\Forms\TemplatePageController;
 use App\Http\Controllers\Api\GlobalSearchController;
@@ -117,6 +118,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/assignment-visualizer', [AssignmentVisualizerController::class, 'index'])
         ->middleware('role:super-admin')
         ->name('api.assignment-visualizer');
+
+    // Forms Automation API (Lead-scoped — available to all authenticated users)
+    Route::prefix('api/leads/{lead}/forms')->name('api.leads.forms.')->group(function () {
+        Route::get('/programs', [LeadApplicationController::class, 'programs'])->name('programs');
+        Route::get('/applications', [LeadApplicationController::class, 'index'])->name('applications.index');
+        Route::post('/applications', [LeadApplicationController::class, 'store'])->name('applications.store');
+        Route::put('/applications/{application}', [LeadApplicationController::class, 'update'])->name('applications.update');
+        Route::post('/applications/{application}/generate', [LeadApplicationController::class, 'generate'])->name('applications.generate');
+        Route::delete('/applications/{application}', [LeadApplicationController::class, 'destroy'])->name('applications.destroy');
+        Route::get('/applications/{application}/generations', [GenerationApiController::class, 'index'])->name('applications.generations');
+        Route::get('/generations/{generation}/download', [LeadApplicationController::class, 'downloadGeneration'])->name('generations.download');
+        Route::get('/programs/{program}/schema', [ProgramSchemaController::class, 'show'])->name('programs.schema');
+    });
 
     // Forms Automation API (Admin)
     Route::middleware('role:super-admin')->prefix('api/forms')->name('api.forms.')->group(function () {

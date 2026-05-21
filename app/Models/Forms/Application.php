@@ -3,6 +3,7 @@
 namespace App\Models\Forms;
 
 use App\Enums\Forms\ApplicationStatus;
+use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Application extends Model
 
     protected $fillable = [
         'program_id',
+        'lead_id',
         'application_code',
         'main_applicant_name',
         'main_applicant_passport',
@@ -65,6 +67,11 @@ class Application extends Model
     public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
     }
 
     public function createdBy(): BelongsTo

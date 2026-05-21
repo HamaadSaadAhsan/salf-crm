@@ -239,3 +239,156 @@ export function useApplicationGenerations(applicationId: number, enabled = true)
         },
     });
 }
+
+// ───────────────────────────── Lead-scoped hooks ─────────────────────────────
+
+export interface LeadProgram {
+    id: number;
+    name: string;
+    code: string;
+    country_code: string | null;
+}
+
+export interface LeadApplication {
+    id: number;
+    application_code: string;
+    status: string;
+    main_applicant_name: string | null;
+    main_applicant_passport: string | null;
+    data: Record<string, unknown>;
+    generations_count: number;
+    program: { id: number; name: string; code: string };
+    created_at: string;
+    updated_at: string;
+}
+
+export function useLeadPrograms(leadId: string) {
+    return useQuery<{ data: LeadProgram[] }>({
+        queryKey: ['lead-forms-programs', leadId],
+        queryFn: async () => {
+            const response = await axios.get(`/api/leads/${leadId}/forms/programs`);
+            return response.data;
+        },
+        staleTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useLeadApplications(leadId: string) {
+    return useQuery<{ data: LeadApplication[] }>({
+        queryKey: ['lead-forms-applications', leadId],
+        queryFn: async () => {
+            const response = await axios.get(`/api/leads/${leadId}/forms/applications`);
+            return response.data;
+        },
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useCreateLeadApplication(leadId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (payload: {
+            program_id: number;
+            main_applicant_name?: string;
+            main_applicant_passport?: string;
+            data: Record<string, unknown>;
+        }) => {
+            const response = await axios.post(`/api/leads/${leadId}/forms/applications`, payload);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-forms-applications', leadId] });
+            toast.success('Application created');
+        },
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+            toast.error(err.response?.data?.message ?? 'Failed to create application');
+        },
+    });
+}
+
+export function useUpdateLeadApplication(leadId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ applicationId, ...payload }: { applicationId: number; main_applicant_name?: string; main_applicant_passport?: string; data?: Record<string, unknown>; status?: string }) => {
+            const response = await axios.put(`/api/leads/${leadId}/forms/applications/${applicationId}`, payload);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-forms-applications', leadId] });
+            toast.success('Application saved');
+        },
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+            toast.error(err.response?.data?.message ?? 'Failed to save application');
+        },
+    });
+}
+
+export function useDeleteLeadApplication(leadId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (applicationId: number) => {
+            const response = await axios.delete(`/api/leads/${leadId}/forms/applications/${applicationId}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['lead-forms-applications', leadId] });
+            toast.success('Application deleted');
+        },
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+            toast.error(err.response?.data?.message ?? 'Failed to delete application');
+        },
+    });
+}
+
+export function useGenerateLeadApplicationForms(leadId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (applicationId: number) => {
+            const response = await axios.post(`/api/leads/${leadId}/forms/applications/${applicationId}/generate`);
+            return response.data;
+        },
+        onSuccess: (data, applicationId) => {
+            toast.success(data.message ?? 'Generation queued');
+            void queryClient.invalidateQueries({ queryKey: ['lead-forms-generations', applicationId] });
+        },
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+            toast.error(err.response?.data?.message ?? 'Failed to queue generation');
+        },
+    });
+}
+
+export function useLeadApplicationGenerations(leadId: string, applicationId: number | null, enabled = true) {
+    return useQuery<{ data: Generation[] }>({
+        queryKey: ['lead-forms-generations', applicationId],
+        queryFn: async () => {
+            const response = await axios.get(`/api/leads/${leadId}/forms/applications/${applicationId}/generations`);
+            return response.data;
+        },
+        enabled: enabled && !!applicationId,
+        staleTime: 10_000,
+        refetchInterval: (query) => {
+            const data = query.state.data as { data: Generation[] } | undefined;
+            const hasRunning = data?.data?.some((g) => g.status === 'pending' || g.status === 'running');
+            return hasRunning ? 5000 : false;
+        },
+    });
+}
+
+export function useLeadProgramSchema(leadId: string, programId: number | null) {
+    return useQuery<ProgramSchema>({
+        queryKey: ['lead-forms-program-schema', leadId, programId],
+        queryFn: async () => {
+            const response = await axios.get(`/api/leads/${leadId}/forms/programs/${programId}/schema`);
+            return response.data;
+        },
+        enabled: !!programId,
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+}

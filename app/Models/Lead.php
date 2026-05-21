@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Events\LeadQualified;
+use App\Models\Forms\Application;
+use App\Services\LeadAssignmentService;
 use App\Traits\BelongsToTeam;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -741,7 +744,7 @@ class Lead extends Model implements HasMedia
             'qualified_at' => now(),
         ]);
 
-        event(new \App\Events\LeadQualified($this, $qualifiedBy));
+        event(new LeadQualified($this, $qualifiedBy));
 
         return $this;
     }
@@ -757,7 +760,7 @@ class Lead extends Model implements HasMedia
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnConversion($this->assignedTo);
+            app(LeadAssignmentService::class)->updateMetricsOnConversion($this->assignedTo);
         }
 
         return $this;
@@ -779,7 +782,7 @@ class Lead extends Model implements HasMedia
         ]);
 
         if ($previousAssignee) {
-            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($previousAssignee);
+            app(LeadAssignmentService::class)->updateMetricsOnLoss($previousAssignee);
         }
 
         return $this;
@@ -796,7 +799,7 @@ class Lead extends Model implements HasMedia
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+            app(LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
         }
 
         return $this;
@@ -813,7 +816,7 @@ class Lead extends Model implements HasMedia
         ]);
 
         if ($this->assignedTo) {
-            app(\App\Services\LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
+            app(LeadAssignmentService::class)->updateMetricsOnLoss($this->assignedTo);
         }
 
         return $this;
@@ -900,5 +903,10 @@ class Lead extends Model implements HasMedia
     public function leadForm(): BelongsTo
     {
         return $this->belongsTo(LeadForm::class);
+    }
+
+    public function formsApplications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'lead_id');
     }
 }

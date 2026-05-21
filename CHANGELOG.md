@@ -8,6 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Forms automation in lead Documents tab — "Forms Automation" section shows existing applications per lead; "New Application" button opens program selector then a structured data-entry form (collapsible schema sections with fill progress counters); Save creates/updates application; Generate queues server-side PDF batch; generations panel auto-polls and shows Download link when complete; Delete with confirmation
+- `LeadApplicationController::destroy` — verifies lead ownership, soft-deletes application
+- `LeadApplicationController::downloadGeneration` — verifies generation belongs to lead, serves ZIP file
+- `useDeleteLeadApplication` React Query mutation hook
+- Lead-scoped routes: `DELETE /api/leads/{lead}/forms/applications/{application}` and `GET /api/leads/{lead}/forms/generations/{generation}/download`
 - `SuggestedMappingDictionary` — per-template field_name → canonical_path lookup for `form_d1` (A1–B56), `form_d2`, `form_d4`; controller passes `suggested_path` alongside each field; mapping page pre-fills inputs from suggestions (amber border + amber row background) and shows "N suggested" counter; editing any suggested path clears the suggestion marker; paths persist to DB on Save Mappings
 - `CanonicalPathDictionary` — static class seeding 130+ known canonical paths for Dominica CBI (`DOM_CBI`): main applicant personal/passport/contact/address/employment, spouse (mirrored), dependents 1–4, investment, application meta; merged with DB paths in `TemplatesMappingsController` so autocomplete shows full vocabulary on first use
 - Forms automation UI: Full-screen image viewer dialog in field mapping — click preview thumbnail or "Expand" button to open dialog; toolbar shows page number, active field badge, prev/next buttons, page pills, close; keyboard ← → arrows navigate pages; legend footer; SVG field overlays preserved at full scale

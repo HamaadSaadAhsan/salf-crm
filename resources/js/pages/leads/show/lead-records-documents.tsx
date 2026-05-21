@@ -32,7 +32,19 @@ import {
 import { autoMapLeadFields, fillPdfFields, mergeSimilarRepeatGroupColumns, stripNumericSuffix, type RepeatGroupMeta } from '@/lib/pdf-utils';
 import type { Lead } from '@/types/lead';
 import type { LeadPdfSubmission, PdfTemplate, PdfTemplateField } from '@/types/pdf-template';
-import { ArrowLeft, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
+import {
+    useCreateLeadApplication,
+    useDeleteLeadApplication,
+    useGenerateLeadApplicationForms,
+    useLeadApplicationGenerations,
+    useLeadApplications,
+    useLeadProgramSchema,
+    useLeadPrograms,
+    useUpdateLeadApplication,
+    type Generation,
+    type LeadApplication,
+} from '@/hooks/useFormsAutomation';
+import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import axios from '@/lib/http';
@@ -145,6 +157,7 @@ export function LeadRecordsDocuments({ lead }: Props) {
     const deleteSubmission = useDeleteLeadPdfSubmission(leadId);
 
     const [view, setView] = useState<ViewState>({ mode: 'list' });
+    const [formsView, setFormsView] = useState<null | { mode: 'new' } | { mode: 'edit'; application: LeadApplication }>(null);
     const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
     const [generating, setGenerating] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<LeadPdfSubmission | null>(null);
@@ -424,6 +437,16 @@ export function LeadRecordsDocuments({ lead }: Props) {
         return sectionGroupMap;
     }, [view]);
 
+    if (formsView !== null) {
+        return (
+            <LeadFormsFillView
+                lead={lead}
+                viewMode={formsView}
+                onBack={() => setFormsView(null)}
+            />
+        );
+    }
+
     if (view.mode === 'fill') {
         return (
             <div className="space-y-6">
@@ -589,6 +612,20 @@ export function LeadRecordsDocuments({ lead }: Props) {
                     </div>
                 </div>
             ) : null}
+
+            {/* Forms Automation */}
+            <div>
+                <div className="mb-4 flex items-center gap-2">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Forms Automation</span>
+                    <div className="h-px flex-1 bg-border" />
+                </div>
+                <LeadFormsListSection
+                    lead={lead}
+                    onNew={() => setFormsView({ mode: 'new' })}
+                    onEdit={(application) => setFormsView({ mode: 'edit', application })}
+                />
+            </div>
 
             {/* Delete Submission AlertDialog */}
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -898,6 +935,492 @@ function FieldInput({
                 className={`h-9 ${hasError ? 'border-destructive' : ''}`}
             />
             {hasError && <p className="mt-1 text-xs text-destructive">This field is required</p>}
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forms Automation — list section
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'destructive' | 'secondary' | 'info'> = {
+    approved: 'success',
+    submitted: 'info',
+    in_progress: 'warning',
+    rejected: 'destructive',
+    draft: 'secondary',
+    archived: 'secondary',
+};
+
+function LeadFormsListSection({
+    lead,
+    onNew,
+    onEdit,
+}: {
+    lead: Lead;
+    onNew: () => void;
+    onEdit: (application: LeadApplication) => void;
+}) {
+    const leadId = String(lead.id);
+    const { data, isLoading } = useLeadApplications(leadId);
+    const deleteApp = useDeleteLeadApplication(leadId);
+    const [deleteTarget, setDeleteTarget] = useState<LeadApplication | null>(null);
+
+    const applications = data?.data ?? [];
+
+    return (
+        <div>
+            <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-medium">Applications</h3>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onNew}>
+                    <Plus className="mr-1 size-3" />
+                    New Application
+                </Button>
+            </div>
+
+            {isLoading ? (
+                <div className="space-y-2">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                        <SubmissionRowSkeleton key={i} />
+                    ))}
+                </div>
+            ) : applications.length === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                    <FileText className="mb-2 size-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">No applications yet.</p>
+                    <Button size="sm" variant="outline" className="mt-3" onClick={onNew}>
+                        <Plus className="mr-1 size-3.5" />
+                        Start Application
+                    </Button>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {applications.map((app) => (
+                        <div key={app.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                            <div className="flex items-center gap-3">
+                                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium">{app.program.name}</p>
+                                        <Badge
+                                            variant={STATUS_VARIANT[app.status] ?? 'secondary'}
+                                            appearance="light"
+                                            size="sm"
+                                        >
+                                            {app.status.replace('_', ' ')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {app.application_code}
+                                        {app.main_applicant_name && ` · ${app.main_applicant_name}`}
+                                        {app.generations_count > 0 &&
+                                            ` · ${app.generations_count} generation${app.generations_count > 1 ? 's' : ''}`}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => onEdit(app)}
+                                >
+                                    Edit
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeleteTarget(app)}
+                                >
+                                    <Trash2 className="size-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Application</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Delete "{deleteTarget?.application_code}"? This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => {
+                                if (deleteTarget) {
+                                    deleteApp.mutate(deleteTarget.id, {
+                                        onSuccess: () => setDeleteTarget(null),
+                                    });
+                                }
+                            }}
+                            disabled={deleteApp.isPending}
+                        >
+                            {deleteApp.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forms Automation — fill view (program selection + field entry)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LeadFormsFillView({
+    lead,
+    viewMode,
+    onBack,
+}: {
+    lead: Lead;
+    viewMode: { mode: 'new' } | { mode: 'edit'; application: LeadApplication };
+    onBack: () => void;
+}) {
+    const leadId = String(lead.id);
+    const initialApp = viewMode.mode === 'edit' ? viewMode.application : null;
+
+    const [currentApplicationId, setCurrentApplicationId] = useState<number | null>(initialApp?.id ?? null);
+    const [applicationCode, setApplicationCode] = useState<string | null>(initialApp?.application_code ?? null);
+    const [programId, setProgramId] = useState<number | null>(initialApp?.program.id ?? null);
+    const [applicantName, setApplicantName] = useState(initialApp?.main_applicant_name ?? lead.name ?? '');
+    const [passport, setPassport] = useState(initialApp?.main_applicant_passport ?? '');
+    const [formData, setFormData] = useState<Record<string, unknown>>(initialApp?.data ?? {});
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+    const { data: programsData, isLoading: loadingPrograms } = useLeadPrograms(leadId);
+    const { data: schemaData, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
+    const { data: generationsData } = useLeadApplicationGenerations(leadId, currentApplicationId);
+
+    const createApp = useCreateLeadApplication(leadId);
+    const updateApp = useUpdateLeadApplication(leadId);
+    const generateApp = useGenerateLeadApplicationForms(leadId);
+
+    const programs = programsData?.data ?? [];
+    const generations = generationsData?.data ?? [];
+
+    const displayProgramName =
+        initialApp?.program.name ?? programs.find((p) => p.id === programId)?.name ?? '';
+
+    // Open first section when schema loads
+    useEffect(() => {
+        if (schemaData?.sections?.length && expandedSections.size === 0) {
+            setExpandedSections(new Set([schemaData.sections[0].key]));
+        }
+    }, [schemaData, expandedSections.size]);
+
+    const toggleSection = useCallback((key: string) => {
+        setExpandedSections((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }, []);
+
+    const handleSave = useCallback(() => {
+        const payload = {
+            main_applicant_name: applicantName || undefined,
+            main_applicant_passport: passport || undefined,
+            data: formData as Record<string, unknown>,
+        };
+
+        if (currentApplicationId) {
+            updateApp.mutate({ applicationId: currentApplicationId, ...payload });
+        } else if (programId) {
+            createApp.mutate(
+                { program_id: programId, ...payload },
+                {
+                    onSuccess: (res) => {
+                        const created = res as { data: { id: number; application_code: string } };
+                        setCurrentApplicationId(created.data.id);
+                        setApplicationCode(created.data.application_code);
+                    },
+                },
+            );
+        }
+    }, [currentApplicationId, programId, applicantName, passport, formData, createApp, updateApp]);
+
+    const handleGenerate = useCallback(() => {
+        if (currentApplicationId) {
+            generateApp.mutate(currentApplicationId);
+        }
+    }, [currentApplicationId, generateApp]);
+
+    const isSaving = createApp.isPending || updateApp.isPending;
+
+    // Program selection screen (new mode only, before program is chosen)
+    if (!programId) {
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={onBack}>
+                        <ArrowLeft className="size-4" />
+                    </Button>
+                    <h3 className="text-sm font-medium">Select Program</h3>
+                </div>
+                {loadingPrograms ? (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <TemplateCardSkeleton key={i} />
+                        ))}
+                    </div>
+                ) : programs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No active programs available.</p>
+                ) : (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {programs.map((p) => (
+                            <button
+                                key={p.id}
+                                onClick={() => setProgramId(p.id)}
+                                className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent/50"
+                            >
+                                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                                    <FileText className="size-4 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">{p.name}</p>
+                                    <p className="text-xs uppercase text-muted-foreground">{p.code}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={onBack}>
+                        <ArrowLeft className="size-4" />
+                    </Button>
+                    <div>
+                        <h3 className="text-sm font-medium">{displayProgramName || 'Application'}</h3>
+                        {applicationCode && (
+                            <p className="text-xs text-muted-foreground">{applicationCode}</p>
+                        )}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {currentApplicationId && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerate}
+                            disabled={generateApp.isPending}
+                        >
+                            {generateApp.isPending ? (
+                                <Loader2 className="mr-1 size-3.5 animate-spin" />
+                            ) : (
+                                <Zap className="mr-1 size-3.5" />
+                            )}
+                            Generate
+                        </Button>
+                    )}
+                    <Button size="sm" onClick={handleSave} disabled={isSaving || !programId}>
+                        {isSaving ? (
+                            <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : (
+                            <Save className="mr-1 size-3.5" />
+                        )}
+                        Save
+                    </Button>
+                </div>
+            </div>
+
+            {/* Core applicant fields */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                    <Label className="text-xs">Main Applicant Name</Label>
+                    <Input
+                        value={applicantName}
+                        onChange={(e) => setApplicantName(e.target.value)}
+                        className="h-9"
+                        placeholder={lead.name}
+                    />
+                </div>
+                <div>
+                    <Label className="text-xs">Passport Number</Label>
+                    <Input
+                        value={passport}
+                        onChange={(e) => setPassport(e.target.value)}
+                        className="h-9"
+                        placeholder="e.g. AB1234567"
+                    />
+                </div>
+            </div>
+
+            {/* Schema sections */}
+            {loadingSchema ? (
+                <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-10 w-full" />
+                    ))}
+                </div>
+            ) : !schemaData?.has_mappings ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                    No field mappings configured for this program. Contact admin to set up mappings first.
+                </div>
+            ) : (
+                schemaData?.sections?.map((section) => {
+                    const isExpanded = expandedSections.has(section.key);
+                    const filledCount = section.fields.filter(
+                        (f) => formData[f.path] !== undefined && formData[f.path] !== '',
+                    ).length;
+
+                    return (
+                        <div key={section.key} className="rounded-lg border border-border">
+                            <button
+                                type="button"
+                                className="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-muted/30"
+                                onClick={() => toggleSection(section.key)}
+                            >
+                                <span className="text-sm font-medium">{section.label}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">
+                                        {filledCount}/{section.fields.length}
+                                    </span>
+                                    {isExpanded ? (
+                                        <ChevronDown className="size-4 text-muted-foreground" />
+                                    ) : (
+                                        <ChevronRight className="size-4 text-muted-foreground" />
+                                    )}
+                                </div>
+                            </button>
+                            {isExpanded && (
+                                <div className="border-t border-border p-4">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        {section.fields.map((field) => (
+                                            <div key={field.path}>
+                                                <Label className="text-xs">{field.label}</Label>
+                                                <Input
+                                                    value={(formData[field.path] as string) ?? ''}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({
+                                                            ...prev,
+                                                            [field.path]: e.target.value,
+                                                        }))
+                                                    }
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
+
+            {/* Generations */}
+            {currentApplicationId && <FormsGenerationsPanel leadId={leadId} generations={generations} />}
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forms Automation — generations panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GENERATION_STATUS_VARIANT: Record<
+    string,
+    'success' | 'warning' | 'destructive' | 'secondary'
+> = {
+    completed: 'success',
+    running: 'warning',
+    pending: 'secondary',
+    failed: 'destructive',
+};
+
+function FormsGenerationsPanel({
+    leadId,
+    generations,
+}: {
+    leadId: string;
+    generations: Generation[];
+}) {
+    return (
+        <div className="rounded-lg border border-border">
+            <div className="border-b border-border px-4 py-2.5">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Generated Forms
+                </h4>
+            </div>
+            {generations.length === 0 ? (
+                <p className="px-4 py-4 text-sm text-muted-foreground">
+                    No generations yet. Click "Generate" to create filled PDF forms.
+                </p>
+            ) : (
+                <div className="divide-y divide-border">
+                    {generations.map((gen) => (
+                        <div key={gen.id} className="flex items-center justify-between px-4 py-3">
+                            <div className="flex items-center gap-3">
+                                {(gen.status === 'pending' || gen.status === 'running') && (
+                                    <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+                                )}
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm">
+                                            {new Date(gen.created_at).toLocaleDateString()}{' '}
+                                            {new Date(gen.created_at).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </span>
+                                        <Badge
+                                            variant={GENERATION_STATUS_VARIANT[gen.status] ?? 'secondary'}
+                                            appearance="light"
+                                            size="sm"
+                                        >
+                                            {gen.status}
+                                        </Badge>
+                                        {gen.file_count > 0 && (
+                                            <span className="text-xs text-muted-foreground">
+                                                {gen.file_count} file{gen.file_count > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {gen.generated_by && (
+                                        <p className="text-xs text-muted-foreground">
+                                            by {gen.generated_by.name}
+                                        </p>
+                                    )}
+                                    {gen.error_message && (
+                                        <p className="text-xs text-destructive">{gen.error_message}</p>
+                                    )}
+                                </div>
+                            </div>
+                            {gen.status === 'completed' && gen.output_path && (
+                                <a
+                                    href={`/api/leads/${leadId}/forms/generations/${gen.id}/download`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent"
+                                >
+                                    <Download className="size-3" />
+                                    Download
+                                </a>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
