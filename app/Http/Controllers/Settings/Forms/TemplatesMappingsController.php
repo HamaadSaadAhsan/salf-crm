@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings\Forms;
 
 use App\Data\Forms\CanonicalPathDictionary;
+use App\Data\Forms\SuggestedMappingDictionary;
 use App\Http\Controllers\Controller;
 use App\Models\Forms\FieldMapping;
 use App\Models\Forms\FormTemplate;
@@ -30,6 +31,9 @@ class TemplatesMappingsController extends Controller
             'export_values' => $f->export_values,
             'rect_pdf' => $f->rect_pdf,
             'page_size_pdf' => $f->page_size_pdf,
+            'suggested_path' => isset($mappingsIndexed[$f->field_name])
+                ? null
+                : SuggestedMappingDictionary::get($formTemplate->code, $f->field_name),
             'mapping' => isset($mappingsIndexed[$f->field_name]) ? [
                 'id' => $mappingsIndexed[$f->field_name]->id,
                 'canonical_path' => $mappingsIndexed[$f->field_name]->canonical_path,

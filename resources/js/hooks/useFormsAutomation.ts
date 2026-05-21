@@ -94,6 +94,7 @@ export interface FieldMappingRow {
     value_for_truthy: string;
     transform: string;
     notes: string;
+    is_suggested?: boolean;
 }
 
 export function useGetMappings(templateId: number) {

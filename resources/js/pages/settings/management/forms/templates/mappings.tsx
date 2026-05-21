@@ -18,6 +18,7 @@ interface TemplateField {
     export_values: string[] | null;
     rect_pdf: number[] | null;
     page_size_pdf: number[] | null;
+    suggested_path: string | null;
     mapping: {
         id: number;
         canonical_path: string;
@@ -326,16 +327,21 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     useEffect(() => {
         if (rows.length === 0 && fields.length > 0) {
             setRows(
-                fields.map((f) => ({
-                    field_name: f.field_name,
-                    field_type: f.field_type,
-                    page: f.page,
-                    export_values: f.export_values,
-                    canonical_path: f.mapping?.canonical_path ?? '',
-                    value_for_truthy: f.mapping?.value_for_truthy ?? '',
-                    transform: f.mapping?.transform ?? '',
-                    notes: f.mapping?.notes ?? '',
-                })),
+                fields.map((f) => {
+                    const hasSaved = !!f.mapping?.canonical_path;
+                    const canonicalPath = f.mapping?.canonical_path ?? f.suggested_path ?? '';
+                    return {
+                        field_name: f.field_name,
+                        field_type: f.field_type,
+                        page: f.page,
+                        export_values: f.export_values,
+                        canonical_path: canonicalPath,
+                        value_for_truthy: f.mapping?.value_for_truthy ?? '',
+                        transform: f.mapping?.transform ?? '',
+                        notes: f.mapping?.notes ?? '',
+                        is_suggested: !hasSaved && !!f.suggested_path,
+                    };
+                }),
             );
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,7 +358,7 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     const update = (index: number, key: keyof FieldMappingRow, value: string) => {
         setRows((prev) => {
             const next = [...prev];
-            next[index] = { ...next[index], [key]: value };
+            next[index] = { ...next[index], [key]: value, is_suggested: false };
             return next;
         });
         setDirty(true);
@@ -427,7 +433,12 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                             <Badge variant="outline" className="text-xs">{template.code}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {template.page_count} pages · {rows.length} fields · {rows.filter((r) => r.canonical_path).length} mapped
+                            {template.page_count} pages · {rows.length} fields · {rows.filter((r) => r.canonical_path && !r.is_suggested).length} mapped
+                            {rows.some((r) => r.is_suggested) && (
+                                <span className="ml-2 text-amber-600 dark:text-amber-400">
+                                    · {rows.filter((r) => r.is_suggested).length} suggested
+                                </span>
+                            )}
                         </p>
                     </div>
                 </div>
@@ -490,7 +501,9 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                                             className={`grid grid-cols-12 gap-2 items-center px-4 py-2 border-b last:border-b-0 cursor-pointer transition-colors ${
                                                 isActive
                                                     ? 'bg-blue-50 dark:bg-blue-950/20 border-l-2 border-l-blue-500'
-                                                    : 'hover:bg-muted/20'
+                                                    : row.is_suggested
+                                                      ? 'bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/60'
+                                                      : 'hover:bg-muted/20'
                                             }`}
                                         >
                                             <div className="col-span-3">
@@ -512,8 +525,9 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                                                     value={row.canonical_path}
                                                     onChange={(e) => update(i, 'canonical_path', e.target.value)}
                                                     placeholder="e.g. main_applicant.surname"
-                                                    className="h-7 text-sm font-mono"
+                                                    className={`h-7 text-sm font-mono ${row.is_suggested ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 focus:border-primary' : ''}`}
                                                     list="canonical-paths"
+                                                    title={row.is_suggested ? 'Auto-suggested — review and save to confirm' : undefined}
                                                 />
                                             </div>
                                             <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
