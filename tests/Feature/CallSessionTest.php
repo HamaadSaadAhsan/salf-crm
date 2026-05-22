@@ -1,5 +1,10 @@
 <?php
 
+use App\Models\Lead;
+use App\Models\User;
+use App\Services\CallSessionService;
+use Spatie\Permission\Models\Permission;
+
 it('requires authentication for call routes', function () {
     $response = $this->get('/calls');
     $response->assertRedirect('/login');
@@ -9,8 +14,8 @@ it('requires authentication for call routes', function () {
 });
 
 it('call routes exist', function () {
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'make calls', 'guard_name' => 'web']);
-    $user = \App\Models\User::factory()->create();
+    Permission::firstOrCreate(['name' => 'make calls', 'guard_name' => 'web']);
+    $user = User::factory()->create();
     $user->givePermissionTo('make calls');
     $this->actingAs($user);
 
@@ -19,10 +24,10 @@ it('call routes exist', function () {
 });
 
 it('generates call signature in correct format', function () {
-    $user = \App\Models\User::factory()->create();
-    $lead = \App\Models\Lead::factory()->create();
+    $user = User::factory()->create();
+    $lead = Lead::factory()->create();
 
-    $callSessionService = app(\App\Services\CallSessionService::class);
+    $callSessionService = app(CallSessionService::class);
     $signatureData = $callSessionService->generateCallSignature($user, '03084920401', $lead);
 
     // Assert signature has correct format: LEAD-{lead_id}-USER-{user_id}-{timestamp}-{random}
@@ -33,9 +38,9 @@ it('generates call signature in correct format', function () {
 });
 
 it('generates call signature without lead', function () {
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
-    $callSessionService = app(\App\Services\CallSessionService::class);
+    $callSessionService = app(CallSessionService::class);
     $signatureData = $callSessionService->generateCallSignature($user, '03084920401', null);
 
     // Should have LEAD-NONE when no lead is provided

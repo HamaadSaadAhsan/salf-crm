@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
 
 it('displays super admin dashboard with all charts and metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create([
@@ -25,8 +27,8 @@ it('displays super admin dashboard with all charts and metrics', function () {
 });
 
 it('allows super admin to interact with dashboard filters', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create();
@@ -38,8 +40,8 @@ it('allows super admin to interact with dashboard filters', function () {
 });
 
 it('displays correct role badge for super admin', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create([
@@ -53,8 +55,8 @@ it('displays correct role badge for super admin', function () {
 });
 
 it('loads charts without errors for super admin', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create();
@@ -66,7 +68,7 @@ it('loads charts without errors for super admin', function () {
 });
 
 it('displays empty state when no metrics data exists', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create();
@@ -78,8 +80,8 @@ it('displays empty state when no metrics data exists', function () {
 });
 
 it('super admin dashboard is responsive on mobile', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create();
@@ -94,8 +96,8 @@ it('super admin dashboard is responsive on mobile', function () {
 });
 
 it('super admin can access all dashboard metrics endpoints', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $superAdminRole = Role::where('name', 'super-admin')->first();
     $superAdmin = User::factory()->create();

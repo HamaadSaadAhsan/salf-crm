@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\MetaPage;
+use App\Models\User;
 use App\Services\FacebookAdsSyncService;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -70,7 +72,7 @@ class SyncAllFacebookAdsJob implements ShouldQueue
     {
         try {
             // Get all pages
-            $activePages = \App\Models\MetaPage::all();
+            $activePages = MetaPage::all();
 
             foreach ($activePages as $page) {
                 try {
@@ -100,9 +102,9 @@ class SyncAllFacebookAdsJob implements ShouldQueue
     /**
      * Legacy sync for a single page (synchronous)
      */
-    private function syncPageLegacy(FacebookAdsSyncService $adsSyncService, \App\Models\MetaPage $page): void
+    private function syncPageLegacy(FacebookAdsSyncService $adsSyncService, MetaPage $page): void
     {
-        $userId = $this->userId ?? \App\Models\User::role('super-admin')->first()?->id;
+        $userId = $this->userId ?? User::role('super-admin')->first()?->id;
 
         // Step 1: Sync campaigns
         $campaigns = $adsSyncService->getCampaignsFromPage($page);

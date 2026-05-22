@@ -106,7 +106,7 @@ return new class extends Migration
             ', [$table, $indexName]);
 
             return ! empty($exists);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // If query fails, assume index doesn't exist
             return false;
         }
@@ -124,7 +124,7 @@ return new class extends Migration
             if ($this->indexExists($tableName, $indexName)) {
                 $table->dropIndex($indexName);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Ignore errors when dropping indexes (they might not exist)
             // This is safe for rollbacks
         }

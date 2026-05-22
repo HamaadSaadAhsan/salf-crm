@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\StorageAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\StorageAccount>
+ * @extends Factory<StorageAccount>
  */
 class StorageAccountFactory extends Factory
 {

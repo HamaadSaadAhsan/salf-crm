@@ -5,11 +5,12 @@ use App\Models\Country;
 use App\Models\Province;
 use App\Models\User;
 use App\Models\Zone;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class)->beforeEach(function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+    $this->withoutMiddleware(PreventRequestForgery::class);
 
     // Create role for API access
     Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\MetaPage;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -157,7 +158,7 @@ class ExtendFacebookTokens extends Command
             $pages = $response->json('data', []);
 
             foreach ($pages as $pageData) {
-                \App\Models\MetaPage::where('user_id', $user->id)
+                MetaPage::where('user_id', $user->id)
                     ->where('page_id', $pageData['id'])
                     ->update([
                         'access_token' => $pageData['access_token'] ?? '',

@@ -18,6 +18,7 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasMiddleware;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Middleware\RememberConversation;
 use Laravel\Ai\Promptable;
 use Stringable;
@@ -75,7 +76,7 @@ class CrmAssistant implements Agent, Conversational, HasMiddleware, HasTools
     }
 
     /**
-     * @return \Laravel\Ai\Contracts\Tool[]
+     * @return Tool[]
      */
     public function tools(): iterable
     {

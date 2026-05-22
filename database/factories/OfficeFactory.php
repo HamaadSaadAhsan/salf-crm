@@ -2,10 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Office;
+use App\Models\Zone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Office>
+ * @extends Factory<Office>
  */
 class OfficeFactory extends Factory
 {
@@ -17,7 +19,7 @@ class OfficeFactory extends Factory
     public function definition(): array
     {
         return [
-            'zone_id' => \App\Models\Zone::factory(),
+            'zone_id' => Zone::factory(),
             'name' => fake()->company().' Office',
             'code' => fake()->unique()->lexify('OFF-???'),
             'address' => fake()->streetAddress(),

@@ -21,7 +21,7 @@ class RolePermissionsUpdated implements ShouldBroadcast
     ) {}
 
     /**
-     * @return array<int, \Illuminate\Broadcasting\PrivateChannel>
+     * @return array<int, PrivateChannel>
      */
     public function broadcastOn(): array
     {

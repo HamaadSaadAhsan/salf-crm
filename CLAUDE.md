@@ -272,8 +272,8 @@ Wayfinder generates TypeScript functions for Laravel routes. Import from `@/acti
 
 # Laravel Pint Code Formatter
 
-- You must run `vendor/bin/pint --dirty` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test`, simply run `vendor/bin/pint` to fix any formatting issues.
+- You must run `vendor/bin/pint --test` followed by `vendor/bin/pint --dirty` before finalizing changes to ensure your code matches the project's expected style.
+- Always run both: first `vendor/bin/pint --test` to detect issues, then `vendor/bin/pint --dirty` to fix them.
 
 === pest/core rules ===
 

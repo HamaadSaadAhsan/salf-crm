@@ -1,14 +1,17 @@
 <?php
 
+use App\Models\CallSession;
 use App\Models\Lead;
+use App\Models\LeadActivity;
 use App\Models\User;
+use Database\Seeders\LeadsPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Seed roles and permissions
-    $this->seed(\Database\Seeders\LeadsPermissionsSeeder::class);
+    $this->seed(LeadsPermissionsSeeder::class);
 
     $this->lead = Lead::factory()->create([
         'phone' => '+1234567890',
@@ -64,7 +67,7 @@ it('shows phone numbers in call history when user has permission', function () {
     $user->assignRole('admin');
 
     // Create a call session for this lead
-    \App\Models\CallSession::factory()->create([
+    CallSession::factory()->create([
         'lead_id' => $this->lead->id,
         'caller_id' => $user->id,
         'caller_number' => '100',
@@ -125,7 +128,7 @@ it('strips phone_number from activity metadata when user lacks permission', func
     $user->assignRole('sales-rep');
 
     // Create a call activity with phone_number in metadata
-    \App\Models\LeadActivity::create([
+    LeadActivity::create([
         'lead_id' => $this->lead->id,
         'user_id' => $user->id,
         'type' => 'call',
@@ -156,7 +159,7 @@ it('keeps phone_number in activity metadata when user has permission', function 
     $user = User::factory()->create(['email_verified_at' => now()]);
     $user->assignRole('admin');
 
-    \App\Models\LeadActivity::create([
+    LeadActivity::create([
         'lead_id' => $this->lead->id,
         'user_id' => $user->id,
         'type' => 'call',

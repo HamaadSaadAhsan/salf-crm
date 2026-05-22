@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\PdfTemplate;
+use App\Models\PdfTemplateField;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\PdfTemplateField>
+ * @extends Factory<PdfTemplateField>
  */
 class PdfTemplateFieldFactory extends Factory
 {

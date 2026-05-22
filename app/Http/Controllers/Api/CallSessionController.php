@@ -211,7 +211,7 @@ class CallSessionController extends Controller
         try {
             // Invalidate lead cache if this call involves a lead
             if ($validated['lead_id']) {
-                $lead = \App\Models\Lead::find($validated['lead_id']);
+                $lead = Lead::find($validated['lead_id']);
                 if ($lead) {
                     $this->leadCacheService->invalidateLeadCache($lead);
                 }
@@ -254,7 +254,7 @@ class CallSessionController extends Controller
         try {
             // Invalidate lead cache if this call involves a lead
             if ($validated['lead_id']) {
-                $lead = \App\Models\Lead::find($validated['lead_id']);
+                $lead = Lead::find($validated['lead_id']);
                 if ($lead) {
                     $this->leadCacheService->invalidateLeadCache($lead);
                 }

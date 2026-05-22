@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\LeadSource;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LeadSource>
+ * @extends Factory<LeadSource>
  */
 class LeadSourceFactory extends Factory
 {

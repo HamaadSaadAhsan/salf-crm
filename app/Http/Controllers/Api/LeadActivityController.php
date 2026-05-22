@@ -7,7 +7,9 @@ use App\Http\Resources\LeadActivityResource;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\User;
 use App\Notifications\LeadActivityNotification;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -69,7 +71,7 @@ class LeadActivityController extends Controller
 
         // Only one meeting per lead per day
         if ($activityType === 'meeting' && $request->scheduled_at) {
-            $scheduledDate = \Carbon\Carbon::parse($request->scheduled_at)->toDateString();
+            $scheduledDate = Carbon::parse($request->scheduled_at)->toDateString();
 
             $existingMeeting = LeadActivity::where('lead_id', $request->lead_id)
                 ->where('type', 'meeting')
@@ -127,7 +129,7 @@ class LeadActivityController extends Controller
 
         // Notify the lead's assigned user about the new meeting
         if ($activityType === 'meeting' && $lead->assigned_to) {
-            $assignedUser = \App\Models\User::find($lead->assigned_to);
+            $assignedUser = User::find($lead->assigned_to);
             if ($assignedUser && $assignedUser->id !== Auth::id()) {
                 $assignedUser->notify(new LeadActivityNotification($activity, $lead, 'created'));
             }
@@ -141,7 +143,7 @@ class LeadActivityController extends Controller
                 ->filter(fn ($id) => $id !== Auth::id())
                 ->unique();
 
-            $mentionedUsers = \App\Models\User::whereIn('id', $mentionedUserIds)->get();
+            $mentionedUsers = User::whereIn('id', $mentionedUserIds)->get();
             foreach ($mentionedUsers as $mentionedUser) {
                 $mentionedUser->notify(new LeadActivityNotification($activity, $lead, 'mentioned'));
             }
@@ -223,7 +225,7 @@ class LeadActivityController extends Controller
 
         // Group by month
         $grouped = $activities->groupBy(function ($activity) {
-            return \Carbon\Carbon::parse($activity->created_at)->format('Y-m');
+            return Carbon::parse($activity->created_at)->format('Y-m');
         });
 
         // Build response with limited items per month
@@ -233,7 +235,7 @@ class LeadActivityController extends Controller
 
             return [
                 'month' => $monthKey,
-                'month_label' => \Carbon\Carbon::parse($monthKey.'-01')->format('F Y'),
+                'month_label' => Carbon::parse($monthKey.'-01')->format('F Y'),
                 'total' => $total,
                 'loaded' => $items->count(),
                 'has_more' => $total > $perMonth,

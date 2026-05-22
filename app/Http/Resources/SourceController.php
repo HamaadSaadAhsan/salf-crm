@@ -7,6 +7,7 @@ use App\Http\Requests\StatusFilterRequest;
 use App\Models\LeadSource;
 use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class SourceController extends Controller
 {
@@ -147,7 +148,7 @@ class SourceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(\Illuminate\Http\Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -168,7 +169,7 @@ class SourceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(\Illuminate\Http\Request $request, LeadSource $source): JsonResponse
+    public function update(Request $request, LeadSource $source): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',

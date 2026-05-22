@@ -4,13 +4,14 @@ use App\Models\Lead;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
-    $superAdminRole = \Spatie\Permission\Models\Role::create(['name' => 'super-admin']);
+    $superAdminRole = Role::create(['name' => 'super-admin']);
 
     $this->superAdmin = User::factory()->create([
         'email_verified_at' => now(),
@@ -64,7 +65,7 @@ test('regular user cannot access assignment visualizer API', function () {
 });
 
 test('API returns correct service hierarchy with lead counts', function () {
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $salesRepRole = Role::create(['name' => 'sales-rep']);
 
     $advisor = User::factory()->create([
         'availability' => true,
@@ -132,7 +133,7 @@ test('API returns correct service hierarchy with lead counts', function () {
 });
 
 test('API returns queue position for advisors sorted by assignment score', function () {
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $salesRepRole = Role::create(['name' => 'sales-rep']);
 
     // Advisor with lower workload should be ranked higher (up next)
     $advisorLow = User::factory()->create([
@@ -201,7 +202,7 @@ test('API returns queue position for advisors sorted by assignment score', funct
 });
 
 test('API returns correct summary stats', function () {
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $salesRepRole = Role::create(['name' => 'sales-rep']);
 
     $advisor1 = User::factory()->create([
         'availability' => true,

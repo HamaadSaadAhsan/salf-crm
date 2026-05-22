@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class LeadSeeder extends Seeder
 {
@@ -150,7 +151,7 @@ class LeadSeeder extends Seeder
                 $nextFollowUpAt = $this->getNextFollowUpDate($inquiryStatus, $lastActivityAt);
 
                 $leads[] = [
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'name' => $fullName,
                     'email' => $email,
                     'phone' => $phone,
@@ -171,7 +172,7 @@ class LeadSeeder extends Seeder
                     'inquiry_country' => $country['code'],
                     'assigned_to' => $assignedTo,
                     'assigned_date' => $assignedDate,
-                    'ticket_id' => rand(1, 10) <= 3 ? (string) \Illuminate\Support\Str::uuid() : null,
+                    'ticket_id' => rand(1, 10) <= 3 ? (string) Str::uuid() : null,
                     'ticket_date' => rand(1, 10) <= 3 ? $this->getRandomDate(60) : null,
                     'external_id' => $this->generateUniqueExternalId($email, $usedExternalIds, $leadCounter),
                     'lead_score' => $this->calculateLeadScore($occupation, $emailDomain, $phone, $budget),
@@ -239,7 +240,7 @@ class LeadSeeder extends Seeder
                 $nextFollowUpAt = $this->getNextFollowUpDate($inquiryStatus, $lastActivityAt);
 
                 $leads[] = [
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'name' => $fullName,
                     'email' => $email,
                     'phone' => $phone,
@@ -260,7 +261,7 @@ class LeadSeeder extends Seeder
                     'inquiry_country' => $country['code'],
                     'assigned_to' => $assignedTo,
                     'assigned_date' => $assignedDate,
-                    'ticket_id' => rand(1, 10) <= 3 ? (string) \Illuminate\Support\Str::uuid() : null,
+                    'ticket_id' => rand(1, 10) <= 3 ? (string) Str::uuid() : null,
                     'ticket_date' => rand(1, 10) <= 3 ? $this->getRandomDate(60) : null,
                     'external_id' => $this->generateUniqueExternalId($email, $usedExternalIds, $leadCounter),
                     'lead_score' => $this->calculateLeadScore($occupation, $emailDomain, $phone, $budget),

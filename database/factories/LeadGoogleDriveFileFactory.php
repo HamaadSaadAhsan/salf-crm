@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\Lead;
+use App\Models\LeadGoogleDriveFile;
 use App\Models\StorageAccount;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LeadGoogleDriveFile>
+ * @extends Factory<LeadGoogleDriveFile>
  */
 class LeadGoogleDriveFileFactory extends Factory
 {

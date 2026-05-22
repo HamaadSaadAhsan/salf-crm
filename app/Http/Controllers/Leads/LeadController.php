@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Leads;
 
 use App\Enums\TaskStatus;
+use App\Events\LeadQualified;
 use App\Events\LeadRequalified;
 use App\Events\LeadStageChanged;
 use App\Http\Controllers\Controller;
@@ -17,6 +18,7 @@ use App\Models\LeadCase;
 use App\Models\LeadSource;
 use App\Models\Service;
 use App\Models\Task;
+use App\Models\User;
 use App\Services\LeadAssignmentService;
 use App\Services\LeadCacheService;
 use Illuminate\Http\JsonResponse;
@@ -67,7 +69,7 @@ class LeadController extends Controller
             $seniorRole = $user->getRoleNames()->first();
             $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
             $subordinateIds = $subordinateRole
-                ? \App\Models\User::role($subordinateRole)->pluck('id')->toArray()
+                ? User::role($subordinateRole)->pluck('id')->toArray()
                 : [];
             $filters['assigned_to_in'] = array_unique(array_merge([$user->id], $subordinateIds));
         } elseif ($user->hasRole('processing') && ! $user->hasAnyRole($adminRoles)) {
@@ -878,7 +880,7 @@ class LeadController extends Controller
             if ($isSeniorManaging) {
                 $seniorRole = $user->getRoleNames()->first();
                 $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
-                $assignee = $lead->assigned_to ? \App\Models\User::find($lead->assigned_to) : null;
+                $assignee = $lead->assigned_to ? User::find($lead->assigned_to) : null;
                 $isOwn = $lead->assigned_to === $user->id;
                 $isTeamMember = $assignee && $subordinateRole && $assignee->hasRole($subordinateRole);
                 abort_unless($isOwn || $isTeamMember, 403, 'You are not authorized to view this lead.');
@@ -964,7 +966,7 @@ class LeadController extends Controller
         $user = auth()->user();
         $croUsers = [];
         if ($user->hasAnyRole(['support-agent', 'senior-support-agent'])) {
-            $croUsers = \App\Models\User::select('id', 'name', 'email')
+            $croUsers = User::select('id', 'name', 'email')
                 ->with('roles:id,name,guard_name')
                 ->whereHas('roles', function ($query) {
                     $query->whereIn('name', ['support-agent', 'senior-support-agent']);
@@ -1263,7 +1265,7 @@ class LeadController extends Controller
         if ($isSeniorManaging && $request->has('assigned_to')) {
             $seniorRole = $user->getRoleNames()->first();
             $subordinateRole = $subordinateRoleMap[$seniorRole] ?? null;
-            $currentAssignee = $lead->assigned_to ? \App\Models\User::find($lead->assigned_to) : null;
+            $currentAssignee = $lead->assigned_to ? User::find($lead->assigned_to) : null;
 
             // The lead must currently be assigned to a subordinate
             if ($currentAssignee && ! ($subordinateRole && $currentAssignee->hasRole($subordinateRole))) {
@@ -1278,7 +1280,7 @@ class LeadController extends Controller
             if ($newAssignedToId) {
                 $newAssignedToId = (int) $newAssignedToId;
                 $isSelf = $newAssignedToId === $user->id;
-                $newAssignee = $isSelf ? $user : \App\Models\User::find($newAssignedToId);
+                $newAssignee = $isSelf ? $user : User::find($newAssignedToId);
                 abort_unless($newAssignee && ($isSelf || ($subordinateRole && $newAssignee->hasRole($subordinateRole))), 403, 'You can only assign leads to your team members.');
             }
         }
@@ -1679,7 +1681,7 @@ class LeadController extends Controller
 
             // Fire LeadQualified event if status changed to qualified
             if ($isQualifying) {
-                event(new \App\Events\LeadQualified($lead->fresh(), $request->user()));
+                event(new LeadQualified($lead->fresh(), $request->user()));
             }
 
             // Clear related caches (tiered based on what actually changed)
@@ -1691,7 +1693,7 @@ class LeadController extends Controller
             // Dispatch requalification event when advisor sends lead back to CRO
             if ($originalStatus === 'assigned_to_advisor' && $newStatus === 'requalify') {
                 $originalAdvisorUser = $lead->requalified_from_advisor_id
-                    ? \App\Models\User::find($lead->requalified_from_advisor_id)
+                    ? User::find($lead->requalified_from_advisor_id)
                     : null;
 
                 LeadRequalified::dispatch(
@@ -1770,7 +1772,7 @@ class LeadController extends Controller
 
             // Add assignment info if lead was qualified
             if ($isQualifying && $lead->assigned_to) {
-                $assignedAdvisor = \App\Models\User::with('roles')->find($lead->assigned_to);
+                $assignedAdvisor = User::with('roles')->find($lead->assigned_to);
                 $responseData['assigned_advisor'] = [
                     'id' => $assignedAdvisor->id,
                     'name' => $assignedAdvisor->name,

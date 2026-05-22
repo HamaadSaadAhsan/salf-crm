@@ -8,12 +8,16 @@ use App\Enums\TaskType;
 use App\Events\InboundCallReceived;
 use App\Events\OutboundCallReceived;
 use App\Http\Requests\StoreInboundCallRequest;
+use App\Models\CallLog;
+use App\Models\CallSession;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadSource;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\CROAssignmentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -36,7 +40,7 @@ class AsteriskCallController extends Controller
 
             // Find call session by uniqueid or linkedid (created by incoming.php)
             // Match by linkedid because Asterisk creates multiple channels with different uniqueids but same linkedid
-            $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+            $callSession = CallSession::where('call_direction', 'inbound')
                 ->where(function ($query) use ($validated) {
                     $query->where('uniqueid', $validated['uniqueid'])
                         ->orWhere('uniqueid', $validated['linkedid']);
@@ -56,7 +60,7 @@ class AsteriskCallController extends Controller
                 // Stop ringing event - clear notification from specific extension
                 // This is used when a call moves from one extension to another in a ring group
                 $targetExtension = $validated['targetExtension'] ?? $validated['exten'];
-                $stopRingingUser = $targetExtension ? \App\Models\User::where('extension', $targetExtension)->first() : null;
+                $stopRingingUser = $targetExtension ? User::where('extension', $targetExtension)->first() : null;
 
                 Log::info('Stop ringing event received', [
                     'uniqueid' => $validated['uniqueid'],
@@ -68,7 +72,7 @@ class AsteriskCallController extends Controller
 
                 // Log stop_ringing event to call_logs
                 if ($callSession) {
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'stop_ringing',
@@ -131,8 +135,8 @@ class AsteriskCallController extends Controller
 
                 // Log ring event to call_logs
                 if ($callSession) {
-                    $ringUser = $exten ? \App\Models\User::where('extension', $exten)->first() : null;
-                    \App\Models\CallLog::createForSession(
+                    $ringUser = $exten ? User::where('extension', $exten)->first() : null;
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'ringing',
@@ -157,7 +161,7 @@ class AsteriskCallController extends Controller
 
                 if ($callSession && $isAgentExtension) {
                     // Find who answered the call by extension
-                    $answeredByUser = \App\Models\User::where('extension', $exten)->first();
+                    $answeredByUser = User::where('extension', $exten)->first();
                     $answeredByUserId = $answeredByUser?->id;
 
                     // Fallback: if no user for this extension (e.g. ring group 299),
@@ -166,7 +170,7 @@ class AsteriskCallController extends Controller
                         $callSession->refresh();
                         $answeredByUserId = $callSession->answered_by_user_id;
                         if ($answeredByUserId) {
-                            $answeredByUser = \App\Models\User::find($answeredByUserId);
+                            $answeredByUser = User::find($answeredByUserId);
                         }
                     }
 
@@ -200,7 +204,7 @@ class AsteriskCallController extends Controller
 
                         // Set source to "Inbound Call" if lead has no source
                         if ($lead && ! $lead->lead_source_id) {
-                            $inboundSource = \App\Models\LeadSource::where('slug', 'inbound-call')->first();
+                            $inboundSource = LeadSource::where('slug', 'inbound-call')->first();
                             if ($inboundSource) {
                                 $lead->update(['lead_source_id' => $inboundSource->id]);
 
@@ -212,7 +216,7 @@ class AsteriskCallController extends Controller
                         }
 
                         // Log connect event to call_logs
-                        \App\Models\CallLog::createForSession(
+                        CallLog::createForSession(
                             $callSession,
                             'info',
                             'answered',
@@ -277,7 +281,7 @@ class AsteriskCallController extends Controller
                     ]);
 
                     // Log hangup event to call_logs
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'hangup',
@@ -321,7 +325,7 @@ class AsteriskCallController extends Controller
 
             // For connect event, if not yet in session, calculate it
             if ($validated['event'] === 'connect' && ! $answeredByUserId && $exten) {
-                $answeredByUser = \App\Models\User::where('extension', $exten)->first();
+                $answeredByUser = User::where('extension', $exten)->first();
                 $answeredByUserId = $answeredByUser?->id;
             }
 
@@ -370,7 +374,7 @@ class AsteriskCallController extends Controller
     /**
      * Store a new lead from inbound call.
      */
-    public function storeCallLead(\Illuminate\Http\Request $request): JsonResponse
+    public function storeCallLead(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -391,7 +395,7 @@ class AsteriskCallController extends Controller
             // Get the appropriate call source based on direction
             $callDirection = $validated['call_direction'] ?? 'inbound';
             $sourceSlug = $callDirection === 'outbound' ? 'outbound-call' : 'inbound-call';
-            $callSource = \App\Models\LeadSource::where('slug', $sourceSlug)->first();
+            $callSource = LeadSource::where('slug', $sourceSlug)->first();
 
             // Determine assignment: if CRO answered the call, assign to them; otherwise use fair distribution
             $currentUser = auth()->user();
@@ -466,7 +470,7 @@ class AsteriskCallController extends Controller
             ]);
 
             // Link the lead to the call session
-            $callSession = \App\Models\CallSession::whereNull('lead_id')
+            $callSession = CallSession::whereNull('lead_id')
                 ->where('call_direction', $callDirection)
                 ->where('created_at', '>=', now()->subMinutes(5))
                 ->where(function ($q) use ($validated) {
@@ -513,7 +517,7 @@ class AsteriskCallController extends Controller
     /**
      * Save call notes to lead activity.
      */
-    public function saveCallNotes(\Illuminate\Http\Request $request): JsonResponse
+    public function saveCallNotes(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'lead_id' => ['required', 'exists:leads,id'],
@@ -601,14 +605,14 @@ class AsteriskCallController extends Controller
     /**
      * Link a lead to a call session.
      */
-    public function linkLeadToSession(\Illuminate\Http\Request $request, string $sessionId): JsonResponse
+    public function linkLeadToSession(Request $request, string $sessionId): JsonResponse
     {
         $validated = $request->validate([
             'lead_id' => ['required', 'exists:leads,id'],
         ]);
 
         try {
-            $callSession = \App\Models\CallSession::where('session_id', $sessionId)->first();
+            $callSession = CallSession::where('session_id', $sessionId)->first();
 
             if (! $callSession) {
                 return response()->json([
@@ -649,9 +653,9 @@ class AsteriskCallController extends Controller
      * This is called when a call is answered by a different CRO than the lead's assigned CRO.
      */
     private function handleCoverageCall(
-        \App\Models\CallSession $callSession,
+        CallSession $callSession,
         Lead $lead,
-        ?\App\Models\User $answeredByUser
+        ?User $answeredByUser
     ): void {
         $intendedUserId = $callSession->intended_for_user_id;
         $answeredByName = $answeredByUser?->name ?? 'Another CRO';
@@ -748,7 +752,7 @@ class AsteriskCallController extends Controller
      * target extension. The original extension already receives the initial ring notification
      * from incoming.php -> server.js flow.
      */
-    public function handleRingGroupMember(\Illuminate\Http\Request $request): JsonResponse
+    public function handleRingGroupMember(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'exten' => ['required', 'string'],
@@ -767,7 +771,7 @@ class AsteriskCallController extends Controller
 
             // Strategy 1: Find call session by linkedid/uniqueid match
             // The linkedid of child channels should match the uniqueid of the parent channel
-            $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+            $callSession = CallSession::where('call_direction', 'inbound')
                 ->where(function ($query) use ($validated) {
                     $query->where('uniqueid', $validated['linkedid'])
                         ->orWhere('uniqueid', $validated['uniqueid']);
@@ -782,7 +786,7 @@ class AsteriskCallController extends Controller
                 $normalizedCaller = preg_replace('/[^0-9]/', '', $validated['caller']);
                 $last10Digits = substr($normalizedCaller, -10);
 
-                $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                $callSession = CallSession::where('call_direction', 'inbound')
                     ->where(function ($query) use ($validated, $last10Digits) {
                         // Match exact caller_number OR last 10 digits
                         $query->where('caller_number', $validated['caller'])
@@ -811,7 +815,7 @@ class AsteriskCallController extends Controller
 
                 // Find the MOST RECENT call session from this caller (within 2 minutes)
                 // regardless of status - the ring group might start after initial dial ended
-                $callSession = \App\Models\CallSession::where('call_direction', 'inbound')
+                $callSession = CallSession::where('call_direction', 'inbound')
                     ->where(function ($query) use ($validated, $last10Digits) {
                         $query->where('caller_number', $validated['caller'])
                             ->orWhereRaw("RIGHT(REGEXP_REPLACE(caller_number, '[^0-9]', '', 'g'), 10) = ?", [$last10Digits]);
@@ -897,10 +901,10 @@ class AsteriskCallController extends Controller
             ]);
 
             // Find user for this extension
-            $ringGroupUser = \App\Models\User::where('extension', $validated['exten'])->first();
+            $ringGroupUser = User::where('extension', $validated['exten'])->first();
 
             // Log the ring event for this ring group member
-            \App\Models\CallLog::createForSession(
+            CallLog::createForSession(
                 $callSession,
                 'info',
                 'ring_group_ringing',
@@ -965,7 +969,7 @@ class AsteriskCallController extends Controller
      * Handle outbound call event from WebSocket/Asterisk.
      * This endpoint processes outbound call state changes and logs them.
      */
-    public function handleOutboundCall(\Illuminate\Http\Request $request): JsonResponse
+    public function handleOutboundCall(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'event' => ['required', 'string', 'in:outbound_agent_dial,outbound_client_dial,outbound_agent_answer,outbound_client_answer,outbound_connect,outbound_hangup'],
@@ -997,7 +1001,7 @@ class AsteriskCallController extends Controller
 
             // Strategy 1: By session_id (primary lookup)
             if (! empty($validated['session_id'])) {
-                $callSession = \App\Models\CallSession::where('session_id', $validated['session_id'])->first();
+                $callSession = CallSession::where('session_id', $validated['session_id'])->first();
                 if ($callSession) {
                     $lookupStrategy = 'session_id';
                 }
@@ -1005,7 +1009,7 @@ class AsteriskCallController extends Controller
 
             // Strategy 2: By linkedid (Asterisk's call chain identifier)
             if (! $callSession && ! empty($validated['linkedid'])) {
-                $callSession = \App\Models\CallSession::where('linkedid', $validated['linkedid'])->first();
+                $callSession = CallSession::where('linkedid', $validated['linkedid'])->first();
                 if ($callSession) {
                     $lookupStrategy = 'linkedid';
                 }
@@ -1013,7 +1017,7 @@ class AsteriskCallController extends Controller
 
             // Strategy 3: By uniqueid
             if (! $callSession && ! empty($validated['uniqueid'])) {
-                $callSession = \App\Models\CallSession::where('uniqueid', $validated['uniqueid'])->first();
+                $callSession = CallSession::where('uniqueid', $validated['uniqueid'])->first();
                 if ($callSession) {
                     $lookupStrategy = 'uniqueid';
                 }
@@ -1021,7 +1025,7 @@ class AsteriskCallController extends Controller
 
             // Strategy 4: By caller_number (agent extension) + callee_number (client) for recent calls
             if (! $callSession && ! empty($validated['agent']) && ! empty($validated['client'])) {
-                $callSession = \App\Models\CallSession::where('caller_number', $validated['agent'])
+                $callSession = CallSession::where('caller_number', $validated['agent'])
                     ->where('callee_number', $validated['client'])
                     ->where('call_direction', 'outbound')
                     ->where('created_at', '>=', now()->subMinutes(2))
@@ -1079,7 +1083,7 @@ class AsteriskCallController extends Controller
                     // System is dialing the agent's phone (first leg)
                     $callSession->update(['status' => 'ringing']);
 
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'outbound_agent_dial',
@@ -1116,7 +1120,7 @@ class AsteriskCallController extends Controller
 
                 case 'outbound_agent_answer':
                     // Agent answered their phone
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'outbound_agent_answer',
@@ -1138,7 +1142,7 @@ class AsteriskCallController extends Controller
 
                 case 'outbound_client_dial':
                     // Agent's phone is now dialing the client (second leg)
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'outbound_client_dial',
@@ -1168,7 +1172,7 @@ class AsteriskCallController extends Controller
                         'answered_at' => now(),
                     ]);
 
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'outbound_connected',
@@ -1334,7 +1338,7 @@ class AsteriskCallController extends Controller
                         'recording_path' => $recordingFilename,
                     ]);
 
-                    \App\Models\CallLog::createForSession(
+                    CallLog::createForSession(
                         $callSession,
                         'info',
                         'outbound_hangup',

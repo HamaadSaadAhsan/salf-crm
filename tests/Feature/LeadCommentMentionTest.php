@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Lead;
+use App\Models\LeadActivity;
 use App\Models\User;
 use App\Notifications\LeadActivityNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,7 +142,7 @@ describe('Comment with Mentions', function () {
 
         $response->assertOk();
 
-        $activity = \App\Models\LeadActivity::where('lead_id', $lead->id)->first();
+        $activity = LeadActivity::where('lead_id', $lead->id)->first();
         expect($activity->metadata)->toHaveKey('mentions');
         expect($activity->metadata['mentions'])->toHaveCount(1);
         expect($activity->metadata['task_refs'])->toHaveCount(1);

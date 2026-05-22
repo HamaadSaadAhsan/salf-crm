@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\GmailInsufficientScopeException;
 use App\Models\GmailIntegration;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -125,7 +127,7 @@ class GmailService
      *
      * @return string[]
      */
-    public function listInboxMessageIds(GmailIntegration $integration, \Carbon\Carbon $since): array
+    public function listInboxMessageIds(GmailIntegration $integration, Carbon $since): array
     {
         $accessToken = $this->getValidAccessToken($integration);
 
@@ -138,7 +140,7 @@ class GmailService
         if (! $response->successful()) {
             $status = $response->json('error.status');
             if ($status === 'PERMISSION_DENIED') {
-                throw new \App\Exceptions\GmailInsufficientScopeException(
+                throw new GmailInsufficientScopeException(
                     'Gmail token lacks required scopes. User must re-authorize.'
                 );
             }
@@ -154,7 +156,7 @@ class GmailService
     /**
      * Fetch and parse a single Gmail message into a structured array.
      *
-     * @return array{gmail_id: string, subject: string, body: string, from_name: string, from_email: string, sent_at: \Carbon\Carbon}|null
+     * @return array{gmail_id: string, subject: string, body: string, from_name: string, from_email: string, sent_at: Carbon}|null
      */
     public function getMessageDetail(GmailIntegration $integration, string $gmailMessageId): ?array
     {
@@ -186,7 +188,7 @@ class GmailService
             'body' => $body,
             'from_name' => $fromName,
             'from_email' => $fromEmail,
-            'sent_at' => $dateRaw ? \Carbon\Carbon::parse($dateRaw) : now(),
+            'sent_at' => $dateRaw ? Carbon::parse($dateRaw) : now(),
         ];
     }
 

@@ -10,6 +10,7 @@ use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -20,8 +21,8 @@ beforeEach(function () {
     $this->assignmentService = app(LeadAssignmentService::class);
 
     // Create roles
-    $supportAgentRole = \Spatie\Permission\Models\Role::create(['name' => 'support-agent']);
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $supportAgentRole = Role::create(['name' => 'support-agent']);
+    $salesRepRole = Role::create(['name' => 'sales-rep']);
 
     // Create city, zone, and service for strict matching
     $this->city = City::factory()->create(['name' => 'Dubai']);

@@ -7,12 +7,14 @@ use App\Http\Requests\SendMessageRequest;
 use App\Jobs\SendGmailMessage;
 use App\Models\GmailIntegration;
 use App\Models\Label;
+use App\Models\Lead;
 use App\Models\Message;
 use App\Models\MessageLabel;
 use App\Models\MessageRecipient;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -452,7 +454,7 @@ class MailController extends Controller
         // Also search leads by name/email (returned as external recipients)
         $leads = collect();
         if ($search) {
-            $leads = \App\Models\Lead::query()
+            $leads = Lead::query()
                 ->select(['id', 'name', 'email'])
                 ->where('email', '!=', '')
                 ->whereNotNull('email')
@@ -503,7 +505,7 @@ class MailController extends Controller
 
     // Private helpers
 
-    private function getInbox(User $user, ?string $search): \Illuminate\Support\Collection
+    private function getInbox(User $user, ?string $search): Collection
     {
         $query = Message::query()
             ->whereHas('recipients', fn ($q) => $q->where('user_id', $user->id)->whereNull('trashed_at'))
@@ -521,7 +523,7 @@ class MailController extends Controller
         return $query->limit(100)->get()->map(fn (Message $m) => $this->formatMessage($m, $user));
     }
 
-    private function getSent(User $user, ?string $search): \Illuminate\Support\Collection
+    private function getSent(User $user, ?string $search): Collection
     {
         $query = Message::query()
             ->where('sender_id', $user->id)
@@ -539,7 +541,7 @@ class MailController extends Controller
         return $query->limit(100)->get()->map(fn (Message $m) => $this->formatMessage($m, $user));
     }
 
-    private function getDrafts(User $user, ?string $search): \Illuminate\Support\Collection
+    private function getDrafts(User $user, ?string $search): Collection
     {
         $query = Message::query()
             ->where('sender_id', $user->id)
@@ -557,7 +559,7 @@ class MailController extends Controller
         return $query->limit(100)->get()->map(fn (Message $m) => $this->formatMessage($m, $user));
     }
 
-    private function getStarred(User $user, ?string $search): \Illuminate\Support\Collection
+    private function getStarred(User $user, ?string $search): Collection
     {
         $query = Message::query()
             ->whereHas('recipients', fn ($q) => $q->where('user_id', $user->id)->where('is_starred', true)->whereNull('trashed_at'))
@@ -575,7 +577,7 @@ class MailController extends Controller
         return $query->limit(100)->get()->map(fn (Message $m) => $this->formatMessage($m, $user));
     }
 
-    private function getTrash(User $user, ?string $search): \Illuminate\Support\Collection
+    private function getTrash(User $user, ?string $search): Collection
     {
         $query = Message::query()
             ->whereHas('recipients', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('trashed_at'))

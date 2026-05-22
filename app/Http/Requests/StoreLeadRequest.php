@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Lead;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,7 +24,7 @@ class StoreLeadRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'secondary_phone' => ['nullable', 'string', 'max:50'],
             'occupation' => ['nullable', 'string', 'max:255'],
-            'inquiry_status' => ['nullable', 'string', Rule::in(array_keys(\App\Models\Lead::getStatusOptions()))],
+            'inquiry_status' => ['nullable', 'string', Rule::in(array_keys(Lead::getStatusOptions()))],
             'priority' => ['nullable', 'string', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'lead_source_id' => ['nullable', 'integer', 'exists:lead_sources,id'],
             'service_id' => ['nullable', 'integer', 'exists:services,id'],

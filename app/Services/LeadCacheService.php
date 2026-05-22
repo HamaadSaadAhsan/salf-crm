@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\WarmLeadsCacheJob;
 use App\Models\Lead;
 use Exception;
 use Illuminate\Support\Facades\Cache;
@@ -317,7 +318,7 @@ class LeadCacheService
 
             // Only dispatch job if cache doesn't exist
             if (! $this->hasTaggedCache($cacheKey, ['leads', 'leads_list'])) {
-                \App\Jobs\WarmLeadsCacheJob::dispatch($filter);
+                WarmLeadsCacheJob::dispatch($filter);
             }
         }
     }

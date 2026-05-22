@@ -7,6 +7,7 @@ use App\Http\Resources\StatusResource;
 use App\Models\Status;
 use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class StatusController extends Controller
 {
@@ -148,7 +149,7 @@ class StatusController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(\Illuminate\Http\Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:statuses,name',
@@ -167,7 +168,7 @@ class StatusController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(\Illuminate\Http\Request $request, Status $status): JsonResponse
+    public function update(Request $request, Status $status): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255|unique:statuses,name,'.$status->id,
@@ -198,7 +199,7 @@ class StatusController extends Controller
     /**
      * Reorder statuses
      */
-    public function reorder(\Illuminate\Http\Request $request): JsonResponse
+    public function reorder(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'orders' => 'required|array',

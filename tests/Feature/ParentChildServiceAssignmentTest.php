@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -16,7 +17,7 @@ beforeEach(function () {
 
     $this->assignmentService = app(LeadAssignmentService::class);
 
-    $salesRepRole = \Spatie\Permission\Models\Role::create(['name' => 'sales-rep']);
+    $salesRepRole = Role::create(['name' => 'sales-rep']);
 
     // Create city and zone for strict matching
     $this->city = City::factory()->create(['name' => 'Dubai']);

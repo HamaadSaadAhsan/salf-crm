@@ -8,17 +8,21 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserFilterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\LeadActivity;
+use App\Models\Office;
 use App\Models\Service;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Zone;
 use App\Services\CacheService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
@@ -54,12 +58,12 @@ class UserController extends Controller
         $result = $this->buildUsersQuery($filters);
 
         // Load zones, offices, and services for edit dialogs
-        $zones = \App\Models\Zone::query()
+        $zones = Zone::query()
             ->select(['id', 'name', 'code', 'description', 'is_active'])
             ->orderBy('name')
             ->get();
 
-        $offices = \App\Models\Office::query()
+        $offices = Office::query()
             ->with('zone:id,name,code')
             ->select(['id', 'name', 'code', 'zone_id', 'is_active'])
             ->orderBy('name')
@@ -73,7 +77,7 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
-        $roles = \Spatie\Permission\Models\Role::query()
+        $roles = Role::query()
             ->select(['id', 'name'])
             ->orderBy('name')
             ->get();
@@ -529,19 +533,19 @@ class UserController extends Controller
         ]);
 
         // Get available roles for editing
-        $roles = \Spatie\Permission\Models\Role::query()
+        $roles = Role::query()
             ->select(['id', 'name', 'guard_name'])
             ->orderBy('name')
             ->get();
 
         // Get zones and offices for editing
-        $zones = \App\Models\Zone::query()
+        $zones = Zone::query()
             ->select(['id', 'name', 'code', 'is_active'])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        $offices = \App\Models\Office::query()
+        $offices = Office::query()
             ->with('zone:id,name,code')
             ->select(['id', 'name', 'code', 'zone_id', 'is_active'])
             ->where('is_active', true)
@@ -699,7 +703,7 @@ class UserController extends Controller
     /**
      * Update user's office
      */
-    public function updateOffice(User $user, \Illuminate\Http\Request $request): JsonResponse
+    public function updateOffice(User $user, Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -731,7 +735,7 @@ class UserController extends Controller
     /**
      * Update user's zone
      */
-    public function updateZone(User $user, \Illuminate\Http\Request $request): JsonResponse
+    public function updateZone(User $user, Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -763,7 +767,7 @@ class UserController extends Controller
     /**
      * Update user's availability
      */
-    public function updateAvailability(User $user, \Illuminate\Http\Request $request): JsonResponse
+    public function updateAvailability(User $user, Request $request): JsonResponse
     {
         $authUser = auth()->user();
         if (! $authUser->hasRole('super-admin')) {
@@ -803,7 +807,7 @@ class UserController extends Controller
     /**
      * Update user's services
      */
-    public function updateServices(User $user, \Illuminate\Http\Request $request): JsonResponse
+    public function updateServices(User $user, Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -843,7 +847,7 @@ class UserController extends Controller
     /**
      * Update user's direct permissions
      */
-    public function updatePermissions(User $user, \Illuminate\Http\Request $request): JsonResponse|Response
+    public function updatePermissions(User $user, Request $request): JsonResponse|Response
     {
         $validated = $request->validate([
             'permission_ids' => 'present|array',
@@ -871,7 +875,7 @@ class UserController extends Controller
     /**
      * Get user's activity heatmap data
      */
-    public function activityHeatmap(User $user, \Illuminate\Http\Request $request): JsonResponse
+    public function activityHeatmap(User $user, Request $request): JsonResponse
     {
         $validated = $request->validate([
             'period' => 'nullable|integer|in:7,14,30',

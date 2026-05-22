@@ -3,13 +3,14 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
+use Database\Seeders\LeadsPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config(['broadcasting.default' => 'null']);
-    $this->seed(\Database\Seeders\LeadsPermissionsSeeder::class);
+    $this->seed(LeadsPermissionsSeeder::class);
 
     $this->user = User::factory()->create(['email_verified_at' => now()]);
     $this->user->assignRole('admin');

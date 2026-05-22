@@ -2,10 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\Lead;
+use App\Models\LeadSource;
+use App\Models\Service;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Lead>
+ * @extends Factory<Lead>
  */
 class LeadFactory extends Factory
 {
@@ -29,8 +32,8 @@ class LeadFactory extends Factory
             'priority' => $this->faker->randomElement(['low', 'medium', 'high', 'urgent']),
             'inquiry_type' => $this->faker->optional()->randomElement(['phone', 'email', 'web', 'referral', 'social', 'advertisement']),
             'lead_score' => $this->faker->numberBetween(0, 100),
-            'service_id' => \App\Models\Service::inRandomOrder()->first()?->id,
-            'lead_source_id' => \App\Models\LeadSource::inRandomOrder()->first()?->id,
+            'service_id' => Service::inRandomOrder()->first()?->id,
+            'lead_source_id' => LeadSource::inRandomOrder()->first()?->id,
         ];
     }
 }

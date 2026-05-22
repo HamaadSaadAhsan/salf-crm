@@ -8,9 +8,11 @@ use App\Models\SocialComment;
 use App\Models\SocialMessage;
 use App\Models\SocialPost;
 use App\Services\FacebookService;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FacebookWebhookController extends Controller
@@ -180,7 +182,7 @@ class FacebookWebhookController extends Controller
                     ],
                     [
                         'message' => $message['text'] ?? '',
-                        'timestamp' => \Carbon\Carbon::createFromTimestamp($time),
+                        'timestamp' => Carbon::createFromTimestamp($time),
                         'metadata' => [
                             'sender_id' => $senderId,
                             'recipient_id' => $recipientId,
@@ -207,7 +209,7 @@ class FacebookWebhookController extends Controller
                     'provider' => 'facebook',
                     'provider_id' => uniqid('postback_'),
                     'message' => $postback['title'] ?? 'Postback',
-                    'timestamp' => \Carbon\Carbon::createFromTimestamp($time),
+                    'timestamp' => Carbon::createFromTimestamp($time),
                     'metadata' => [
                         'sender_id' => $senderId,
                         'recipient_id' => $recipientId,
@@ -289,7 +291,7 @@ class FacebookWebhookController extends Controller
                     $accessToken = decrypt($integration->config['access_token']);
 
                     // Fetch post details
-                    $response = \Illuminate\Support\Facades\Http::get(
+                    $response = Http::get(
                         "https://graph.facebook.com/v18.0/{$value['post_id']}", [
                             'access_token' => $accessToken,
                             'fields' => 'id,message,created_time,type,link,picture',
@@ -346,7 +348,7 @@ class FacebookWebhookController extends Controller
                     'content' => $value['message'] ?? '',
                     'author_id' => $value['from']['id'] ?? '',
                     'author_name' => $value['from']['name'] ?? '',
-                    'timestamp' => \Carbon\Carbon::createFromTimestamp($time),
+                    'timestamp' => Carbon::createFromTimestamp($time),
                     'metadata' => [
                         'page_id' => $pageId,
                         'parent_id' => $value['parent_id'] ?? null,

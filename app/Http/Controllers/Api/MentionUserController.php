@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -29,6 +30,6 @@ class MentionUserController extends Controller
         $users = $query->orderBy('name')
             ->paginate($request->get('per_page', 10));
 
-        return \App\Http\Resources\UserResource::collection($users);
+        return UserResource::collection($users);
     }
 }

@@ -4,6 +4,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -12,7 +13,7 @@ beforeEach(function () {
     config(['broadcasting.default' => 'null']);
 
     // Create admin user with view leads permission
-    $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+    $role = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
     $this->user = User::factory()->create();
     $this->user->assignRole($role);
 });

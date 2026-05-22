@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Service;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,12 +20,12 @@ class UpdateServiceRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         $service = $this->route('service');
-        $serviceId = $service instanceof \App\Models\Service ? $service->id : $service;
+        $serviceId = $service instanceof Service ? $service->id : $service;
 
         return [
             'name' => ['required', 'string', 'max:255'],

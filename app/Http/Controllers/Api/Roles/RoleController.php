@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
@@ -123,7 +124,7 @@ class RoleController extends Controller
         // Clear individual role caches
         Role::all()->each(fn ($role) => cache()->forget("roles.{$role->id}"));
         // Clear Spatie's internal permission cache so getAllPermissions() returns fresh data
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     private function broadcastPermissionsUpdated(Role $role): void

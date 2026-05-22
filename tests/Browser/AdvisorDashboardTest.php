@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
 
 it('displays advisor dashboard with personal conversion metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create([
@@ -23,8 +25,8 @@ it('displays advisor dashboard with personal conversion metrics', function () {
 });
 
 it('senior sales rep has same dashboard as sales rep', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $seniorRole = Role::where('name', 'senior-sales-rep')->first();
     $seniorRep = User::factory()->create();
@@ -38,8 +40,8 @@ it('senior sales rep has same dashboard as sales rep', function () {
 });
 
 it('advisor can view upcoming meetings', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -51,8 +53,8 @@ it('advisor can view upcoming meetings', function () {
 });
 
 it('loads charts without errors for advisor', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -64,8 +66,8 @@ it('loads charts without errors for advisor', function () {
 });
 
 it('advisor dashboard displays personal KPIs', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -77,8 +79,8 @@ it('advisor dashboard displays personal KPIs', function () {
 });
 
 it('advisor dashboard displays correct role data from API', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -97,8 +99,8 @@ it('advisor dashboard displays correct role data from API', function () {
 });
 
 it('advisor cannot access team or system-wide metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -111,8 +113,8 @@ it('advisor cannot access team or system-wide metrics', function () {
 });
 
 it('advisor dashboard is responsive on mobile', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();
@@ -127,8 +129,8 @@ it('advisor dashboard is responsive on mobile', function () {
 });
 
 it('advisor can view activity performance for last 14 days', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $advisorRole = Role::where('name', 'sales-rep')->first();
     $advisor = User::factory()->create();

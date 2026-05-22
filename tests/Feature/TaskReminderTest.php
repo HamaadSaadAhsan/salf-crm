@@ -1,5 +1,7 @@
 <?php
 
+use App\Events\TaskDueReminder;
+use App\Events\TaskOverdue;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -124,7 +126,7 @@ test('api task incomplete endpoint marks task as incomplete', function () {
 
 test('check reminders command dispatches events for overdue tasks', function () {
     Event::fake([
-        \App\Events\TaskOverdue::class,
+        TaskOverdue::class,
     ]);
 
     $user = User::factory()->create();
@@ -137,12 +139,12 @@ test('check reminders command dispatches events for overdue tasks', function () 
 
     $this->artisan('tasks:check-reminders')->assertSuccessful();
 
-    Event::assertDispatched(\App\Events\TaskOverdue::class);
+    Event::assertDispatched(TaskOverdue::class);
 });
 
 test('check reminders command dispatches events for urgent tasks', function () {
     Event::fake([
-        \App\Events\TaskDueReminder::class,
+        TaskDueReminder::class,
     ]);
 
     $user = User::factory()->create();
@@ -155,14 +157,14 @@ test('check reminders command dispatches events for urgent tasks', function () {
 
     $this->artisan('tasks:check-reminders')->assertSuccessful();
 
-    Event::assertDispatched(\App\Events\TaskDueReminder::class, function ($event) {
+    Event::assertDispatched(TaskDueReminder::class, function ($event) {
         return $event->reminderType === 'urgent';
     });
 });
 
 test('check reminders command does not dispatch duplicate events', function () {
     Event::fake([
-        \App\Events\TaskOverdue::class,
+        TaskOverdue::class,
     ]);
 
     $user = User::factory()->create();
@@ -178,7 +180,7 @@ test('check reminders command does not dispatch duplicate events', function () {
     $this->artisan('tasks:check-reminders')->assertSuccessful();
 
     // Should only dispatch once (due to caching)
-    Event::assertDispatchedTimes(\App\Events\TaskOverdue::class, 1);
+    Event::assertDispatchedTimes(TaskOverdue::class, 1);
 });
 
 test('overdue tasks are ordered first in reminders', function () {

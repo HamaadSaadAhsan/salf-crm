@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -129,8 +130,8 @@ class AssignmentVisualizerController extends Controller
 
     /**
      * @param  array<int, array<int, array<string, int>>>  $leadIndex
-     * @param  \Illuminate\Support\Collection  $servicePivot
-     * @param  \Illuminate\Support\Collection  $advisors
+     * @param  Collection  $servicePivot
+     * @param  Collection  $advisors
      * @return array<string, mixed>
      */
     private function buildServiceData(Service $service, array $leadIndex, $servicePivot, $advisors): array

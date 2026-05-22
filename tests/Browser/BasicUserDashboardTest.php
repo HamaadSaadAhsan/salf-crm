@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
 
 it('displays basic dashboard for users without specific roles', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create([
@@ -23,8 +25,8 @@ it('displays basic dashboard for users without specific roles', function () {
 });
 
 it('basic user sees pending tasks', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();
@@ -36,8 +38,8 @@ it('basic user sees pending tasks', function () {
 });
 
 it('basic user cannot access advanced metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();
@@ -53,8 +55,8 @@ it('basic user cannot access advanced metrics', function () {
 });
 
 it('user without any role gets basic dashboard', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $basicUser = User::factory()->create([
         'email' => 'norole@test.com',
@@ -68,8 +70,8 @@ it('user without any role gets basic dashboard', function () {
 });
 
 it('basic dashboard is simple and task-focused', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();
@@ -81,8 +83,8 @@ it('basic dashboard is simple and task-focused', function () {
 });
 
 it('basic dashboard loads quickly without heavy metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();
@@ -94,8 +96,8 @@ it('basic dashboard loads quickly without heavy metrics', function () {
 });
 
 it('basic dashboard is responsive on mobile', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();
@@ -110,8 +112,8 @@ it('basic dashboard is responsive on mobile', function () {
 });
 
 it('basic dashboard shows in-progress tasks', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $customerRole = Role::where('name', 'customer')->first();
     $basicUser = User::factory()->create();

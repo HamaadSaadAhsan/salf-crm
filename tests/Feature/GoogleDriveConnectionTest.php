@@ -4,6 +4,7 @@ use App\Models\StorageAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Spatie\Permission\Models\Role;
 
@@ -45,7 +46,7 @@ it('handles OAuth callback and creates a storage account', function () {
     Socialite::shouldReceive('driver')
         ->with('google_drive')
         ->andReturn(
-            tap(Mockery::mock(\Laravel\Socialite\Two\GoogleProvider::class), function ($mock) use ($socialiteUser) {
+            tap(Mockery::mock(GoogleProvider::class), function ($mock) use ($socialiteUser) {
                 $mock->shouldReceive('user')->once()->andReturn($socialiteUser);
             })
         );
@@ -88,7 +89,7 @@ it('updates existing storage account on re-connect', function () {
     Socialite::shouldReceive('driver')
         ->with('google_drive')
         ->andReturn(
-            tap(Mockery::mock(\Laravel\Socialite\Two\GoogleProvider::class), function ($mock) use ($socialiteUser) {
+            tap(Mockery::mock(GoogleProvider::class), function ($mock) use ($socialiteUser) {
                 $mock->shouldReceive('user')->once()->andReturn($socialiteUser);
             })
         );

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\LeadFolderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeadFolder extends Model
 {
-    /** @use HasFactory<\Database\Factories\LeadFolderFactory> */
+    /** @use HasFactory<LeadFolderFactory> */
     use HasFactory;
 
     protected $fillable = [

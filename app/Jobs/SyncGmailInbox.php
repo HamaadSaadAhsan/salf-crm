@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\MessageRecipient;
 use App\Services\GmailService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -88,7 +89,7 @@ class SyncGmailInbox implements ShouldQueue
                     'thread_id' => $threadId,
                     'sent_at' => $detail['sent_at'],
                 ]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            } catch (UniqueConstraintViolationException) {
                 // Another concurrent job already imported this message — skip
                 continue;
             }

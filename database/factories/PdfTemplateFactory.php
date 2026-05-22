@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\PdfTemplate;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\PdfTemplate>
+ * @extends Factory<PdfTemplate>
  */
 class PdfTemplateFactory extends Factory
 {

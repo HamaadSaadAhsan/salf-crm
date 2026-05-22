@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DailyMetric;
 use App\Models\Lead;
+use App\Models\LeadActivity;
 use App\Models\Task;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -223,7 +224,7 @@ class DashboardMetricsService
             return 0;
         }
 
-        $totalActivities = \App\Models\LeadActivity::whereDate('created_at', '<=', $date)->count();
+        $totalActivities = LeadActivity::whereDate('created_at', '<=', $date)->count();
         $avgActivitiesPerLead = $totalActivities / $totalLeads;
 
         // Target: > 5 activities = 100, 3-5 = 80, 2-3 = 60, 1-2 = 40, < 1 = 20

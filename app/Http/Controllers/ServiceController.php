@@ -9,6 +9,7 @@ use App\Http\Resources\ServiceResource;
 use App\Models\Service;
 use App\Services\CacheService;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 
 class ServiceController extends Controller
 {
@@ -72,7 +73,7 @@ class ServiceController extends Controller
                 ];
             });
 
-        return \Inertia\Inertia::render('services/index', [
+        return Inertia::render('services/index', [
             'services' => $services,
         ]);
     }
@@ -236,7 +237,7 @@ class ServiceController extends Controller
             'leads' => fn ($query) => $query->latest()->limit(10),
         ]);
 
-        return \Inertia\Inertia::render('services/show', [
+        return Inertia::render('services/show', [
             'service' => ServiceResource::make($service),
         ]);
     }

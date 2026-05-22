@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
 
 it('displays manager dashboard with team metrics and charts', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create([
@@ -23,8 +25,8 @@ it('displays manager dashboard with team metrics and charts', function () {
 });
 
 it('manager can view team performance metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create();
@@ -37,8 +39,8 @@ it('manager can view team performance metrics', function () {
 });
 
 it('loads charts without errors for manager', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create();
@@ -50,8 +52,8 @@ it('loads charts without errors for manager', function () {
 });
 
 it('team lead has same dashboard access as manager', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $teamLeadRole = Role::where('name', 'team-lead')->first();
     $teamLead = User::factory()->create();
@@ -65,8 +67,8 @@ it('team lead has same dashboard access as manager', function () {
 });
 
 it('manager dashboard displays correct role data from API', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create();
@@ -83,8 +85,8 @@ it('manager dashboard displays correct role data from API', function () {
 });
 
 it('manager cannot access super admin only features', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create();
@@ -99,8 +101,8 @@ it('manager cannot access super admin only features', function () {
 });
 
 it('manager dashboard is responsive on mobile', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $managerRole = Role::where('name', 'manager')->first();
     $manager = User::factory()->create();

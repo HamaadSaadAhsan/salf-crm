@@ -2,6 +2,7 @@
 
 use App\Models\Lead;
 use App\Models\User;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 test('guests are redirected to the login page', function () {
@@ -9,7 +10,7 @@ test('guests are redirected to the login page', function () {
 });
 
 test('authenticated users can visit the dashboard', function () {
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view dashboard', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'view dashboard', 'guard_name' => 'web']);
     $user = User::factory()->create();
     $user->givePermissionTo('view dashboard');
     $this->actingAs($user);

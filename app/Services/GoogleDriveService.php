@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\StorageAccount;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -86,7 +87,7 @@ class GoogleDriveService
     }
 
     /**
-     * @return \Illuminate\Http\Client\Response
+     * @return Response
      */
     public function downloadFile(StorageAccount $account, string $fileId)
     {

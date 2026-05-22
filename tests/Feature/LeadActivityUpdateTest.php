@@ -3,10 +3,11 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
+use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {
     config(['broadcasting.default' => 'log']);
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view leads', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'view leads', 'guard_name' => 'web']);
 });
 
 it('can update subject and description of an activity', function () {

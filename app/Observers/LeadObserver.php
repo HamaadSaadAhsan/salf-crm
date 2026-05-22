@@ -9,9 +9,12 @@ use App\Jobs\RemoveLeadFromCalendar;
 use App\Jobs\SyncLeadToCalendar;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadSource;
+use App\Models\Service;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LeadObserver
 {
@@ -366,8 +369,8 @@ class LeadObserver
      */
     private function createAssignmentChangeActivity(Lead $lead, $oldUserId, $newUserId, ?int $userId): void
     {
-        $oldUser = $oldUserId ? \App\Models\User::find($oldUserId) : null;
-        $newUser = $newUserId ? \App\Models\User::find($newUserId) : null;
+        $oldUser = $oldUserId ? User::find($oldUserId) : null;
+        $newUser = $newUserId ? User::find($newUserId) : null;
 
         $oldUserName = $oldUser ? $oldUser->name : 'Unassigned';
         $newUserName = $newUser ? $newUser->name : 'Unassigned';
@@ -512,7 +515,7 @@ class LeadObserver
             ->whereIn('type', ['follow_up', 'task'])
             ->update([
                 'status' => 'completed',
-                'completed_at' => \Illuminate\Support\Facades\DB::raw('GREATEST(COALESCE(scheduled_at, NOW()), NOW())'),
+                'completed_at' => DB::raw('GREATEST(COALESCE(scheduled_at, NOW()), NOW())'),
             ]);
     }
 
@@ -561,9 +564,9 @@ class LeadObserver
         // Handle relationship fields
         if (str_ends_with($field, '_id')) {
             $model = match ($field) {
-                'service_id' => \App\Models\Service::find($value),
-                'lead_source_id' => \App\Models\LeadSource::find($value),
-                'assigned_to' => \App\Models\User::find($value),
+                'service_id' => Service::find($value),
+                'lead_source_id' => LeadSource::find($value),
+                'assigned_to' => User::find($value),
                 default => null
             };
 

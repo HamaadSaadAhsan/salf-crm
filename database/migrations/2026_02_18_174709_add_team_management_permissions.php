@@ -3,12 +3,13 @@
 use Illuminate\Database\Migrations\Migration;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create new permissions introduced in this migration
         $newPermissions = [
@@ -46,12 +47,12 @@ return new class extends Migration
         // Full permission sync for support-agent and senior-support-agent (were empty before)
         // Handled by re-running the seeder; migration just creates the missing permissions.
 
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
     public function down(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Restore 'change lead score'
         Permission::firstOrCreate(['name' => 'change lead score']);
@@ -60,6 +61,6 @@ return new class extends Migration
         $toRemove = ['manage team agents', 'view tasks', 'create tasks', 'edit tasks', 'delete tasks'];
         Permission::whereIn('name', $toRemove)->each(fn ($p) => $p->delete());
 
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
 };

@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
 
 it('displays CRO dashboard with personal qualification metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create([
@@ -23,8 +25,8 @@ it('displays CRO dashboard with personal qualification metrics', function () {
 });
 
 it('senior support agent has same dashboard as support agent', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $seniorRole = Role::where('name', 'senior-support-agent')->first();
     $seniorAgent = User::factory()->create();
@@ -38,8 +40,8 @@ it('senior support agent has same dashboard as support agent', function () {
 });
 
 it('CRO can view hot leads requiring attention', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();
@@ -51,8 +53,8 @@ it('CRO can view hot leads requiring attention', function () {
 });
 
 it('loads charts without errors for CRO', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();
@@ -64,8 +66,8 @@ it('loads charts without errors for CRO', function () {
 });
 
 it('CRO dashboard displays personal KPIs', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();
@@ -77,8 +79,8 @@ it('CRO dashboard displays personal KPIs', function () {
 });
 
 it('CRO dashboard displays correct role data from API', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();
@@ -97,8 +99,8 @@ it('CRO dashboard displays correct role data from API', function () {
 });
 
 it('CRO cannot access team or system-wide metrics', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();
@@ -111,8 +113,8 @@ it('CRO cannot access team or system-wide metrics', function () {
 });
 
 it('CRO dashboard is responsive on mobile', function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 
     $croRole = Role::where('name', 'support-agent')->first();
     $cro = User::factory()->create();

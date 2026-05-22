@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FacebookDataSynced;
 use App\Http\Requests\FacebookIntegrationRequest;
 use App\Jobs\SyncFacebookPageData;
 use App\Models\FacebookWebhookConfig;
@@ -1102,7 +1103,7 @@ class FacebookIntegrationController extends Controller
             $syncedCount = $this->facebookService->syncLeadForms($forms, $pageId);
 
             // Emit specific event with correct integration ID
-            \App\Events\FacebookDataSynced::dispatch(
+            FacebookDataSynced::dispatch(
                 $integration->id,
                 [
                     'sync_type' => 'lead_forms',
@@ -1174,7 +1175,7 @@ class FacebookIntegrationController extends Controller
             }
 
             // Emit specific event with correct integration ID
-            \App\Events\FacebookDataSynced::dispatch(
+            FacebookDataSynced::dispatch(
                 $integration->id,
                 [
                     'sync_type' => 'leads',

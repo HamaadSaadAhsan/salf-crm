@@ -10,6 +10,8 @@ use App\Models\Service;
 use App\Models\SystemAdoptionMetric;
 use App\Models\User;
 use App\Models\UserPerformanceSnapshot;
+use App\Services\CacheService;
+use App\Services\DashboardMetricsService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -64,8 +66,8 @@ test('it calculates daily metrics successfully', function () {
     // Run the job
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     // Assert daily metric was created
@@ -91,8 +93,8 @@ test('it calculates user performance snapshots', function () {
     // Run the job
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     // Assert user performance snapshot was created
@@ -114,8 +116,8 @@ test('it calculates lead conversion metrics by service', function () {
 
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $metric = LeadConversionMetric::where('metric_date', $this->yesterday->format('Y-m-d'))
@@ -135,8 +137,8 @@ test('it calculates lead conversion metrics by source', function () {
 
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $metric = LeadConversionMetric::where('metric_date', $this->yesterday->format('Y-m-d'))
@@ -159,8 +161,8 @@ test('it calculates department handoff metrics', function () {
 
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $metrics = DepartmentHandoffMetric::where('metric_date', $this->yesterday->format('Y-m-d'))->get();
@@ -181,8 +183,8 @@ test('it calculates system adoption metrics', function () {
 
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $metric = SystemAdoptionMetric::where('metric_date', $this->yesterday->format('Y-m-d'))->first();
@@ -194,8 +196,8 @@ test('it handles empty data gracefully', function () {
     // Run job with no data
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $dailyMetric = DailyMetric::where('metric_date', $this->yesterday->format('Y-m-d'))->first();
@@ -224,8 +226,8 @@ test('it calculates conversion rates correctly', function () {
 
     $job = new CalculateDailyMetricsJob($this->yesterday);
     $job->handle(
-        app(\App\Services\DashboardMetricsService::class),
-        app(\App\Services\CacheService::class)
+        app(DashboardMetricsService::class),
+        app(CacheService::class)
     );
 
     $dailyMetric = DailyMetric::where('metric_date', $this->yesterday->format('Y-m-d'))->first();

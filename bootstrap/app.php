@@ -1,12 +1,17 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasTeam;
 use App\Http\Middleware\HandleAppearance;
+use App\Http\Middleware\HandleCalendarIntegrationErrors;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Spatie\Permission\Exceptions\UnauthorizedException;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -28,15 +33,15 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\EnsureUserHasTeam::class,
+            EnsureUserHasTeam::class,
         ]);
 
         $middleware->alias([
-            'calendar.errors' => \App\Http\Middleware\HandleCalendarIntegrationErrors::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'team' => \App\Http\Middleware\EnsureUserHasTeam::class,
+            'calendar.errors' => HandleCalendarIntegrationErrors::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'team' => EnsureUserHasTeam::class,
         ]);
     })
     ->withSchedule(function ($schedule) {

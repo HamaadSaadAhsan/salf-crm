@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Http\Controllers\Api\DashboardController;
 use App\Models\User;
 use App\Services\CacheService;
 use Illuminate\Bus\Queueable;
@@ -41,7 +42,7 @@ class WarmDashboardCacheJob implements ShouldQueue
 
             $cacheKey = "dashboard:overview:{$this->userId}:".now()->format('Y-m-d');
 
-            $dashboardController = app(\App\Http\Controllers\Api\DashboardController::class);
+            $dashboardController = app(DashboardController::class);
             $data = match (true) {
                 $user->hasAnyRole(['super-admin', 'admin']) => $dashboardController->getSuperAdminDashboard($user),
                 $user->hasAnyRole(['manager', 'team-lead']) => $dashboardController->getManagerDashboard($user),

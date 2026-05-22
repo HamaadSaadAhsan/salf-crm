@@ -10,6 +10,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoogleDriveController extends Controller
 {
@@ -17,7 +19,7 @@ class GoogleDriveController extends Controller
 
     public function redirect(): RedirectResponse
     {
-        /** @var \Laravel\Socialite\Two\GoogleProvider $driver */
+        /** @var GoogleProvider $driver */
         $driver = Socialite::driver('google_drive');
 
         return $driver
@@ -33,7 +35,7 @@ class GoogleDriveController extends Controller
     public function callback(): RedirectResponse
     {
         try {
-            /** @var \Laravel\Socialite\Two\GoogleProvider $driver */
+            /** @var GoogleProvider $driver */
             $driver = Socialite::driver('google_drive');
             $socialiteUser = $driver->user();
 
@@ -89,7 +91,7 @@ class GoogleDriveController extends Controller
         return response()->json($result);
     }
 
-    public function download(StorageAccount $storageAccount, string $fileId): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function download(StorageAccount $storageAccount, string $fileId): StreamedResponse
     {
         abort_unless($storageAccount->user_id === Auth::id(), 403);
 

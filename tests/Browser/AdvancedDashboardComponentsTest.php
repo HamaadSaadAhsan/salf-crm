@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\MetricsSeeder;
+use Database\Seeders\TicketsLeadsPermissionsSeeder;
 use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\seed;
@@ -23,8 +25,8 @@ use function Pest\Laravel\seed;
  * - Lead Lifecycle Analysis
  */
 beforeEach(function () {
-    seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
-    seed(\Database\Seeders\MetricsSeeder::class);
+    seed(TicketsLeadsPermissionsSeeder::class);
+    seed(MetricsSeeder::class);
 });
 
 describe('Lead Analytics Component', function () {
@@ -608,7 +610,7 @@ describe('Dashboard Component Interactions', function () {
 
 describe('Dashboard Empty States', function () {
     it('displays empty state when no metrics data exists', function () {
-        seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
+        seed(TicketsLeadsPermissionsSeeder::class);
         // Don't seed MetricsSeeder to test empty state
 
         $superAdminRole = Role::where('name', 'super-admin')->first();
@@ -621,7 +623,7 @@ describe('Dashboard Empty States', function () {
     });
 
     it('handles API errors gracefully', function () {
-        seed(\Database\Seeders\TicketsLeadsPermissionsSeeder::class);
+        seed(TicketsLeadsPermissionsSeeder::class);
 
         $superAdminRole = Role::where('name', 'super-admin')->first();
         $superAdmin = User::factory()->create();

@@ -3,12 +3,13 @@
 namespace Database\Factories;
 
 use App\Models\Lead;
+use App\Models\LeadPdfSubmission;
 use App\Models\PdfTemplate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LeadPdfSubmission>
+ * @extends Factory<LeadPdfSubmission>
  */
 class LeadPdfSubmissionFactory extends Factory
 {

@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- Applied Laravel Pint code style fixes across 119 files (strict types, ordered imports, braces position, unary operator spacing)
+- Updated CLAUDE.md pint rule to run `--test` then `--dirty` sequentially
+
 ### Fixed
 - TypeScript errors in `useFormsAutomation.ts` — rewrote all `queryFn` and `mutationFn` with explicit typed axios generics so `response.data` is properly typed and satisfies TanStack Query v5 `NoInfer<TQueryFnData>` constraints
 - TypeScript cast errors in `lead-records-documents.tsx`, `lead-records.tsx`, `lead-records-files.tsx`, `lead-records-notes.tsx` — added explicit casts at query data consumption sites for `StorageAccount`, `LinkedGoogleDriveFile`, `LeadFile`, `LeadFolder`, `LeadActivity`, and `ApiMeta` types

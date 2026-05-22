@@ -2,10 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\Lead;
+use App\Models\LeadActivity;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LeadActivity>
+ * @extends Factory<LeadActivity>
  */
 class LeadActivityFactory extends Factory
 {
@@ -26,8 +29,8 @@ class LeadActivityFactory extends Factory
         }
 
         return [
-            'lead_id' => \App\Models\Lead::factory(),
-            'user_id' => \App\Models\User::factory(),
+            'lead_id' => Lead::factory(),
+            'user_id' => User::factory(),
             'type' => $type,
             'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),
             'subject' => $this->faker->sentence(),
