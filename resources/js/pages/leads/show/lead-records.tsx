@@ -66,7 +66,7 @@ export function LeadRecords({ lead, users = [], activeTab = 'overview' }: Props)
     const canViewTimeline = permissions.includes('view lead timeline');
 
     const { data: filesData } = useLeadFiles(canViewFiles ? String(lead.id) : null);
-    const filesCount = filesData?.data?.length ?? lead.files_count ?? 0;
+    const filesCount = (filesData as { data: unknown[] } | undefined)?.data?.length ?? lead.files_count ?? 0;
 
     const [currentTab, setCurrentTab] = React.useState(activeTab);
 

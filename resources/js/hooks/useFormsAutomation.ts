@@ -26,7 +26,7 @@ export function useProgramSchema(programId: number | null) {
     return useQuery<ProgramSchema>({
         queryKey: ['forms-program-schema', programId],
         queryFn: async () => {
-            const response = await axios.get(`/api/forms/programs/${programId}/schema`);
+            const response = await axios.get<ProgramSchema>(`/api/forms/programs/${programId}/schema`);
             return response.data;
         },
         enabled: !!programId,
@@ -72,7 +72,7 @@ export function useSyncInventory() {
 
     return useMutation({
         mutationFn: async (templateId: number) => {
-            const response = await axios.post(`/api/forms/templates/${templateId}/sync`);
+            const response = await axios.post<{ message?: string }>(`/api/forms/templates/${templateId}/sync`);
             return response.data;
         },
         onSuccess: (data) => {
@@ -101,7 +101,7 @@ export function useGetMappings(templateId: number) {
     return useQuery<{ data: FieldMappingRow[] }>({
         queryKey: ['forms-mappings', templateId],
         queryFn: async () => {
-            const response = await axios.get(`/api/forms/templates/${templateId}/mappings`);
+            const response = await axios.get<{ data: FieldMappingRow[] }>(`/api/forms/templates/${templateId}/mappings`);
             return response.data;
         },
         staleTime: 2 * 60 * 1000,
@@ -114,7 +114,7 @@ export function useSaveMappings() {
 
     return useMutation({
         mutationFn: async ({ templateId, mappings }: { templateId: number; mappings: FieldMappingRow[] }) => {
-            const response = await axios.put(`/api/forms/templates/${templateId}/mappings`, { mappings });
+            const response = await axios.put<{ message?: string }>(`/api/forms/templates/${templateId}/mappings`, { mappings });
             return response.data;
         },
         onSuccess: (data, variables) => {
@@ -138,13 +138,13 @@ export function useCreateApplication() {
             main_applicant_passport?: string;
             data: Record<string, unknown>;
         }) => {
-            const response = await axios.post('/api/forms/applications', data);
+            const response = await axios.post<{ redirect?: string }>('/api/forms/applications', data);
             return response.data;
         },
         onSuccess: (data) => {
             toast.success('Application created');
             if (data.redirect) {
-                router.visit(data.redirect as string);
+                router.visit(data.redirect);
             }
         },
         onError: (err: Error & { response?: { data?: { message?: string } } }) => {
@@ -165,7 +165,7 @@ export function useUpdateApplication() {
             data?: Record<string, unknown>;
             status?: string;
         }) => {
-            const response = await axios.put(`/api/forms/applications/${applicationId}`, payload);
+            const response = await axios.put<{ message?: string }>(`/api/forms/applications/${applicationId}`, payload);
             return response.data;
         },
         onSuccess: () => {
@@ -181,7 +181,7 @@ export function useUpdateApplication() {
 export function useDeleteApplication() {
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.delete(`/api/forms/applications/${applicationId}`);
+            const response = await axios.delete<{ message?: string }>(`/api/forms/applications/${applicationId}`);
             return response.data;
         },
         onSuccess: () => {
@@ -197,7 +197,7 @@ export function useDeleteApplication() {
 export function useGenerateApplicationForms() {
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.post(`/api/forms/applications/${applicationId}/generate`);
+            const response = await axios.post<{ message?: string }>(`/api/forms/applications/${applicationId}/generate`);
             return response.data;
         },
         onSuccess: (data) => {
@@ -227,7 +227,7 @@ export function useApplicationGenerations(applicationId: number, enabled = true)
     return useQuery<{ data: Generation[] }>({
         queryKey: ['forms-generations', applicationId],
         queryFn: async () => {
-            const response = await axios.get(`/api/forms/applications/${applicationId}/generations`);
+            const response = await axios.get<{ data: Generation[] }>(`/api/forms/applications/${applicationId}/generations`);
             return response.data;
         },
         enabled,
@@ -266,7 +266,7 @@ export function useLeadPrograms(leadId: string) {
     return useQuery<{ data: LeadProgram[] }>({
         queryKey: ['lead-forms-programs', leadId],
         queryFn: async () => {
-            const response = await axios.get(`/api/leads/${leadId}/forms/programs`);
+            const response = await axios.get<{ data: LeadProgram[] }>(`/api/leads/${leadId}/forms/programs`);
             return response.data;
         },
         staleTime: 10 * 60 * 1000,
@@ -278,7 +278,7 @@ export function useLeadApplications(leadId: string) {
     return useQuery<{ data: LeadApplication[] }>({
         queryKey: ['lead-forms-applications', leadId],
         queryFn: async () => {
-            const response = await axios.get(`/api/leads/${leadId}/forms/applications`);
+            const response = await axios.get<{ data: LeadApplication[] }>(`/api/leads/${leadId}/forms/applications`);
             return response.data;
         },
         staleTime: 30_000,
@@ -296,7 +296,7 @@ export function useCreateLeadApplication(leadId: string) {
             main_applicant_passport?: string;
             data: Record<string, unknown>;
         }) => {
-            const response = await axios.post(`/api/leads/${leadId}/forms/applications`, payload);
+            const response = await axios.post<{ data: { id: number; application_code: string } }>(`/api/leads/${leadId}/forms/applications`, payload);
             return response.data;
         },
         onSuccess: () => {
@@ -314,7 +314,7 @@ export function useUpdateLeadApplication(leadId: string) {
 
     return useMutation({
         mutationFn: async ({ applicationId, ...payload }: { applicationId: number; main_applicant_name?: string; main_applicant_passport?: string; data?: Record<string, unknown>; status?: string }) => {
-            const response = await axios.put(`/api/leads/${leadId}/forms/applications/${applicationId}`, payload);
+            const response = await axios.put<{ message?: string }>(`/api/leads/${leadId}/forms/applications/${applicationId}`, payload);
             return response.data;
         },
         onSuccess: () => {
@@ -332,7 +332,7 @@ export function useDeleteLeadApplication(leadId: string) {
 
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.delete(`/api/leads/${leadId}/forms/applications/${applicationId}`);
+            const response = await axios.delete<{ message?: string }>(`/api/leads/${leadId}/forms/applications/${applicationId}`);
             return response.data;
         },
         onSuccess: () => {
@@ -350,7 +350,7 @@ export function useGenerateLeadApplicationForms(leadId: string) {
 
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.post(`/api/leads/${leadId}/forms/applications/${applicationId}/generate`);
+            const response = await axios.post<{ message?: string }>(`/api/leads/${leadId}/forms/applications/${applicationId}/generate`);
             return response.data;
         },
         onSuccess: (data, applicationId) => {
@@ -367,7 +367,7 @@ export function useLeadApplicationGenerations(leadId: string, applicationId: num
     return useQuery<{ data: Generation[] }>({
         queryKey: ['lead-forms-generations', applicationId],
         queryFn: async () => {
-            const response = await axios.get(`/api/leads/${leadId}/forms/applications/${applicationId}/generations`);
+            const response = await axios.get<{ data: Generation[] }>(`/api/leads/${leadId}/forms/applications/${applicationId}/generations`);
             return response.data;
         },
         enabled: enabled && !!applicationId,
@@ -384,7 +384,7 @@ export function useLeadProgramSchema(leadId: string, programId: number | null) {
     return useQuery<ProgramSchema>({
         queryKey: ['lead-forms-program-schema', leadId, programId],
         queryFn: async () => {
-            const response = await axios.get(`/api/leads/${leadId}/forms/programs/${programId}/schema`);
+            const response = await axios.get<ProgramSchema>(`/api/leads/${leadId}/forms/programs/${programId}/schema`);
             return response.data;
         },
         enabled: !!programId,

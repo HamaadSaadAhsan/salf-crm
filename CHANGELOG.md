@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- TypeScript errors in `useFormsAutomation.ts` — rewrote all `queryFn` and `mutationFn` with explicit typed axios generics so `response.data` is properly typed and satisfies TanStack Query v5 `NoInfer<TQueryFnData>` constraints
+- TypeScript cast errors in `lead-records-documents.tsx`, `lead-records.tsx`, `lead-records-files.tsx`, `lead-records-notes.tsx` — added explicit casts at query data consumption sites for `StorageAccount`, `LinkedGoogleDriveFile`, `LeadFile`, `LeadFolder`, `LeadActivity`, and `ApiMeta` types
+
 ### Added
 - Forms automation in lead Documents tab — "Forms Automation" section shows existing applications per lead; "New Application" button opens program selector then a structured data-entry form (collapsible schema sections with fill progress counters); Save creates/updates application; Generate queues server-side PDF batch; generations panel auto-polls and shows Download link when complete; Delete with confirmation
 - `LeadApplicationController::destroy` — verifies lead ownership, soft-deletes application

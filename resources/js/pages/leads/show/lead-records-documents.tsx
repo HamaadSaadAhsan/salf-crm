@@ -43,6 +43,8 @@ import {
     useUpdateLeadApplication,
     type Generation,
     type LeadApplication,
+    type LeadProgram,
+    type ProgramSchema,
 } from '@/hooks/useFormsAutomation';
 import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -164,8 +166,8 @@ export function LeadRecordsDocuments({ lead }: Props) {
     const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
     const [autoMappedFields, setAutoMappedFields] = useState<Set<string>>(new Set());
 
-    const templates = useMemo(() => templatesData?.data ?? [], [templatesData]);
-    const submissions = useMemo(() => submissionsData?.data ?? [], [submissionsData]);
+    const templates = useMemo(() => (templatesData as { data: PdfTemplate[] } | undefined)?.data ?? [], [templatesData]);
+    const submissions = useMemo(() => (submissionsData as { data: LeadPdfSubmission[] } | undefined)?.data ?? [], [submissionsData]);
 
     // Separate regular fields from repeat_group fields, then deduplicate regular fields
     const { deduplicatedFields, siblingMap, repeatGroupDefs } = useMemo(() => {
@@ -287,17 +289,15 @@ export function LeadRecordsDocuments({ lead }: Props) {
     }, [view, lead, submissions]);
 
     const handleSelectTemplate = useCallback((template: PdfTemplate) => {
-        axios.get(`/api/leads/${leadId}/pdf-templates/${template.id}`).then((res) => {
-            const fullTemplate = res.data.data as PdfTemplate;
-            setView({ mode: 'fill', template: fullTemplate, submissionId: null });
+        axios.get<{ data: PdfTemplate }>(`/api/leads/${leadId}/pdf-templates/${template.id}`).then((res) => {
+            setView({ mode: 'fill', template: res.data.data, submissionId: null });
             setValidationErrors(new Set());
         });
     }, [leadId]);
 
     const handleEditSubmission = useCallback((submission: LeadPdfSubmission) => {
-        axios.get(`/api/leads/${leadId}/pdf-templates/${submission.template.id}`).then((res) => {
-            const fullTemplate = res.data.data as PdfTemplate;
-            setView({ mode: 'fill', template: fullTemplate, submissionId: submission.id });
+        axios.get<{ data: PdfTemplate }>(`/api/leads/${leadId}/pdf-templates/${submission.template.id}`).then((res) => {
+            setView({ mode: 'fill', template: res.data.data, submissionId: submission.id });
             setValidationErrors(new Set());
         });
     }, [leadId]);
@@ -331,8 +331,8 @@ export function LeadRecordsDocuments({ lead }: Props) {
             createSubmission.mutate(
                 { pdf_template_id: view.template.id, field_values: fieldValues, status: 'draft' },
                 {
-                    onSuccess: (data) => {
-                        setView({ ...view, submissionId: data.data.id });
+                    onSuccess: (data: unknown) => {
+                        setView({ ...view, submissionId: (data as { data: { id: number } }).data.id });
                     },
                 },
             );
@@ -357,7 +357,7 @@ export function LeadRecordsDocuments({ lead }: Props) {
                     field_values: fieldValues,
                     status: 'completed',
                 });
-                setView({ ...view, submissionId: result.data.id });
+                setView({ ...view, submissionId: (result as { data: { id: number } }).data.id });
             }
 
             // Fetch the template PDF
@@ -962,11 +962,11 @@ function LeadFormsListSection({
     onEdit: (application: LeadApplication) => void;
 }) {
     const leadId = String(lead.id);
-    const { data, isLoading } = useLeadApplications(leadId);
+    const { data: applicationsResult, isLoading } = useLeadApplications(leadId);
     const deleteApp = useDeleteLeadApplication(leadId);
     const [deleteTarget, setDeleteTarget] = useState<LeadApplication | null>(null);
 
-    const applications = data?.data ?? [];
+    const applications = (applicationsResult as { data: LeadApplication[] } | undefined)?.data ?? [];
 
     return (
         <div>
@@ -1096,19 +1096,20 @@ function LeadFormsFillView({
     const [formData, setFormData] = useState<Record<string, unknown>>(initialApp?.data ?? {});
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-    const { data: programsData, isLoading: loadingPrograms } = useLeadPrograms(leadId);
-    const { data: schemaData, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
-    const { data: generationsData } = useLeadApplicationGenerations(leadId, currentApplicationId);
+    const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
+    const { data: schemaRaw, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
+    const { data: generationsRaw } = useLeadApplicationGenerations(leadId, currentApplicationId);
 
     const createApp = useCreateLeadApplication(leadId);
     const updateApp = useUpdateLeadApplication(leadId);
     const generateApp = useGenerateLeadApplicationForms(leadId);
 
-    const programs = programsData?.data ?? [];
-    const generations = generationsData?.data ?? [];
+    const programs = (programsRaw as { data: LeadProgram[] } | undefined)?.data ?? [];
+    const generations = (generationsRaw as { data: Generation[] } | undefined)?.data ?? [];
+    const schemaData = schemaRaw as ProgramSchema | undefined;
 
     const displayProgramName =
-        initialApp?.program.name ?? programs.find((p) => p.id === programId)?.name ?? '';
+        initialApp?.program.name ?? programs.find((p: LeadProgram) => p.id === programId)?.name ?? '';
 
     // Open first section when schema loads
     useEffect(() => {
@@ -1180,7 +1181,7 @@ function LeadFormsFillView({
                     <p className="text-sm text-muted-foreground">No active programs available.</p>
                 ) : (
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {programs.map((p) => (
+                        {programs.map((p: LeadProgram) => (
                             <button
                                 key={p.id}
                                 onClick={() => setProgramId(p.id)}

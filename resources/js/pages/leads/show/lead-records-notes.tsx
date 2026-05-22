@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useLeadNotes } from '@/hooks/useLead';
-import type { LeadActivity } from '@/types/lead';
+import type { ApiMeta, LeadActivity } from '@/types/lead';
 import { useCreateDialog } from '@/providers/CreateDialogProvider';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
@@ -35,8 +35,9 @@ export function LeadRecordsNotes({ leadId, leadName, leadUrl }: LeadRecordsNotes
 
     const { data, isLoading, error, refetch } = useLeadNotes(leadId, page, perPage);
 
-    const notes: LeadActivity[] = data?.data || [];
-    const meta = data?.meta || {};
+    const typedData = data as { data: LeadActivity[]; meta?: ApiMeta } | undefined;
+    const notes: LeadActivity[] = typedData?.data || [];
+    const meta = typedData?.meta;
 
     const getInitials = (name: string) => {
         return name
@@ -253,10 +254,10 @@ export function LeadRecordsNotes({ leadId, leadName, leadUrl }: LeadRecordsNotes
                     </div>
 
                     {/* Pagination */}
-                    {meta.last_page > 1 && (
+                    {(meta?.last_page ?? 0) > 1 && (
                         <div className="flex items-center justify-between pt-4 px-2">
                             <div className="text-xs text-muted-foreground">
-                                Showing {meta.from} - {meta.to} of {meta.total} notes
+                                Showing {meta?.from} - {meta?.to} of {meta?.total} notes
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -269,13 +270,13 @@ export function LeadRecordsNotes({ leadId, leadName, leadUrl }: LeadRecordsNotes
                                     Previous
                                 </Button>
                                 <span className="text-sm text-muted-foreground">
-                                    Page {page} of {meta.last_page}
+                                    Page {page} of {meta?.last_page}
                                 </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setPage((p) => p + 1)}
-                                    disabled={page >= meta.last_page}
+                                    disabled={page >= (meta?.last_page ?? 1)}
                                 >
                                     Next
                                     <ChevronRight className="size-4" />

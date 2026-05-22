@@ -58,6 +58,7 @@ import { GoogleDriveFilePicker } from '@/components/google-drive-file-picker';
 import {
     type GoogleDriveFile,
     type LinkedGoogleDriveFile,
+    type StorageAccount,
     useAttachGoogleDriveFile,
     useDetachGoogleDriveFile,
     useLeadGoogleDriveFiles,
@@ -120,11 +121,11 @@ export function LeadRecordsFiles({ leadId }: LeadRecordsFilesProps) {
     const attachMutation = useAttachGoogleDriveFile(leadIdStr);
     const detachMutation = useDetachGoogleDriveFile(leadIdStr);
 
-    const storageAccounts = storageAccountsData?.data?.filter((a) => a.provider === 'google_drive') ?? [];
-    const linkedDriveFiles: LinkedGoogleDriveFile[] = driveFilesData?.data ?? [];
+    const storageAccounts = (storageAccountsData as { data: StorageAccount[] } | undefined)?.data?.filter((a) => a.provider === 'google_drive') ?? [];
+    const linkedDriveFiles: LinkedGoogleDriveFile[] = (driveFilesData as { data: LinkedGoogleDriveFile[] } | undefined)?.data ?? [];
     const hasConnectedDrive = storageAccounts.length > 0;
-    const files = useMemo<LeadFile[]>(() => data?.data || [], [data?.data]);
-    const folders: LeadFolder[] = foldersData?.data || [];
+    const files = useMemo<LeadFile[]>(() => (data as { data: LeadFile[] } | undefined)?.data || [], [data]);
+    const folders: LeadFolder[] = (foldersData as { data: LeadFolder[] } | undefined)?.data || [];
 
     // Group files by folder
     const { rootFiles, folderFilesMap } = useMemo(() => {
