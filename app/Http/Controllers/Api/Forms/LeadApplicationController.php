@@ -60,7 +60,7 @@ class LeadApplicationController extends Controller
             'main_applicant_name' => $request->string('main_applicant_name')->toString() ?: $lead->name,
             'main_applicant_passport' => $request->string('main_applicant_passport')->toString() ?: null,
             'status' => ApplicationStatus::DRAFT,
-            'data' => $request->input('data'),
+            'data' => $request->input('data', []),
             'created_by_user_id' => auth()->id(),
         ]);
 

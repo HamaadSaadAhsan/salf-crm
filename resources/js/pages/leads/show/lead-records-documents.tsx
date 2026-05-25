@@ -46,7 +46,17 @@ import {
     type LeadProgram,
     type ProgramSchema,
 } from '@/hooks/useFormsAutomation';
-import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
+import {
+    Stepper,
+    StepperContent,
+    StepperIndicator,
+    StepperItem,
+    StepperNav,
+    StepperSeparator,
+    StepperTitle,
+    StepperTrigger,
+} from '@/components/ui/stepper';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import axios from '@/lib/http';
@@ -1076,6 +1086,21 @@ function LeadFormsListSection({
 // Forms Automation — fill view (program selection + field entry)
 // ─────────────────────────────────────────────────────────────────────────────
 
+const LEAD_INFO_FIELDS: { path: string; label: string; type?: string }[] = [
+    { path: 'main_applicant.first_name', label: 'First Name' },
+    { path: 'main_applicant.surname', label: 'Surname' },
+    { path: 'main_applicant.middle_name', label: 'Middle Name' },
+    { path: 'main_applicant.date_of_birth', label: 'Date of Birth', type: 'date' },
+    { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
+    { path: 'main_applicant.nationality', label: 'Nationality' },
+    { path: 'main_applicant.gender', label: 'Gender' },
+    { path: 'main_applicant.marital_status', label: 'Marital Status' },
+    { path: 'main_applicant.email', label: 'Email Address', type: 'email' },
+    { path: 'main_applicant.phone_number', label: 'Phone Number', type: 'tel' },
+    { path: 'main_applicant.occupation', label: 'Occupation' },
+    { path: 'main_applicant.employer_name', label: 'Employer Name' },
+];
+
 function LeadFormsFillView({
     lead,
     viewMode,
@@ -1095,6 +1120,8 @@ function LeadFormsFillView({
     const [passport, setPassport] = useState(initialApp?.main_applicant_passport ?? '');
     const [formData, setFormData] = useState<Record<string, unknown>>(initialApp?.data ?? {});
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+    const [currentStep, setCurrentStep] = useState(1);
+    const [isSavingStep, setIsSavingStep] = useState(false);
 
     const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
     const { data: schemaRaw, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
@@ -1129,6 +1156,48 @@ function LeadFormsFillView({
             return next;
         });
     }, []);
+
+    const allSteps = useMemo(() => {
+        const steps: { key: string; label: string }[] = [
+            { key: 'applicant_info', label: 'Applicant Info' },
+            { key: 'lead_information', label: 'Lead Information' },
+        ];
+        if (schemaData?.sections) {
+            // Skip 'main_applicant' section — covered by the fixed 'Lead Information' step
+            for (const section of schemaData.sections) {
+                if (section.key !== 'main_applicant') {
+                    steps.push({ key: section.key, label: section.label });
+                }
+            }
+        }
+        return steps;
+    }, [schemaData]);
+
+    const totalSteps = allSteps.length;
+    const isLastStep = currentStep === totalSteps;
+
+    const handleSaveAndNext = useCallback(async () => {
+        if (!programId) return;
+        setIsSavingStep(true);
+        try {
+            const payload = {
+                main_applicant_name: applicantName || undefined,
+                main_applicant_passport: passport || undefined,
+                data: formData as Record<string, unknown>,
+            };
+            if (currentApplicationId) {
+                await updateApp.mutateAsync({ applicationId: currentApplicationId, ...payload });
+            } else {
+                const res = await createApp.mutateAsync({ program_id: programId, ...payload });
+                const created = res as { data: { id: number; application_code: string } };
+                setCurrentApplicationId(created.data.id);
+                setApplicationCode(created.data.application_code);
+            }
+            setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+        } finally {
+            setIsSavingStep(false);
+        }
+    }, [programId, applicantName, passport, formData, currentApplicationId, createApp, updateApp, totalSteps]);
 
     const handleSave = useCallback(() => {
         const payload = {
@@ -1244,67 +1313,91 @@ function LeadFormsFillView({
                 </div>
             </div>
 
-            {/* Core applicant fields */}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div>
-                    <Label className="text-xs">Main Applicant Name</Label>
-                    <Input
-                        value={applicantName}
-                        onChange={(e) => setApplicantName(e.target.value)}
-                        className="h-9"
-                        placeholder={lead.name}
-                    />
-                </div>
-                <div>
-                    <Label className="text-xs">Passport Number</Label>
-                    <Input
-                        value={passport}
-                        onChange={(e) => setPassport(e.target.value)}
-                        className="h-9"
-                        placeholder="e.g. AB1234567"
-                    />
-                </div>
-            </div>
-
-            {/* Schema sections */}
-            {loadingSchema ? (
-                <div className="space-y-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className="h-10 w-full" />
+            {/* Stepper */}
+            <Stepper
+                value={currentStep}
+                onValueChange={setCurrentStep}
+                indicators={{ completed: <Check className="size-3" /> }}
+            >
+                <StepperNav className="mb-6">
+                    {allSteps.map((step, idx) => (
+                        <StepperItem key={step.key} step={idx + 1}>
+                            <StepperTrigger className="flex-col items-center gap-1.5 sm:flex-row">
+                                <StepperIndicator>{idx + 1}</StepperIndicator>
+                                <StepperTitle className="hidden text-xs sm:block">{step.label}</StepperTitle>
+                            </StepperTrigger>
+                            {idx < allSteps.length - 1 && <StepperSeparator />}
+                        </StepperItem>
                     ))}
-                </div>
-            ) : !schemaData?.has_mappings ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                    No field mappings configured for this program. Contact admin to set up mappings first.
-                </div>
-            ) : (
-                schemaData?.sections?.map((section) => {
-                    const isExpanded = expandedSections.has(section.key);
-                    const filledCount = section.fields.filter(
-                        (f) => formData[f.path] !== undefined && formData[f.path] !== '',
-                    ).length;
+                </StepperNav>
 
-                    return (
-                        <div key={section.key} className="rounded-lg border border-border">
-                            <button
-                                type="button"
-                                className="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-muted/30"
-                                onClick={() => toggleSection(section.key)}
-                            >
-                                <span className="text-sm font-medium">{section.label}</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">
-                                        {filledCount}/{section.fields.length}
-                                    </span>
-                                    {isExpanded ? (
-                                        <ChevronDown className="size-4 text-muted-foreground" />
-                                    ) : (
-                                        <ChevronRight className="size-4 text-muted-foreground" />
-                                    )}
-                                </div>
-                            </button>
-                            {isExpanded && (
-                                <div className="border-t border-border p-4">
+                {/* Step 1: Applicant Info */}
+                <StepperContent value={1}>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                            <Label className="text-xs">Main Applicant Name</Label>
+                            <Input
+                                value={applicantName}
+                                onChange={(e) => setApplicantName(e.target.value)}
+                                className="h-9"
+                                placeholder={lead.name}
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs">Passport Number</Label>
+                            <Input
+                                value={passport}
+                                onChange={(e) => setPassport(e.target.value)}
+                                className="h-9"
+                                placeholder="e.g. AB1234567"
+                            />
+                        </div>
+                    </div>
+                </StepperContent>
+
+                {/* Step 2: Lead Information (hardcoded common applicant fields) */}
+                <StepperContent value={2}>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {LEAD_INFO_FIELDS.map((field) => (
+                            <div key={field.path}>
+                                <Label className="text-xs">{field.label}</Label>
+                                <Input
+                                    type={field.type ?? 'text'}
+                                    value={(formData[field.path] as string) ?? ''}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                    }
+                                    className="h-9"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </StepperContent>
+
+                {/* Schema section steps (start from step 3, skip 'main_applicant') */}
+                {loadingSchema && currentStep > 2 ? (
+                    <div className="space-y-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton key={i} className="h-10 w-full" />
+                        ))}
+                    </div>
+                ) : (
+                    schemaData?.sections
+                        ?.filter((s) => s.key !== 'main_applicant')
+                        .map((section, idx) => {
+                        const filledCount = section.fields.filter(
+                            (f) => formData[f.path] !== undefined && formData[f.path] !== '',
+                        ).length;
+
+                        return (
+                            <StepperContent key={section.key} value={idx + 3}>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-medium text-muted-foreground">{section.label}</h4>
+                                        <span className="text-xs text-muted-foreground">
+                                            {filledCount} / {section.fields.length} filled
+                                        </span>
+                                    </div>
                                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         {section.fields.map((field) => (
                                             <div key={field.path}>
@@ -1323,11 +1416,48 @@ function LeadFormsFillView({
                                         ))}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    );
-                })
-            )}
+                            </StepperContent>
+                        );
+                    })
+                )}
+            </Stepper>
+
+            {/* Step navigation */}
+            <div className="flex items-center justify-between border-t border-border pt-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        if (currentStep === 1) {
+                            onBack();
+                        } else {
+                            setCurrentStep((prev) => prev - 1);
+                        }
+                    }}
+                >
+                    <ArrowLeft className="mr-1 size-3.5" />
+                    {currentStep === 1 ? 'Cancel' : 'Back'}
+                </Button>
+
+                {isLastStep ? (
+                    <Button size="sm" onClick={handleSave} disabled={isSaving || !programId}>
+                        {isSaving ? (
+                            <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : (
+                            <Save className="mr-1 size-3.5" />
+                        )}
+                        Save &amp; Finish
+                    </Button>
+                ) : (
+                    <Button size="sm" onClick={handleSaveAndNext} disabled={isSavingStep || loadingSchema || !programId}>
+                        {isSavingStep ? (
+                            <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : null}
+                        Next
+                        <ChevronRight className="ml-1 size-3.5" />
+                    </Button>
+                )}
+            </div>
 
             {/* Generations */}
             {currentApplicationId && <FormsGenerationsPanel leadId={leadId} generations={generations} />}
