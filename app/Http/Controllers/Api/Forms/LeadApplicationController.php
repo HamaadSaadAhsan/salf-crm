@@ -50,7 +50,7 @@ class LeadApplicationController extends Controller
             'program_id' => ['required', 'integer', 'exists:programs,id'],
             'main_applicant_name' => ['nullable', 'string', 'max:255'],
             'main_applicant_passport' => ['nullable', 'string', 'max:100'],
-            'data' => ['required', 'array'],
+            'data' => ['present', 'array'],
         ]);
 
         $application = Application::create([
@@ -60,7 +60,7 @@ class LeadApplicationController extends Controller
             'main_applicant_name' => $request->string('main_applicant_name')->toString() ?: $lead->name,
             'main_applicant_passport' => $request->string('main_applicant_passport')->toString() ?: null,
             'status' => ApplicationStatus::DRAFT,
-            'data' => $request->input('data'),
+            'data' => $request->input('data', []),
             'created_by_user_id' => auth()->id(),
         ]);
 
