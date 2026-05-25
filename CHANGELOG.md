@@ -12,6 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated CLAUDE.md pint rule to run `--test` then `--dirty` sequentially
 
 ### Fixed
+- Lead application creation failing with "data field is required" when form is empty — changed `data` validation from `required` to `present` to allow empty arrays
 - TypeScript errors in `useFormsAutomation.ts` — rewrote all `queryFn` and `mutationFn` with explicit typed axios generics so `response.data` is properly typed and satisfies TanStack Query v5 `NoInfer<TQueryFnData>` constraints
 - TypeScript cast errors in `lead-records-documents.tsx`, `lead-records.tsx`, `lead-records-files.tsx`, `lead-records-notes.tsx` — added explicit casts at query data consumption sites for `StorageAccount`, `LinkedGoogleDriveFile`, `LeadFile`, `LeadFolder`, `LeadActivity`, and `ApiMeta` types
 

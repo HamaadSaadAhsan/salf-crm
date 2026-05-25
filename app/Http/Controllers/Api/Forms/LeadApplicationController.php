@@ -50,7 +50,7 @@ class LeadApplicationController extends Controller
             'program_id' => ['required', 'integer', 'exists:programs,id'],
             'main_applicant_name' => ['nullable', 'string', 'max:255'],
             'main_applicant_passport' => ['nullable', 'string', 'max:100'],
-            'data' => ['required', 'array'],
+            'data' => ['present', 'array'],
         ]);
 
         $application = Application::create([
