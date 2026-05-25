@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- `CanonicalPathDictionary` — completely rewritten for Dominica CBI with 277 correct canonical paths covering main applicant (personal, passports, address, physical, work, bank, military), spouse, father, mother, father/mother-in-law, siblings 1–4, children 1–6, dependants 1–6, declarations, references 1–2, investment, medical, passport_app, agent, and application sections; old incorrect paths removed
+- `SuggestedMappingDictionary` — fully corrected for all PDF templates: `form_d1` (263 fields — Part B is now employment/financial not spouse, Part C covers spouse/parents/siblings/children, Part D declarations, references), `form_d2` (11), `form_d3` (30, new), `form_d4` (14), `affidavit_sd` (6), `e_passport_application` (46, new)
+- `CorrectDominiCbiFieldMappingsSeeder` — new seeder that replaces all `field_mappings` rows for the 6 templates above with the corrected canonical paths from `SuggestedMappingDictionary`
+
 ### Fixed
 - `LeadApplicationController::store` — changed `data` validation from `required` to `present` so creating an application on step 1 (before lead info fields are filled) no longer returns a 422 "The data field is required" error; defaults to `[]` when no data is supplied
 - `Application::generateApplicationCode` — use `withTrashed()` so soft-deleted applications are included when finding the last sequence number, preventing duplicate code collisions on re-create
