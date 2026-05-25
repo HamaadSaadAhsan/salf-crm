@@ -384,7 +384,7 @@ export function useLeadProgramSchema(leadId: string, programId: number | null) {
     return useQuery<ProgramSchema>({
         queryKey: ['lead-forms-program-schema', leadId, programId],
         queryFn: async () => {
-            const response = await axios.get<ProgramSchema>(`/api/leads/${leadId}/forms/programs/${programId}/schema`);
+            const response = await axios.get<ProgramSchema>(`/api/forms/programs/${programId}/schema`);
             return response.data;
         },
         enabled: !!programId,

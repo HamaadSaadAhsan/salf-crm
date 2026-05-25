@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - `LeadApplicationController::store` — changed `data` validation from `required` to `present` so creating an application on step 1 (before lead info fields are filled) no longer returns a 422 "The data field is required" error; defaults to `[]` when no data is supplied
+- `Application::generateApplicationCode` — use `withTrashed()` so soft-deleted applications are included when finding the last sequence number, preventing duplicate code collisions on re-create
+- `ProgramSchemaController` and `GenerationApiController` — fixed route parameter mismatch by moving schema endpoint out of lead-scoped group and adding `generations` method to `LeadApplicationController` with proper `Lead $lead` first parameter
+- `FormsServiceClient::fillPdf` and `renderDocx` — send `new \stdClass` instead of `[]` for empty `applicant`/`context` so Pydantic `dict` validation passes
 
 ### Changed
 - Lead application form converted from accordion layout to multi-step stepper — Step 1 collects Applicant Name and Passport Number; Step 2 shows hardcoded Lead Information fields (First Name, Surname, DOB, Nationality, Gender, Marital Status, Email, Phone, Occupation, Employer); admin-configured schema sections appear as Steps 3+ (main_applicant schema section suppressed to avoid duplication); "Next Step" shows on all but the last step; "Save & Finish" shows only on the last step; clicking Next auto-saves to the server; Back/Cancel navigation; step indicators show check-mark when completed

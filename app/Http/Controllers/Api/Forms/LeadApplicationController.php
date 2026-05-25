@@ -93,6 +93,30 @@ class LeadApplicationController extends Controller
         return response()->json(['message' => 'Application updated.']);
     }
 
+    public function generations(Lead $lead, Application $application): JsonResponse
+    {
+        abort_if((string) $application->lead_id !== (string) $lead->id, 404);
+
+        $generations = $application->generations()
+            ->with('generatedBy:id,name')
+            ->latest()
+            ->get()
+            ->map(fn (ApplicationGeneration $g) => [
+                'id' => $g->id,
+                'status' => $g->status->value,
+                'file_count' => $g->file_count,
+                'output_path' => $g->output_path,
+                'generation_log' => $g->generation_log,
+                'error_message' => $g->error_message,
+                'started_at' => $g->started_at?->toISOString(),
+                'completed_at' => $g->completed_at?->toISOString(),
+                'created_at' => $g->created_at->toISOString(),
+                'generated_by' => $g->generatedBy ? ['id' => $g->generatedBy->id, 'name' => $g->generatedBy->name] : null,
+            ]);
+
+        return response()->json(['data' => $generations]);
+    }
+
     public function generate(Lead $lead, Application $application): JsonResponse
     {
         abort_if((string) $application->lead_id !== (string) $lead->id, 404);

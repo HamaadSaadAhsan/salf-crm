@@ -45,7 +45,7 @@ class Application extends Model
             $yearCode = now()->format(config('forms.application_code_year_format', 'Y'));
             $pattern = "{$prefix}-{$yearCode}-%";
 
-            $last = self::query()
+            $last = self::withTrashed()
                 ->where('application_code', 'like', $pattern)
                 ->lockForUpdate()
                 ->orderByDesc('application_code')

@@ -59,7 +59,7 @@ class FormsServiceClient
         return $this->send('/pdf/fill', [
             'template_path' => $templatePath,
             'mapping' => empty($mapping) ? new \stdClass : $mapping,
-            'applicant' => $applicantData,
+            'applicant' => empty($applicantData) ? new \stdClass : $applicantData,
             'flatten' => $flatten ?? config('forms.flatten_pdfs'),
         ])->body();
     }
@@ -68,7 +68,7 @@ class FormsServiceClient
     {
         return $this->send('/docx/render', [
             'template_path' => $templatePath,
-            'context' => $context,
+            'context' => empty($context) ? new \stdClass : $context,
         ])->body();
     }
 

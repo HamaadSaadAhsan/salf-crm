@@ -127,14 +127,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/applications/{application}', [LeadApplicationController::class, 'update'])->name('applications.update');
         Route::post('/applications/{application}/generate', [LeadApplicationController::class, 'generate'])->name('applications.generate');
         Route::delete('/applications/{application}', [LeadApplicationController::class, 'destroy'])->name('applications.destroy');
-        Route::get('/applications/{application}/generations', [GenerationApiController::class, 'index'])->name('applications.generations');
+        Route::get('/applications/{application}/generations', [LeadApplicationController::class, 'generations'])->name('applications.generations');
         Route::get('/generations/{generation}/download', [LeadApplicationController::class, 'downloadGeneration'])->name('generations.download');
-        Route::get('/programs/{program}/schema', [ProgramSchemaController::class, 'show'])->name('programs.schema');
     });
+
+    // Forms program schema — accessible to all authenticated users (no lead context needed)
+    Route::get('api/forms/programs/{program}/schema', [ProgramSchemaController::class, 'show'])->name('api.forms.programs.schema');
 
     // Forms Automation API (Admin)
     Route::middleware('role:super-admin')->prefix('api/forms')->name('api.forms.')->group(function () {
-        Route::get('/programs/{program}/schema', [ProgramSchemaController::class, 'show'])->name('programs.schema');
         Route::get('/templates/{formTemplate}/pages/{page}', [TemplatePageController::class, 'show'])->name('templates.page')->where('page', '[0-9]+');
         Route::post('/templates/{formTemplate}/sync', [FormTemplateApiController::class, 'syncInventory'])->name('templates.sync');
         Route::get('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'getMappings'])->name('templates.mappings');
