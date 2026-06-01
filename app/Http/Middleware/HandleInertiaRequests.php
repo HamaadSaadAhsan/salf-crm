@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\LeadSource;
 use App\Models\Service;
 use App\Models\Status;
+use App\Models\SystemSetting;
 use App\Models\Task;
 use App\Models\Ticket;
 use Closure;
@@ -86,6 +87,7 @@ class HandleInertiaRequests extends Middleware
                 ->active()
                 ->ordered()
                 ->get(),
+            'systemSettings' => fn () => SystemSetting::asArray(),
         ]);
     }
 

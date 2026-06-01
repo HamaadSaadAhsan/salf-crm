@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\LeadPdfSubmissionController;
 use App\Http\Controllers\Api\MentionUserController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\PdfTemplateController;
+use App\Http\Controllers\Api\PhoneRevealController;
 use App\Http\Controllers\Api\Roles\PermissionController;
 use App\Http\Controllers\Api\Roles\RoleController;
 use App\Http\Controllers\Api\SavedFilterController;
@@ -346,6 +347,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/calls/initiate', [CallSessionController::class, 'initiateCall'])->name('api.calls.initiate');
         Route::patch('/calls/{sessionId}/status', [CallSessionController::class, 'updateStatus'])->name('api.calls.update-status');
         Route::get('/calls/signature/{signature}', [CallSessionController::class, 'getBySignature'])->name('api.calls.by-signature');
+
+        // Phone Reveal
+        Route::post('/leads/{lead}/phone-reveal', [PhoneRevealController::class, 'reveal'])->name('api.leads.phone-reveal');
     });
 
     // Dashboard & Metrics

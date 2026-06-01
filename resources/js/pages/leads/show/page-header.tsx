@@ -29,7 +29,7 @@ import {
     MoreVertical,
     RefreshCw,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAsteriskWebSocket } from '@/contexts/AsteriskWebSocketContext';
 import { useOutboundCalls } from '@/hooks/useOutboundCalls';
 import { usePage } from '@inertiajs/react';
@@ -38,10 +38,90 @@ import type { Lead } from '@/types/lead';
 import { toast } from 'sonner';
 import { NewNoteSheet } from './new-note-sheet';
 import { LeadTaskSheet } from '@/components/lead-task-sheet';
+import axios from '@/lib/http';
+import PhoneRevealController from '@/actions/App/Http/Controllers/Api/PhoneRevealController';
 
 interface PageHeaderProps {
     lead: Lead;
     users?: User[];
+}
+
+function maskPhone(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 4) return '••••';
+    const last4 = digits.slice(-4);
+    const masked = '•'.repeat(digits.length - 4);
+    return masked + last4;
+}
+
+function PhoneRevealButton({ lead }: { lead: Lead }) {
+    const [revealed, setRevealed] = useState(false);
+    const [phone, setPhone] = useState<string | null>(null);
+    const [secondsLeft, setSecondsLeft] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const clearTimer = useCallback(() => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    }, []);
+
+    const handleReveal = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.post<{ phone: string; duration: number }>(
+                PhoneRevealController.reveal.url(lead.id)
+            );
+            const { phone: revealedPhone, duration } = res.data;
+            setPhone(revealedPhone);
+            setRevealed(true);
+            setSecondsLeft(duration);
+
+            clearTimer();
+            timerRef.current = setInterval(() => {
+                setSecondsLeft((s) => {
+                    if (s <= 1) {
+                        clearTimer();
+                        setRevealed(false);
+                        setPhone(null);
+                        return 0;
+                    }
+                    return s - 1;
+                });
+            }, 1000);
+        } catch {
+            toast.error('Could not reveal phone number');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => () => clearTimer(), [clearTimer]);
+
+    if (!lead.phone) return null;
+
+    if (revealed && phone) {
+        return (
+            <div className="flex items-center gap-1.5">
+                <span className="text-sm font-mono tabular-nums">{phone}</span>
+                <span className="text-xs text-muted-foreground tabular-nums w-[26px]">{secondsLeft}s</span>
+            </div>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={handleReveal}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 h-8 text-sm font-mono tabular-nums hover:bg-accent transition-colors disabled:opacity-50"
+        >
+            <Phone className="size-3.5 shrink-0 text-muted-foreground" />
+            <span>{maskPhone(lead.phone)}</span>
+        </button>
+    );
 }
 
 export function PageHeader({ lead, users = [] }: PageHeaderProps) {
@@ -51,7 +131,8 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
     const [taskSheetOpen, setTaskSheetOpen] = useState(false);
     const { state, actions } = useAsteriskWebSocket();
     const { startOutboundCall } = useOutboundCalls();
-    const { auth } = usePage<SharedData>().props;
+    const { auth, systemSettings } = usePage<SharedData>().props;
+    const callingEnabled = systemSettings?.calling_enabled ?? true;
     const canEdit = auth.permissions.includes('edit leads');
 
     const handleCall = async () => {
@@ -168,23 +249,27 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
                                         <TooltipContent>Send email to {lead.email}</TooltipContent>
                                     </Tooltip>
                                 )}
-                                {lead.phone && (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={handleCall}
-                                                disabled={isCalling || state.connectionStatus !== 'connected'}
-                                            >
-                                                <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
-                                                {isCalling ? 'Calling...' : 'Call'}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            {state.connectionStatus !== 'connected' ? 'Call server not connected' : 'Call client'}
-                                        </TooltipContent>
-                                    </Tooltip>
+                                {callingEnabled ? (
+                                    lead.phone && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleCall}
+                                                    disabled={isCalling || state.connectionStatus !== 'connected'}
+                                                >
+                                                    <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
+                                                    {isCalling ? 'Calling...' : 'Call'}
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                {state.connectionStatus !== 'connected' ? 'Call server not connected' : 'Call client'}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    )
+                                ) : (
+                                    <PhoneRevealButton lead={lead} />
                                 )}
                             </div>
                         </TooltipProvider>
@@ -226,17 +311,21 @@ export function PageHeader({ lead, users = [] }: PageHeaderProps) {
 
                     {/* Mobile/Tablet actions */}
                     <div className="flex items-center gap-1 md:hidden">
-                        {lead.phone && (
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={handleCall}
-                                disabled={isCalling || state.connectionStatus !== 'connected'}
-                            >
-                                <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
-                                <span className="sr-only">Call</span>
-                            </Button>
+                        {callingEnabled ? (
+                            lead.phone && (
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-9 w-9"
+                                    onClick={handleCall}
+                                    disabled={isCalling || state.connectionStatus !== 'connected'}
+                                >
+                                    <Phone className={`h-4 w-4 ${isCalling ? 'animate-pulse' : ''}`} />
+                                    <span className="sr-only">Call</span>
+                                </Button>
+                            )
+                        ) : (
+                            <PhoneRevealButton lead={lead} />
                         )}
                         {lead.email && (
                             <Button variant="outline" size="icon" className="h-9 w-9">

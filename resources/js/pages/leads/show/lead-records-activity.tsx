@@ -5,6 +5,7 @@ import {
     ChevronDown,
     Settings,
     Phone,
+    PhoneCall,
     Mail,
     MessageSquare,
     ClipboardList,
@@ -97,6 +98,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                 return 'assigned';
             case 'attribute_change':
                 return 'changed';
+            case 'phone_reveal':
+                return 'revealed phone number for';
             case 'task':
                 return 'created a task';
             case 'follow_up':
@@ -122,6 +125,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                 return <RefreshCw className="size-3.5 text-muted-foreground" />;
             case 'attribute_change':
                 return <PenLine className="size-3.5 text-muted-foreground" />;
+            case 'phone_reveal':
+                return <PhoneCall className="size-3.5 text-muted-foreground" />;
             default:
                 return <Settings className="size-3.5 text-muted-foreground" />;
         }
@@ -305,6 +310,8 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                                 changes={activity.metadata.changes}
                                                                 subject={activity.subject}
                                                             />
+                                                        ) : activity.type === 'phone_reveal' ? (
+                                                            <span className="font-semibold text-sm">this lead</span>
                                                         ) : activity.type !== 'note' && activity.subject ? (
                                                             <span className="font-semibold text-sm">
                                                                 {activity.subject}
@@ -340,6 +347,15 @@ export function LeadRecordsActivity({ leadId }: LeadRecordsActivityProps) {
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                        </div>
+                                                    ) : activity.type === 'phone_reveal' && activity.metadata ? (
+                                                        <div className="ml-8 mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                                                            {activity.metadata.ip_address && (
+                                                                <span className="font-mono">{activity.metadata.ip_address}</span>
+                                                            )}
+                                                            {activity.metadata.duration_seconds && (
+                                                                <span>visible for {activity.metadata.duration_seconds}s</span>
+                                                            )}
                                                         </div>
                                                     ) : activity.description && activity.type !== 'attribute_change' ? (
                                                         <div className="ml-8 text-xs text-muted-foreground mt-0.5">
