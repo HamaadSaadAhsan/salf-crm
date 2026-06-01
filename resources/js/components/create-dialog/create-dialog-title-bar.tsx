@@ -33,14 +33,24 @@ export function CreateDialogTitleBar({ isScrolled }: CreateDialogTitleBarProps) 
             .toUpperCase()
             .slice(0, 2);
 
-    const handleCopyLink = () => {
-        if (activityId) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('modal', 'note');
-            url.searchParams.set('id', activityId.toString());
-            navigator.clipboard.writeText(url.toString());
-            toast.success('Link copied to clipboard');
+    const handleCopyLink = async () => {
+        if (!activityId) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set('modal', 'note');
+        url.searchParams.set('id', activityId.toString());
+        const urlString = url.toString();
+        try {
+            await navigator.clipboard.writeText(urlString);
+        } catch {
+            const el = document.createElement('textarea');
+            el.value = urlString;
+            el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
         }
+        toast.success('Link copied to clipboard');
     };
 
     const handleDelete = async () => {
@@ -106,7 +116,7 @@ export function CreateDialogTitleBar({ isScrolled }: CreateDialogTitleBarProps) 
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                         align="end"
-                        className="min-w-[180px] gap-px p-1 rounded-xl bg-white dark:bg-[rgb(31,33,37)] shadow-[rgb(228,228,231)_0_0_0_1px_inset,rgba(0,0,0,0.04)_0_0_0_1px,rgba(0,0,0,0.06)_0_4px_8px_-4px] dark:shadow-[rgb(47,48,51)_0_0_0_1px_inset,rgba(0,0,0,0.16)_0_0_0_1px,rgba(0,0,0,0.48)_0_4px_8px_-4px,rgba(0,0,0,0.64)_0_4px_12px_-2px] border-0"
+                        className="z-[10000] min-w-[180px] gap-px p-1 rounded-xl bg-white dark:bg-[rgb(31,33,37)] shadow-[rgb(228,228,231)_0_0_0_1px_inset,rgba(0,0,0,0.04)_0_0_0_1px,rgba(0,0,0,0.06)_0_4px_8px_-4px] dark:shadow-[rgb(47,48,51)_0_0_0_1px_inset,rgba(0,0,0,0.16)_0_0_0_1px,rgba(0,0,0,0.48)_0_4px_8px_-4px,rgba(0,0,0,0.64)_0_4px_12px_-2px] border-0"
                     >
                         <DropdownMenuItem
                             onClick={handleCopyLink}

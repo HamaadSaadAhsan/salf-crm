@@ -13,6 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Phone reveal feature — `PhoneRevealController` (POST `/api/leads/{lead}/phone-reveal`) returns a time-limited phone number; `PhoneRevealButton` in the lead page header masks digits, reveals on click, and auto-hides after the configured duration. When calling is enabled the header shows a Call button (phone hidden); when disabled it shows the masked phone with a timed reveal
 - `LogPhoneReveal` queued job writes a `PhoneReveal` audit record plus a `phone_reveal` `LeadActivity` (subject, ip_address, duration_seconds, expires_at); `phone_reveal` activity type added to the `lead_activities_type_check` constraint and rendered in the activity feed with a `PhoneCall` icon
 - Phone reveal audit log table on the System Settings page (agent, lead, IP, revealed at, expired at; 20/page)
+- Create-dialog note editor — inline image insert (Lexical image node + insert button) and a "link a meeting" popover; notes persist `editor_state` and `linked_meeting` metadata via `LeadActivityController`, surfaced in the new notes sheet
 
 ### Changed
 - `CanonicalPathDictionary` — completely rewritten for Dominica CBI with 277 correct canonical paths covering main applicant (personal, passports, address, physical, work, bank, military), spouse, father, mother, father/mother-in-law, siblings 1–4, children 1–6, dependants 1–6, declarations, references 1–2, investment, medical, passport_app, agent, and application sections; old incorrect paths removed

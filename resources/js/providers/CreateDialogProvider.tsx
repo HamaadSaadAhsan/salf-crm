@@ -62,6 +62,7 @@ export function CreateDialogProvider({ children }: { children: ReactNode }) {
                     subject: activity.subject === 'Untitled note' ? '' : (activity.subject || ''),
                     description: activity.description || '',
                     editorState: activity.metadata?.editor_state || undefined,
+                    linkedMeeting: activity.metadata?.linked_meeting || null,
                 },
                 activityId: activity.id,
                 isDirty: false,
@@ -99,6 +100,7 @@ export function CreateDialogProvider({ children }: { children: ReactNode }) {
                 subject: s.data.subject || 'Untitled note',
                 description: s.data.description,
                 editor_state: s.data.editorState || null,
+                linked_meeting: s.data.linkedMeeting ?? null,
             });
             setState(prev => ({ ...prev, isDirty: false, isSaving: false }));
         } catch {
@@ -163,6 +165,7 @@ export function CreateDialogProvider({ children }: { children: ReactNode }) {
                     subject: activity.subject === 'Untitled note' ? '' : (activity.subject || ''),
                     description: activity.description || '',
                     editorState: activity.metadata?.editor_state || undefined,
+                    linkedMeeting: activity.metadata?.linked_meeting || null,
                 },
                 activityId: activity.id,
                 isDirty: false,

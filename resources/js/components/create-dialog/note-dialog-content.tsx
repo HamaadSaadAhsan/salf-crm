@@ -1,6 +1,6 @@
 import { useCreateDialog } from '@/providers/CreateDialogProvider';
 import { Link } from '@inertiajs/react';
-import { User2 } from 'lucide-react';
+import { User2, Video, X } from 'lucide-react';
 import { LinkMeetingPopover } from './link-meeting-popover';
 import { useCallback, useEffect, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -128,9 +128,10 @@ export function NoteDialogContent() {
     };
 
     // Attio: .gNZZEj = padding-top: 136px, padding-left/right: 128px (full mode)
-    const titlePad = isFull ? 'pt-[136px] px-32' : 'pt-6 px-6';
+    // Responsive: px-32 only on xl+ to prevent content crush on narrow viewports
+    const titlePad = isFull ? 'pt-[136px] px-8 sm:px-16 xl:px-32' : 'pt-6 px-6';
     // Attio: .bqcCLu = padding-left/right: 128px, padding-bottom: 20px (full mode)
-    const editorPad = isFull ? 'px-32 pb-5' : 'px-6 pb-5';
+    const editorPad = isFull ? 'px-8 sm:px-16 xl:px-32 pb-5' : 'px-6 pb-5';
 
     return (
         <LexicalComposer key={activityId || 'new'} initialConfig={initialConfig}>
@@ -160,7 +161,7 @@ export function NoteDialogContent() {
 
                     {/* Reference chips — Attio .jaLmeZ */}
                     {association?.name && (
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
                             <Link
                                 href={association.url || '#'}
                                 className="inline-flex items-center gap-1 h-[22px] px-2 rounded-md text-xs font-medium tracking-[-0.01em] leading-4 bg-zinc-100 dark:bg-zinc-800 text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
@@ -168,7 +169,33 @@ export function NoteDialogContent() {
                                 <User2 className="size-3 shrink-0 text-muted-foreground" />
                                 <span className="truncate">{association.name}</span>
                             </Link>
-                            <LinkMeetingPopover />
+                            {data.linkedMeeting ? (
+                                <span className="inline-flex items-center gap-1 h-[22px] pl-2 pr-1 rounded-md text-xs font-medium tracking-[-0.01em] leading-4 bg-zinc-100 dark:bg-zinc-800 text-foreground">
+                                    <Video className="size-3 shrink-0 text-muted-foreground" />
+                                    {data.linkedMeeting.meet_link || data.linkedMeeting.url ? (
+                                        <a
+                                            href={data.linkedMeeting.meet_link || data.linkedMeeting.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="truncate max-w-[160px] hover:underline"
+                                        >
+                                            {data.linkedMeeting.title}
+                                        </a>
+                                    ) : (
+                                        <span className="truncate max-w-[160px]">{data.linkedMeeting.title}</span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setData({ linkedMeeting: null })}
+                                        className="ml-0.5 size-3.5 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
+                                        aria-label="Remove linked meeting"
+                                    >
+                                        <X className="size-2.5" />
+                                    </button>
+                                </span>
+                            ) : (
+                                <LinkMeetingPopover />
+                            )}
                         </div>
                     )}
                 </div>

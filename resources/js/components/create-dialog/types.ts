@@ -9,6 +9,13 @@ export interface DialogAssociation {
     url?: string;
 }
 
+export interface LinkedMeeting {
+    title: string;
+    url?: string;
+    meet_link?: string;
+    id?: string;
+}
+
 export interface CreateDialogState {
     viewState: DialogViewState;
     modelType: CreateDialogModelType | null;
@@ -17,6 +24,7 @@ export interface CreateDialogState {
         subject: string;
         description: string;
         editorState?: string;
+        linkedMeeting?: LinkedMeeting | null;
     };
     activityId: string | null;
     isDirty: boolean;
