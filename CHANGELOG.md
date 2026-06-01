@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively
+
 ### Changed
 - Lead Information step (Step 2) in the lead application form stepper now groups all `main_applicant.*` canonical fields under section headers (Personal Information, Contact Information, Employment, Financial, Identity Documents, Primary Passport, Second Passport, Residential Address, Mailing Address) instead of a flat grid
 - Employment History and Residence History in Step 2 are now dynamic repeaters — starts with 1 entry, "+" button adds up to 4 employment / 5 residence entries, "×" on the last entry removes it; existing saved data auto-restores the correct entry count on edit
