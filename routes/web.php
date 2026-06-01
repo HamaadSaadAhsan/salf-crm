@@ -480,6 +480,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{id}', [GoogleCalendarController::class, 'disconnect'])->name('disconnect');
             Route::post('/{id}/refresh-token', [GoogleCalendarController::class, 'refreshToken'])->name('refresh-token');
             Route::get('/{id}/calendars', [GoogleCalendarController::class, 'getCalendars'])->name('calendars');
+            Route::get('/{id}/events', [GoogleCalendarController::class, 'getEvents'])->name('events.index');
             Route::post('/{id}/events', [GoogleCalendarController::class, 'createEvent'])->name('events.store');
             Route::get('/{id}/status', [GoogleCalendarController::class, 'status'])->name('integration-status');
         });
