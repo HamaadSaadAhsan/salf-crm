@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- Lead Information step (Step 2) in the lead application form stepper now groups all ~107 `main_applicant.*` canonical fields under section headers (Personal Information, Contact Information, Employment, Financial, Identity Documents, Primary Passport, Second Passport, Residential Address, Mailing Address, Employment History 1–4, Residence History 1–5) instead of a flat grid
+
 ### Fixed
 - `LeadApplicationController::store` — changed `data` validation from `required` to `present` so creating an application on step 1 (before lead info fields are filled) no longer returns a 422 "The data field is required" error; defaults to `[]` when no data is supplied
 - `Application::generateApplicationCode` — use `withTrashed()` so soft-deleted applications are included when finding the last sequence number, preventing duplicate code collisions on re-create

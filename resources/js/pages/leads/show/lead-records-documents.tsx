@@ -1086,20 +1086,173 @@ function LeadFormsListSection({
 // Forms Automation — fill view (program selection + field entry)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LEAD_INFO_FIELDS: { path: string; label: string; type?: string }[] = [
-    { path: 'main_applicant.first_name', label: 'First Name' },
-    { path: 'main_applicant.surname', label: 'Surname' },
+interface LeadInfoField {
+    path: string;
+    label: string;
+    type?: string;
+    section?: string;
+}
+
+const LEAD_INFO_FIELDS: LeadInfoField[] = [
+    // ── Personal Information ──────────────────────────────────────────────
+    { section: 'Personal Information', path: 'main_applicant.given_name', label: 'First / Given Name' },
+    { path: 'main_applicant.surname', label: 'Surname / Family Name' },
     { path: 'main_applicant.middle_name', label: 'Middle Name' },
-    { path: 'main_applicant.date_of_birth', label: 'Date of Birth', type: 'date' },
+    { path: 'main_applicant.other_names', label: 'Other Names' },
+    { path: 'main_applicant.name_local_script', label: 'Name in Local Script' },
+    { path: 'main_applicant.mothers_maiden_name', label: "Mother's Maiden Name" },
+    { path: 'main_applicant.dob', label: 'Date of Birth', type: 'date' },
+    { path: 'main_applicant.country_of_birth', label: 'Country of Birth' },
     { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
     { path: 'main_applicant.nationality', label: 'Nationality' },
     { path: 'main_applicant.gender', label: 'Gender' },
     { path: 'main_applicant.marital_status', label: 'Marital Status' },
-    { path: 'main_applicant.email', label: 'Email Address', type: 'email' },
-    { path: 'main_applicant.phone_number', label: 'Phone Number', type: 'tel' },
-    { path: 'main_applicant.occupation', label: 'Occupation' },
+    { path: 'main_applicant.is_sponsored', label: 'Is Sponsored' },
+
+    // ── Contact Information ───────────────────────────────────────────────
+    { section: 'Contact Information', path: 'main_applicant.email', label: 'Email Address', type: 'email' },
+    { path: 'main_applicant.phone_mobile', label: 'Mobile Phone', type: 'tel' },
+    { path: 'main_applicant.phone_home', label: 'Home Phone', type: 'tel' },
+    { path: 'main_applicant.phone_work', label: 'Work Phone', type: 'tel' },
+    { path: 'main_applicant.fax', label: 'Fax', type: 'tel' },
+
+    // ── Employment ────────────────────────────────────────────────────────
+    { section: 'Employment', path: 'main_applicant.occupation', label: 'Occupation' },
+    { path: 'main_applicant.employment_status', label: 'Employment Status' },
     { path: 'main_applicant.employer_name', label: 'Employer Name' },
+    { path: 'main_applicant.employer_address', label: 'Employer Address' },
+    { path: 'main_applicant.employer_city', label: 'Employer City' },
+    { path: 'main_applicant.employer_country', label: 'Employer Country' },
+    { path: 'main_applicant.employment_from', label: 'Employment From', type: 'date' },
+    { path: 'main_applicant.employment_to', label: 'Employment To', type: 'date' },
+
+    // ── Financial ─────────────────────────────────────────────────────────
+    { section: 'Financial', path: 'main_applicant.annual_income', label: 'Annual Income' },
+    { path: 'main_applicant.net_worth', label: 'Net Worth' },
+    { path: 'main_applicant.source_of_funds', label: 'Source of Funds' },
+
+    // ── Identity Documents ────────────────────────────────────────────────
+    { section: 'Identity Documents', path: 'main_applicant.national_id_number', label: 'National ID Number' },
+    { path: 'main_applicant.national_id_country', label: 'National ID Country' },
+    { path: 'main_applicant.national_id_number_2', label: 'National ID Number 2' },
+    { path: 'main_applicant.national_id_country_2', label: 'National ID Country 2' },
+    { path: 'main_applicant.drivers_licence_number', label: "Driver's Licence Number" },
+    { path: 'main_applicant.drivers_licence_country', label: "Driver's Licence Country" },
+    { path: 'main_applicant.drivers_licence_number_2', label: "Driver's Licence Number 2" },
+    { path: 'main_applicant.drivers_licence_country_2', label: "Driver's Licence Country 2" },
+
+    // ── Primary Passport (extra fields; number & country in step 1) ───────
+    { section: 'Primary Passport', path: 'main_applicant.passport_1.date_of_issue', label: 'Date of Issue', type: 'date' },
+    { path: 'main_applicant.passport_1.date_of_expiry', label: 'Date of Expiry', type: 'date' },
+
+    // ── Second Passport ───────────────────────────────────────────────────
+    { section: 'Second Passport', path: 'main_applicant.passport_2.number', label: 'Passport Number' },
+    { path: 'main_applicant.passport_2.country_of_issue', label: 'Country of Issue' },
+    { path: 'main_applicant.passport_2.date_of_issue', label: 'Date of Issue', type: 'date' },
+    { path: 'main_applicant.passport_2.date_of_expiry', label: 'Date of Expiry', type: 'date' },
+
+    // ── Residential Address ───────────────────────────────────────────────
+    { section: 'Residential Address', path: 'main_applicant.address_residential.line_1', label: 'Address Line 1' },
+    { path: 'main_applicant.address_residential.line_2', label: 'Address Line 2' },
+    { path: 'main_applicant.address_residential.city', label: 'City' },
+    { path: 'main_applicant.address_residential.state_province', label: 'State / Province' },
+    { path: 'main_applicant.address_residential.country', label: 'Country' },
+    { path: 'main_applicant.address_residential.postal_code', label: 'Postal Code' },
+
+    // ── Mailing Address ───────────────────────────────────────────────────
+    { section: 'Mailing Address', path: 'main_applicant.address_mailing.line_1', label: 'Address Line 1' },
+    { path: 'main_applicant.address_mailing.line_2', label: 'Address Line 2' },
+    { path: 'main_applicant.address_mailing.city', label: 'City' },
+    { path: 'main_applicant.address_mailing.state_province', label: 'State / Province' },
+    { path: 'main_applicant.address_mailing.country', label: 'Country' },
+    { path: 'main_applicant.address_mailing.postal_code', label: 'Postal Code' },
+
+    // ── Employment History 1 ──────────────────────────────────────────────
+    { section: 'Employment History 1', path: 'main_applicant.employment_history_1.employer', label: 'Employer' },
+    { path: 'main_applicant.employment_history_1.position', label: 'Position' },
+    { path: 'main_applicant.employment_history_1.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.employment_history_1.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.employment_history_1.country', label: 'Country' },
+    { path: 'main_applicant.employment_history_1.reason_leaving', label: 'Reason for Leaving' },
+
+    // ── Employment History 2 ──────────────────────────────────────────────
+    { section: 'Employment History 2', path: 'main_applicant.employment_history_2.employer', label: 'Employer' },
+    { path: 'main_applicant.employment_history_2.position', label: 'Position' },
+    { path: 'main_applicant.employment_history_2.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.employment_history_2.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.employment_history_2.country', label: 'Country' },
+    { path: 'main_applicant.employment_history_2.reason_leaving', label: 'Reason for Leaving' },
+
+    // ── Employment History 3 ──────────────────────────────────────────────
+    { section: 'Employment History 3', path: 'main_applicant.employment_history_3.employer', label: 'Employer' },
+    { path: 'main_applicant.employment_history_3.position', label: 'Position' },
+    { path: 'main_applicant.employment_history_3.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.employment_history_3.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.employment_history_3.country', label: 'Country' },
+    { path: 'main_applicant.employment_history_3.reason_leaving', label: 'Reason for Leaving' },
+
+    // ── Employment History 4 ──────────────────────────────────────────────
+    { section: 'Employment History 4', path: 'main_applicant.employment_history_4.employer', label: 'Employer' },
+    { path: 'main_applicant.employment_history_4.position', label: 'Position' },
+    { path: 'main_applicant.employment_history_4.from', label: 'From', type: 'date' },
+
+    // ── Residence History 1 ───────────────────────────────────────────────
+    { section: 'Residence History 1', path: 'main_applicant.residence_history_1.address', label: 'Address' },
+    { path: 'main_applicant.residence_history_1.city', label: 'City' },
+    { path: 'main_applicant.residence_history_1.country', label: 'Country' },
+    { path: 'main_applicant.residence_history_1.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.residence_history_1.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.residence_history_1.purpose', label: 'Purpose' },
+    { path: 'main_applicant.residence_history_1.status', label: 'Status' },
+
+    // ── Residence History 2 ───────────────────────────────────────────────
+    { section: 'Residence History 2', path: 'main_applicant.residence_history_2.address', label: 'Address' },
+    { path: 'main_applicant.residence_history_2.city', label: 'City' },
+    { path: 'main_applicant.residence_history_2.country', label: 'Country' },
+    { path: 'main_applicant.residence_history_2.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.residence_history_2.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.residence_history_2.purpose', label: 'Purpose' },
+    { path: 'main_applicant.residence_history_2.status', label: 'Status' },
+
+    // ── Residence History 3 ───────────────────────────────────────────────
+    { section: 'Residence History 3', path: 'main_applicant.residence_history_3.address', label: 'Address' },
+    { path: 'main_applicant.residence_history_3.city', label: 'City' },
+    { path: 'main_applicant.residence_history_3.country', label: 'Country' },
+    { path: 'main_applicant.residence_history_3.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.residence_history_3.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.residence_history_3.purpose', label: 'Purpose' },
+    { path: 'main_applicant.residence_history_3.status', label: 'Status' },
+
+    // ── Residence History 4 ───────────────────────────────────────────────
+    { section: 'Residence History 4', path: 'main_applicant.residence_history_4.address', label: 'Address' },
+    { path: 'main_applicant.residence_history_4.city', label: 'City' },
+    { path: 'main_applicant.residence_history_4.country', label: 'Country' },
+    { path: 'main_applicant.residence_history_4.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.residence_history_4.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.residence_history_4.purpose', label: 'Purpose' },
+    { path: 'main_applicant.residence_history_4.status', label: 'Status' },
+
+    // ── Residence History 5 ───────────────────────────────────────────────
+    { section: 'Residence History 5', path: 'main_applicant.residence_history_5.address', label: 'Address' },
+    { path: 'main_applicant.residence_history_5.city', label: 'City' },
+    { path: 'main_applicant.residence_history_5.country', label: 'Country' },
+    { path: 'main_applicant.residence_history_5.from', label: 'From', type: 'date' },
+    { path: 'main_applicant.residence_history_5.to', label: 'To', type: 'date' },
+    { path: 'main_applicant.residence_history_5.purpose', label: 'Purpose' },
+    { path: 'main_applicant.residence_history_5.status', label: 'Status' },
 ];
+
+const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => {
+    const sections: { label: string; fields: LeadInfoField[] }[] = [];
+    for (const field of LEAD_INFO_FIELDS) {
+        if (field.section) {
+            sections.push({ label: field.section, fields: [field] });
+        } else {
+            sections[sections.length - 1]?.fields.push(field);
+        }
+    }
+    return sections;
+})();
 
 function LeadFormsFillView({
     lead,
@@ -1352,23 +1505,54 @@ function LeadFormsFillView({
                                 placeholder="e.g. AB1234567"
                             />
                         </div>
+                        <div>
+                            <Label className="text-xs">Country of Issue</Label>
+                            <Input
+                                value={(formData['main_applicant.passport_1.country_of_issue'] as string) ?? ''}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, 'main_applicant.passport_1.country_of_issue': e.target.value }))
+                                }
+                                className="h-9"
+                                placeholder="e.g. Pakistan"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs">Date of Birth</Label>
+                            <Input
+                                type="date"
+                                value={(formData['main_applicant.dob'] as string) ?? ''}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, 'main_applicant.dob': e.target.value }))
+                                }
+                                className="h-9"
+                            />
+                        </div>
                     </div>
                 </StepperContent>
 
                 {/* Step 2: Lead Information (hardcoded common applicant fields) */}
                 <StepperContent value={2}>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {LEAD_INFO_FIELDS.map((field) => (
-                            <div key={field.path}>
-                                <Label className="text-xs">{field.label}</Label>
-                                <Input
-                                    type={field.type ?? 'text'}
-                                    value={(formData[field.path] as string) ?? ''}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
-                                    }
-                                    className="h-9"
-                                />
+                    <div className="space-y-5">
+                        {LEAD_INFO_SECTIONS.map((sec) => (
+                            <div key={sec.label}>
+                                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {sec.label}
+                                </h4>
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    {sec.fields.map((field) => (
+                                        <div key={field.path}>
+                                            <Label className="text-xs">{field.label}</Label>
+                                            <Input
+                                                type={field.type ?? 'text'}
+                                                value={(formData[field.path] as string) ?? ''}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                                }
+                                                className="h-9"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
