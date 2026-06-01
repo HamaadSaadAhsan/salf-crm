@@ -7,6 +7,7 @@ use App\Http\Requests\LeadFilterRequest;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Services\LeadCacheService;
+use App\Support\LeadKeyset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -93,23 +94,40 @@ class LeadController extends Controller
     {
         $startTime = microtime(true);
         $searchTerm = trim($filters['search']);
-        $perPage = min((int) ($filters['per_page'] ?? 25), 100);
-        $page = (int) ($filters['page'] ?? 1);
+        $perPage = min(max(1, (int) ($filters['per_page'] ?? 25)), 100);
+
+        $sort = LeadKeyset::resolveSort($filters);
+        $cursor = LeadKeyset::cursorForSort(LeadKeyset::decode($filters['cursor'] ?? null), $sort);
+        $mode = LeadKeyset::searchMode($sort);
 
         // Start with Meilisearch
         $searchQuery = Lead::search($searchTerm);
 
-        // Apply Meilisearch filters
-        $this->applySearchFilters($searchQuery, $filters);
+        // Apply Meilisearch filters (incl. the keyset seek predicate when applicable)
+        $this->applySearchFilters($searchQuery, $filters, $sort, $cursor);
 
-        // Apply sorting
-        $this->applySearchSorting($searchQuery, $filters);
+        // Apply keyset/offset sorting (primary sort field + unique seq tiebreaker)
+        foreach (LeadKeyset::searchSort($sort) as [$field, $direction]) {
+            $searchQuery->orderBy($field, $direction);
+        }
 
-        // Execute search with pagination
-        $results = $searchQuery->paginate($perPage, 'page', $page);
+        // Fetch one extra row to detect whether more pages remain.
+        $nextOffset = 0;
+        if ($mode === 'keyset') {
+            $leadIds = $searchQuery->take($perPage + 1)->keys()->all();
+            $hasMore = count($leadIds) > $perPage;
+            if ($hasMore) {
+                $leadIds = array_slice($leadIds, 0, $perPage);
+            }
+        } else {
+            $offset = LeadKeyset::searchOffset($cursor, $sort);
+            $page = intdiv($offset, $perPage) + 1;
+            $results = $searchQuery->paginate($perPage, 'page', $page);
+            $leadIds = collect($results->items())->pluck('id')->all();
+            $hasMore = $results->hasMorePages();
+            $nextOffset = $offset + $perPage;
+        }
 
-        // Get the actual models with relationships
-        $leadIds = $results->pluck('id')->toArray();
         $leads = Lead::with([
             'service:id,name',
             'source:id,name,slug',
@@ -123,25 +141,31 @@ class LeadController extends Controller
         // Maintain search result order
         $orderedLeads = collect($leadIds)->map(function ($id) use ($leads) {
             return $leads->get($id);
-        })->filter();
+        })->filter()->values();
+
+        $nextCursor = null;
+        if ($hasMore && $orderedLeads->isNotEmpty()) {
+            $nextCursor = $mode === 'keyset'
+                ? LeadKeyset::nextCursor($orderedLeads->last(), $sort)
+                : LeadKeyset::searchOffsetCursor($sort, $nextOffset);
+        }
 
         return [
             'data' => LeadResource::collection($orderedLeads),
             'meta' => [
-                'current_page' => $results->currentPage(),
-                'per_page' => $results->perPage(),
-                'total' => $results->total(),
-                'last_page' => $results->lastPage(),
-                'from' => $results->firstItem(),
-                'to' => $results->lastItem(),
-                'has_more' => $results->hasMorePages(),
+                'per_page' => $perPage,
+                'count' => $orderedLeads->count(),
+                'has_more' => $hasMore,
+                'next_cursor' => $nextCursor,
+                'sort_by' => $sort['key'],
+                'sort_order' => $sort['dir'],
                 'filters_applied' => array_filter($filters),
                 'query_time' => round((microtime(true) - $startTime) * 1000, 2),
             ],
             'search_info' => [
                 'engine' => 'meilisearch',
                 'query' => $searchTerm,
-                'total_hits' => $results->total(),
+                'mode' => $mode,
                 'processing_time' => round((microtime(true) - $startTime) * 1000, 2),
             ],
         ];
@@ -150,7 +174,7 @@ class LeadController extends Controller
     /**
      * Apply filters to Meilisearch query
      */
-    private function applySearchFilters(Builder $query, array $filters): void
+    private function applySearchFilters(Builder $query, array $filters, ?array $sort = null, ?array $cursor = null): void
     {
         $filterConditions = [];
 
@@ -311,44 +335,19 @@ class LeadController extends Controller
             $filterConditions[] = 'days_in_current_status >= '.$filters['min_days_in_status'];
         }
 
+        // Keyset seek predicate (numeric sort fields only — Meilisearch cannot
+        // range-filter strings, so those degrade to the offset-cursor path).
+        if ($sort !== null) {
+            $keysetFilter = LeadKeyset::searchKeysetFilter($sort, $cursor);
+            if ($keysetFilter !== null) {
+                $filterConditions[] = $keysetFilter;
+            }
+        }
+
         // Apply all filters via Meilisearch raw filter option
         if (! empty($filterConditions)) {
             $query->options(['filter' => implode(' AND ', $filterConditions)]);
         }
-    }
-
-    /**
-     * Apply sorting to Meilisearch query
-     */
-    private function applySearchSorting(Builder $query, array $filters): void
-    {
-        $sortBy = $filters['sort_by'] ?? 'created_at';
-        $sortOrder = $filters['sort_order'] ?? 'desc';
-
-        // Map database fields to Meilisearch fields
-        $sortFieldMap = [
-            'created_at' => 'created_at_timestamp',
-            'updated_at' => 'updated_at_timestamp',
-            'last_activity_at' => 'last_activity_at_timestamp',
-            'next_follow_up_at' => 'next_follow_up_at_timestamp',
-            'assigned_date' => 'assigned_date_timestamp',
-            'name' => 'name',
-            'email' => 'email',
-            'lead_score' => 'lead_score',
-            'inquiry_status' => 'inquiry_status',
-            'priority' => 'priority',
-            'budget_amount' => 'budget_amount',
-            'days_since_created' => 'days_since_created',
-            'days_in_current_status' => 'days_in_current_status',
-        ];
-
-        $meilisearchField = $sortFieldMap[$sortBy] ?? 'created_at_timestamp';
-
-        if (! in_array(strtolower($sortOrder), ['asc', 'desc'])) {
-            $sortOrder = 'desc';
-        }
-
-        $query->orderBy($meilisearchField, $sortOrder);
     }
 
     /**
@@ -366,7 +365,7 @@ class LeadController extends Controller
                 'createdBy:id,name',
             ])
             ->select([
-                'id', 'name', 'email', 'phone', 'occupation', 'address', 'city', 'country',
+                'id', 'seq', 'name', 'email', 'phone', 'occupation', 'address', 'city', 'country',
                 'latitude', 'longitude', 'detail', 'budget', 'custom_fields',
                 'inquiry_status', 'priority', 'inquiry_type', 'inquiry_country',
                 'lead_score', 'service_id', 'lead_source_id', 'assigned_to', 'created_by',
@@ -377,23 +376,30 @@ class LeadController extends Controller
         // Apply filters
         $this->applyDatabaseFilters($query, $filters);
 
-        // Apply sorting
-        $this->applyDatabaseSorting($query, $filters);
+        // Apply keyset ordering + seek predicate (deterministic seq tiebreaker)
+        $sort = LeadKeyset::resolveSort($filters);
+        $cursor = LeadKeyset::cursorForSort(LeadKeyset::decode($filters['cursor'] ?? null), $sort);
+        LeadKeyset::applyDatabaseKeyset($query, $sort, $cursor);
 
-        // Get paginated results
-        $perPage = min((int) $filters['per_page'] ?? 25, 100);
-        $leads = $query->paginate($perPage);
+        // Fetch one extra row to detect whether more pages remain.
+        $perPage = min(max(1, (int) ($filters['per_page'] ?? 25)), 100);
+        $rows = $query->limit($perPage + 1)->get();
+        $hasMore = $rows->count() > $perPage;
+        $items = $hasMore ? $rows->slice(0, $perPage)->values() : $rows;
+
+        $nextCursor = $hasMore && $items->isNotEmpty()
+            ? LeadKeyset::nextCursor($items->last(), $sort)
+            : null;
 
         return [
-            'data' => LeadResource::collection($leads->items()),
+            'data' => LeadResource::collection($items),
             'meta' => [
-                'current_page' => $leads->currentPage(),
-                'per_page' => $leads->perPage(),
-                'total' => $leads->total(),
-                'last_page' => $leads->lastPage(),
-                'from' => $leads->firstItem(),
-                'to' => $leads->lastItem(),
-                'has_more' => $leads->hasMorePages(),
+                'per_page' => $perPage,
+                'count' => $items->count(),
+                'has_more' => $hasMore,
+                'next_cursor' => $nextCursor,
+                'sort_by' => $sort['key'],
+                'sort_order' => $sort['dir'],
                 'filters_applied' => array_filter($filters),
                 'query_time' => round((microtime(true) - $startTime) * 1000, 2),
             ],
@@ -551,35 +557,6 @@ class LeadController extends Controller
         // Active leads only
         if (! empty($filters['active_only'])) {
             $query->active();
-        }
-    }
-
-    /**
-     * Apply sorting to a database query
-     */
-    private function applyDatabaseSorting($query, array $filters): void
-    {
-        $sortBy = $filters['sort_by'] ?? 'created_at';
-        $sortOrder = $filters['sort_order'] ?? 'desc';
-
-        $allowedSortFields = [
-            'created_at', 'updated_at', 'name', 'email', 'lead_score',
-            'inquiry_status', 'priority', 'last_activity_at', 'next_follow_up_at',
-            'assigned_date', 'days_since_created', 'days_in_current_status',
-        ];
-
-        if (! in_array($sortBy, $allowedSortFields)) {
-            $sortBy = 'created_at';
-        }
-
-        if (! in_array(strtolower($sortOrder), ['asc', 'desc'])) {
-            $sortOrder = 'desc';
-        }
-
-        $query->orderBy($sortBy, $sortOrder);
-
-        if ($sortBy !== 'id') {
-            $query->orderBy('id', 'desc');
         }
     }
 

@@ -2,8 +2,10 @@ import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface LeadFilters {
-    page?: number;
+    cursor?: string;
     per_page?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
     search?: string;
     status?: string[];
     priority?: string[];
@@ -45,9 +47,6 @@ function cleanFilters(filters: LeadFilters): Record<string, unknown> {
             continue;
         }
         // Skip default pagination values to keep URL clean
-        if (key === 'page' && value === 1) {
-            continue;
-        }
         if (key === 'per_page' && value === 25) {
             continue;
         }
@@ -95,7 +94,7 @@ export function useLeadFilters(): UseLeadFiltersReturn {
 
     const setFilter = useCallback(
         <K extends keyof LeadFilters>(key: K, value: LeadFilters[K]) => {
-            const next = { ...filtersRef.current, [key]: value, page: 1 };
+            const next = { ...filtersRef.current, [key]: value, cursor: undefined };
             setLocalFilters(next);
             navigate(next);
         },
@@ -104,7 +103,7 @@ export function useLeadFilters(): UseLeadFiltersReturn {
 
     const clearFilter = useCallback(
         (key: keyof LeadFilters) => {
-            const next = { ...filtersRef.current, page: 1 };
+            const next = { ...filtersRef.current, cursor: undefined };
             delete next[key];
             setLocalFilters(next);
             navigate(next);
@@ -114,7 +113,6 @@ export function useLeadFilters(): UseLeadFiltersReturn {
 
     const clearAll = useCallback(() => {
         const next: LeadFilters = {
-            page: 1,
             per_page: filtersRef.current.per_page,
         };
         setLocalFilters(next);
@@ -126,8 +124,10 @@ export function useLeadFilters(): UseLeadFiltersReturn {
     const applyFilters = useCallback(
         (overrides?: Partial<LeadFilters>) => {
             const next: LeadFilters = { ...filtersRef.current, ...overrides };
-            if (!overrides?.page) {
-                next.page = 1;
+            // Any filter change invalidates the keyset cursor; only an explicit
+            // pagination override (next/prev) carries a cursor forward.
+            if (!overrides || !('cursor' in overrides)) {
+                next.cursor = undefined;
             }
             setLocalFilters(next);
             navigate(next);
@@ -144,7 +144,7 @@ export function useLeadFilters(): UseLeadFiltersReturn {
             }
 
             debounceRef.current = setTimeout(() => {
-                const next = { ...filtersRef.current, search: value || undefined, page: 1 };
+                const next = { ...filtersRef.current, search: value || undefined, cursor: undefined };
                 setLocalFilters(next);
                 ownSearchRef.current = value || '';
                 navigate(next, { replace: true });

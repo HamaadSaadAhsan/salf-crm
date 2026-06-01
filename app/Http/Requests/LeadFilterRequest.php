@@ -10,6 +10,7 @@ class LeadFilterRequest extends FormRequest
     {
         return [
             'page' => 'integer|min:1',
+            'cursor' => 'nullable|string|max:512',
             'per_page' => 'integer|min:1|max:200',
             'sort_by' => 'string|in:created_at,updated_at,name,email,lead_score,inquiry_status,priority,last_activity_at',
             'sort_order' => 'string|in:asc,desc',
