@@ -1,6 +1,7 @@
 import { updateAdvisorStage, update as updateLead } from '@/actions/App/Http/Controllers/Leads/LeadController';
 import { InlineEdit } from '@/components/inline-edit';
 import { ResponsiveSelect } from '@/components/responsive-select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import TagInput from '@/components/tag-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
     Briefcase,
     Calendar,
     Check,
+    ChevronDown,
     ChevronRight,
     ChevronsUpDown,
     Clock,
@@ -41,10 +43,125 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type TagValue = string | { label: string; value: string; color?: string };
+
+const CURRENCIES = [
+    { code: 'USD', symbol: '$', label: 'US Dollar' },
+    { code: 'EUR', symbol: '€', label: 'Euro' },
+    { code: 'PKR', symbol: '₨', label: 'PAK Rupee' },
+] as const;
+
+type CurrencyCode = (typeof CURRENCIES)[number]['code'];
+
+function BudgetInlineEdit({
+    budget,
+    onSave,
+    readonly = false,
+}: {
+    budget?: { amount: number; currency: string } | null;
+    onSave: (amount: string, currency: string) => void;
+    readonly?: boolean;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [amount, setAmount] = useState(budget?.amount ? String(budget.amount) : '');
+    const [currency, setCurrency] = useState<CurrencyCode>((budget?.currency as CurrencyCode) ?? 'USD');
+    const [currencyOpen, setCurrencyOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        setAmount(budget?.amount ? String(budget.amount) : '');
+        setCurrency((budget?.currency as CurrencyCode) ?? 'USD');
+    }, [budget]);
+
+    useEffect(() => {
+        if (editing) {
+            setTimeout(() => {
+                inputRef.current?.focus();
+                inputRef.current?.select();
+            });
+        }
+    }, [editing]);
+
+    const commit = () => {
+        onSave(amount, currency);
+        setEditing(false);
+    };
+
+    const cancel = () => {
+        setAmount(budget?.amount ? String(budget.amount) : '');
+        setCurrency((budget?.currency as CurrencyCode) ?? 'USD');
+        setEditing(false);
+    };
+
+    const currencyMeta = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
+    const displayAmount = budget?.amount && budget.amount > 0
+        ? `${budget.currency ?? 'USD'} ${Number(budget.amount).toLocaleString()}`
+        : null;
+
+    if (!editing) {
+        if (readonly) {
+            return <span className="inline-block rounded px-1 py-0.5 text-sm">{displayAmount ?? '—'}</span>;
+        }
+        return (
+            <span
+                className="inline-block cursor-pointer hover:bg-accent/40 rounded px-1 py-0.5 text-sm"
+                onClick={() => setEditing(true)}
+            >
+                {displayAmount ?? '—'}
+            </span>
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-0 mt-0.5" onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}>
+            {/* Currency selector */}
+            <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                <PopoverTrigger asChild>
+                    <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        className="flex items-center gap-1 h-7 pl-2 pr-1.5 rounded-l-md border border-r-0 border-border bg-muted text-xs font-medium text-foreground hover:bg-accent transition-colors shrink-0"
+                    >
+                        {currencyMeta.code}
+                        <ChevronDown className="size-3 text-muted-foreground" />
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[160px] p-1">
+                    {CURRENCIES.map((c) => (
+                        <button
+                            key={c.code}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setCurrency(c.code); setCurrencyOpen(false); inputRef.current?.focus(); }}
+                            className={cn(
+                                'flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors',
+                                currency === c.code && 'bg-accent',
+                            )}
+                        >
+                            <span className="font-medium">{c.code}</span>
+                            <span className="text-muted-foreground text-xs">{c.label}</span>
+                        </button>
+                    ))}
+                </PopoverContent>
+            </Popover>
+
+            {/* Amount input */}
+            <input
+                ref={inputRef}
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onBlur={() => { if (!currencyOpen) commit(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+                placeholder="0"
+                className="h-7 w-28 rounded-r-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+        </div>
+    );
+}
 
 type Status = {
     id: number;
@@ -759,10 +876,10 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
     };
 
     // Save budget as structured object
-    const saveBudget = (amountStr: string) => {
+    const saveBudget = (amountStr: string, currency = model.budget?.currency ?? 'USD') => {
         const amount = parseFloat(amountStr.replace(/[^0-9.]/g, ''));
         const budget = !isNaN(amount) && amount > 0
-            ? { amount, currency: model.budget?.currency ?? 'USD' }
+            ? { amount, currency }
             : null;
         router.put(
             `/leads/${model.id}`,
@@ -1007,15 +1124,10 @@ export function LeadExtendedDetails({ lead, onLeadUpdated }: { lead: Lead; onLea
                                 <DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground">Budget</span>
-                                    <InlineEdit
-                                        value={model.budget?.amount ? String(model.budget.amount) : ''}
-                                        placeholder="Add budget"
-                                        format={(v) =>
-                                            v && Number(v) > 0
-                                                ? `${model.budget?.currency ?? 'USD'} ${Number(v).toLocaleString()}`
-                                                : '—'
-                                        }
+                                    <BudgetInlineEdit
+                                        budget={model.budget}
                                         onSave={saveBudget}
+                                        readonly={isReadOnly}
                                     />
                                 </div>
                             </div>

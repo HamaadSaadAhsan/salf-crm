@@ -15,6 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Phone reveal audit log table on the System Settings page (agent, lead, IP, revealed at, expired at; 20/page)
 - Create-dialog note editor — inline image insert (Lexical image node + insert button) and a "link a meeting" popover; notes persist `editor_state` and `linked_meeting` metadata via `LeadActivityController`, surfaced in the new notes sheet
 - `GoogleCalendarController::getEvents` (GET `/.../{id}/events`) — lists events from a connected Google Calendar within a time range, used by the meeting-link popover
+- Lead extended details — budget editing gains an inline currency picker (USD/EUR/PKR) via a popover next to the amount
 
 ### Changed
 - `CanonicalPathDictionary` — completely rewritten for Dominica CBI with 277 correct canonical paths covering main applicant (personal, passports, address, physical, work, bank, military), spouse, father, mother, father/mother-in-law, siblings 1–4, children 1–6, dependants 1–6, declarations, references 1–2, investment, medical, passport_app, agent, and application sections; old incorrect paths removed
