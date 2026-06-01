@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- A14_1 checkbox field mapping added (`main_applicant.has_other_citizenship`, value_for_truthy = "Yes") so the "other citizenship" Yes checkbox is populated in generated PDFs; added corresponding field to the Identity Documents section of the lead application stepper
 - PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively
 
 ### Changed

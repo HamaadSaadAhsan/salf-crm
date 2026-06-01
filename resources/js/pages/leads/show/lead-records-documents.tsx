@@ -1132,7 +1132,8 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.source_of_funds', label: 'Source of Funds' },
 
     // ── Identity Documents ────────────────────────────────────────────────
-    { section: 'Identity Documents', path: 'main_applicant.national_id_number', label: 'National ID Number' },
+    { section: 'Identity Documents', path: 'main_applicant.has_other_citizenship', label: 'Has Other Citizenship (Yes/No)' },
+    { path: 'main_applicant.national_id_number', label: 'National ID Number' },
     { path: 'main_applicant.national_id_country', label: 'National ID Country' },
     { path: 'main_applicant.national_id_number_2', label: 'National ID Number 2' },
     { path: 'main_applicant.national_id_country_2', label: 'National ID Country 2' },
