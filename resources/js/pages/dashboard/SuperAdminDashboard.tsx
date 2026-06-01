@@ -4,38 +4,53 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { ProgramSalesCard } from '@/components/dashboard/ProgramSalesCard';
 import { AdSourcesChart } from '@/components/dashboard/ad-sources-chart';
 import { LeadLifecycleFunnel } from '@/components/dashboard/lead-lifecycle-funnel';
-
+import { CalendarHeatmap } from '@/components/dashboard/calendar-heatmap';
+import { SankeyPipeline } from '@/components/dashboard/sankey-pipeline';
 import { ExportButton } from '@/components/dashboard/export-button';
 import { AdSourceConversions } from '@/components/dashboard/ad-source-conversions';
 import { ProgramWonDistribution } from '@/components/dashboard/program-won-distribution';
 import { QuarterlyPerformanceTrends } from '@/components/dashboard/quarterly-performance-trends';
 import { LeadSourcePerformance } from '@/components/dashboard/lead-source-performance';
 import { ProgramPerformance } from '@/components/dashboard/program-performance';
-
 import { LeadLifecycleAnalysis } from '@/components/dashboard/lead-lifecycle-analysis';
 import { formatNumber, formatPercent } from '@/lib/dashboard-utils';
-import { CHART_COLORS, CHART_PRESETS } from '@/lib/dashboard-colors';
+import { CHART_PRESETS } from '@/lib/dashboard-colors';
 import { format } from 'date-fns';
-import {
-    Users,
-    Target,
-    Clock,
-    Activity,
-    Award,
-    BarChart3,
-    Percent,
-} from 'lucide-react';
+import { Users, Target, Clock, Activity, Award, BarChart3, Percent } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
-import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Area, AreaChart, Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartConfig, ChartTooltip } from '@/components/ui/chart';
+import { NightTooltip } from '@/components/dashboard/night-tooltip';
+import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { router, usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
 
 interface SuperAdminDashboardProps {
     data?: DashboardOverview;
     isLoading?: boolean;
 }
 
+function getGreeting() {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+function SectionDivider({ label }: { label: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {label}
+            </span>
+            <span className="h-px flex-1 bg-border" />
+        </div>
+    );
+}
+
 export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProps) {
+    const { auth } = usePage<SharedData>().props;
     const kpis = data?.kpis || {};
 
     const thirtyDaysAgo = new Date();
@@ -46,13 +61,14 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
         end_date: new Date().toISOString().split('T')[0],
     });
 
-    const { data: systemAdoption, isLoading: adoptionLoading } = useSystemAdoption({
+    const { data: systemAdoption } = useSystemAdoption({
         start_date: thirtyDaysAgo.toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
     });
 
     const conversionChartData = dailyMetrics?.map((metric: any) => ({
         date: new Date(metric.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        rawDate: metric.metric_date,
         rate: Number(metric.overall_conversion_rate) || 0,
     })) || [];
 
@@ -85,18 +101,19 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
     } satisfies ChartConfig;
 
     return (
-        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-            {/* Page Header */}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
-                <p className="text-sm text-muted-foreground sm:text-base">
-                    System-wide overview and key performance indicators
-                </p>
+        <div className="space-y-8 p-4 sm:p-6 lg:p-8">
+
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        {getGreeting()}, {auth.user.name.split(' ')[0]}
+                    </h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                        {format(new Date(), 'EEEE, MMMM d, yyyy')} · System overview
+                    </p>
+                </div>
             </div>
 
-            {/* ===== Section 1: High-Level KPIs ===== */}
-
-            {/* Row 1: Core Sales KPIs */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <StatMetricCard
                     title="Total Leads"
@@ -116,7 +133,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     isLoading={isLoading}
                     icon={Target}
                     iconColor="text-emerald-600 dark:text-emerald-400"
-                    sparkData={avgLeadScoreSparkData.length > 1 ? avgLeadScoreSparkData : undefined}
+                    sparkData={avgLeadScoreSparkData.length >= 1 ? avgLeadScoreSparkData : undefined}
                     sparkColor="hsl(142, 71%, 45%)"
                 />
                 <ProgramSalesCard
@@ -125,7 +142,6 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 />
             </div>
 
-            {/* Row 2: Performance KPIs */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Best Lead Source"
@@ -156,8 +172,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 />
             </div>
 
-            {/* Row 3: System KPIs */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <StatCard
                     label="System Adoption"
                     value={formatPercent(kpis.system_adoption_rate)}
@@ -165,156 +180,89 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                     color="blue"
                 />
                 <StatCard
-                    label="Avg Leads per Advisor/Day"
+                    label="Avg Leads per Advisor / Day"
                     value={String(kpis.avg_leads_per_advisor_per_day ?? 0)}
                     icon={BarChart3}
                     color="green"
                 />
             </div>
 
-            {/* ===== Section 2: Charts & Analytics ===== */}
-            <div className="space-y-6">
-                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Charts & Analytics</h2>
+            <SectionDivider label="Charts & Analytics" />
 
-                {/* Lead Volume + Conversion Rate Trend */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    {/* Lead Volume */}
-                    <Card id="lead-volume-chart" className="min-w-0">
-                        <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
-                            <CardTitle className="text-base font-semibold sm:text-xl">Lead Volume</CardTitle>
-                            <CardToolbar className="flex items-center gap-2">
-                                <ExportButton
-                                    data={leadVolumeData}
-                                    elementId="lead-volume-chart"
-                                    filename={`lead-volume-${format(new Date(), 'yyyy-MM-dd')}`}
-                                    title="Lead Volume"
-                                    formats={['csv', 'png', 'pdf']}
-                                    variant="outline"
-                                    size="sm"
-                                />
-                            </CardToolbar>
-                        </CardHeader>
-                        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-                            {metricsLoading ? (
-                                <Skeleton className="h-[200px] w-full sm:h-[250px] lg:h-[300px]" />
-                            ) : leadVolumeData.length > 0 ? (
-                                <ChartContainer config={leadVolumeConfig} className="aspect-video w-full max-h-[300px]">
-                                    <AreaChart
-                                        data={leadVolumeData}
-                                        margin={{ top: 10, left: -10, right: 10, bottom: 0 }}
-                                    >
-                                        <defs>
-                                            <linearGradient id="newGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="var(--color-new)" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="var(--color-new)" stopOpacity={0.1} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                                        <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
-                                        <ChartTooltip content={<ChartTooltipContent className="p-3" />} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="new"
-                                            stroke="var(--color-new)"
-                                            fill="url(#newGradient)"
-                                            strokeWidth={2}
-                                        />
-                                    </AreaChart>
-                                </ChartContainer>
-                            ) : (
-                                <div className="flex h-[200px] items-center justify-center text-muted-foreground sm:h-[250px] lg:h-[300px]">
-                                    No data available
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+            {/* Calendar heatmap — full width */}
+            <CalendarHeatmap year={new Date().getFullYear()} />
 
-                    {/* Conversion Rate Trend */}
-                    <Card id="conversion-rate-trend-chart" className="min-w-0">
-                        <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
-                            <CardTitle className="text-base font-semibold sm:text-xl">Conversion Rate Trend</CardTitle>
-                            <CardToolbar className="flex items-center gap-2">
-                                <ExportButton
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {/* Conversion Rate Trend — drill down by clicking a data point */}
+                <Card id="conversion-rate-trend-chart" className="min-w-0">
+                    <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
+                        <CardTitle className="text-sm font-semibold">Conversion Rate Trend</CardTitle>
+                        <CardToolbar className="flex items-center gap-2">
+                            <ExportButton
+                                data={conversionChartData}
+                                elementId="conversion-rate-trend-chart"
+                                filename={`conversion-rate-trend-${format(new Date(), 'yyyy-MM-dd')}`}
+                                title="Conversion Rate Trend"
+                                formats={['csv', 'png', 'pdf']}
+                                variant="outline"
+                                size="sm"
+                            />
+                        </CardToolbar>
+                    </CardHeader>
+                    <CardContent className="px-2 pt-0 sm:px-6">
+                        {metricsLoading ? (
+                            <Skeleton className="h-[220px] w-full" />
+                        ) : conversionChartData.length > 0 ? (
+                            <ChartContainer config={conversionChartConfig} className="aspect-video w-full max-h-[220px]">
+                                <LineChart
                                     data={conversionChartData}
-                                    elementId="conversion-rate-trend-chart"
-                                    filename={`conversion-rate-trend-${format(new Date(), 'yyyy-MM-dd')}`}
-                                    title="Conversion Rate Trend"
-                                    formats={['csv', 'png', 'pdf']}
-                                    variant="outline"
-                                    size="sm"
-                                />
-                            </CardToolbar>
-                        </CardHeader>
-                        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-                            {metricsLoading ? (
-                                <Skeleton className="h-[200px] w-full sm:h-[250px] lg:h-[300px]" />
-                            ) : conversionChartData.length > 0 ? (
-                                <ChartContainer config={conversionChartConfig} className="aspect-video w-full max-h-[300px]">
-                                    <LineChart
-                                        data={conversionChartData}
-                                        margin={{ top: 10, left: -10, right: 10, bottom: 0 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                                        <YAxis className="text-xs" tick={{ fontSize: 11 }} width={40} />
-                                        <ChartTooltip
-                                            content={
-                                                <ChartTooltipContent
-                                                    className="p-3"
-                                                    formatter={(value) => (
-                                                        <div className="flex w-full items-center justify-between gap-4">
-                                                            <span className="text-muted-foreground">Conversion Rate</span>
-                                                            <span className="font-mono font-medium tabular-nums">
-                                                                {Number(value).toFixed(1)}%
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                />
-                                            }
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="rate"
-                                            stroke="var(--color-rate)"
-                                            strokeWidth={2}
-                                            dot={{ r: 3 }}
-                                            activeDot={{ r: 5 }}
-                                        />
-                                    </LineChart>
-                                </ChartContainer>
-                            ) : (
-                                <div className="flex h-[200px] items-center justify-center text-muted-foreground sm:h-[250px] lg:h-[300px]">
-                                    No data available
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                                    margin={{ top: 8, left: -10, right: 8, bottom: 0 }}
+                                    onClick={(e: any) => {
+                                        const active = e?.activePayload?.[0]?.payload;
+                                        if (active?.rawDate) {
+                                            router.visit(`/leads?date_from=${active.rawDate}&date_to=${active.rawDate}`);
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <CartesianGrid horizontal vertical={false} stroke="currentColor" strokeOpacity={0.07} />
+                                    <XAxis dataKey="date" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                                    <YAxis tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v) => `${v}%`} />
+                                    <ChartTooltip content={(props: any) => <NightTooltip {...props} valueFormatter={(v) => `${Number(v).toFixed(1)}%`} />} />
+                                    <Line type="monotone" dataKey="rate" stroke="var(--color-rate)" strokeWidth={1.5} strokeDasharray="5 3" dot={{ r: 3, fill: 'var(--color-rate)', strokeWidth: 0 }} activeDot={{ r: 6, cursor: 'pointer' }} />
+                                </LineChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+                                No data available
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
-                {/* Ad Sources + Lifecycle Funnel */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <AdSourcesChart />
-                    <LeadLifecycleFunnel />
-                </div>
-
-                {/* Ad Source Conversions + Program Won Distribution */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <AdSourceConversions />
-                    <ProgramWonDistribution />
-                </div>
-
-                {/* Quarterly Performance Trends */}
-                <QuarterlyPerformanceTrends />
-
-                {/* Lead Source Performance + Program Performance */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <LeadSourcePerformance />
-                    <ProgramPerformance />
-                </div>
+                {/* Sankey pipeline flow */}
+                <SankeyPipeline />
             </div>
 
-            {/* ===== Section 3: Lifecycle Analysis ===== */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <AdSourcesChart />
+                <LeadLifecycleFunnel />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <AdSourceConversions />
+                <ProgramWonDistribution />
+            </div>
+
+            <QuarterlyPerformanceTrends />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <LeadSourcePerformance />
+                <ProgramPerformance />
+            </div>
+
+            <SectionDivider label="Lifecycle Analysis" />
+
             <LeadLifecycleAnalysis />
         </div>
     );
