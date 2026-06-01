@@ -56,13 +56,16 @@ class DashboardController extends Controller
     public function getSuperAdminDashboard(User $user): array
     {
         $today = Carbon::today();
-        $lastMonth = Carbon::today()->subMonth();
+        $monthStart = $today->copy()->startOfMonth();
+        $monthEnd = $today->copy()->endOfMonth();
+        $lastMonthStart = $today->copy()->subMonthNoOverflow()->startOfMonth();
+        $lastMonthEnd = $lastMonthStart->copy()->endOfMonth();
         $dailyMetric = DailyMetric::whereDate('metric_date', $today->toDateString())->first();
 
-        // Total leads with delta
-        $totalLeads = Lead::count();
-        $leadsThisMonth = Lead::whereMonth('created_at', $today->month)->count();
-        $leadsLastMonth = Lead::whereMonth('created_at', $lastMonth->month)->count();
+        // Total leads with delta (prefer precomputed DailyMetric, fall back to live count)
+        $totalLeads = $dailyMetric?->total_leads ?? Lead::count();
+        $leadsThisMonth = Lead::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+        $leadsLastMonth = Lead::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
         $leadsDelta = $leadsLastMonth > 0 ? (($leadsThisMonth - $leadsLastMonth) / $leadsLastMonth) * 100 : 0;
 
         // Program sales breakdown (created, qualified, won per program)
@@ -74,18 +77,18 @@ class DashboardController extends Controller
         $salesSkilled = $programSales['skilled'] ?? ['created' => 0, 'qualified' => 0, 'won' => 0];
 
         // LTQ Rate (Lead-to-Qualification %)
-        $qualifiedCount = Lead::whereNotNull('qualified_at')->count();
+        $qualifiedCount = $dailyMetric?->qualified_leads ?? Lead::whereNotNull('qualified_at')->count();
         $ltqRate = $totalLeads > 0 ? round(($qualifiedCount / $totalLeads) * 100, 2) : 0;
 
         // QTS Rate (Qualification-to-Sale %)
-        $wonCount = Lead::where('inquiry_status', 'won')->count();
+        $wonCount = $dailyMetric?->converted_leads ?? Lead::where('inquiry_status', 'won')->count();
         $qtsRate = $qualifiedCount > 0 ? round(($wonCount / $qualifiedCount) * 100, 2) : 0;
 
         // Best lead source by conversion rate
         $bestLeadSource = $this->getBestLeadSource();
 
-        // Average lifecycle days (created_at to converted_at for won leads, fallback to updated_at)
-        $avgLifecycleDays = Lead::where('inquiry_status', 'won')
+        // Average lifecycle days (prefer DailyMetric; live query covers won leads from created_at to converted_at, fallback to updated_at)
+        $avgLifecycleDays = $dailyMetric?->average_lifecycle_days ?? Lead::where('inquiry_status', 'won')
             ->selectRaw('AVG(EXTRACT(EPOCH FROM (COALESCE(converted_at, updated_at) - created_at))/(24*3600)) as avg_days')
             ->value('avg_days');
 
@@ -133,29 +136,55 @@ class DashboardController extends Controller
             'skilled' => ['parent' => 'Skilled Immigration', 'excludeD' => false],
         ];
 
-        $result = [];
+        // Every program defaults to zero so missing parents/leads still return a full shape.
+        $result = array_fill_keys(array_keys($programs), ['created' => 0, 'qualified' => 0, 'won' => 0]);
 
+        $parentIds = Service::whereIn('name', array_column($programs, 'parent'))->pluck('id', 'name');
+
+        $parentIdToKey = [];
+        $excludeDParentIds = [];
         foreach ($programs as $key => $config) {
-            $parent = Service::where('name', $config['parent'])->first();
-
-            if (! $parent) {
-                $result[$key] = ['created' => 0, 'qualified' => 0, 'won' => 0];
-
+            $parentId = $parentIds[$config['parent']] ?? null;
+            if ($parentId === null) {
                 continue;
             }
 
-            $baseQuery = Lead::whereHas('service', function ($q) use ($parent, $config) {
-                $q->where('parent_id', $parent->id);
+            $parentIdToKey[(int) $parentId] = $key;
+            if ($config['excludeD']) {
+                $excludeDParentIds[] = (int) $parentId;
+            }
+        }
 
-                if ($config['excludeD']) {
-                    $q->where('name', 'not like', 'D%');
-                }
-            });
+        if ($parentIdToKey === []) {
+            return $result;
+        }
+
+        // A lead is excluded from its program when the program drops "D%" services
+        // (e.g. RBI Programs) and the lead's service name starts with "D".
+        $excludedExpr = $excludeDParentIds === []
+            ? 'FALSE'
+            : 'services.parent_id IN ('.implode(',', $excludeDParentIds).") AND services.name LIKE 'D%'";
+
+        $rows = Lead::query()
+            ->join('services', 'leads.service_id', '=', 'services.id')
+            ->whereIn('services.parent_id', array_keys($parentIdToKey))
+            ->groupBy('services.parent_id')
+            ->selectRaw('services.parent_id as parent_id')
+            ->selectRaw("COUNT(*) FILTER (WHERE NOT ({$excludedExpr})) as created")
+            ->selectRaw("COUNT(*) FILTER (WHERE NOT ({$excludedExpr}) AND leads.qualified_at IS NOT NULL) as qualified")
+            ->selectRaw("COUNT(*) FILTER (WHERE NOT ({$excludedExpr}) AND leads.inquiry_status = 'won') as won")
+            ->get();
+
+        foreach ($rows as $row) {
+            $key = $parentIdToKey[(int) $row->parent_id] ?? null;
+            if ($key === null) {
+                continue;
+            }
 
             $result[$key] = [
-                'created' => (clone $baseQuery)->count(),
-                'qualified' => (clone $baseQuery)->whereNotNull('qualified_at')->count(),
-                'won' => (clone $baseQuery)->where('inquiry_status', 'won')->count(),
+                'created' => (int) $row->created,
+                'qualified' => (int) $row->qualified,
+                'won' => (int) $row->won,
             ];
         }
 

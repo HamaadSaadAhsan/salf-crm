@@ -7,12 +7,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- System settings page (`/settings/system`) for super-admin — toggle calling feature on/off and configure phone reveal duration
+- `system_settings` and `phone_reveals` database tables with migrations
+- `SystemSetting` and `PhoneReveal` Eloquent models
+- `SystemSettingController` (GET/PUT `/settings/system`) and `PhoneRevealController` (POST `/api/leads/{lead}/phone-reveal`)
+- `LogPhoneReveal` background job — logs both a `PhoneReveal` audit record and a `LeadActivity` of type `phone_reveal` (subject "Phone number revealed", metadata includes ip_address, duration_seconds, expires_at); runs asynchronously via queue
+- `phone_reveal` activity type added to `lead_activities_type_check` constraint via migration; activity feed renders it with `PhoneCall` icon and verb "revealed phone number for this lead" with IP and duration shown below
+- Phone reveal audit log table on System Settings page — shows agent, lead (linked), IP address, revealed at, expired at; paginated 20/page
+- Phone reveal API returns phone number and duration; reveal is time-limited with countdown timer in UI
+- `PhoneRevealButton` component in lead page header — masks phone digits, reveals on click, auto-hides after configurable duration
+- Conditional lead page header: when calling enabled shows Call button (phone hidden); when disabled shows masked phone with timed reveal
+- `systemSettings` shared via Inertia `shareOnce` so all pages can read `calling_enabled` and `phone_reveal_duration`
+- `SystemSettings` TypeScript interface added to `SharedData`
+- System nav item added to settings sidebar (super-admin only)
+
 ### Changed
+- `DashboardController::getProgramSalesBreakdown` now computes the per-program created/qualified/won counts in a single grouped aggregate query (Postgres `COUNT(*) FILTER`) plus one parent-service lookup, replacing 12 separate count queries (3 programs × `whereHas` clone-counts); RBI's "D%" service exclusion is preserved
+- `pdf-utils` and `export-utils` now lazy-load their heavy dependencies (`pdf-lib`, `jspdf`, `html2canvas`) via dynamic `import()` inside the async functions that use them, instead of static top-level imports. Pages that only use the synchronous mapping/CSV/JSON helpers no longer pull the ~900 KB PDF libraries into their bundle; the `SuperAdminDashboard` chunk dropped from ~267 KB to ~67 KB as its export button no longer eagerly bundles `jspdf`/`html2canvas`
+- Vite build now splits heavy vendor libraries into dedicated cached chunks via `build.rollupOptions.output.manualChunks` — `react-vendor` (single React instance), `echarts`, `recharts`, `pdf` (pdf-lib/jspdf/pdfjs), and `lexical`. Charts/PDF/editor code is downloaded once and cached across navigation instead of being duplicated into every page chunk; `SuperAdminDashboard` chunk dropped from ~630 KB to ~267 KB and the duplicated ~382 KB recharts chunk is eliminated
+- Super-admin dashboard overview now reads precomputed `DailyMetric` values (total/qualified/converted leads, avg lifecycle days) with a live-query fallback, matching the manager dashboard — avoids redundant full-table aggregates on cache miss
+- `ProgramDrillDownDialog` — full-screen dialog (90vh) opening when clicking any program line/data point/column in LTS (Won) Performance Trends; shows ECharts Sankey pipeline flow for that program, stage breakdown table (click row → leads filtered by stage), recent leads table (click row → lead detail page), header with total/won/rate + "View all leads" link
+- `CalendarHeatmap` (ECharts) — full-year lead volume heatmap with `roundRect scatter` cells + `effectScatter` ripple on top-10 days (pissang pattern); click any day drills down to `/leads?date_from=X&date_to=X`
+- `SankeyPipeline` (ECharts) — lead pipeline flow chart showing stage-to-stage transitions with drop-off nodes in red; click stage node drills down to filtered leads page; period toggle 7D–3M
+- Drill-down clicks added to: Conversion Rate Trend (click data point → leads by date), Lead Source Performance bar (click bar → leads by source), Program Performance bar (click bar → leads by program)
+- `ScoreGaugeCard` — new SVG semicircle gauge card for Avg Lead Score: track + fill arc (180°→0°), color-coded green/amber/red by score range, center score text with `/100` label, 0 and max axis ticks
+- `StatMetricCard` sparkline threshold lowered from `> 1` to `>= 1`, shows dots when ≤7 data points, dashed line when ≥3 points (Nightwatch aesthetic), gradient fill opacity reduced for subtlety
+- `NightTooltip` component — new shared dashboard tooltip matching Nightwatch design: near-black `bg-zinc-950` card, monospace label header with divider, pill color indicators (`w-1 h-4 rounded-full`), right-aligned monospace values, optional total row; used across all dashboard charts
+- Fixed value/label concatenation bug in all tooltip formatters (was rendering `8.5%Overall` without separator)
+- `lead-lifecycle-funnel` — fixed label overflow/clipping bug (labels moved outside bars); bars now render as clean `h-7` progress bars with label+count+% above; removed excess whitespace; Nightwatch-style
+- `lead-lifecycle-analysis` — replaced dated colored-border metric cards with minimal stat strip; bar chart applies Nightwatch gridlines/axis styling; bottlenecks and stage breakdown converted from card-list to clean tables with severity color chips
+- Dashboard charts redesigned to Nightwatch aesthetic — horizontal-only gridlines (`strokeOpacity={0.07}`), dashed lines (`strokeDasharray="5 3"`), no axis borders, dots at data points; `ad-sources-chart` replaced PieChart donut with horizontal ranked bar list; `lead-source-performance` replaced dual-axis BarChart with color-coded horizontal bars (quality-coded colors) + clean data table; `program-performance` horizontal bars + program table with WoW trend arrows; `quarterly-performance-trends` gains summary metric strip (Leads/Won/Rate from last quarter) and polished table with hover states
+- Dashboard redesign — personalized greeting header (time-aware + first name + date), `SectionDivider` with ruled-line separators between sections, fixed orphaned 2-card `lg:grid-cols-3` grid, all JSX comments removed; affects SuperAdmin, Advisor, and Manager dashboards
+- `StatCard` — removed `hover:scale-105`, icon bg softened, horizontal flex layout, typography updated to uppercase tracking-wide labels + `text-2xl font-semibold tabular-nums` values, hover uses subtle `ring-border` transition
+- `AdvisorDashboard` — meetings list uses `divide-y` row pattern with avatar initials, overdue tasks card gets `border-red-200` accent
+- `ManagerDashboard` — team performance rows use left accent bar per role color, response times section uses uppercase label typography
 - `CanonicalPathDictionary` — completely rewritten for Dominica CBI with 277 correct canonical paths covering main applicant (personal, passports, address, physical, work, bank, military), spouse, father, mother, father/mother-in-law, siblings 1–4, children 1–6, dependants 1–6, declarations, references 1–2, investment, medical, passport_app, agent, and application sections; old incorrect paths removed
 - `SuggestedMappingDictionary` — fully corrected for all PDF templates: `form_d1` (263 fields — Part B is now employment/financial not spouse, Part C covers spouse/parents/siblings/children, Part D declarations, references), `form_d2` (11), `form_d3` (30, new), `form_d4` (14), `affidavit_sd` (6), `e_passport_application` (46, new)
 - `CorrectDominiCbiFieldMappingsSeeder` — new seeder that replaces all `field_mappings` rows for the 6 templates above with the corrected canonical paths from `SuggestedMappingDictionary`
 
+### Changed
+- `LeadFormsFillView` Shared Information step — replaced `LEAD_INFO_FIELDS` with grouped `SHARED_INFO_FIELDS` covering Main Applicant (given_name, surname, dob, citizenship, gender, marital_status, email, phone_mobile, occupation, employer_name), Passport (passport_1 number/issuing_country/issue_date/expiry_date), Current Address, Spouse (surname, given_name, marriage_date/place), Investment (programme, amount_usd), and Application (submission_date, sign_date, sign_place); fixed wrong canonical paths (first_name→given_name, date_of_birth→dob, nationality→citizenship, phone_number→phone_mobile); renamed step label from "Lead Information" to "Shared Information"
+
 ### Fixed
+- Super-admin dashboard lead delta no longer counts leads from the same calendar month in prior years — replaced non-sargable `whereMonth('created_at', ...)` with explicit `whereBetween` month ranges (correct year scoping + uses the `created_at` index)
 - `LeadApplicationController::store` — changed `data` validation from `required` to `present` so creating an application on step 1 (before lead info fields are filled) no longer returns a 422 "The data field is required" error; defaults to `[]` when no data is supplied
 - `Application::generateApplicationCode` — use `withTrashed()` so soft-deleted applications are included when finding the last sequence number, preventing duplicate code collisions on re-create
 - `ProgramSchemaController` and `GenerationApiController` — fixed route parameter mismatch by moving schema endpoint out of lead-scoped group and adding `generations` method to `LeadApplicationController` with proper `Lead $lead` first parameter
