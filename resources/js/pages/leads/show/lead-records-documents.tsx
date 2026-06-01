@@ -1086,19 +1086,101 @@ function LeadFormsListSection({
 // Forms Automation — fill view (program selection + field entry)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LEAD_INFO_FIELDS: { path: string; label: string; type?: string }[] = [
-    { path: 'main_applicant.first_name', label: 'First Name' },
-    { path: 'main_applicant.surname', label: 'Surname' },
-    { path: 'main_applicant.middle_name', label: 'Middle Name' },
-    { path: 'main_applicant.date_of_birth', label: 'Date of Birth', type: 'date' },
-    { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
-    { path: 'main_applicant.nationality', label: 'Nationality' },
-    { path: 'main_applicant.gender', label: 'Gender' },
-    { path: 'main_applicant.marital_status', label: 'Marital Status' },
-    { path: 'main_applicant.email', label: 'Email Address', type: 'email' },
-    { path: 'main_applicant.phone_number', label: 'Phone Number', type: 'tel' },
-    { path: 'main_applicant.occupation', label: 'Occupation' },
-    { path: 'main_applicant.employer_name', label: 'Employer Name' },
+function setNestedValue(obj: Record<string, unknown>, path: string, value: string): Record<string, unknown> {
+    const parts = path.split('.');
+    const result = { ...obj };
+    let current: Record<string, unknown> = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        current[part] =
+            typeof current[part] === 'object' && current[part] !== null
+                ? { ...(current[part] as Record<string, unknown>) }
+                : {};
+        current = current[part] as Record<string, unknown>;
+    }
+    current[parts[parts.length - 1]] = value;
+    return result;
+}
+
+function getNestedValue(obj: Record<string, unknown> | null | undefined, path: string): string {
+    if (!obj) {
+        return '';
+    }
+    const parts = path.split('.');
+    let current: unknown = obj;
+    for (const part of parts) {
+        if (typeof current !== 'object' || current === null) {
+            return '';
+        }
+        current = (current as Record<string, unknown>)[part];
+    }
+    return current === null || current === undefined ? '' : String(current);
+}
+
+const SHARED_INFO_FIELDS: {
+    group: string;
+    fields: { path: string; label: string; type?: string }[];
+}[] = [
+    {
+        group: 'Main Applicant',
+        fields: [
+            { path: 'main_applicant.given_name', label: 'Given Name' },
+            { path: 'main_applicant.surname', label: 'Surname' },
+            { path: 'main_applicant.middle_name', label: 'Middle Name' },
+            { path: 'main_applicant.dob', label: 'Date of Birth', type: 'date' },
+            { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
+            { path: 'main_applicant.citizenship', label: 'Citizenship' },
+            { path: 'main_applicant.gender', label: 'Gender' },
+            { path: 'main_applicant.marital_status', label: 'Marital Status' },
+            { path: 'main_applicant.email', label: 'Email Address', type: 'email' },
+            { path: 'main_applicant.phone_mobile', label: 'Mobile Phone', type: 'tel' },
+            { path: 'main_applicant.occupation', label: 'Occupation' },
+            { path: 'main_applicant.employer_name', label: 'Employer Name' },
+        ],
+    },
+    {
+        group: 'Passport',
+        fields: [
+            { path: 'main_applicant.passport_1.number', label: 'Passport Number' },
+            { path: 'main_applicant.passport_1.issuing_country', label: 'Issuing Country' },
+            { path: 'main_applicant.passport_1.issue_date', label: 'Issue Date', type: 'date' },
+            { path: 'main_applicant.passport_1.expiry_date', label: 'Expiry Date', type: 'date' },
+        ],
+    },
+    {
+        group: 'Current Address',
+        fields: [
+            { path: 'main_applicant.current_address.street', label: 'Street' },
+            { path: 'main_applicant.current_address.city', label: 'City' },
+            { path: 'main_applicant.current_address.state', label: 'State / Province' },
+            { path: 'main_applicant.current_address.country', label: 'Country' },
+            { path: 'main_applicant.current_address.postal_code', label: 'Postal Code' },
+        ],
+    },
+    {
+        group: 'Spouse',
+        fields: [
+            { path: 'spouse.surname', label: 'Surname' },
+            { path: 'spouse.given_name', label: 'Given Name' },
+            { path: 'spouse.marriage_date', label: 'Marriage Date', type: 'date' },
+            { path: 'spouse.marriage_place', label: 'Place of Marriage' },
+        ],
+    },
+    {
+        group: 'Investment',
+        fields: [
+            { path: 'investment.programme', label: 'Programme' },
+            { path: 'investment.amount_usd', label: 'Amount (USD)' },
+        ],
+    },
+    {
+        group: 'Application',
+        fields: [
+            { path: 'application.submission_date', label: 'Submission Date', type: 'date' },
+            { path: 'application.sign_date', label: 'Signature Date', type: 'date' },
+            { path: 'application.sign_place', label: 'Signature Place' },
+        ],
+    },
 ];
 
 function LeadFormsFillView({
@@ -1160,15 +1242,11 @@ function LeadFormsFillView({
     const allSteps = useMemo(() => {
         const steps: { key: string; label: string }[] = [
             { key: 'applicant_info', label: 'Applicant Info' },
-            { key: 'lead_information', label: 'Lead Information' },
+            { key: 'shared_information', label: 'Shared Information' },
         ];
-        if (schemaData?.sections) {
-            // Skip 'main_applicant' section — covered by the fixed 'Lead Information' step
-            for (const section of schemaData.sections) {
-                if (section.key !== 'main_applicant') {
-                    steps.push({ key: section.key, label: section.label });
-                }
-            }
+        const otherSections = schemaData?.sections?.filter((s) => s.key !== 'main_applicant') ?? [];
+        if (otherSections.length > 0) {
+            steps.push({ key: 'other_information', label: 'Other Information' });
         }
         return steps;
     }, [schemaData]);
@@ -1355,26 +1433,37 @@ function LeadFormsFillView({
                     </div>
                 </StepperContent>
 
-                {/* Step 2: Lead Information (hardcoded common applicant fields) */}
+                {/* Step 2: Shared Information (high-priority cross-form fields) */}
                 <StepperContent value={2}>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {LEAD_INFO_FIELDS.map((field) => (
-                            <div key={field.path}>
-                                <Label className="text-xs">{field.label}</Label>
-                                <Input
-                                    type={field.type ?? 'text'}
-                                    value={(formData[field.path] as string) ?? ''}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
-                                    }
-                                    className="h-9"
-                                />
+                    <div className="space-y-5">
+                        {SHARED_INFO_FIELDS.map((group) => (
+                            <div key={group.group} className="space-y-3">
+                                <h4 className="border-b border-border pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {group.group}
+                                </h4>
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    {group.fields.map((field) => (
+                                        <div key={field.path}>
+                                            <Label className="text-xs">{field.label}</Label>
+                                            <Input
+                                                type={field.type ?? 'text'}
+                                                value={getNestedValue(formData, field.path)}
+                                                onChange={(e) =>
+                                                    setFormData((prev) =>
+                                                        setNestedValue(prev, field.path, e.target.value),
+                                                    )
+                                                }
+                                                className="h-9"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
                 </StepperContent>
 
-                {/* Schema section steps (start from step 3, skip 'main_applicant') */}
+                {/* Step 3: Other Information (all remaining schema sections as collapsible accordion) */}
                 {loadingSchema && currentStep > 2 ? (
                     <div className="space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
@@ -1382,43 +1471,58 @@ function LeadFormsFillView({
                         ))}
                     </div>
                 ) : (
-                    schemaData?.sections
-                        ?.filter((s) => s.key !== 'main_applicant')
-                        .map((section, idx) => {
-                        const filledCount = section.fields.filter(
-                            (f) => formData[f.path] !== undefined && formData[f.path] !== '',
-                        ).length;
+                    <StepperContent value={3}>
+                        <div className="space-y-2">
+                            {schemaData?.sections
+                                ?.filter((s) => s.key !== 'main_applicant')
+                                .map((section) => {
+                                    const filledCount = section.fields.filter(
+                                        (f) => getNestedValue(formData, f.path) !== '',
+                                    ).length;
+                                    const isExpanded = expandedSections.has(section.key);
 
-                        return (
-                            <StepperContent key={section.key} value={idx + 3}>
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-medium text-muted-foreground">{section.label}</h4>
-                                        <span className="text-xs text-muted-foreground">
-                                            {filledCount} / {section.fields.length} filled
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                        {section.fields.map((field) => (
-                                            <div key={field.path}>
-                                                <Label className="text-xs">{field.label}</Label>
-                                                <Input
-                                                    value={(formData[field.path] as string) ?? ''}
-                                                    onChange={(e) =>
-                                                        setFormData((prev) => ({
-                                                            ...prev,
-                                                            [field.path]: e.target.value,
-                                                        }))
-                                                    }
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </StepperContent>
-                        );
-                    })
+                                    return (
+                                        <div key={section.key} className="rounded-lg border border-border">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleSection(section.key)}
+                                                className="flex w-full items-center justify-between px-4 py-3 text-left"
+                                            >
+                                                <span className="text-sm font-medium">{section.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {filledCount} / {section.fields.length} filled
+                                                    </span>
+                                                    <ChevronDown
+                                                        className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                    />
+                                                </div>
+                                            </button>
+                                            {isExpanded && (
+                                                <div className="border-t border-border px-4 py-3">
+                                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                        {section.fields.map((field) => (
+                                                            <div key={field.path}>
+                                                                <Label className="text-xs">{field.label}</Label>
+                                                                <Input
+                                                                    value={getNestedValue(formData, field.path)}
+                                                                    onChange={(e) =>
+                                                                        setFormData((prev) =>
+                                                                            setNestedValue(prev, field.path, e.target.value),
+                                                                        )
+                                                                    }
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </StepperContent>
                 )}
             </Stepper>
 
