@@ -1167,79 +1167,6 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.address_mailing.country', label: 'Country' },
     { path: 'main_applicant.address_mailing.postal_code', label: 'Postal Code' },
 
-    // ── Employment History 1 ──────────────────────────────────────────────
-    { section: 'Employment History 1', path: 'main_applicant.employment_history_1.employer', label: 'Employer' },
-    { path: 'main_applicant.employment_history_1.position', label: 'Position' },
-    { path: 'main_applicant.employment_history_1.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.employment_history_1.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.employment_history_1.country', label: 'Country' },
-    { path: 'main_applicant.employment_history_1.reason_leaving', label: 'Reason for Leaving' },
-
-    // ── Employment History 2 ──────────────────────────────────────────────
-    { section: 'Employment History 2', path: 'main_applicant.employment_history_2.employer', label: 'Employer' },
-    { path: 'main_applicant.employment_history_2.position', label: 'Position' },
-    { path: 'main_applicant.employment_history_2.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.employment_history_2.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.employment_history_2.country', label: 'Country' },
-    { path: 'main_applicant.employment_history_2.reason_leaving', label: 'Reason for Leaving' },
-
-    // ── Employment History 3 ──────────────────────────────────────────────
-    { section: 'Employment History 3', path: 'main_applicant.employment_history_3.employer', label: 'Employer' },
-    { path: 'main_applicant.employment_history_3.position', label: 'Position' },
-    { path: 'main_applicant.employment_history_3.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.employment_history_3.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.employment_history_3.country', label: 'Country' },
-    { path: 'main_applicant.employment_history_3.reason_leaving', label: 'Reason for Leaving' },
-
-    // ── Employment History 4 ──────────────────────────────────────────────
-    { section: 'Employment History 4', path: 'main_applicant.employment_history_4.employer', label: 'Employer' },
-    { path: 'main_applicant.employment_history_4.position', label: 'Position' },
-    { path: 'main_applicant.employment_history_4.from', label: 'From', type: 'date' },
-
-    // ── Residence History 1 ───────────────────────────────────────────────
-    { section: 'Residence History 1', path: 'main_applicant.residence_history_1.address', label: 'Address' },
-    { path: 'main_applicant.residence_history_1.city', label: 'City' },
-    { path: 'main_applicant.residence_history_1.country', label: 'Country' },
-    { path: 'main_applicant.residence_history_1.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.residence_history_1.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.residence_history_1.purpose', label: 'Purpose' },
-    { path: 'main_applicant.residence_history_1.status', label: 'Status' },
-
-    // ── Residence History 2 ───────────────────────────────────────────────
-    { section: 'Residence History 2', path: 'main_applicant.residence_history_2.address', label: 'Address' },
-    { path: 'main_applicant.residence_history_2.city', label: 'City' },
-    { path: 'main_applicant.residence_history_2.country', label: 'Country' },
-    { path: 'main_applicant.residence_history_2.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.residence_history_2.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.residence_history_2.purpose', label: 'Purpose' },
-    { path: 'main_applicant.residence_history_2.status', label: 'Status' },
-
-    // ── Residence History 3 ───────────────────────────────────────────────
-    { section: 'Residence History 3', path: 'main_applicant.residence_history_3.address', label: 'Address' },
-    { path: 'main_applicant.residence_history_3.city', label: 'City' },
-    { path: 'main_applicant.residence_history_3.country', label: 'Country' },
-    { path: 'main_applicant.residence_history_3.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.residence_history_3.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.residence_history_3.purpose', label: 'Purpose' },
-    { path: 'main_applicant.residence_history_3.status', label: 'Status' },
-
-    // ── Residence History 4 ───────────────────────────────────────────────
-    { section: 'Residence History 4', path: 'main_applicant.residence_history_4.address', label: 'Address' },
-    { path: 'main_applicant.residence_history_4.city', label: 'City' },
-    { path: 'main_applicant.residence_history_4.country', label: 'Country' },
-    { path: 'main_applicant.residence_history_4.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.residence_history_4.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.residence_history_4.purpose', label: 'Purpose' },
-    { path: 'main_applicant.residence_history_4.status', label: 'Status' },
-
-    // ── Residence History 5 ───────────────────────────────────────────────
-    { section: 'Residence History 5', path: 'main_applicant.residence_history_5.address', label: 'Address' },
-    { path: 'main_applicant.residence_history_5.city', label: 'City' },
-    { path: 'main_applicant.residence_history_5.country', label: 'Country' },
-    { path: 'main_applicant.residence_history_5.from', label: 'From', type: 'date' },
-    { path: 'main_applicant.residence_history_5.to', label: 'To', type: 'date' },
-    { path: 'main_applicant.residence_history_5.purpose', label: 'Purpose' },
-    { path: 'main_applicant.residence_history_5.status', label: 'Status' },
 ];
 
 const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => {
@@ -1253,6 +1180,35 @@ const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => 
     }
     return sections;
 })();
+
+const EMPLOYMENT_HISTORY_FIELDS: { path: string; label: string; type?: string }[] = [
+    { path: 'employer', label: 'Employer' },
+    { path: 'position', label: 'Position' },
+    { path: 'from', label: 'From', type: 'date' },
+    { path: 'to', label: 'To', type: 'date' },
+    { path: 'country', label: 'Country' },
+    { path: 'reason_leaving', label: 'Reason for Leaving' },
+];
+
+const RESIDENCE_HISTORY_FIELDS: { path: string; label: string; type?: string }[] = [
+    { path: 'address', label: 'Address' },
+    { path: 'city', label: 'City' },
+    { path: 'country', label: 'Country' },
+    { path: 'from', label: 'From', type: 'date' },
+    { path: 'to', label: 'To', type: 'date' },
+    { path: 'purpose', label: 'Purpose' },
+    { path: 'status', label: 'Status' },
+];
+
+function countFilledHistoryEntries(data: Record<string, unknown>, prefix: string, max: number): number {
+    for (let i = max; i >= 1; i--) {
+        const keyPrefix = `${prefix}${i}.`;
+        if (Object.keys(data).some((k) => k.startsWith(keyPrefix) && data[k] !== '' && data[k] !== undefined)) {
+            return i;
+        }
+    }
+    return 1;
+}
 
 function LeadFormsFillView({
     lead,
@@ -1275,6 +1231,12 @@ function LeadFormsFillView({
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
     const [currentStep, setCurrentStep] = useState(1);
     const [isSavingStep, setIsSavingStep] = useState(false);
+    const [employmentCount, setEmploymentCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.employment_history_', 4),
+    );
+    const [residenceCount, setResidenceCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.residence_history_', 5),
+    );
 
     const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
     const { data: schemaRaw, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
@@ -1533,6 +1495,7 @@ function LeadFormsFillView({
                 {/* Step 2: Lead Information (hardcoded common applicant fields) */}
                 <StepperContent value={2}>
                     <div className="space-y-5">
+                        {/* Static sections */}
                         {LEAD_INFO_SECTIONS.map((sec) => (
                             <div key={sec.label}>
                                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1555,6 +1518,140 @@ function LeadFormsFillView({
                                 </div>
                             </div>
                         ))}
+
+                        {/* Employment History repeater (max 4) */}
+                        <div>
+                            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Employment History
+                            </h4>
+                            <div className="space-y-3">
+                                {Array.from({ length: employmentCount }, (_, i) => i + 1).map((n) => (
+                                    <div key={n} className="rounded-md border border-border p-3">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                Entry {n}
+                                            </span>
+                                            {n === employmentCount && employmentCount > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                                    onClick={() => {
+                                                        const keyPrefix = `main_applicant.employment_history_${n}.`;
+                                                        setFormData((prev) => {
+                                                            const next = { ...prev };
+                                                            for (const key of Object.keys(next)) {
+                                                                if (key.startsWith(keyPrefix)) delete next[key];
+                                                            }
+                                                            return next;
+                                                        });
+                                                        setEmploymentCount((prev) => prev - 1);
+                                                    }}
+                                                >
+                                                    <X className="size-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                            {EMPLOYMENT_HISTORY_FIELDS.map((field) => {
+                                                const fullPath = `main_applicant.employment_history_${n}.${field.path}`;
+                                                return (
+                                                    <div key={fullPath}>
+                                                        <Label className="text-xs">{field.label}</Label>
+                                                        <Input
+                                                            type={field.type ?? 'text'}
+                                                            value={(formData[fullPath] as string) ?? ''}
+                                                            onChange={(e) =>
+                                                                setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                            }
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {employmentCount < 4 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2 h-7 text-xs"
+                                    onClick={() => setEmploymentCount((prev) => prev + 1)}
+                                >
+                                    <Plus className="mr-1 size-3" />
+                                    Add Employment History
+                                </Button>
+                            )}
+                        </div>
+
+                        {/* Residence History repeater (max 5) */}
+                        <div>
+                            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Residence History
+                            </h4>
+                            <div className="space-y-3">
+                                {Array.from({ length: residenceCount }, (_, i) => i + 1).map((n) => (
+                                    <div key={n} className="rounded-md border border-border p-3">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                Entry {n}
+                                            </span>
+                                            {n === residenceCount && residenceCount > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                                    onClick={() => {
+                                                        const keyPrefix = `main_applicant.residence_history_${n}.`;
+                                                        setFormData((prev) => {
+                                                            const next = { ...prev };
+                                                            for (const key of Object.keys(next)) {
+                                                                if (key.startsWith(keyPrefix)) delete next[key];
+                                                            }
+                                                            return next;
+                                                        });
+                                                        setResidenceCount((prev) => prev - 1);
+                                                    }}
+                                                >
+                                                    <X className="size-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                            {RESIDENCE_HISTORY_FIELDS.map((field) => {
+                                                const fullPath = `main_applicant.residence_history_${n}.${field.path}`;
+                                                return (
+                                                    <div key={fullPath}>
+                                                        <Label className="text-xs">{field.label}</Label>
+                                                        <Input
+                                                            type={field.type ?? 'text'}
+                                                            value={(formData[fullPath] as string) ?? ''}
+                                                            onChange={(e) =>
+                                                                setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                            }
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {residenceCount < 5 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2 h-7 text-xs"
+                                    onClick={() => setResidenceCount((prev) => prev + 1)}
+                                >
+                                    <Plus className="mr-1 size-3" />
+                                    Add Residence History
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </StepperContent>
 

@@ -8,7 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
-- Lead Information step (Step 2) in the lead application form stepper now groups all ~107 `main_applicant.*` canonical fields under section headers (Personal Information, Contact Information, Employment, Financial, Identity Documents, Primary Passport, Second Passport, Residential Address, Mailing Address, Employment History 1–4, Residence History 1–5) instead of a flat grid
+- Lead Information step (Step 2) in the lead application form stepper now groups all `main_applicant.*` canonical fields under section headers (Personal Information, Contact Information, Employment, Financial, Identity Documents, Primary Passport, Second Passport, Residential Address, Mailing Address) instead of a flat grid
+- Employment History and Residence History in Step 2 are now dynamic repeaters — starts with 1 entry, "+" button adds up to 4 employment / 5 residence entries, "×" on the last entry removes it; existing saved data auto-restores the correct entry count on edit
 
 ### Fixed
 - `LeadApplicationController::store` — changed `data` validation from `required` to `present` so creating an application on step 1 (before lead info fields are filled) no longer returns a 422 "The data field is required" error; defaults to `[]` when no data is supplied
