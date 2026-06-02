@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { router } from '@inertiajs/react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/lib/echarts-core';
 import { useMemo } from 'react';
 import { ExternalLink, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 
@@ -125,7 +126,7 @@ function SankeyWidget({ funnel }: { funnel: any[] }) {
         }],
     };
 
-    return <ReactECharts option={option} style={{ height: 260 }} notMerge />;
+    return <ReactECharts echarts={echarts} option={option} style={{ height: 260 }} notMerge />;
 }
 
 export function ProgramDrillDownDialog({ programName, onClose }: ProgramDrillDownDialogProps) {
@@ -141,7 +142,7 @@ export function ProgramDrillDownDialog({ programName, onClose }: ProgramDrillDow
     return (
         <Dialog open={!!programName} onOpenChange={(open) => { if (!open) onClose(); }}>
             <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col overflow-hidden p-0">
-                <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
+                <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
                     <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                             <DialogTitle className="text-lg font-semibold truncate">{programName}</DialogTitle>

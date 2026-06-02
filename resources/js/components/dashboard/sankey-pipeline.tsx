@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/lib/echarts-core';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -187,6 +188,7 @@ export function SankeyPipeline() {
             </CardHeader>
             <CardContent className="px-3 pb-5 pt-0">
                 <ReactECharts
+                    echarts={echarts}
                     option={option}
                     style={{ height: 260 }}
                     onEvents={{ click: handleClick }}
