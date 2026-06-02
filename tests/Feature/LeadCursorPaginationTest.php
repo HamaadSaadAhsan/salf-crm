@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\Lead;
+use App\Models\Task;
 use App\Models\User;
 use App\Support\LeadKeyset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 
@@ -177,6 +179,46 @@ test('applyDatabaseKeyset emits a COALESCE OR-seek for nullable sort fields', fu
 
     expect($sql)->toContain('coalesce(lead_score, 0)')
         ->and($sql)->toContain('"seq" >');
+});
+
+test('the leads grid issues a constant number of queries regardless of lead count (no N+1 on task assignees)', function () {
+    $assignee = User::factory()->create();
+
+    $seedLeadsWithAssignedTasks = function (int $count) use ($assignee): void {
+        Lead::factory()->count($count)->create()->each(function (Lead $lead) use ($assignee) {
+            Task::factory()->create([
+                'taskable_type' => Lead::class,
+                'taskable_id' => $lead->id,
+                'status' => 'pending',
+                'assigned_to_id' => $assignee->id,
+                'due_at' => now()->addDay(),
+            ]);
+        });
+    };
+
+    $countGridQueries = function (): int {
+        // The grid result is cached; flush so each measured request recomputes
+        // against the live dataset rather than serving a stale cached page.
+        cache()->flush();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        test()->actingAs(test()->admin)->get('/leads?per_page=50')->assertSuccessful();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    $seedLeadsWithAssignedTasks(5);
+    $small = $countGridQueries();
+
+    $seedLeadsWithAssignedTasks(15);
+    $large = $countGridQueries();
+
+    // The query count must not grow with the number of leads. An N+1 (per-lead
+    // task assignee or per-source lead-count accessor) made the larger page issue
+    // strictly more queries; with eager loading the count stays flat or lower.
+    expect($large)->toBeLessThanOrEqual($small);
 });
 
 test('applyDatabaseKeyset without a cursor only orders (no seek predicate)', function () {
