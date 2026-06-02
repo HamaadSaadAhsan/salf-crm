@@ -129,22 +129,23 @@ class LeadKeyset
         $bind = $cursor['sv'];
         $lastSeq = (int) $cursor['seq'];
 
-        $query->where(function (EloquentBuilder $q) use ($sort, $cmp, $bind, $lastSeq): void {
-            if ($sort['nullable']) {
-                $expr = self::coalesceExpr($sort['db'], $sort['type']);
+        if ($sort['nullable']) {
+            $expr = self::coalesceExpr($sort['db'], $sort['type']);
+            $query->where(function (EloquentBuilder $q) use ($expr, $cmp, $bind, $lastSeq): void {
                 $q->whereRaw("{$expr} {$cmp} ?", [$bind])
                     ->orWhere(function (EloquentBuilder $q2) use ($expr, $bind, $cmp, $lastSeq): void {
                         $q2->whereRaw("{$expr} = ?", [$bind])
                             ->where('seq', $cmp, $lastSeq);
                     });
-            } else {
-                $q->where($sort['db'], $cmp, $bind)
-                    ->orWhere(function (EloquentBuilder $q2) use ($sort, $bind, $cmp, $lastSeq): void {
-                        $q2->where($sort['db'], '=', $bind)
-                            ->where('seq', $cmp, $lastSeq);
-                    });
-            }
-        });
+            });
+
+            return;
+        }
+
+        // Non-nullable column: a row-value (tuple) comparison resolves to a true
+        // index-range seek on the `(field, seq)` composite index — no BitmapOr,
+        // no extra sort, no scan-and-discard of rows before the cursor boundary.
+        $query->whereRaw("({$sort['db']}, seq) {$cmp} (?, ?)", [$bind, $lastSeq]);
     }
 
     /**

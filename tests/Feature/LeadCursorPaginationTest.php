@@ -2,6 +2,7 @@
 
 use App\Models\Lead;
 use App\Models\User;
+use App\Support\LeadKeyset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
@@ -116,4 +117,75 @@ test('changing the sort invalidates a stale cursor instead of corrupting results
 
     expect($reused['ids'])->toHaveCount(10)
         ->and($reused['has_more'])->toBeTrue();
+});
+
+test('keyset walks the whole list with no overlap across every sort field and direction', function (string $sortBy, string $dir) {
+    // Mix of present and NULL values on the nullable sort columns so the
+    // COALESCE seek path and the unique seq tiebreaker are both exercised.
+    Lead::factory()->count(20)->create();
+    Lead::factory()->count(8)->create([
+        'last_activity_at' => null,
+        'next_follow_up_at' => null,
+        'assigned_date' => null,
+        'lead_score' => null,
+    ]);
+
+    $seen = [];
+    $url = "/leads?per_page=10&sort_by={$sortBy}&sort_order={$dir}";
+    $guard = 0;
+
+    do {
+        $page = fetchLeadsPage($url);
+        $seen = array_merge($seen, $page['ids']);
+        $url = "/leads?per_page=10&sort_by={$sortBy}&sort_order={$dir}&cursor=".urlencode((string) $page['next']);
+    } while ($page['has_more'] && $page['next'] !== null && ++$guard < 20);
+
+    expect($seen)->toHaveCount(28)
+        ->and(array_unique($seen))->toHaveCount(28);
+})->with([
+    'created_at desc' => ['created_at', 'desc'],
+    'created_at asc' => ['created_at', 'asc'],
+    'updated_at desc' => ['updated_at', 'desc'],
+    'lead_score desc' => ['lead_score', 'desc'],
+    'lead_score asc' => ['lead_score', 'asc'],
+    'last_activity_at desc' => ['last_activity_at', 'desc'],
+    'next_follow_up_at asc' => ['next_follow_up_at', 'asc'],
+    'name asc' => ['name', 'asc'],
+    'email desc' => ['email', 'desc'],
+    'priority desc' => ['priority', 'desc'],
+]);
+
+test('applyDatabaseKeyset emits a row-value seek for non-nullable sort fields', function () {
+    $sort = LeadKeyset::resolveSort(['sort_by' => 'created_at', 'sort_order' => 'desc']);
+    $cursor = ['sb' => 'created_at', 'so' => 'desc', 'sv' => '2026-01-01 00:00:00', 'seq' => 7];
+
+    $query = Lead::query();
+    LeadKeyset::applyDatabaseKeyset($query, $sort, $cursor);
+    $sql = strtolower($query->toSql());
+
+    expect($sql)->toContain('(created_at, seq) < (?, ?)')
+        ->and($sql)->not->toContain('coalesce');
+});
+
+test('applyDatabaseKeyset emits a COALESCE OR-seek for nullable sort fields', function () {
+    $sort = LeadKeyset::resolveSort(['sort_by' => 'lead_score', 'sort_order' => 'asc']);
+    $cursor = ['sb' => 'lead_score', 'so' => 'asc', 'sv' => 50, 'seq' => 7];
+
+    $query = Lead::query();
+    LeadKeyset::applyDatabaseKeyset($query, $sort, $cursor);
+    $sql = strtolower($query->toSql());
+
+    expect($sql)->toContain('coalesce(lead_score, 0)')
+        ->and($sql)->toContain('"seq" >');
+});
+
+test('applyDatabaseKeyset without a cursor only orders (no seek predicate)', function () {
+    $sort = LeadKeyset::resolveSort(['sort_by' => 'created_at', 'sort_order' => 'desc']);
+
+    $query = Lead::query();
+    LeadKeyset::applyDatabaseKeyset($query, $sort, null);
+    $sql = strtolower($query->toSql());
+
+    expect($sql)->toContain('order by')
+        ->and($sql)->not->toContain('(created_at, seq) <');
 });
