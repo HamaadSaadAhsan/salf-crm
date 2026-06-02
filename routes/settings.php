@@ -11,6 +11,7 @@ use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RoleManagementController;
 use App\Http\Controllers\Settings\StorageAccountController;
+use App\Http\Controllers\Settings\SystemSettingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -38,6 +39,11 @@ Route::middleware('auth')->group(function () {
         Route::get('connect', [GoogleDriveController::class, 'redirect'])->name('settings.storage.google-drive.connect');
         Route::get('callback', [GoogleDriveController::class, 'callback'])->name('settings.storage.google-drive.callback');
         Route::delete('{storageAccount}/disconnect', [GoogleDriveController::class, 'disconnect'])->name('settings.storage.google-drive.disconnect');
+    });
+
+    Route::middleware('role:super-admin')->group(function () {
+        Route::get('settings/system', [SystemSettingController::class, 'index'])->name('settings.system');
+        Route::put('settings/system', [SystemSettingController::class, 'update'])->name('settings.system.update');
     });
 
     Route::get('settings/management', function () {

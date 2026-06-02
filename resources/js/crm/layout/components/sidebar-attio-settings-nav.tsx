@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, HardDrive, Lock, type LucideIcon, Paintbrush, PanelLeftClose, PanelLeftOpen, Search, Settings, User } from 'lucide-react';
+import { ArrowLeft, HardDrive, Lock, type LucideIcon, Paintbrush, PanelLeftClose, PanelLeftOpen, Search, Settings, SlidersHorizontal, User } from 'lucide-react';
 import { type SharedData } from '@/types';
 import { useLayout } from './layout-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { edit } from '@/routes/profile';
 import { edit as editPassword } from '@/routes/password';
 import { appearance } from '@/routes';
-import { storageAccounts, management } from '@/routes/settings';
+import { storageAccounts, management, system } from '@/routes/settings';
 import { dashboard } from '@/routes';
 
 interface SettingsNavItem {
@@ -40,6 +40,7 @@ const navGroups: SettingsNavGroup[] = [
     separator: true,
     items: [
       { title: 'Management', href: management().url, icon: Settings },
+      { title: 'System', href: system().url, icon: SlidersHorizontal },
     ],
   },
 ];

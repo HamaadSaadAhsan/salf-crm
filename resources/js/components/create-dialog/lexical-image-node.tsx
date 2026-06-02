@@ -14,6 +14,7 @@ import { AlignCenter, AlignLeft, AlignRight, Download, Ellipsis, Trash2 } from '
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
     DropdownMenu,
+    DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuSub,
@@ -21,7 +22,6 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
 export type ImageAlignment = 'left' | 'center' | 'right';
@@ -365,21 +365,12 @@ function ImageComponent({
                                     <Ellipsis className="size-3.5 text-[#EEEFF1]" />
                                 </button>
                             </DropdownMenuTrigger>
-                            {/* Render without portal so it stays inside the z-[9999] dialog */}
-                            <DropdownMenuPrimitive.Content
+                            <DropdownMenuContent
                                 side="top"
                                 align="start"
                                 sideOffset={6}
-                                className={cn(
-                                    'w-[180px] flex flex-col gap-px p-1 z-[10000] overflow-hidden rounded-xl border-0',
-                                    'bg-white dark:bg-[rgb(31,33,37)]',
-                                    '[box-shadow:rgba(255,255,255,0)_0_0_0_1px_inset,rgba(28,40,64,0.04)_0_0_0_1px,rgba(28,40,64,0.12)_0_4px_8px_-4px,rgba(24,41,75,0.16)_0_4px_12px_-2px]',
-                                    'dark:[box-shadow:rgb(47,48,51)_0_0_0_1px_inset,rgba(0,0,0,0.16)_0_0_0_1px,rgba(0,0,0,0.48)_0_4px_8px_-4px,rgba(0,0,0,0.64)_0_4px_12px_-2px]',
-                                    'data-[state=open]:animate-in data-[state=closed]:animate-out',
-                                    'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-                                    'data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.97]',
-                                    'data-[side=top]:slide-in-from-bottom-0.5',
-                                )}
+                                collisionPadding={12}
+                                className="z-[10000] w-[180px]"
                             >
                                 <DropdownMenuItem onSelect={handleDownload}>
                                     <Download className="size-3.5 shrink-0" />
@@ -390,7 +381,11 @@ function ImageComponent({
                                         <AlignLeft className="size-3.5 shrink-0" />
                                         Align
                                     </DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent className="w-[140px]">
+                                    <DropdownMenuSubContent
+                                        className="z-[10000] w-[140px]"
+                                        collisionPadding={12}
+                                        sideOffset={2}
+                                    >
                                         <DropdownMenuItem onSelect={() => handleAlignment('left')}>
                                             <AlignLeft className="size-3.5 shrink-0" />
                                             Left
@@ -410,7 +405,7 @@ function ImageComponent({
                                     <Trash2 className="size-3.5 shrink-0" />
                                     Delete
                                 </DropdownMenuItem>
-                            </DropdownMenuPrimitive.Content>
+                            </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
                 )}

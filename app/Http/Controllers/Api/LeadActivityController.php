@@ -277,13 +277,23 @@ class LeadActivityController extends Controller
             'subject' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:10000',
             'editor_state' => 'nullable|string|max:500000',
+            'linked_meeting' => 'nullable|array',
+            'linked_meeting.title' => 'required_with:linked_meeting|string|max:255',
+            'linked_meeting.url' => 'nullable|string|max:2048',
+            'linked_meeting.meet_link' => 'nullable|string|max:2048',
+            'linked_meeting.id' => 'nullable|string|max:255',
         ]);
 
         $leadActivity->update($request->only(['status', 'outcome', 'notes', 'subject', 'description']));
 
-        if ($request->has('editor_state')) {
+        if ($request->has('editor_state') || $request->has('linked_meeting')) {
             $metadata = $leadActivity->metadata ?? [];
-            $metadata['editor_state'] = $request->editor_state;
+            if ($request->has('editor_state')) {
+                $metadata['editor_state'] = $request->editor_state;
+            }
+            if ($request->has('linked_meeting')) {
+                $metadata['linked_meeting'] = $request->linked_meeting;
+            }
             $leadActivity->update(['metadata' => $metadata]);
         }
 

@@ -87,7 +87,13 @@ export interface SharedData {
     sources: LeadSource[];
     currentTeam: Team | null;
     allTeams: Array<{ id: number; name: string; avatar_url?: string | null; personal_team: boolean }>;
+    systemSettings: SystemSettings;
     [key: string]: unknown;
+}
+
+export interface SystemSettings {
+    calling_enabled: boolean;
+    phone_reveal_duration: number;
 }
 
 export interface Role {

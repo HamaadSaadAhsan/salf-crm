@@ -475,7 +475,7 @@ export function NewCompanySheet({
                                             </Avatar>
                                             <div className="flex flex-col">
                                               <Link
-                                                to={`#`}
+                                                href={`#`}
                                                 className="hover:text-primary"
                                               >
                                                 {user.name}
