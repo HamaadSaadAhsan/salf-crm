@@ -80,7 +80,7 @@ class LeadSource extends Model
 
     public function getActiveLeadsCountAttribute()
     {
-        return $this->leads()->where('inquiry_status', 'active')->count();
+        return $this->leads()->active()->count();
     }
 
     // Static methods

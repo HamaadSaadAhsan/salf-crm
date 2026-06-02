@@ -25,6 +25,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Partial composite `(sort_field, seq)` indexes on `leads` for every keyset date/score sort (`created_at`, `updated_at`, `last_activity_at`, `next_follow_up_at`, `assigned_date`, `lead_score`), each scoped `WHERE deleted_at IS NULL`. The cursor query now plans as a pure index-range scan instead of "Index Scan + Incremental Sort + Filter"
 
 ### Fixed
+- `LeadSource::active_leads_count` was filtering on `inquiry_status = 'active'`, an invalid status value, so the active-leads count was always `0`. It now reuses the `Lead` `active` scope (every lead not `won`/`lost`), matching the rest of the codebase's definition of an active lead
+- `Lead::setPhoneAttribute` no longer raises a `preg_replace(): Passing null to parameter #3 ($subject)` deprecation when a `null` phone is assigned — a `null` value is now stored as-is instead of being passed to `preg_replace`
 - N+1 on the leads grid: each row's first task now eager-loads its assignee (`tasks.assignedTo`) on both the database and Meilisearch list paths, instead of lazily resolving one `users` query per lead in `LeadResource::next_task`
 - N+1 on the leads grid and lead-sources list: `LeadSourceResource` no longer triggers the `getLeadsCountAttribute` / `getActiveLeadsCountAttribute` count accessors when rendered per row — the counts are read from raw attributes and emitted only when the caller eager-counted them, eliminating two `count(*)` queries per source (up to 40 per leads page, 200 per sources page)
 

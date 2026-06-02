@@ -685,7 +685,9 @@ class Lead extends Model implements HasMedia
 
     public function setPhoneAttribute($value)
     {
-        $this->attributes['phone'] = preg_replace('/[^0-9+\-\s()]/', '', $value);
+        $this->attributes['phone'] = $value === null
+            ? null
+            : preg_replace('/[^0-9+\-\s()]/', '', $value);
     }
 
     // Methods (keeping your existing methods)
