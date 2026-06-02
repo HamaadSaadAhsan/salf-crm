@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart';
+import { NightTooltip } from '@/components/dashboard/night-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
@@ -10,6 +11,7 @@ import { CHART_COLORS } from '@/lib/dashboard-colors';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProgramDrillDownDialog } from '@/components/dashboard/program-drilldown-dialog';
 
 const PROGRAM_COLORS = [
     CHART_COLORS.emerald.DEFAULT,
@@ -33,6 +35,7 @@ export function QuarterlyPerformanceTrends() {
     const { data, isLoading, error } = useQuarterlyPerformanceTrends(4);
     const [selectedPrograms, setSelectedPrograms] = useState<Set<string> | null>(null);
     const [comboOpen, setComboOpen] = useState(false);
+    const [drillDownProgram, setDrillDownProgram] = useState<string | null>(null);
 
     const programs = useMemo(() => data?.programs ?? [], [data]);
 
@@ -236,41 +239,58 @@ export function QuarterlyPerformanceTrends() {
                             </Popover>
                         </div>
 
-                        <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                            <LineChart data={chartData} margin={{ top: 10, left: -10, right: 10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                <XAxis dataKey="quarter" tick={{ fontSize: 12 }} />
-                                <YAxis tick={{ fontSize: 11 }} width={45} tickFormatter={(v) => `${v}%`} />
+                        {/* Summary metrics */}
+                        {data.trends.length > 0 && (() => {
+                            const last = data.trends[data.trends.length - 1];
+                            return (
+                                <div className="mb-4 flex items-center gap-6 text-sm">
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Leads</p>
+                                        <p className="text-xl font-bold tabular-nums">{last.total_leads.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Won</p>
+                                        <p className="text-xl font-bold tabular-nums text-emerald-500">{last.won_leads}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate</p>
+                                        <p className="text-xl font-bold tabular-nums">{last.conversion_rate}%</p>
+                                    </div>
+                                    <p className="ml-auto text-xs text-muted-foreground">{last.quarter}</p>
+                                </div>
+                            );
+                        })()}
+
+                        <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                            <LineChart data={chartData} margin={{ top: 8, left: -10, right: 10, bottom: 0 }}>
+                                <CartesianGrid horizontal vertical={false} stroke="currentColor" strokeOpacity={0.07} />
+                                <XAxis dataKey="quarter" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} width={42} tickFormatter={(v) => `${v}%`} />
                                 <ChartTooltip
-                                    content={
-                                        <ChartTooltipContent
-                                            className="p-3"
-                                            formatter={(value, name) => (
-                                                <div className="flex w-full items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground">
-                                                        {chartConfig[name as string]?.label ?? name}
-                                                    </span>
-                                                    <span className="font-mono font-medium tabular-nums">
-                                                        {Number(value).toFixed(1)}%
-                                                    </span>
-                                                </div>
-                                            )}
+                                    content={(props: any) => (
+                                        <NightTooltip
+                                            {...props}
+                                            payload={props.payload?.map((p: any) => ({
+                                                ...p,
+                                                name: chartConfig[p.dataKey as string]?.label ?? p.name,
+                                            }))}
+                                            valueFormatter={(v) => `${Number(v).toFixed(1)}%`}
                                         />
-                                    }
+                                    )}
                                 />
                                 {visibleKeys.has('overall') && (
                                     <Line
                                         type="monotone"
                                         dataKey="overall"
                                         stroke="var(--color-overall)"
-                                        strokeWidth={3}
+                                        strokeWidth={2}
                                         strokeDasharray="6 3"
-                                        dot={{ r: 4 }}
+                                        dot={{ r: 4, fill: 'var(--color-overall)', strokeWidth: 0 }}
                                         activeDot={{ r: 6 }}
                                         name="overall"
                                     />
                                 )}
-                                {programs.map((_, i) => {
+                                {programs.map((name, i) => {
                                     const key = safeCssKey(i);
                                     if (!visibleKeys.has(key)) return null;
                                     return (
@@ -279,43 +299,56 @@ export function QuarterlyPerformanceTrends() {
                                             type="monotone"
                                             dataKey={key}
                                             stroke={`var(--color-${key})`}
-                                            strokeWidth={2}
-                                            dot={{ r: 3 }}
-                                            activeDot={{ r: 5 }}
+                                            strokeWidth={1.5}
+                                            dot={{ r: 3, fill: `var(--color-${key})`, strokeWidth: 0 }}
+                                            activeDot={{
+                                                r: 6,
+                                                cursor: 'pointer',
+                                                onClick: () => setDrillDownProgram(name),
+                                            }}
                                             name={key}
+                                            style={{ cursor: 'pointer' }}
                                         />
                                     );
                                 })}
                             </LineChart>
                         </ChartContainer>
 
-                        {/* Quarter summary table */}
-                        <div className="mt-4 overflow-x-auto border-t pt-4">
-                            <table className="w-full text-sm">
+                        <div className="mt-4 overflow-x-auto border-t pt-3">
+                            <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="border-b text-muted-foreground">
+                                    <tr className="text-muted-foreground">
                                         <th className="pb-2 text-left font-medium">Quarter</th>
                                         <th className="pb-2 text-right font-medium">Leads</th>
                                         <th className="pb-2 text-right font-medium">Won</th>
                                         <th className="pb-2 text-right font-medium">Rate</th>
                                         {programs.map((name) => (
-                                            <th key={name} className="pb-2 text-right font-medium">
+                                            <th
+                                                key={name}
+                                                className="pb-2 text-right font-medium whitespace-nowrap px-2 cursor-pointer hover:text-foreground transition-colors"
+                                                onClick={() => setDrillDownProgram(name)}
+                                                title={`Drill down: ${name}`}
+                                            >
                                                 {name}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-border">
                                     {data.trends.map((t) => (
-                                        <tr key={t.quarter} className="border-b last:border-0">
-                                            <td className="py-2 font-medium">{t.quarter}</td>
-                                            <td className="py-2 text-right">{t.total_leads.toLocaleString()}</td>
-                                            <td className="py-2 text-right font-medium text-emerald-600">
+                                        <tr key={t.quarter} className="hover:bg-muted/30 transition-colors">
+                                            <td className="py-1.5 pr-3 font-medium">{t.quarter}</td>
+                                            <td className="py-1.5 text-right tabular-nums">{t.total_leads.toLocaleString()}</td>
+                                            <td className="py-1.5 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
                                                 {t.won_leads.toLocaleString()}
                                             </td>
-                                            <td className="py-2 text-right font-medium">{t.conversion_rate}%</td>
+                                            <td className="py-1.5 text-right tabular-nums font-medium">{t.conversion_rate}%</td>
                                             {programs.map((name) => (
-                                                <td key={name} className="py-2 text-right">
+                                                <td
+                                                    key={name}
+                                                    className="py-1.5 text-right tabular-nums px-2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                                                    onClick={() => setDrillDownProgram(name)}
+                                                >
                                                     {t.programs?.[name]
                                                         ? `${t.programs[name].won_leads}/${t.programs[name].total_leads} (${t.programs[name].conversion_rate}%)`
                                                         : '—'}
@@ -329,6 +362,11 @@ export function QuarterlyPerformanceTrends() {
                     </>
                 )}
             </CardContent>
+
+            <ProgramDrillDownDialog
+                programName={drillDownProgram}
+                onClose={() => setDrillDownProgram(null)}
+            />
         </Card>
     );
 }

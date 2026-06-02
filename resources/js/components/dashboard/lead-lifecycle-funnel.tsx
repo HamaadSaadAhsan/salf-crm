@@ -1,10 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLeadLifecycleFunnel } from '@/hooks/useDashboard';
 import { useState } from 'react';
 
 type Period = 7 | 14 | 30 | 60 | 90;
+
+const STAGE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
 
 export function LeadLifecycleFunnel() {
     const [period, setPeriod] = useState<Period>(30);
@@ -21,132 +23,92 @@ export function LeadLifecycleFunnel() {
     if (isLoading) {
         return (
             <Card>
-                <CardHeader className="min-h-auto py-6 border-0">
-                    <CardTitle className="text-xl font-semibold">Lead Lifecycle Funnel</CardTitle>
-                    <CardDescription className="mt-1">Conversion through pipeline stages</CardDescription>
+                <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
+                    <CardTitle className="text-sm font-semibold">Lead Lifecycle Funnel</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-[400px] w-full" />
-                </CardContent>
+                <CardContent><Skeleton className="h-[280px] w-full" /></CardContent>
             </Card>
         );
     }
 
-    if (error) {
+    if (error || !data || data.funnel_data.length === 0) {
         return (
             <Card>
-                <CardHeader className="min-h-auto py-6 border-0">
-                    <CardTitle className="text-xl font-semibold">Lead Lifecycle Funnel</CardTitle>
-                    <CardDescription className="mt-1">Conversion through pipeline stages</CardDescription>
+                <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
+                    <CardTitle className="text-sm font-semibold">Lead Lifecycle Funnel</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-                        Error loading funnel data
+                    <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+                        {error ? 'Error loading data' : 'No funnel data available'}
                     </div>
                 </CardContent>
             </Card>
         );
     }
 
-    if (!data || data.funnel_data.length === 0) {
-        return (
-            <Card>
-                <CardHeader className="min-h-auto py-6 border-0">
-                    <CardTitle className="text-xl font-semibold">Lead Lifecycle Funnel</CardTitle>
-                    <CardDescription className="mt-1">Conversion through pipeline stages</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-                        No funnel data available
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
+    const totalLeads = data.funnel_data[0]?.count ?? 1;
 
     return (
         <Card>
-            <CardHeader className="min-h-auto py-6 border-0">
-                <div className="flex items-start justify-between flex-wrap gap-4">
-                    <div>
-                        <CardTitle className="text-xl font-semibold">Lead Lifecycle Funnel</CardTitle>
-                        <CardDescription className="mt-1">
-                            Overall Conversion Rate:{' '}
-                            <span className="font-bold">{data.overall_conversion_rate.toFixed(1)}%</span>
-                        </CardDescription>
-                    </div>
+            <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
+                <div>
+                    <CardTitle className="text-sm font-semibold">Lead Lifecycle Funnel</CardTitle>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        Overall conversion rate: <span className="font-semibold text-foreground">{data.overall_conversion_rate.toFixed(1)}%</span>
+                    </p>
                 </div>
-                <CardToolbar className="flex items-center gap-2 flex-wrap">
+                <CardToolbar>
                     <ToggleGroup
                         type="single"
                         value={period.toString()}
                         variant="outline"
-                        onValueChange={(value) => value && setPeriod(parseInt(value) as Period)}
-                        className=""
+                        onValueChange={(v) => v && setPeriod(parseInt(v) as Period)}
                     >
                         {periods.map((p) => (
-                            <ToggleGroupItem
-                                key={p.value}
-                                value={p.value.toString()}
-                                className="px-3.5 first:rounded-s-full! last:rounded-e-full!"
-                            >
+                            <ToggleGroupItem key={p.value} value={p.value.toString()} className="px-2.5 text-xs first:rounded-s-full! last:rounded-e-full!">
                                 {p.label}
                             </ToggleGroupItem>
                         ))}
                     </ToggleGroup>
                 </CardToolbar>
             </CardHeader>
-            <CardContent className="p-6">
-                <div className="space-y-4">
+            <CardContent className="px-5 pb-5 pt-0">
+                <div className="space-y-3">
                     {data.funnel_data.map((stage, index) => {
-                        // Calculate width percentage for funnel visualization
-                        const widthPercent = stage.percentage;
-                        const isFirst = index === 0;
+                        const barWidth = Math.max((stage.count / totalLeads) * 100, stage.count > 0 ? 1 : 0);
+                        const color = STAGE_COLORS[index % STAGE_COLORS.length];
 
                         return (
-                            <div key={stage.stage} className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">{stage.stage}</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold">{stage.count.toLocaleString()}</span>
-                                        <span className="text-muted-foreground">
-                                            ({stage.percentage.toFixed(1)}%)
-                                        </span>
-                                        {stage.conversion_rate !== null && !isFirst && (
-                                            <span className="text-xs text-green-600 dark:text-green-400">
-                                                ↓ {stage.conversion_rate.toFixed(1)}%
-                                            </span>
+                            <div key={stage.stage}>
+                                <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                                    <span className="font-medium text-sm">{stage.stage}</span>
+                                    <div className="flex items-center gap-2 shrink-0 text-muted-foreground">
+                                        <span className="font-semibold text-foreground tabular-nums">{stage.count.toLocaleString()}</span>
+                                        <span>({stage.percentage.toFixed(1)}%)</span>
+                                        {stage.conversion_rate !== null && index > 0 && (
+                                            <span className="text-emerald-500">↓ {stage.conversion_rate.toFixed(1)}%</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="relative h-12 rounded-lg bg-muted">
+                                <div className="h-7 w-full overflow-hidden rounded bg-muted/40">
                                     <div
-                                        className="h-full rounded-lg transition-all"
-                                        style={{
-                                            width: `${widthPercent}%`,
-                                            backgroundColor: stage.color,
-                                        }}
-                                    >
-                                        <div className="flex h-full items-center justify-center text-sm font-medium text-white">
-                                            {stage.count > 0 && stage.stage}
-                                        </div>
-                                    </div>
+                                        className="h-full rounded transition-all duration-500"
+                                        style={{ width: `${barWidth}%`, backgroundColor: color, opacity: 0.85 }}
+                                    />
                                 </div>
                             </div>
                         );
                     })}
                 </div>
 
-                <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4 text-sm">
+                <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 text-xs">
                     <div>
-                        <p className="text-muted-foreground">Time Period</p>
-                        <p className="font-medium">{data.period_days} days</p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Time Period</p>
+                        <p className="mt-0.5 font-semibold">{data.period_days} days</p>
                     </div>
                     <div>
-                        <p className="text-muted-foreground">Total Leads</p>
-                        <p className="font-medium">
-                            {data.funnel_data[0]?.count.toLocaleString() || 0}
-                        </p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Leads</p>
+                        <p className="mt-0.5 font-semibold tabular-nums">{totalLeads.toLocaleString()}</p>
                     </div>
                 </div>
             </CardContent>

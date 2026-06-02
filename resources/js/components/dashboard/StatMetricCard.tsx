@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface StatMetricCardProps {
     title: string;
@@ -106,14 +106,14 @@ export function StatMetricCard({
                 </div>
 
                 {/* Sparkline - bleeds to card edges */}
-                {sparkData && sparkData.length > 1 ? (
+                {sparkData && sparkData.length >= 1 ? (
                     <div className="mt-3 h-[56px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                            <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor={sparkColor} stopOpacity={0.2} />
-                                        <stop offset="100%" stopColor={sparkColor} stopOpacity={0.01} />
+                                        <stop offset="0%" stopColor={sparkColor} stopOpacity={0.15} />
+                                        <stop offset="100%" stopColor={sparkColor} stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <Area
@@ -121,9 +121,10 @@ export function StatMetricCard({
                                     dataKey="value"
                                     stroke={sparkColor}
                                     strokeWidth={1.5}
+                                    strokeDasharray={sparkData.length < 3 ? '0' : '4 2'}
                                     fill={`url(#${gradientId})`}
-                                    dot={false}
-                                    activeDot={false}
+                                    dot={sparkData.length <= 7 ? { r: 2.5, fill: sparkColor, strokeWidth: 0 } : false}
+                                    activeDot={{ r: 4, fill: sparkColor, strokeWidth: 0 }}
                                 />
                             </AreaChart>
                         </ResponsiveContainer>

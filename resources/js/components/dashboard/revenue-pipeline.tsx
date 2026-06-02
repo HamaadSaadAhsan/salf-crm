@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
+import { NightTooltip } from '@/components/dashboard/night-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRevenuePipeline } from '@/hooks/useDashboard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
@@ -92,12 +93,13 @@ export function RevenuePipeline() {
                                 width={100}
                             />
                             <ChartTooltip
-                                content={
-                                    <ChartTooltipContent
-                                        labelFormatter={(value) => `Stage: ${value}`}
-                                        formatter={(value: number) => [formatValue(value), 'Value']}
+                                content={(props: any) => (
+                                    <NightTooltip
+                                        {...props}
+                                        labelFormatter={(v) => `Stage: ${v}`}
+                                        valueFormatter={(v) => formatValue(Number(v))}
                                     />
-                                }
+                                )}
                             />
                             <Bar dataKey="value" radius={[0, 8, 8, 0]}>
                                 {data.pipeline_data.map((entry, index) => (
