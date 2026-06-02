@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Structured application intake form replaces the schema-driven field-by-field editor: collects Main Applicant personal info, up to 2 passports, residential address, current employment + history (up to 6 entries), spouse (with D1 note), and children (age auto-calculated, children ≥ 16 flagged as requiring own D1); all data auto-maps to canonical flat keys on save
+- PDF radio/checkbox filling now correctly sets the parent AcroForm field `/V` alongside each widget's `/AS`; previously `qpdf --generate-appearances` overwrote `/AS` to Off because the parent `/V` was never updated
+- PDF filler always runs `qpdf --generate-appearances` even when `flatten=false`, so filled values render in all viewers (macOS Preview, browsers) not just Acrobat
+- `canonicalData()` on Application now auto-derives `main_applicant.full_name` from `given_name + middle_name + surname` when not explicitly set, so signature fields (H, H3) populate correctly
+
+### Fixed
+- Field mappings page now supports inline save: typing a canonical path and pressing **Enter** immediately upserts that single row to the database via `PATCH /api/forms/templates/{id}/mappings`, eliminating the need for migrations when adding missing canonical paths; the status indicator shows a spinner while saving and turns green (confirmed) vs amber (suggested, not yet saved)
+
 ### Fixed
 - A14_1 checkbox field mapping added (`main_applicant.has_other_citizenship`, value_for_truthy = "Yes") so the "other citizenship" Yes checkbox is populated in generated PDFs; added corresponding field to the Identity Documents section of the lead application stepper
 - PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively

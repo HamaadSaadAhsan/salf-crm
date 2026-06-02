@@ -113,6 +113,17 @@ class Application extends Model
             );
         }
 
+        // Derive full_name from given_name + surname if not explicitly set
+        if (! Arr::get($nested, 'main_applicant.full_name')) {
+            $given = trim(Arr::get($nested, 'main_applicant.given_name', ''));
+            $middle = trim(Arr::get($nested, 'main_applicant.middle_name', ''));
+            $surname = trim(Arr::get($nested, 'main_applicant.surname', ''));
+            $parts = array_filter([$given, $middle, $surname]);
+            if ($parts) {
+                Arr::set($nested, 'main_applicant.full_name', implode(' ', $parts));
+            }
+        }
+
         return $nested;
     }
 
