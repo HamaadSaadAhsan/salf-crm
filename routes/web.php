@@ -140,6 +140,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/templates/{formTemplate}/sync', [FormTemplateApiController::class, 'syncInventory'])->name('templates.sync');
         Route::get('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'getMappings'])->name('templates.mappings');
         Route::put('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'saveMappings'])->name('templates.save-mappings');
+        Route::patch('/templates/{formTemplate}/mappings', [FormTemplateApiController::class, 'upsertMapping'])->name('templates.upsert-mapping');
         Route::post('/applications', [ApplicationApiController::class, 'store'])->name('applications.store');
         Route::put('/applications/{application}', [ApplicationApiController::class, 'update'])->name('applications.update');
         Route::delete('/applications/{application}', [ApplicationApiController::class, 'destroy'])->name('applications.destroy');

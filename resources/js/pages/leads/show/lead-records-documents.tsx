@@ -1100,43 +1100,75 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { section: 'Personal Information', path: 'main_applicant.given_name', label: 'First / Given Name' },
     { path: 'main_applicant.surname', label: 'Surname / Family Name' },
     { path: 'main_applicant.middle_name', label: 'Middle Name' },
-    { path: 'main_applicant.other_names', label: 'Other Names' },
+    { path: 'main_applicant.other_names', label: 'Other Names Used' },
     { path: 'main_applicant.mothers_maiden_name', label: "Mother's Maiden Name" },
     { path: 'main_applicant.name_local_script', label: 'Name in Local Script' },
     { path: 'main_applicant.dob', label: 'Date of Birth', type: 'date' },
     { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
-    { path: 'main_applicant.country_of_birth', label: 'Country of Birth' },
     { path: 'main_applicant.nationality', label: 'Nationality' },
     { path: 'main_applicant.gender', label: 'Gender', options: ['Male', 'Female'] },
-    { path: 'main_applicant.marital_status', label: 'Marital Status' },
-    { path: 'main_applicant.is_sponsored', label: 'Is Sponsored' },
+    { path: 'main_applicant.marital_status', label: 'Marital Status', options: ['Single', 'Married', 'Divorced', 'Widowed', 'Separated'] },
+    { path: 'main_applicant.marriage_date', label: 'Date of Marriage', type: 'date' },
+    { path: 'main_applicant.marriage_place', label: 'Place of Marriage' },
+    { path: 'main_applicant.has_other_citizenship', label: 'Has Other Citizenship', options: ['Yes', 'No'] },
+    { path: 'main_applicant.other_citizenship_details_1', label: 'Other Citizenship — Country 1' },
+    { path: 'main_applicant.other_citizenship_details_2', label: 'Other Citizenship — Country 2' },
+    { path: 'main_applicant.height_cm', label: 'Height (cm)' },
+    { path: 'main_applicant.weight_kg', label: 'Weight (kg)' },
+    { path: 'main_applicant.eye_colour', label: 'Eye Colour' },
+    { path: 'main_applicant.hair_colour', label: 'Hair Colour' },
+    { path: 'main_applicant.distinguishing_marks', label: 'Distinguishing Marks' },
+    { path: 'main_applicant.languages', label: 'Languages Spoken' },
+    { path: 'main_applicant.is_sponsored', label: 'Sponsored Applicant', options: ['Yes', 'No'] },
 
     // ── Contact Information ───────────────────────────────────────────────
     { section: 'Contact Information', path: 'main_applicant.email', label: 'Email Address', type: 'email' },
     { path: 'main_applicant.phone_mobile', label: 'Mobile Phone', type: 'tel' },
     { path: 'main_applicant.phone_home', label: 'Home Phone', type: 'tel' },
-    { path: 'main_applicant.phone_work', label: 'Work Phone', type: 'tel' },
-    { path: 'main_applicant.fax', label: 'Fax', type: 'tel' },
 
     // ── Employment ────────────────────────────────────────────────────────
     { section: 'Employment', path: 'main_applicant.occupation_by_training', label: 'Occupation by Training' },
     { path: 'main_applicant.current_occupation', label: 'Current Occupation' },
+    { path: 'main_applicant.is_self_employed', label: 'Self-Employed', options: ['Yes', 'No'] },
     { path: 'main_applicant.employer_name', label: 'Employer Name' },
     { path: 'main_applicant.employer_address', label: 'Employer Address' },
+    { path: 'main_applicant.employer_phone', label: 'Employer Phone' },
+    { path: 'main_applicant.employer_website', label: 'Employer Website' },
+    { path: 'main_applicant.employer_nature_of_business', label: 'Nature of Business' },
+    { path: 'main_applicant.employer_country_of_incorporation', label: 'Country of Incorporation' },
+    { path: 'main_applicant.employment_more_info', label: 'Additional Employment Info' },
 
     // ── Financial ─────────────────────────────────────────────────────────
-    { section: 'Financial', path: 'main_applicant.annual_income', label: 'Annual Income' },
-    { path: 'main_applicant.net_worth', label: 'Net Worth' },
-    { path: 'main_applicant.source_of_funds', label: 'Source of Funds' },
+    { section: 'Financial', path: 'main_applicant.annual_income_gross_usd', label: 'Annual Income Gross (USD)' },
+    { path: 'main_applicant.sources_of_income', label: 'Sources of Income' },
+    { path: 'main_applicant.assets_savings_amount', label: 'Savings / Cash' },
+    { path: 'main_applicant.assets_fixed_amount', label: 'Fixed Assets' },
+    { path: 'main_applicant.assets_investments_amount', label: 'Investments' },
+    { path: 'main_applicant.assets_other_amount', label: 'Other Assets' },
+    { path: 'main_applicant.assets_total', label: 'Total Assets' },
+    { path: 'main_applicant.liabilities_short_term_amount', label: 'Short-Term Liabilities' },
+    { path: 'main_applicant.liabilities_long_term_amount', label: 'Long-Term Liabilities' },
+    { path: 'main_applicant.liabilities_other_amount', label: 'Other Liabilities' },
+    { path: 'main_applicant.liabilities_total', label: 'Total Liabilities' },
+    { path: 'main_applicant.net_worth_total', label: 'Net Worth Total' },
+    { path: 'main_applicant.net_worth_statement_1', label: 'Net Worth Statement 1' },
+    { path: 'main_applicant.net_worth_statement_2', label: 'Net Worth Statement 2' },
+    { path: 'main_applicant.net_worth_statement_3', label: 'Net Worth Statement 3' },
+    { path: 'main_applicant.net_worth_statement_4', label: 'Net Worth Statement 4' },
+    { path: 'main_applicant.net_worth_statement_5', label: 'Net Worth Statement 5' },
+    { path: 'main_applicant.business_geographical_locations', label: 'Business Geographic Locations' },
+    { path: 'main_applicant.companies_shareholder_director', label: 'Companies (Shareholder / Director)' },
+    { path: 'main_applicant.key_business_partners', label: 'Key Business Partners' },
 
     // ── Identity Documents ────────────────────────────────────────────────
-    { section: 'Identity Documents', path: 'main_applicant.has_other_citizenship', label: 'Has Other Citizenship (Yes/No)' },
-    { path: 'main_applicant.national_id_number', label: 'National ID Number' },
+    { section: 'Identity Documents', path: 'main_applicant.national_id_number', label: 'National ID Number' },
     { path: 'main_applicant.national_id_country', label: 'National ID Country' },
     { path: 'main_applicant.national_id_number_2', label: 'National ID Number 2' },
     { path: 'main_applicant.national_id_country_2', label: 'National ID Country 2' },
     { path: 'main_applicant.drivers_licence_number', label: "Driver's Licence Number" },
     { path: 'main_applicant.drivers_licence_country', label: "Driver's Licence Country" },
+    { path: 'main_applicant.drivers_licence_number_2', label: "Driver's Licence Number 2" },
+    { path: 'main_applicant.drivers_licence_country_2', label: "Driver's Licence Country 2" },
 
     // ── Primary Passport (number captured in step 1) ──────────────────────
     { section: 'Primary Passport', path: 'main_applicant.passport_1.country_of_issue', label: 'Country of Issue' },
@@ -1167,6 +1199,47 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.address_permanent.date_since_month', label: 'Date Since (Month MM)' },
     { path: 'main_applicant.address_permanent.date_since_year', label: 'Date Since (Year YYYY)' },
 
+    // ── Military Service ──────────────────────────────────────────────────
+    { section: 'Military Service', path: 'main_applicant.military_served', label: 'Served in Military', options: ['Yes', 'No'] },
+    { path: 'main_applicant.military_branch', label: 'Branch' },
+    { path: 'main_applicant.military_ranking', label: 'Ranking / Grade' },
+    { path: 'main_applicant.military_serial_number', label: 'Service Number' },
+    { path: 'main_applicant.military_entry', label: 'Entry Date', type: 'date' },
+    { path: 'main_applicant.military_separation', label: 'Separation Date', type: 'date' },
+    { path: 'main_applicant.military_discharge_type', label: 'Type of Discharge' },
+    { path: 'main_applicant.military_arrested', label: 'Arrested While in Service', options: ['Yes', 'No'] },
+    { path: 'main_applicant.military_arrest_details_1', label: 'Arrest Details 1' },
+    { path: 'main_applicant.military_arrest_details_2', label: 'Arrest Details 2' },
+    { path: 'main_applicant.military_arrest_details_3', label: 'Arrest Details 3' },
+    { path: 'main_applicant.military_arrest_details_4', label: 'Arrest Details 4' },
+
+    // ── Disciplinary ──────────────────────────────────────────────────────
+    { section: 'Disciplinary', path: 'main_applicant.has_disciplinary_action', label: 'Disciplinary Action Taken', options: ['Yes', 'No'] },
+    { path: 'main_applicant.disciplinary_action_details', label: 'Disciplinary Action Details' },
+
+    // ── Declarations ─────────────────────────────────────────────────────
+    { section: 'Declarations', path: 'main_applicant.declarations.d75', label: 'D75', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d76', label: 'D76', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d77', label: 'D77', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d78', label: 'D78', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d79', label: 'D79', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d80', label: 'D80', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d81', label: 'D81', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d82', label: 'D82', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d83', label: 'D83', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d84', label: 'D84', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d85', label: 'D85', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d86', label: 'D86', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d87', label: 'D87', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d88', label: 'D88', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d89', label: 'D89', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d90', label: 'D90', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.d91', label: 'D91', options: ['Yes', 'No'] },
+    { path: 'main_applicant.declarations.details_1', label: 'Declaration Details 1' },
+    { path: 'main_applicant.declarations.details_2', label: 'Declaration Details 2' },
+    { path: 'main_applicant.declarations.details_3', label: 'Declaration Details 3' },
+    { path: 'main_applicant.declarations.details_4', label: 'Declaration Details 4' },
+    { path: 'main_applicant.declarations.details_5', label: 'Declaration Details 5' },
 ];
 
 const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => {
@@ -1204,6 +1277,50 @@ const CHILD_FIELDS: { path: string; label: string; type?: string; options?: stri
     { path: 'gender', label: 'Gender', options: ['Male', 'Female'] },
     { path: 'nationality', label: 'Nationality' },
     { path: 'place_of_birth', label: 'Place of Birth' },
+    { path: 'country_of_residence', label: 'Country of Residence' },
+    { path: 'occupation', label: 'Occupation' },
+    { path: 'phone', label: 'Phone' },
+    { path: 'is_not_included', label: 'Not Included in Application', options: ['Yes', 'No'] },
+];
+
+const EDUCATION_FIELDS: { path: string; label: string; placeholder?: string }[] = [
+    { path: 'period_start', label: 'From (MM/YYYY)', placeholder: 'e.g. 09/2000' },
+    { path: 'period_end', label: 'To (MM/YYYY)', placeholder: 'e.g. 06/2004' },
+    { path: 'school_name', label: 'Institution Name' },
+    { path: 'address', label: 'Address' },
+    { path: 'qualification', label: 'Qualification / Degree' },
+];
+
+const PREV_SPOUSE_FIELDS: { path: string; label: string; type?: string }[] = [
+    { path: 'name', label: 'Full Name' },
+    { path: 'nationality', label: 'Nationality' },
+    { path: 'dob', label: 'Date of Birth', type: 'date' },
+    { path: 'date_of_marriage', label: 'Date of Marriage', type: 'date' },
+    { path: 'date_of_dissolution', label: 'Date of Dissolution', type: 'date' },
+];
+
+const SIBLING_FIELDS: { path: string; label: string; type?: string; options?: string[] }[] = [
+    { path: 'given_names', label: 'Given Names' },
+    { path: 'surname', label: 'Surname' },
+    { path: 'gender', label: 'Gender', options: ['Male', 'Female'] },
+    { path: 'dob', label: 'Date of Birth', type: 'date' },
+    { path: 'place_of_birth', label: 'Place of Birth' },
+    { path: 'nationality', label: 'Nationality' },
+    { path: 'country_of_residence', label: 'Country of Residence' },
+    { path: 'occupation', label: 'Occupation' },
+    { path: 'phone', label: 'Phone' },
+    { path: 'relationship', label: 'Relationship' },
+];
+
+const PARENT_FIELDS: { path: string; label: string; type?: string; options?: string[] }[] = [
+    { path: 'given_names', label: 'Given Names' },
+    { path: 'surname', label: 'Surname' },
+    { path: 'dob', label: 'Date of Birth', type: 'date' },
+    { path: 'place_of_birth', label: 'Place of Birth' },
+    { path: 'citizenship', label: 'Citizenship' },
+    { path: 'occupation', label: 'Occupation' },
+    { path: 'residential_address', label: 'Residential Address' },
+    { path: 'is_deceased', label: 'Deceased', options: ['Yes', 'No'] },
 ];
 
 function childAge(dob: string): number | null {
@@ -1263,6 +1380,28 @@ function LeadFormsFillView({
         const d = initialApp?.data ?? {};
         if (!d['main_applicant.child_1.given_names']) return 1;
         return countFilledHistoryEntries(d as Record<string, unknown>, 'main_applicant.child_', 6);
+    });
+    const [educationCount, setEducationCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.education_', 4),
+    );
+    const [licenceCount, setLicenceCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.professional_licence_', 2),
+    );
+    const [hasPrevSpouses, setHasPrevSpouses] = useState(() =>
+        !!(initialApp?.data ?? {})['main_applicant.previous_spouse_1.name'],
+    );
+    const [prevSpouseCount, setPrevSpouseCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.previous_spouse_', 2),
+    );
+    const [hasSiblings, setHasSiblings] = useState(() =>
+        !!(initialApp?.data ?? {})['main_applicant.sibling_1.given_names'],
+    );
+    const [siblingCount, setSiblingCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.sibling_', 4),
+    );
+    const [hasParents, setHasParents] = useState(() => {
+        const d = initialApp?.data ?? {};
+        return !!(d['main_applicant.father.given_names'] || d['main_applicant.mother.given_names']);
     });
 
     const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
@@ -1698,6 +1837,147 @@ function LeadFormsFillView({
                                 </Button>
                             )}
                         </div>
+
+                        {/* Education History repeater (max 4) */}
+                        <div>
+                            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Education History
+                            </h4>
+                            <div className="space-y-3">
+                                {Array.from({ length: educationCount }, (_, i) => i + 1).map((n) => (
+                                    <div key={n} className="rounded-md border border-border bg-muted/20 p-3">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">Education {n}</span>
+                                            {n === educationCount && educationCount > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 text-xs text-destructive"
+                                                    onClick={() => {
+                                                        const keyPrefix = `main_applicant.education_${n}.`;
+                                                        setFormData((prev) => {
+                                                            const next = { ...prev };
+                                                            for (const key of Object.keys(next)) {
+                                                                if (key.startsWith(keyPrefix)) delete next[key];
+                                                            }
+                                                            return next;
+                                                        });
+                                                        setEducationCount((prev) => prev - 1);
+                                                    }}
+                                                >
+                                                    <Trash2 className="mr-1 size-3" /> Remove
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                            {EDUCATION_FIELDS.map((field) => {
+                                                const fullPath = `main_applicant.education_${n}.${field.path}`;
+                                                const isAddress = field.path === 'address';
+                                                return (
+                                                    <div key={fullPath} className={isAddress ? 'md:col-span-2' : ''}>
+                                                        <Label className="text-xs">{field.label}</Label>
+                                                        <Input
+                                                            value={(formData[fullPath] as string) ?? ''}
+                                                            placeholder={field.placeholder}
+                                                            onChange={(e) =>
+                                                                setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                            }
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                                {educationCount < 4 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => setEducationCount((prev) => prev + 1)}
+                                    >
+                                        <Plus className="mr-1 size-3" />
+                                        Add Education Entry
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="mt-2">
+                                <Label className="text-xs">Additional Education Info</Label>
+                                <Input
+                                    value={(formData['main_applicant.education_more_info'] as string) ?? ''}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, 'main_applicant.education_more_info': e.target.value }))}
+                                    className="h-9"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Professional Licences (max 2) */}
+                        <div>
+                            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Professional Licences
+                            </h4>
+                            <div className="space-y-3">
+                                {Array.from({ length: licenceCount }, (_, i) => i + 1).map((n) => (
+                                    <div key={n} className="rounded-md border border-border bg-muted/20 p-3">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">Licence {n}</span>
+                                            {n === licenceCount && licenceCount > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 text-xs text-destructive"
+                                                    onClick={() => {
+                                                        const keyPrefix = `main_applicant.professional_licence_${n}.`;
+                                                        setFormData((prev) => {
+                                                            const next = { ...prev };
+                                                            for (const key of Object.keys(next)) {
+                                                                if (key.startsWith(keyPrefix)) delete next[key];
+                                                            }
+                                                            return next;
+                                                        });
+                                                        setLicenceCount((prev) => prev - 1);
+                                                    }}
+                                                >
+                                                    <Trash2 className="mr-1 size-3" /> Remove
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                            {(['position', 'licensing_authority', 'licence_number'] as const).map((field) => {
+                                                const fullPath = `main_applicant.professional_licence_${n}.${field}`;
+                                                const labelMap: Record<string, string> = { position: 'Position', licensing_authority: 'Licensing Authority', licence_number: 'Licence Number' };
+                                                return (
+                                                    <div key={fullPath}>
+                                                        <Label className="text-xs">{labelMap[field]}</Label>
+                                                        <Input
+                                                            value={(formData[fullPath] as string) ?? ''}
+                                                            onChange={(e) =>
+                                                                setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                            }
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {licenceCount < 2 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2 h-7 text-xs"
+                                    onClick={() => setLicenceCount((prev) => prev + 1)}
+                                >
+                                    <Plus className="mr-1 size-3" />
+                                    Add Licence
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </StepperContent>
 
@@ -1764,12 +2044,48 @@ function LeadFormsFillView({
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                                         {[
                                             { path: 'main_applicant.spouse.address', label: 'Address' },
                                             { path: 'main_applicant.spouse.city', label: 'City' },
+                                            { path: 'main_applicant.spouse.state', label: 'State / Province' },
+                                            { path: 'main_applicant.spouse.postal_code', label: 'Postal Code' },
                                             { path: 'main_applicant.spouse.country', label: 'Country' },
+                                        ].map((f) => (
+                                            <div key={f.path}>
+                                                <Label className="text-xs">{f.label}</Label>
+                                                <Input
+                                                    value={(formData[f.path] as string) ?? ''}
+                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [f.path]: e.target.value }))}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        {[
                                             { path: 'main_applicant.spouse.phone_mobile', label: 'Mobile Phone' },
+                                            { path: 'main_applicant.spouse.phone_home', label: 'Home Phone' },
+                                            { path: 'main_applicant.spouse.phone_work', label: 'Work Phone' },
+                                        ].map((f) => (
+                                            <div key={f.path}>
+                                                <Label className="text-xs">{f.label}</Label>
+                                                <Input
+                                                    value={(formData[f.path] as string) ?? ''}
+                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [f.path]: e.target.value }))}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs font-medium text-muted-foreground">Spouse Employer</p>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        {[
+                                            { path: 'main_applicant.spouse.employer_address', label: 'Employer Address' },
+                                            { path: 'main_applicant.spouse.employer_city', label: 'Employer City' },
+                                            { path: 'main_applicant.spouse.employer_state', label: 'Employer State' },
+                                            { path: 'main_applicant.spouse.employer_postal_code', label: 'Employer Postal Code' },
+                                            { path: 'main_applicant.spouse.employer_country', label: 'Employer Country' },
                                         ].map((f) => (
                                             <div key={f.path}>
                                                 <Label className="text-xs">{f.label}</Label>
@@ -1888,6 +2204,11 @@ function LeadFormsFillView({
                                                         );
                                                     })}
                                                 </div>
+                                                {age !== null && age >= 16 && (
+                                                    <p className="text-xs text-amber-600">
+                                                        Child aged {age} must have their own D1 application.
+                                                    </p>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -1902,6 +2223,261 @@ function LeadFormsFillView({
                                             Add Child
                                         </Button>
                                     )}
+                                </div>
+                            )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Previous Spouses */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Previous Spouses</h4>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="has-prev-spouses"
+                                    checked={hasPrevSpouses}
+                                    onCheckedChange={(v) => {
+                                        setHasPrevSpouses(Boolean(v));
+                                        if (!v) {
+                                            setFormData((prev) => {
+                                                const next = { ...prev };
+                                                for (const key of Object.keys(next)) {
+                                                    if (key.startsWith('main_applicant.previous_spouse_')) delete next[key];
+                                                }
+                                                return next;
+                                            });
+                                            setPrevSpouseCount(1);
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="has-prev-spouses" className="cursor-pointer text-sm font-medium">
+                                    Has Previous Spouse(s)
+                                </Label>
+                            </div>
+                            {hasPrevSpouses && (
+                                <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+                                    {Array.from({ length: prevSpouseCount }, (_, i) => i + 1).map((n) => (
+                                        <div key={n} className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-medium">Previous Spouse {n}</span>
+                                                {n === prevSpouseCount && prevSpouseCount > 1 && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 text-xs text-destructive"
+                                                        onClick={() => {
+                                                            const keyPrefix = `main_applicant.previous_spouse_${n}.`;
+                                                            setFormData((prev) => {
+                                                                const next = { ...prev };
+                                                                for (const key of Object.keys(next)) {
+                                                                    if (key.startsWith(keyPrefix)) delete next[key];
+                                                                }
+                                                                return next;
+                                                            });
+                                                            setPrevSpouseCount((prev) => prev - 1);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="mr-1 size-3" /> Remove
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                {PREV_SPOUSE_FIELDS.map((field) => {
+                                                    const fullPath = `main_applicant.previous_spouse_${n}.${field.path}`;
+                                                    return (
+                                                        <div key={fullPath}>
+                                                            <Label className="text-xs">{field.label}</Label>
+                                                            <Input
+                                                                type={field.type ?? 'text'}
+                                                                value={(formData[fullPath] as string) ?? ''}
+                                                                onChange={(e) => setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))}
+                                                                className="h-9"
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {prevSpouseCount < 2 && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => setPrevSpouseCount((prev) => prev + 1)}
+                                        >
+                                            <Plus className="mr-1 size-3" /> Add Previous Spouse
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Siblings */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Siblings</h4>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="has-siblings"
+                                    checked={hasSiblings}
+                                    onCheckedChange={(v) => {
+                                        setHasSiblings(Boolean(v));
+                                        if (!v) {
+                                            setFormData((prev) => {
+                                                const next = { ...prev };
+                                                for (const key of Object.keys(next)) {
+                                                    if (key.startsWith('main_applicant.sibling_')) delete next[key];
+                                                }
+                                                return next;
+                                            });
+                                            setSiblingCount(1);
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="has-siblings" className="cursor-pointer text-sm font-medium">
+                                    Has Siblings
+                                </Label>
+                            </div>
+                            {hasSiblings && (
+                                <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+                                    {Array.from({ length: siblingCount }, (_, i) => i + 1).map((n) => (
+                                        <div key={n} className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-medium">Sibling {n}</span>
+                                                {n === siblingCount && siblingCount > 1 && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 text-xs text-destructive"
+                                                        onClick={() => {
+                                                            const keyPrefix = `main_applicant.sibling_${n}.`;
+                                                            setFormData((prev) => {
+                                                                const next = { ...prev };
+                                                                for (const key of Object.keys(next)) {
+                                                                    if (key.startsWith(keyPrefix)) delete next[key];
+                                                                }
+                                                                return next;
+                                                            });
+                                                            setSiblingCount((prev) => prev - 1);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="mr-1 size-3" /> Remove
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                {SIBLING_FIELDS.map((field) => {
+                                                    const fullPath = `main_applicant.sibling_${n}.${field.path}`;
+                                                    return (
+                                                        <div key={fullPath}>
+                                                            <Label className="text-xs">{field.label}</Label>
+                                                            {field.options ? (
+                                                                <select
+                                                                    value={(formData[fullPath] as string) ?? ''}
+                                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))}
+                                                                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                                >
+                                                                    <option value="">Select…</option>
+                                                                    {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                                                </select>
+                                                            ) : (
+                                                                <Input
+                                                                    type={field.type ?? 'text'}
+                                                                    value={(formData[fullPath] as string) ?? ''}
+                                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))}
+                                                                    className="h-9"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {siblingCount < 4 && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => setSiblingCount((prev) => prev + 1)}
+                                        >
+                                            <Plus className="mr-1 size-3" /> Add Sibling
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Parents / In-Laws */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parents &amp; In-Laws</h4>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="has-parents"
+                                    checked={hasParents}
+                                    onCheckedChange={(v) => {
+                                        setHasParents(Boolean(v));
+                                        if (!v) {
+                                            setFormData((prev) => {
+                                                const next = { ...prev };
+                                                for (const key of Object.keys(next)) {
+                                                    if (
+                                                        key.startsWith('main_applicant.father.') ||
+                                                        key.startsWith('main_applicant.mother.') ||
+                                                        key.startsWith('main_applicant.father_in_law.') ||
+                                                        key.startsWith('main_applicant.mother_in_law.')
+                                                    ) delete next[key];
+                                                }
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="has-parents" className="cursor-pointer text-sm font-medium">
+                                    Add Parents / In-Laws
+                                </Label>
+                            </div>
+                            {hasParents && (
+                                <div className="space-y-4 border-l-2 border-primary/30 pl-4">
+                                    {(['father', 'mother', 'father_in_law', 'mother_in_law'] as const).map((rel) => {
+                                        const relLabel: Record<string, string> = { father: 'Father', mother: 'Mother', father_in_law: 'Father-in-Law', mother_in_law: 'Mother-in-Law' };
+                                        return (
+                                            <div key={rel} className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+                                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{relLabel[rel]}</span>
+                                                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                    {PARENT_FIELDS.map((field) => {
+                                                        const fullPath = `main_applicant.${rel}.${field.path}`;
+                                                        return (
+                                                            <div key={fullPath}>
+                                                                <Label className="text-xs">{field.label}</Label>
+                                                                {field.options ? (
+                                                                    <select
+                                                                        value={(formData[fullPath] as string) ?? ''}
+                                                                        onChange={(e) => setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))}
+                                                                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                                    >
+                                                                        <option value="">Select…</option>
+                                                                        {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                                                    </select>
+                                                                ) : (
+                                                                    <Input
+                                                                        type={field.type ?? 'text'}
+                                                                        value={(formData[fullPath] as string) ?? ''}
+                                                                        onChange={(e) => setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))}
+                                                                        className="h-9"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

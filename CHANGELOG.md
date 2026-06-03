@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `PATCH /api/forms/templates/{template}/mappings` endpoint (`upsertMapping`) saves or clears a single field mapping inline; pressing Enter in a canonical path input now immediately persists that row without requiring the bulk Save button; status indicator shows a spinner while saving and green (confirmed) vs amber (suggested, not yet saved)
+
 ### Changed
 - Application intake form Dependents section fully expanded: Spouse now includes State, Postal Code, Home Phone, Work Phone, and full Employer Address (address/city/state/postal code/country); Children cards now include Country of Residence, Occupation, Phone, and Not Included in Application fields; Previous Spouses repeater (up to 2, with full name/nationality/DOB/marriage date/dissolution date), Siblings repeater (up to 4, with all canonical fields), and Parents & In-Laws section (four fixed panels: Father, Mother, Father-in-Law, Mother-in-Law with given names/surname/DOB/place of birth/citizenship/occupation/residential address/deceased flag) added to both the settings create form and the lead stepper
 

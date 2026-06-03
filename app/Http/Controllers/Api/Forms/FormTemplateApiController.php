@@ -82,6 +82,43 @@ class FormTemplateApiController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    public function upsertMapping(Request $request, FormTemplate $formTemplate): JsonResponse
+    {
+        $request->validate([
+            'field_name' => ['required', 'string', 'max:255'],
+            'canonical_path' => ['nullable', 'string', 'max:255'],
+            'value_for_truthy' => ['nullable', 'string', 'max:255'],
+            'transform' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $fieldName = $request->input('field_name');
+        $canonicalPath = trim($request->input('canonical_path', ''));
+
+        if ($canonicalPath === '') {
+            FieldMapping::where('form_template_id', $formTemplate->id)
+                ->where('field_name', $fieldName)
+                ->delete();
+
+            return response()->json(['message' => 'Mapping cleared.']);
+        }
+
+        FieldMapping::updateOrCreate(
+            [
+                'form_template_id' => $formTemplate->id,
+                'field_name' => $fieldName,
+            ],
+            [
+                'canonical_path' => $canonicalPath,
+                'value_for_truthy' => $request->input('value_for_truthy') ?: null,
+                'transform' => $request->input('transform') ?: null,
+                'notes' => $request->input('notes') ?: null,
+            ]
+        );
+
+        return response()->json(['message' => "Mapping saved for {$fieldName}."]);
+    }
+
     public function saveMappings(Request $request, FormTemplate $formTemplate): JsonResponse
     {
         $request->validate([
