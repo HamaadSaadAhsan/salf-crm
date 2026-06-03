@@ -128,6 +128,24 @@ export function useSaveMappings() {
     });
 }
 
+export function useUpsertMapping(templateId: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (mapping: Pick<FieldMappingRow, 'field_name' | 'canonical_path' | 'value_for_truthy' | 'transform' | 'notes'>) => {
+            const response = await axios.patch<{ message?: string }>(`/api/forms/templates/${templateId}/mappings`, mapping);
+            return response.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['forms-mappings', templateId] });
+            void queryClient.invalidateQueries({ queryKey: ['forms-programs'] });
+        },
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+            toast.error(err.response?.data?.message ?? 'Failed to save mapping');
+        },
+    });
+}
+
 // ───────────────────────────── Applications ─────────────────────────────
 
 export function useCreateApplication() {

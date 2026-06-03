@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { type FieldMappingRow, useGetMappings, useSaveMappings, useSyncInventory, useTemplatePage } from '@/hooks/useFormsAutomation';
+import { type FieldMappingRow, useGetMappings, useSaveMappings, useSyncInventory, useTemplatePage, useUpsertMapping } from '@/hooks/useFormsAutomation';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
@@ -317,8 +317,11 @@ export default function FieldMappingsPage({ program, template, fields, existingP
     const saveMappings = useSaveMappings();
     const syncInventory = useSyncInventory();
 
+    const upsertMapping = useUpsertMapping(template.id);
+
     const [rows, setRows] = useState<FieldMappingRow[]>([]);
     const [dirty, setDirty] = useState(false);
+    const [savingField, setSavingField] = useState<string | null>(null);
     const [activeField, setActiveField] = useState<TemplateField | null>(null);
     const [previewPage, setPreviewPage] = useState<number | null>(null);
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -382,6 +385,31 @@ export default function FieldMappingsPage({ program, template, fields, existingP
         if (originalField?.page) {
             setPreviewPage(originalField.page);
         }
+    };
+
+    const handleCanonicalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, row: FieldMappingRow) => {
+        if (e.key !== 'Enter') { return; }
+        e.preventDefault();
+        const path = row.canonical_path.trim();
+        if (!path) { return; }
+        setSavingField(row.field_name);
+        upsertMapping.mutate(
+            {
+                field_name: row.field_name,
+                canonical_path: path,
+                value_for_truthy: row.value_for_truthy,
+                transform: row.transform,
+                notes: row.notes,
+            },
+            {
+                onSuccess: () => {
+                    setRows((prev) =>
+                        prev.map((r) => (r.field_name === row.field_name ? { ...r, is_suggested: false } : r)),
+                    );
+                },
+                onSettled: () => setSavingField(null),
+            },
+        );
     };
 
     // Build field boxes for the current preview page
@@ -529,10 +557,11 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                                                 <Input
                                                     value={row.canonical_path}
                                                     onChange={(e) => update(i, 'canonical_path', e.target.value)}
+                                                    onKeyDown={(e) => handleCanonicalKeyDown(e, row)}
                                                     placeholder="e.g. main_applicant.surname"
                                                     className={`h-7 text-sm font-mono ${row.is_suggested ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 focus:border-primary' : ''}`}
                                                     list="canonical-paths"
-                                                    title={row.is_suggested ? 'Auto-suggested — review and save to confirm' : undefined}
+                                                    title={row.is_suggested ? 'Auto-suggested — review and save to confirm' : 'Press Enter to save this mapping immediately'}
                                                 />
                                             </div>
                                             <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
@@ -556,9 +585,13 @@ export default function FieldMappingsPage({ program, template, fields, existingP
                                                 </select>
                                             </div>
                                             <div className="col-span-1 flex justify-center">
-                                                {row.canonical_path && (
+                                                {savingField === row.field_name ? (
+                                                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                                                ) : row.canonical_path && !row.is_suggested ? (
                                                     <CheckCircle2 className="size-4 text-green-500" />
-                                                )}
+                                                ) : row.canonical_path && row.is_suggested ? (
+                                                    <CheckCircle2 className="size-4 text-amber-400" />
+                                                ) : null}
                                             </div>
                                         </div>
                                     );

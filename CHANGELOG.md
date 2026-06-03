@@ -8,6 +8,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Passport "Place of Issue" field added to both the settings create form and the lead application stepper (Primary Passport and Second Passport sections); `canonicalData()` now derives `passport_N.date_and_place_of_issue` by combining date and place for D3's combined field
+- Declarations D75–D91 now default to "No" on new lead applications; existing saved values are preserved
+
+### Fixed
+- D3 "Date and place of issue" field now receives a combined `"date, place"` string via the new derived `passport_1.date_and_place_of_issue` path instead of only the date
+- D4 "place of issue" field mapping corrected from `passport_1.date_of_issue` to `passport_1.place_of_issue`
+- "Same as Residential Address" checkbox added to the Permanent Residential Address section in both the settings application create form and the lead application stepper — checking it instantly copies all residential address fields (street, city, state, country, postal code, date since month/year) into the permanent address fields
+
+### Fixed
+- D1 gender radio buttons (A6) now correctly check Male or Female: the A6 field's two child widgets export `Yes` (Male) and `No` (Female), so the mapping was updated to use the new derived path `main_applicant.gender_yes_no` (`Male → "Yes"`, `Female → "No"`); `canonicalData()` now derives this alongside the existing `gender_is_male`/`gender_is_female` flags used by D2/D3
+
+### Added
+- `PATCH /api/forms/templates/{template}/mappings` endpoint (`upsertMapping`) saves or clears a single field mapping inline; pressing Enter in a canonical path input now immediately persists that row without requiring the bulk Save button; status indicator shows a spinner while saving and green (confirmed) vs amber (suggested, not yet saved)
+
+### Changed
+- Application intake form Dependents section fully expanded: Spouse now includes State, Postal Code, Home Phone, Work Phone, and full Employer Address (address/city/state/postal code/country); Children cards now include Country of Residence, Occupation, Phone, and Not Included in Application fields; Previous Spouses repeater (up to 2, with full name/nationality/DOB/marriage date/dissolution date), Siblings repeater (up to 4, with all canonical fields), and Parents & In-Laws section (four fixed panels: Father, Mother, Father-in-Law, Mother-in-Law with given names/surname/DOB/place of birth/citizenship/occupation/residential address/deceased flag) added to both the settings create form and the lead stepper
+
+### Added
+- Structured application intake form replaces the schema-driven field-by-field editor: collects Main Applicant personal info, up to 2 passports, residential address (with Date Since), permanent residential address, address history (up to 7 entries with date from/to and full address — maps to `residence_history_N.*` for D1 A35), current employment + history (up to 6 entries), spouse (with D1 note), and children (age auto-calculated, children ≥ 16 flagged as requiring own D1); all data auto-maps to canonical flat keys on save
+- D3 (Medical Questionnaire) field mappings added: Full Name, Residential Address, Country of Residence, Date of Birth, Passport Number/National ID, Date and place of issue, Occupation, Marital Status, Email Address, and gender M/F checkboxes — main applicant data now auto-fills D3 on generation
+- PDF radio/checkbox filling now correctly sets the parent AcroForm field `/V` alongside each widget's `/AS`; previously `qpdf --generate-appearances` overwrote `/AS` to Off because the parent `/V` was never updated
+- PDF filler always runs `qpdf --generate-appearances` even when `flatten=false`, so filled values render in all viewers (macOS Preview, browsers) not just Acrobat
+- `canonicalData()` on Application now auto-derives `main_applicant.full_name` from `given_name + middle_name + surname` when not explicitly set, so signature fields (H, H3) populate correctly
+
+### Fixed
+- D2 (Affidavit of Identity) address fields now correctly map to `address_residential.full_address` and `address_residential.city` (previously broken `line_1`/`line_2` paths)
+- D2 gender M/F checkboxes now use derived `gender_is_male`/`gender_is_female` boolean fields with `value_for_truthy`; `canonicalData()` auto-derives these from `main_applicant.gender`; previously used invalid nested `gender.male` path that never resolved
+- Field mappings page now supports inline save: typing a canonical path and pressing **Enter** immediately upserts that single row to the database via `PATCH /api/forms/templates/{id}/mappings`, eliminating the need for migrations when adding missing canonical paths; the status indicator shows a spinner while saving and turns green (confirmed) vs amber (suggested, not yet saved)
+
+### Fixed
+- A14_1 checkbox field mapping added (`main_applicant.has_other_citizenship`, value_for_truthy = "Yes") so the "other citizenship" Yes checkbox is populated in generated PDFs; added corresponding field to the Identity Documents section of the lead application stepper
+- PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively
+
+### Added
+- D4 (Investment Agreement) field mappings added: Full Name, Residential Address, Country of Residence, Date of Birth (DD/MM/YYYY), Passport Number, Date of Issue, and family member table (7 rows — row 1 = Spouse with Full Name/DOB/Relationship, rows 2–7 = Children 1–6); "I the undersigned" declaration field also mapped to `main_applicant.full_name`
+- `canonicalData()` now auto-derives `{date_path}_dmy` (DD/MM/YYYY formatted string) alongside the existing `_day`/`_month`/`_year` components for every ISO date value
+- `canonicalData()` auto-derives `main_applicant.spouse.full_name` from `spouse.given_names + spouse.surname`, `main_applicant.spouse.relationship = "Spouse"`, `main_applicant.child_N.full_name` from `child_N.given_names + child_N.surname`, and `main_applicant.child_N.relationship = "Dependent Child"` — used by D4 family table
+
+### Removed
+- Mailing Address section removed from the lead application stepper — no PDF template has a mapping for `main_applicant.address_mailing.*` so the section served no purpose
+
+### Changed
+- Lead application stepper in the Documents tab now has a dedicated **Dependents** step (Step 3) for Spouse (toggle + full details) and Children (toggle + repeater up to 6, age badge, ≥16 "Requires own D1" warning); schema-driven steps shift to start at Step 4
+- Lead application stepper **Main Applicant** step (was "Lead Information") now matches the standalone create form: Permanent Residential Address section added, Address History repeater (up to 7 entries), employment history capped at 6 entries; residential address uses `full_address` canonical path; employment history sub-fields updated to `period_start`/`period_end`/`employer_name`/`address`/`position`/`business_type`/`reason_leaving`; gender field renders as a select dropdown; mailing address uses `full_address`
+- Lead Information step (Step 2) in the lead application form stepper now groups all `main_applicant.*` canonical fields under section headers (Personal Information, Contact Information, Employment, Financial, Identity Documents, Primary Passport, Second Passport, Residential Address, Mailing Address) instead of a flat grid
+- Employment History and Residence History in Step 2 are now dynamic repeaters — starts with 1 entry, "+" button adds up to 4 employment / 5 residence entries, "×" on the last entry removes it; existing saved data auto-restores the correct entry count on edit
+
+### Added
 - System settings page (`/settings/system`) for super-admin — toggle calling feature on/off and configure phone reveal duration; `SystemSettingController` (GET/PUT) and `system_settings` table/model
 - `systemSettings` shared via Inertia `shareOnce` (`calling_enabled`, `phone_reveal_duration`) with a `SystemSettings` TypeScript interface on `SharedData`; System nav item added to the settings sidebar (super-admin only)
 - Phone reveal feature — `PhoneRevealController` (POST `/api/leads/{lead}/phone-reveal`) returns a time-limited phone number; `PhoneRevealButton` in the lead page header masks digits, reveals on click, and auto-hides after the configured duration. When calling is enabled the header shows a Call button (phone hidden); when disabled it shows the masked phone with a timed reveal
