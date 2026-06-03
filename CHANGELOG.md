@@ -23,6 +23,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - A14_1 checkbox field mapping added (`main_applicant.has_other_citizenship`, value_for_truthy = "Yes") so the "other citizenship" Yes checkbox is populated in generated PDFs; added corresponding field to the Identity Documents section of the lead application stepper
 - PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively
 
+### Added
+- Mailing Address section in lead application stepper now shows two "Same as" checkboxes: **Same as Residential Address** and **Same as Permanent Residential Address** — checking either one copies `full_address`, `city`, `state_province`, `country`, `postal_code` into the mailing fields and disables manual editing; unchecking re-enables the fields
+
 ### Changed
 - Lead application stepper in the Documents tab now has a dedicated **Dependents** step (Step 3) for Spouse (toggle + full details) and Children (toggle + repeater up to 6, age badge, ≥16 "Requires own D1" warning); schema-driven steps shift to start at Step 4
 - Lead application stepper **Main Applicant** step (was "Lead Information") now matches the standalone create form: Permanent Residential Address section added, Address History repeater (up to 7 entries), employment history capped at 6 entries; residential address uses `full_address` canonical path; employment history sub-fields updated to `period_start`/`period_end`/`employer_name`/`address`/`position`/`business_type`/`reason_leaving`; gender field renders as a select dropdown; mailing address uses `full_address`
