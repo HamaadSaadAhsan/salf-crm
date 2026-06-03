@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- "Same as Residential Address" checkbox added to the Permanent Residential Address section in both the settings application create form and the lead application stepper — checking it instantly copies all residential address fields (street, city, state, country, postal code, date since month/year) into the permanent address fields
+
 ### Fixed
 - D1 gender radio buttons (A6) now correctly check Male or Female: the A6 field's two child widgets export `Yes` (Male) and `No` (Female), so the mapping was updated to use the new derived path `main_applicant.gender_yes_no` (`Male → "Yes"`, `Female → "No"`); `canonicalData()` now derives this alongside the existing `gender_is_male`/`gender_is_female` flags used by D2/D3
 

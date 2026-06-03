@@ -201,6 +201,8 @@ interface IntakeForm {
     // Disciplinary
     has_disciplinary_action: string;
     disciplinary_action_details: string;
+    // Address helpers
+    permanent_same_as_residential: boolean;
     // Dependents
     has_spouse: boolean;
     spouse_given_names: string;
@@ -810,6 +812,7 @@ const DEFAULT_FORM: IntakeForm = {
     military_served: '', military_branch: '', military_ranking: '', military_serial_number: '',
     military_entry: '', military_separation: '', military_discharge_type: '', military_arrested: '',
     has_disciplinary_action: '', disciplinary_action_details: '',
+    permanent_same_as_residential: false,
     has_spouse: false, spouse_given_names: '', spouse_surname: '', spouse_dob: '', spouse_nationality: '',
     spouse_occupation: '', spouse_employer: '', spouse_address: '', spouse_city: '', spouse_state: '',
     spouse_postal_code: '', spouse_country: '', spouse_phone_mobile: '', spouse_phone_home: '', spouse_phone_work: '',
@@ -1084,16 +1087,41 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
 
                 {/* ── Permanent Residential Address */}
                 <SectionCard title="Permanent Residential Address" defaultOpen={false}>
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-3">
-                            <Field label="Full Address"><TextInput value={form.permanent_address} onChange={v => set('permanent_address', v)} placeholder="Street address" /></Field>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 pb-1">
+                            <Checkbox
+                                id="permanent-same"
+                                checked={form.permanent_same_as_residential}
+                                onCheckedChange={v => {
+                                    const same = Boolean(v);
+                                    setForm(prev => ({
+                                        ...prev,
+                                        permanent_same_as_residential: same,
+                                        ...(same ? {
+                                            permanent_address: prev.residential_address,
+                                            permanent_city: prev.residential_city,
+                                            permanent_state: prev.residential_state,
+                                            permanent_country: prev.residential_country,
+                                            permanent_postal_code: prev.residential_postal_code,
+                                            permanent_date_since_month: prev.residential_date_since_month,
+                                            permanent_date_since_year: prev.residential_date_since_year,
+                                        } : {}),
+                                    }));
+                                }}
+                            />
+                            <Label htmlFor="permanent-same" className="text-sm cursor-pointer">Same as Residential Address</Label>
                         </div>
-                        <Field label="City"><TextInput value={form.permanent_city} onChange={v => set('permanent_city', v)} /></Field>
-                        <Field label="State / Province"><TextInput value={form.permanent_state} onChange={v => set('permanent_state', v)} /></Field>
-                        <Field label="Country"><TextInput value={form.permanent_country} onChange={v => set('permanent_country', v)} /></Field>
-                        <Field label="Postal Code"><TextInput value={form.permanent_postal_code} onChange={v => set('permanent_postal_code', v)} /></Field>
-                        <Field label="Date Since (Month MM)"><TextInput value={form.permanent_date_since_month} onChange={v => set('permanent_date_since_month', v)} placeholder="e.g. 03" /></Field>
-                        <Field label="Date Since (Year YYYY)"><TextInput value={form.permanent_date_since_year} onChange={v => set('permanent_date_since_year', v)} placeholder="e.g. 2018" /></Field>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="col-span-3">
+                                <Field label="Full Address"><TextInput value={form.permanent_address} onChange={v => set('permanent_address', v)} placeholder="Street address" /></Field>
+                            </div>
+                            <Field label="City"><TextInput value={form.permanent_city} onChange={v => set('permanent_city', v)} /></Field>
+                            <Field label="State / Province"><TextInput value={form.permanent_state} onChange={v => set('permanent_state', v)} /></Field>
+                            <Field label="Country"><TextInput value={form.permanent_country} onChange={v => set('permanent_country', v)} /></Field>
+                            <Field label="Postal Code"><TextInput value={form.permanent_postal_code} onChange={v => set('permanent_postal_code', v)} /></Field>
+                            <Field label="Date Since (Month MM)"><TextInput value={form.permanent_date_since_month} onChange={v => set('permanent_date_since_month', v)} placeholder="e.g. 03" /></Field>
+                            <Field label="Date Since (Year YYYY)"><TextInput value={form.permanent_date_since_year} onChange={v => set('permanent_date_since_year', v)} placeholder="e.g. 2018" /></Field>
+                        </div>
                     </div>
                 </SectionCard>
 

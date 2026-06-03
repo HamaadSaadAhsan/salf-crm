@@ -1403,6 +1403,7 @@ function LeadFormsFillView({
         const d = initialApp?.data ?? {};
         return !!(d['main_applicant.father.given_names'] || d['main_applicant.mother.given_names']);
     });
+    const [permanentSameAsResidential, setPermanentSameAsResidential] = useState(false);
 
     const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
     const { data: schemaRaw, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
@@ -1665,9 +1666,35 @@ function LeadFormsFillView({
                         {/* Static sections */}
                         {LEAD_INFO_SECTIONS.map((sec) => (
                             <div key={sec.label}>
-                                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    {sec.label}
-                                </h4>
+                                <div className="mb-2 flex items-center gap-3">
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        {sec.label}
+                                    </h4>
+                                    {sec.label === 'Permanent Residential Address' && (
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <Checkbox
+                                                checked={permanentSameAsResidential}
+                                                onCheckedChange={(v) => {
+                                                    const same = Boolean(v);
+                                                    setPermanentSameAsResidential(same);
+                                                    if (same) {
+                                                        setFormData((prev) => ({
+                                                            ...prev,
+                                                            'main_applicant.address_permanent.full_address': prev['main_applicant.address_residential.full_address'] ?? '',
+                                                            'main_applicant.address_permanent.city': prev['main_applicant.address_residential.city'] ?? '',
+                                                            'main_applicant.address_permanent.state_province': prev['main_applicant.address_residential.state_province'] ?? '',
+                                                            'main_applicant.address_permanent.country': prev['main_applicant.address_residential.country'] ?? '',
+                                                            'main_applicant.address_permanent.postal_code': prev['main_applicant.address_residential.postal_code'] ?? '',
+                                                            'main_applicant.address_permanent.date_since_month': prev['main_applicant.address_residential.date_since_month'] ?? '',
+                                                            'main_applicant.address_permanent.date_since_year': prev['main_applicant.address_residential.date_since_year'] ?? '',
+                                                        }));
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-xs text-muted-foreground">Same as Residential</span>
+                                        </label>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     {sec.fields.map((field) => (
                                         <div key={field.path}>
