@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- D1 gender radio buttons (A6) now correctly check Male or Female: the A6 field's two child widgets export `Yes` (Male) and `No` (Female), so the mapping was updated to use the new derived path `main_applicant.gender_yes_no` (`Male → "Yes"`, `Female → "No"`); `canonicalData()` now derives this alongside the existing `gender_is_male`/`gender_is_female` flags used by D2/D3
+
 ### Added
 - `PATCH /api/forms/templates/{template}/mappings` endpoint (`upsertMapping`) saves or clears a single field mapping inline; pressing Enter in a canonical path input now immediately persists that row without requiring the bulk Save button; status indicator shows a spinner while saving and green (confirmed) vs amber (suggested, not yet saved)
 

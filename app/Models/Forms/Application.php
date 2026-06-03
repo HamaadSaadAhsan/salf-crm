@@ -125,12 +125,16 @@ class Application extends Model
             }
         }
 
-        // Derive boolean gender flags for M/F checkbox fields (D2, D3)
+        // Derive gender flags for checkbox/radio fields across all templates
         $gender = Arr::get($nested, 'main_applicant.gender');
         if ($gender === 'Male') {
             Arr::set($nested, 'main_applicant.gender_is_male', 'Yes');
+            // D1 A6 radio group: Male child exports "Yes", Female child exports "No"
+            Arr::set($nested, 'main_applicant.gender_yes_no', 'Yes');
         } elseif ($gender === 'Female') {
             Arr::set($nested, 'main_applicant.gender_is_female', 'Yes');
+            // D1 A6 radio group: Female child exports "No"
+            Arr::set($nested, 'main_applicant.gender_yes_no', 'No');
         }
 
         // Derive spouse full_name and relationship for D4 family table
