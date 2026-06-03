@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart';
+import { NightTooltip } from '@/components/dashboard/night-tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -234,21 +235,16 @@ export function AdSourceConversions() {
                                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                                 <YAxis tick={{ fontSize: 11 }} width={40} allowDecimals={false} />
                                 <ChartTooltip
-                                    content={
-                                        <ChartTooltipContent
-                                            className="p-3"
-                                            formatter={(value, name) => (
-                                                <div className="flex w-full items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground">
-                                                        {chartConfig[name as string]?.label ?? name}
-                                                    </span>
-                                                    <span className="font-mono font-medium tabular-nums">
-                                                        {value} won
-                                                    </span>
-                                                </div>
-                                            )}
+                                    content={(props: any) => (
+                                        <NightTooltip
+                                            {...props}
+                                            payload={props.payload?.map((p: any) => ({
+                                                ...p,
+                                                name: chartConfig[p.dataKey as string]?.label ?? p.name,
+                                            }))}
+                                            valueFormatter={(v) => `${v} won`}
                                         />
-                                    }
+                                    )}
                                 />
                                 {sources.map((_, i) => {
                                     const key = safeKey(i);

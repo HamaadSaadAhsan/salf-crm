@@ -77,15 +77,13 @@ export function InsertButton() {
                 formData.append('files[]', file);
             }
 
-            const response = await axios.post(`/api/leads/${leadId}/files`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const response = await axios.post<{ data?: { url: string; name?: string; file_name?: string }[] }>(`/api/leads/${leadId}/files`, formData);
 
-            const uploaded = response.data?.data || [];
+            const uploaded = response.data.data || [];
             for (const file of uploaded) {
                 editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
                     src: file.url,
-                    altText: file.name || file.file_name,
+                    altText: file.name || file.file_name as string || 'Uploaded Image',
                 });
             }
         } catch {
@@ -156,7 +154,7 @@ export function InsertButton() {
                     ref={popoverRef}
                     className="absolute bottom-full left-0 mb-1.5 z-10"
                 >
-                    <div className="flex flex-col gap-px p-1 rounded-xl min-w-[180px] bg-white dark:bg-[rgb(31,33,37)] shadow-[rgb(228,228,231)_0_0_0_1px_inset,rgba(0,0,0,0.04)_0_0_0_1px,rgba(0,0,0,0.06)_0_4px_8px_-4px] dark:shadow-[rgb(47,48,51)_0_0_0_1px_inset,rgba(0,0,0,0.16)_0_0_0_1px,rgba(0,0,0,0.48)_0_4px_8px_-4px,rgba(0,0,0,0.64)_0_4px_12px_-2px]">
+                    <div className="flex flex-col gap-px p-1 rounded-xl min-w-[180px] bg-white dark:bg-[rgb(31,33,37)] border border-zinc-200 dark:border-transparent shadow-[rgba(28,40,64,0.08)_0_4px_12px_-4px,rgba(28,40,64,0.06)_0_2px_4px] dark:shadow-[rgb(47,48,51)_0_0_0_1px_inset,rgba(0,0,0,0.16)_0_0_0_1px,rgba(0,0,0,0.48)_0_4px_8px_-4px,rgba(0,0,0,0.64)_0_4px_12px_-2px]">
                         {BLOCK_OPTIONS.map(({ type, label, icon: Icon }) => (
                             <button
                                 key={type}

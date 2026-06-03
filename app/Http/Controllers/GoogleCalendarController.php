@@ -400,6 +400,54 @@ class GoogleCalendarController extends Controller
     }
 
     /**
+     * Get calendar events with optional Meet link filtering
+     */
+    public function getEvents(Request $request, string $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'calendar_id' => 'sometimes|string',
+                'time_min' => 'sometimes|string',
+                'time_max' => 'sometimes|string',
+            ]);
+
+            $integration = CalendarIntegration::where('user_id', $request->user()->id)
+                ->where('id', $id)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $integration) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Active calendar integration not found',
+                ], 404);
+            }
+
+            if ($integration->isTokenExpired() && $integration->refresh_token) {
+                $this->refreshIntegrationToken($integration);
+            }
+
+            $calendarId = $request->get('calendar_id', 'primary');
+            $timeMin = $request->get('time_min', now()->subDays(7)->toISOString());
+            $timeMax = $request->get('time_max', now()->addDays(30)->toISOString());
+
+            $events = $this->fetchGoogleCalendarEvents($integration->access_token, $calendarId, $timeMin, $timeMax);
+
+            return response()->json([
+                'success' => true,
+                'events' => $events,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to fetch calendar events: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch calendar events',
+            ], 500);
+        }
+    }
+
+    /**
      * Create calendar event
      */
     public function createEvent(Request $request, string $id): JsonResponse
@@ -615,6 +663,35 @@ class GoogleCalendarController extends Controller
         }
 
         return $response->json()['items'] ?? [];
+    }
+
+    /**
+     * @throws ConnectionException
+     * @throws Exception
+     */
+    private function fetchGoogleCalendarEvents(string $accessToken, string $calendarId, string $timeMin, string $timeMax): array
+    {
+        $response = Http::withToken($accessToken)
+            ->get("https://www.googleapis.com/calendar/v3/calendars/{$calendarId}/events", [
+                'timeMin' => $timeMin,
+                'timeMax' => $timeMax,
+                'singleEvents' => 'true',
+                'orderBy' => 'startTime',
+                'maxResults' => 50,
+            ]);
+
+        if (! $response->successful()) {
+            throw new Exception('Failed to fetch calendar events from Google');
+        }
+
+        return array_map(fn ($event) => [
+            'id' => $event['id'],
+            'summary' => $event['summary'] ?? 'Untitled event',
+            'start' => $event['start']['dateTime'] ?? $event['start']['date'] ?? null,
+            'end' => $event['end']['dateTime'] ?? $event['end']['date'] ?? null,
+            'meet_link' => $event['hangoutLink'] ?? null,
+            'attendees_count' => count($event['attendees'] ?? []),
+        ], $response->json()['items'] ?? []);
     }
 
     /**

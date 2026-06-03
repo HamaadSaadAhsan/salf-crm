@@ -11,31 +11,29 @@ interface StatCardProps {
 }
 
 const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400',
-    red: 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400',
-    yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-950 dark:text-yellow-400',
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
+    green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400',
+    red: 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400',
+    yellow: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',
+    purple: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',
 };
 
 export function StatCard({ label, value, icon: Icon, color = 'blue', onClick }: StatCardProps) {
     return (
         <Card
             className={cn(
-                'transition-all hover:shadow-md',
-                onClick && 'cursor-pointer hover:scale-105'
+                'ring-1 ring-transparent transition-all duration-200 hover:shadow-md hover:ring-border',
+                onClick && 'cursor-pointer',
             )}
             onClick={onClick}
         >
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-                        <p className="text-3xl font-bold mt-2">{value}</p>
-                    </div>
-                    <div className={cn('p-3 rounded-lg', colorClasses[color])}>
-                        <Icon className="h-6 w-6" />
-                    </div>
+            <CardContent className="flex items-center gap-4 p-5">
+                <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', colorClasses[color])}>
+                    <Icon className="size-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className="mt-1 truncate text-2xl font-semibold tabular-nums leading-tight">{value}</p>
                 </div>
             </CardContent>
         </Card>

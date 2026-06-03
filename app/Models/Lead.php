@@ -94,6 +94,14 @@ class Lead extends Model implements HasMedia
                 $lead->last_activity_at = now();
             }
         });
+
+        static::created(function ($lead) {
+            // seq is assigned by a Postgres sequence default; pull it back into the
+            // in-memory model so Scout indexes the keyset cursor key on first save.
+            if ($lead->seq === null) {
+                $lead->seq = static::whereKey($lead->getKey())->value('seq');
+            }
+        });
     }
 
     /**
@@ -103,6 +111,7 @@ class Lead extends Model implements HasMedia
     {
         $array = [
             'id' => $this->id,
+            'seq' => $this->seq,
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
@@ -183,6 +192,7 @@ class Lead extends Model implements HasMedia
                 'created_by_name',
             ],
             'filterableAttributes' => [
+                'seq',
                 'inquiry_status',
                 'priority',
                 'inquiry_type',
@@ -209,6 +219,7 @@ class Lead extends Model implements HasMedia
                 'days_in_current_status',
             ],
             'sortableAttributes' => [
+                'seq',
                 'name',
                 'email',
                 'lead_score',

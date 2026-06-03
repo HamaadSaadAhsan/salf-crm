@@ -1,5 +1,20 @@
-import { PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFHexString, PDFName, PDFRadioGroup, PDFRawStream, PDFRef, PDFStream, PDFString, PDFTextField } from 'pdf-lib';
 import type { Lead } from '@/types/lead';
+import type { PDFDict, PDFDocument, PDFName, PDFStream } from 'pdf-lib';
+
+type PdfLib = typeof import('pdf-lib');
+
+let pdfLibPromise: Promise<PdfLib> | null = null;
+
+/**
+ * Lazily load the heavy `pdf-lib` bundle, and only when a PDF is actually filled.
+ * Keeps the ~900 KB pdf chunk out of page bundles that only use the synchronous
+ * mapping/string helpers exported below.
+ */
+function loadPdfLib(): Promise<PdfLib> {
+    pdfLibPromise ??= import('pdf-lib');
+
+    return pdfLibPromise;
+}
 
 export const LEAD_FIELD_MAPPINGS = [
     { value: 'name', label: 'Full Name' },
@@ -29,11 +44,11 @@ export const LEAD_FIELD_MAPPINGS = [
  */
 export function stripNumericSuffix(name: string): string {
     return name
-        .replace(/_\d+$/, '')          // Name_1 → Name
-        .replace(/\.\d+$/, '')         // Name.1 → Name
-        .replace(/\s*#\d+$/, '')       // Name #1 → Name
-        .replace(/\[\d+\]$/, '')       // Name[0] → Name
-        .replace(/\s*\(\d+\)$/, '')    // Name (1) → Name
+        .replace(/_\d+$/, '') // Name_1 → Name
+        .replace(/\.\d+$/, '') // Name.1 → Name
+        .replace(/\s*#\d+$/, '') // Name #1 → Name
+        .replace(/\[\d+\]$/, '') // Name[0] → Name
+        .replace(/\s*\(\d+\)$/, '') // Name (1) → Name
         .trim();
 }
 
@@ -50,9 +65,7 @@ function editDistance(a: string, b: string): number {
     for (let j = 0; j <= n; j++) dp[0][j] = j;
     for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
-            dp[i][j] = al[i - 1] === bl[j - 1]
-                ? dp[i - 1][j - 1]
-                : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+            dp[i][j] = al[i - 1] === bl[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
         }
     }
     return dp[m][n];
@@ -64,9 +77,7 @@ function editDistance(a: string, b: string): number {
  * columns whose base names are within edit distance 2 (and at least 4 chars long).
  * The more frequent base name wins as the canonical name.
  */
-export function mergeSimilarRepeatGroupColumns(
-    colMap: Map<string, string[]>,
-): Map<string, string[]> {
+export function mergeSimilarRepeatGroupColumns(colMap: Map<string, string[]>): Map<string, string[]> {
     const entries = Array.from(colMap.entries()).sort((a, b) => b[1].length - a[1].length);
     const merged = new Map<string, string[]>();
     const consumed = new Set<string>();
@@ -93,14 +104,10 @@ export function mergeSimilarRepeatGroupColumns(
 /**
  * Fill a single PDF form field by name.
  */
-function fillSingleField(
-    form: ReturnType<PDFDocument['getForm']>,
-    fieldName: string,
-    value: string,
-): void {
+function fillSingleField(pl: PdfLib, form: ReturnType<PDFDocument['getForm']>, fieldName: string, value: string): void {
     try {
         const field = form.getField(fieldName);
-        if (field instanceof PDFTextField) {
+        if (field instanceof pl.PDFTextField) {
             field.setText(value);
             // Patch the /DA string on each widget to use a smaller font size
             // that fits the field height, instead of the default auto-size
@@ -108,25 +115,26 @@ function fillSingleField(
             for (const widget of widgets) {
                 const rect = widget.getRectangle();
                 const fontSize = Math.round(Math.max(6, Math.min(rect.height * 0.5, 11)));
-                const daObj = widget.dict.get(PDFName.of('DA')) ?? field.acroField.dict.get(PDFName.of('DA'));
+                const daObj = widget.dict.get(pl.PDFName.of('DA')) ?? field.acroField.dict.get(pl.PDFName.of('DA'));
                 if (daObj) {
-                    const daStr = daObj instanceof PDFHexString ? daObj.decodeText() : daObj instanceof PDFString ? daObj.decodeText() : String(daObj);
+                    const daStr =
+                        daObj instanceof pl.PDFHexString ? daObj.decodeText() : daObj instanceof pl.PDFString ? daObj.decodeText() : String(daObj);
                     // Replace font size and force black color
                     const patchedSize = daStr.replace(/\/(\w+)\s+[\d.]+\s+Tf/, `/$1 ${fontSize} Tf`);
                     // Replace any color operator (e.g. "0 0 0.6 rg" or "0 g") with black
                     const patched = patchedSize.replace(/[\d.]+(\s+[\d.]+\s+[\d.]+)?\s+rg/, '0 g').replace(/[\d.]+\s+g/, '0 g');
-                    widget.dict.set(PDFName.of('DA'), PDFString.of(patched));
+                    widget.dict.set(pl.PDFName.of('DA'), pl.PDFString.of(patched));
                 }
             }
-        } else if (field instanceof PDFCheckBox) {
+        } else if (field instanceof pl.PDFCheckBox) {
             if (value === 'true' || value === '1' || value === 'yes') {
                 field.check();
             } else {
                 field.uncheck();
             }
-        } else if (field instanceof PDFDropdown) {
+        } else if (field instanceof pl.PDFDropdown) {
             field.select(value);
-        } else if (field instanceof PDFRadioGroup) {
+        } else if (field instanceof pl.PDFRadioGroup) {
             const options = field.getOptions();
             // Try exact match first, then case-insensitive prefix match
             // (handles "M" → "Male", "F" → "Female", etc.)
@@ -150,19 +158,16 @@ function fillSingleField(
  *   2. Absolute BBox coordinates with 0,0 text origin (glyph drawn outside visible area)
  * Rewrites each "on" appearance stream with a local BBox and centered glyph.
  */
-function ensureButtonAppearanceResources(
-    pdfDoc: PDFDocument,
-    form: ReturnType<PDFDocument['getForm']>,
-): void {
-    const resourcesKey = PDFName.of('Resources');
-    const fontKey = PDFName.of('Font');
-    const apKey = PDFName.of('AP');
-    const nKey = PDFName.of('N');
-    const bboxKey = PDFName.of('BBox');
-    const offKey = PDFName.of('Off');
+function ensureButtonAppearanceResources(pl: PdfLib, pdfDoc: PDFDocument, form: ReturnType<PDFDocument['getForm']>): void {
+    const resourcesKey = pl.PDFName.of('Resources');
+    const fontKey = pl.PDFName.of('Font');
+    const apKey = pl.PDFName.of('AP');
+    const nKey = pl.PDFName.of('N');
+    const bboxKey = pl.PDFName.of('BBox');
+    const offKey = pl.PDFName.of('Off');
 
     for (const field of form.getFields()) {
-        if (!(field instanceof PDFRadioGroup) && !(field instanceof PDFCheckBox)) {
+        if (!(field instanceof pl.PDFRadioGroup) && !(field instanceof pl.PDFCheckBox)) {
             continue;
         }
 
@@ -176,16 +181,16 @@ function ensureButtonAppearanceResources(
             const boxH = rect.height;
 
             const apDict = widget.dict.get(apKey);
-            if (!(apDict instanceof PDFDict)) continue;
+            if (!(apDict instanceof pl.PDFDict)) continue;
 
             const nVal = apDict.get(nKey);
             if (!nVal) continue;
 
             const entries: [PDFName, PDFStream][] = [];
-            if (nVal instanceof PDFDict) {
+            if (nVal instanceof pl.PDFDict) {
                 for (const [k, v] of nVal.entries()) {
-                    const resolved = v instanceof PDFRef ? pdfDoc.context.lookup(v) : v;
-                    if (resolved instanceof PDFStream) {
+                    const resolved = v instanceof pl.PDFRef ? pdfDoc.context.lookup(v) : v;
+                    if (resolved instanceof pl.PDFStream) {
                         entries.push([k as PDFName, resolved]);
                     }
                 }
@@ -206,7 +211,7 @@ function ensureButtonAppearanceResources(
                         BaseFont: 'ZapfDingbats',
                     });
                     const fontDict = pdfDoc.context.obj({});
-                    fontDict.set(PDFName.of('ZaDb'), zadbDict);
+                    fontDict.set(pl.PDFName.of('ZaDb'), zadbDict);
                     const resDict = pdfDoc.context.obj({});
                     resDict.set(fontKey, fontDict);
                     stream.dict.set(resourcesKey, resDict);
@@ -258,7 +263,8 @@ export async function fillPdfFields(
     fieldValues: Record<string, string>,
     repeatGroups?: Map<string, RepeatGroupMeta>,
 ): Promise<Uint8Array> {
-    const pdfDoc = await PDFDocument.load(templateBytes);
+    const pl = await loadPdfLib();
+    const pdfDoc = await pl.PDFDocument.load(templateBytes);
     const form = pdfDoc.getForm();
 
     // Build a map of base name → all raw PDF field names
@@ -288,12 +294,12 @@ export async function fillPdfFields(
         if (!value) continue;
         const relatedNames = suffixMap.get(fieldName) ?? [fieldName];
         for (const rawName of relatedNames) {
-            fillSingleField(form, rawName, value);
+            fillSingleField(pl, form, rawName, value);
         }
     }
 
     // Ensure radio/checkbox appearance streams have font Resources so flatten renders them
-    ensureButtonAppearanceResources(pdfDoc, form);
+    ensureButtonAppearanceResources(pl, pdfDoc, form);
 
     try {
         form.flatten();
@@ -330,13 +336,13 @@ export async function fillPdfFields(
                 const batchRows = sortedRows.slice(batch, batch + meta.slotsPerPage);
 
                 // Load a fresh copy of the template for each overflow page
-                const overflowDoc = await PDFDocument.load(templateBytes);
+                const overflowDoc = await pl.PDFDocument.load(templateBytes);
                 const overflowForm = overflowDoc.getForm();
 
                 // Fill static fields (e.g., main applicant name) on the source page
                 for (const [fieldName, value] of Object.entries(meta.staticFieldValues)) {
                     if (!value) continue;
-                    fillSingleField(overflowForm, fieldName, value);
+                    fillSingleField(pl, overflowForm, fieldName, value);
                 }
 
                 // Fill batch rows into the first N slot field names
@@ -345,7 +351,7 @@ export async function fillPdfFields(
                     for (const col of meta.columns) {
                         const value = row[col.baseName];
                         if (!value || !col.suffixedNames[rowIdx]) continue;
-                        fillSingleField(overflowForm, col.suffixedNames[rowIdx], value);
+                        fillSingleField(pl, overflowForm, col.suffixedNames[rowIdx], value);
                     }
                 }
 
@@ -392,10 +398,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): string {
 /**
  * Auto-map lead data to PDF field values based on field mappings.
  */
-export function autoMapLeadFields(
-    fieldMappings: { field_name: string; lead_field_mapping: string | null }[],
-    lead: Lead,
-): Record<string, string> {
+export function autoMapLeadFields(fieldMappings: { field_name: string; lead_field_mapping: string | null }[], lead: Lead): Record<string, string> {
     const values: Record<string, string> = {};
     const leadData = lead as unknown as Record<string, unknown>;
 

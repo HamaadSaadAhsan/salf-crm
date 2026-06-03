@@ -50,13 +50,12 @@ interface LeadsPageProps {
     leads: Lead[] | { data: Lead[] };
     data?: Lead[];
     meta: {
-        current_page: number;
         per_page: number;
-        total: number;
-        last_page: number;
-        from: number;
-        to: number;
+        count: number;
         has_more: boolean;
+        next_cursor: string | null;
+        sort_by?: string;
+        sort_order?: 'asc' | 'desc';
     };
     filters: LeadFilters;
     leadSources: LeadSource[];
@@ -98,42 +97,31 @@ const ALL_PAGE_SIZES = [25, 50, 100, 200];
 
 const PaginationControls = React.memo(({
     meta,
+    canPrev,
+    canNext,
     onPagination,
     onPageSizeChange,
 }: {
     meta: LeadsPageProps['meta'];
+    canPrev: boolean;
+    canNext: boolean;
     onPagination: (direction: string) => void;
     onPageSizeChange: (size: number) => void;
 }) => {
     const handlePrev = useCallback(() => onPagination('prev'), [onPagination]);
     const handleNext = useCallback(() => onPagination('next'), [onPagination]);
 
-    const pageSizes = useMemo(() => {
-        const total = meta.total || 0;
-        const sizes = ALL_PAGE_SIZES.filter((size, i) => {
-            if (i === 0) return true;
-            return total > ALL_PAGE_SIZES[i - 1];
-        });
-        if (!sizes.includes(meta.per_page)) {
-            sizes.push(meta.per_page);
-            sizes.sort((a, b) => a - b);
-        }
-        return sizes;
-    }, [meta.total, meta.per_page]);
-
     return (
         <div className="flex items-center gap-0.5">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                        <span>{(meta.from || 0).toLocaleString()}</span>–<span>{(meta.to || 0).toLocaleString()}</span>
-                        <span className="mx-0.5">of</span>
-                        <span>{(meta.total || 0).toLocaleString()}</span>
+                        <span>{meta.per_page} per page</span>
                         <ChevronDown className="ml-0.5 h-3 w-3" />
                     </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    {pageSizes.map((size) => (
+                    {ALL_PAGE_SIZES.map((size) => (
                         <DropdownMenuItem
                             key={size}
                             onSelect={() => onPageSizeChange(size)}
@@ -144,10 +132,10 @@ const PaginationControls = React.memo(({
                     ))}
                 </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrev} disabled={meta.current_page === 1}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrev} disabled={!canPrev}>
                 <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNext} disabled={!meta.has_more}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNext} disabled={!canNext}>
                 <ChevronRight className="h-3.5 w-3.5" />
             </Button>
         </div>
@@ -166,13 +154,10 @@ export default function LeadsInterface() {
     const serverMeta = useMemo(
         () =>
             pageProps.meta || {
-                current_page: 1,
                 per_page: 25,
-                total: 0,
-                last_page: 1,
-                from: null,
-                to: null,
+                count: 0,
                 has_more: false,
+                next_cursor: null,
             },
         [pageProps.meta],
     );
@@ -230,16 +215,43 @@ export default function LeadsInterface() {
         if (Array.isArray(leads)) toggleAll(leads);
     }, [toggleAll, leads]);
 
+    // Keyset pagination keeps a stack of the cursors used to reach each page so
+    // the user can step backwards without page numbers or a total count.
+    const cursorHistory = useRef<(string | undefined)[]>([undefined]);
+    const [pageIndex, setPageIndex] = useState(0);
+
+    // Any change to the underlying filters/sort/page-size restarts pagination.
+    const filterSignature = useMemo(() => {
+        const { cursor: _cursor, ...rest } = filters;
+        void _cursor;
+        return JSON.stringify(rest);
+    }, [filters]);
+
+    useEffect(() => {
+        cursorHistory.current = [undefined];
+        setPageIndex(0);
+    }, [filterSignature]);
+
     const handlePagination = useCallback(
         (direction: string) => {
-            const currentPage = meta.current_page;
-            let newPage = currentPage;
-            if (direction === 'prev' && currentPage > 1) newPage = currentPage - 1;
-            else if (direction === 'next' && meta.has_more) newPage = currentPage + 1;
-            if (newPage !== currentPage) applyFilters({ page: newPage });
+            if (direction === 'next') {
+                if (!meta.has_more || !meta.next_cursor) return;
+                cursorHistory.current = cursorHistory.current.slice(0, pageIndex + 1);
+                cursorHistory.current.push(meta.next_cursor);
+                setPageIndex((i) => i + 1);
+                applyFilters({ cursor: meta.next_cursor });
+            } else if (direction === 'prev') {
+                if (pageIndex === 0) return;
+                const prevIndex = pageIndex - 1;
+                setPageIndex(prevIndex);
+                applyFilters({ cursor: cursorHistory.current[prevIndex] });
+            }
         },
-        [meta, applyFilters],
+        [meta, pageIndex, applyFilters],
     );
+
+    const canPrev = pageIndex > 0;
+    const canNext = meta.has_more;
 
     const handleRefresh = useCallback(() => {
         router.reload({ only: ['leads', 'meta'] });
@@ -247,7 +259,7 @@ export default function LeadsInterface() {
     }, [clearSelection]);
 
     const handlePageSizeChange = useCallback(
-        (size: number) => applyFilters({ per_page: size, page: 1 }),
+        (size: number) => applyFilters({ per_page: size }),
         [applyFilters],
     );
 
@@ -412,7 +424,7 @@ export default function LeadsInterface() {
                         )}
                     </div>
 
-                    <PaginationControls meta={meta} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
+                    <PaginationControls meta={meta} canPrev={canPrev} canNext={canNext} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
                 </div>
 
                 {/* Leads list — scrollable */}
@@ -452,7 +464,10 @@ export default function LeadsInterface() {
                 {Array.isArray(leads) && leads.length > 0 && (
                     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-3 py-1.5">
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>{(meta.total || 0).toLocaleString()} leads</span>
+                            <span>
+                                {(Array.isArray(leads) ? leads.length : 0).toLocaleString()}
+                                {meta.has_more ? '+' : ''} leads
+                            </span>
                             {selectedCount > 0 && (
                                 <span className="hidden sm:inline">{selectedCount} selected</span>
                             )}
@@ -462,7 +477,7 @@ export default function LeadsInterface() {
                                 </span>
                             )}
                         </div>
-                        <PaginationControls meta={meta} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
+                        <PaginationControls meta={meta} canPrev={canPrev} canNext={canNext} onPagination={handlePagination} onPageSizeChange={handlePageSizeChange} />
                     </div>
                 )}
             </div>

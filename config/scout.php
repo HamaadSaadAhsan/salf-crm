@@ -184,6 +184,7 @@ return [
                     'days_since_created',
                     'days_in_current_status',
                     'tag_values', // NEW: for tag filtering
+                    'seq', // keyset cursor tiebreaker (range-filterable)
                 ],
                 'sortableAttributes' => [
                     'name',
@@ -199,6 +200,7 @@ return [
                     'assigned_date_timestamp',
                     'days_since_created',
                     'days_in_current_status',
+                    'seq', // keyset cursor tiebreaker
                     // Removed 'tags' from sortable
                 ],
                 'rankingRules' => [

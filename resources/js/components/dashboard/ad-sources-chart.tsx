@@ -1,11 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLeadDistribution } from '@/hooks/useDashboard';
 import { MULTI_SERIES_COLORS } from '@/lib/dashboard-colors';
 import { useState } from 'react';
-import { PieChart, Pie, Cell, Label } from 'recharts';
 
 type Period = 7 | 14 | 30 | 60 | 90;
 
@@ -21,10 +19,6 @@ export function AdSourcesChart() {
     const [period, setPeriod] = useState<Period>(30);
     const { data, isLoading, error } = useLeadDistribution('source', period);
 
-    const chartConfig = {
-        count: { label: 'Leads' },
-    };
-
     const chartData =
         data?.distribution_data
             .map((item, index) => ({
@@ -34,11 +28,12 @@ export function AdSourcesChart() {
             .sort((a, b) => b.count - a.count) || [];
 
     const totalLeads = data?.total_leads ?? 0;
+    const maxCount = chartData[0]?.count ?? 1;
 
     return (
         <Card className="min-w-0">
-            <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
-                <CardTitle className="text-base font-semibold sm:text-xl">Ad Sources</CardTitle>
+            <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
+                <CardTitle className="text-sm font-semibold">Ad Sources</CardTitle>
                 <CardToolbar className="flex items-center gap-2">
                     <ToggleGroup
                         type="single"
@@ -58,101 +53,54 @@ export function AdSourcesChart() {
                     </ToggleGroup>
                 </CardToolbar>
             </CardHeader>
-            <CardContent className="px-2 sm:px-6">
+            <CardContent className="px-5 pb-5 pt-0">
                 {isLoading ? (
-                    <Skeleton className="mx-auto h-[250px] w-[250px] rounded-full" />
+                    <div className="space-y-3">
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} className="h-8 w-full" />
+                        ))}
+                    </div>
                 ) : error ? (
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
                         Error loading source data
                     </div>
                 ) : chartData.length === 0 ? (
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
                         No data available
                     </div>
                 ) : (
                     <>
-                        <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[280px]">
-                            <PieChart>
-                                <ChartTooltip
-                                    content={
-                                        <ChartTooltipContent
-                                            className="p-3"
-                                            formatter={(value, _name, props) => (
-                                                <div className="flex w-full items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground">
-                                                        {(props.payload as any).name}
-                                                    </span>
-                                                    <span className="font-mono font-medium tabular-nums">
-                                                        {value} leads ({(props.payload as any).percentage.toFixed(1)}%)
-                                                    </span>
-                                                </div>
-                                            )}
-                                        />
-                                    }
-                                />
-                                <Pie
-                                    data={chartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={70}
-                                    outerRadius={110}
-                                    paddingAngle={2}
-                                    dataKey="count"
-                                    nameKey="name"
-                                    strokeWidth={2}
-                                    stroke="hsl(var(--background))"
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                    <Label
-                                        content={({ viewBox }) => {
-                                            if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                                                return (
-                                                    <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                                                        <tspan
-                                                            x={viewBox.cx}
-                                                            y={viewBox.cy}
-                                                            className="fill-foreground text-2xl font-bold"
-                                                        >
-                                                            {totalLeads.toLocaleString()}
-                                                        </tspan>
-                                                        <tspan
-                                                            x={viewBox.cx}
-                                                            y={(viewBox.cy || 0) + 20}
-                                                            className="fill-muted-foreground text-xs"
-                                                        >
-                                                            Total Leads
-                                                        </tspan>
-                                                    </text>
-                                                );
-                                            }
-                                        }}
-                                    />
-                                </Pie>
-                            </PieChart>
-                        </ChartContainer>
-
-                        {/* Legend grid */}
-                        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        <div className="mb-4 flex items-baseline gap-2">
+                            <span className="text-2xl font-bold tabular-nums">{totalLeads.toLocaleString()}</span>
+                            <span className="text-xs text-muted-foreground">total leads</span>
+                        </div>
+                        <div className="space-y-2.5">
                             {chartData.map((item) => (
-                                <div
-                                    key={item.name}
-                                    className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2"
-                                >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div
-                                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                            style={{ backgroundColor: item.fill }}
-                                        />
-                                        <span className="truncate text-muted-foreground">{item.name}</span>
+                                <div key={item.name} className="group">
+                                    <div className="mb-1 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span
+                                                className="h-2 w-2 shrink-0 rounded-full"
+                                                style={{ backgroundColor: item.fill }}
+                                            />
+                                            <span className="truncate text-sm text-foreground">{item.name}</span>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            <span className="text-sm font-semibold tabular-nums">{item.count}</span>
+                                            <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">
+                                                {item.percentage.toFixed(1)}%
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="ml-2 shrink-0 font-medium">
-                                        {item.count}
-                                        <span className="ml-1 text-xs text-muted-foreground">
-                                            ({item.percentage.toFixed(0)}%)
-                                        </span>
-                                    </span>
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{
+                                                width: `${(item.count / maxCount) * 100}%`,
+                                                backgroundColor: item.fill,
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </div>

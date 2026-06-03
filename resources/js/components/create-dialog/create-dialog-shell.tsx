@@ -50,8 +50,8 @@ export function CreateDialogShell() {
                         'bg-[rgba(228,228,231,0.6)] dark:bg-[rgba(30,34,39,0.6)]',
                         'shadow-[0_8px_28px_-6px_rgba(0,0,0,0.48),0_18px_88px_-4px_rgba(0,0,0,0.64)]',
                         isFull
-                            ? 'w-[clamp(40vw,960px,75vw)] h-[75vh]'
-                            : 'w-[456px] h-[556px]',
+                            ? 'w-[clamp(560px,75vw,960px)] h-[clamp(480px,65vh,720px)]'
+                            : 'w-[min(456px,calc(100vw-2rem))] h-[556px]',
                     )}
                 >
                     {/* Inner container — Attio .dxUETn */}
@@ -63,7 +63,7 @@ export function CreateDialogShell() {
                         )}
                     >
                         {/* Header wrapper — Attio .hrvFRI: z-1, backdrop-blur, covers scroll content */}
-                        <div className="relative z-[1] bg-[var(--create-dialog-header-bg)] backdrop-blur-[15px]">
+                        <div className="relative z-[2] bg-[var(--create-dialog-header-bg)] backdrop-blur-[15px]">
                             <CreateDialogHeader />
                             <CreateDialogTitleBar isScrolled={isScrolled} />
                         </div>
