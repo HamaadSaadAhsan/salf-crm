@@ -1361,7 +1361,12 @@ function LeadFormsFillView({
     const [programId, setProgramId] = useState<number | null>(initialApp?.program.id ?? null);
     const [applicantName, setApplicantName] = useState(initialApp?.main_applicant_name ?? lead.name ?? '');
     const [passport, setPassport] = useState(initialApp?.main_applicant_passport ?? '');
-    const [formData, setFormData] = useState<Record<string, unknown>>(initialApp?.data ?? {});
+    const [formData, setFormData] = useState<Record<string, unknown>>(() => {
+        const declarationDefaults = Object.fromEntries(
+            Array.from({ length: 17 }, (_, i) => [`main_applicant.declarations.d${75 + i}`, 'No']),
+        );
+        return { ...declarationDefaults, ...(initialApp?.data ?? {}) };
+    });
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
     const [currentStep, setCurrentStep] = useState(1);
     const [isSavingStep, setIsSavingStep] = useState(false);
