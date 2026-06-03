@@ -28,8 +28,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `canonicalData()` now auto-derives `{date_path}_dmy` (DD/MM/YYYY formatted string) alongside the existing `_day`/`_month`/`_year` components for every ISO date value
 - `canonicalData()` auto-derives `main_applicant.spouse.full_name` from `spouse.given_names + spouse.surname`, `main_applicant.spouse.relationship = "Spouse"`, `main_applicant.child_N.full_name` from `child_N.given_names + child_N.surname`, and `main_applicant.child_N.relationship = "Dependent Child"` — used by D4 family table
 
-### Added
-- Mailing Address section in lead application stepper now shows two "Same as" checkboxes: **Same as Residential Address** and **Same as Permanent Residential Address** — checking either one copies `full_address`, `city`, `state_province`, `country`, `postal_code` into the mailing fields and disables manual editing; unchecking re-enables the fields
+### Removed
+- Mailing Address section removed from the lead application stepper — no PDF template has a mapping for `main_applicant.address_mailing.*` so the section served no purpose
 
 ### Changed
 - Lead application stepper in the Documents tab now has a dedicated **Dependents** step (Step 3) for Spouse (toggle + full details) and Children (toggle + repeater up to 6, age badge, ≥16 "Requires own D1" warning); schema-driven steps shift to start at Step 4

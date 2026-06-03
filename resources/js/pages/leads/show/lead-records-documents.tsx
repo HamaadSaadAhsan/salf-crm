@@ -1167,12 +1167,6 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.address_permanent.date_since_month', label: 'Date Since (Month MM)' },
     { path: 'main_applicant.address_permanent.date_since_year', label: 'Date Since (Year YYYY)' },
 
-    // ── Mailing Address ───────────────────────────────────────────────────
-    { section: 'Mailing Address', path: 'main_applicant.address_mailing.full_address', label: 'Full Address' },
-    { path: 'main_applicant.address_mailing.city', label: 'City' },
-    { path: 'main_applicant.address_mailing.state_province', label: 'State / Province' },
-    { path: 'main_applicant.address_mailing.country', label: 'Country' },
-    { path: 'main_applicant.address_mailing.postal_code', label: 'Postal Code' },
 ];
 
 const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => {
@@ -1260,7 +1254,6 @@ function LeadFormsFillView({
     const [addrHistCount, setAddrHistCount] = useState(() =>
         countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.residence_history_', 7),
     );
-    const [mailingAddressSameAs, setMailingAddressSameAs] = useState<null | 'residential' | 'permanent'>(null);
     const [hasSpouse, setHasSpouse] = useState(() => {
         const d = initialApp?.data ?? {};
         return !!(d['main_applicant.spouse.given_names'] || d['main_applicant.spouse.surname']);
@@ -1531,104 +1524,43 @@ function LeadFormsFillView({
                 <StepperContent value={2}>
                     <div className="space-y-5">
                         {/* Static sections */}
-                        {LEAD_INFO_SECTIONS.map((sec) => {
-                            const isMailingSection = sec.label === 'Mailing Address';
-                            const mailingLocked = isMailingSection && mailingAddressSameAs !== null;
-
-                            const syncMailing = (source: 'residential' | 'permanent') => {
-                                const srcPrefix = source === 'residential'
-                                    ? 'main_applicant.address_residential.'
-                                    : 'main_applicant.address_permanent.';
-                                const fields = ['full_address', 'city', 'state_province', 'country', 'postal_code'];
-                                setFormData((prev) => {
-                                    const next = { ...prev };
-                                    fields.forEach((f) => {
-                                        next[`main_applicant.address_mailing.${f}`] = prev[`${srcPrefix}${f}`] ?? '';
-                                    });
-                                    return next;
-                                });
-                            };
-
-                            return (
-                                <div key={sec.label}>
-                                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        {sec.label}
-                                    </h4>
-
-                                    {isMailingSection && (
-                                        <div className="mb-3 flex flex-wrap items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    id="mailing-same-residential"
-                                                    checked={mailingAddressSameAs === 'residential'}
-                                                    onCheckedChange={(v) => {
-                                                        if (v) {
-                                                            setMailingAddressSameAs('residential');
-                                                            syncMailing('residential');
-                                                        } else {
-                                                            setMailingAddressSameAs(null);
-                                                        }
-                                                    }}
+                        {LEAD_INFO_SECTIONS.map((sec) => (
+                            <div key={sec.label}>
+                                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {sec.label}
+                                </h4>
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    {sec.fields.map((field) => (
+                                        <div key={field.path}>
+                                            <Label className="text-xs">{field.label}</Label>
+                                            {field.options ? (
+                                                <select
+                                                    value={(formData[field.path] as string) ?? ''}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                                    }
+                                                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                >
+                                                    <option value="">Select…</option>
+                                                    {field.options.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <Input
+                                                    type={field.type ?? 'text'}
+                                                    value={(formData[field.path] as string) ?? ''}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                                    }
+                                                    className="h-9"
                                                 />
-                                                <Label htmlFor="mailing-same-residential" className="cursor-pointer text-xs">
-                                                    Same as Residential Address
-                                                </Label>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    id="mailing-same-permanent"
-                                                    checked={mailingAddressSameAs === 'permanent'}
-                                                    onCheckedChange={(v) => {
-                                                        if (v) {
-                                                            setMailingAddressSameAs('permanent');
-                                                            syncMailing('permanent');
-                                                        } else {
-                                                            setMailingAddressSameAs(null);
-                                                        }
-                                                    }}
-                                                />
-                                                <Label htmlFor="mailing-same-permanent" className="cursor-pointer text-xs">
-                                                    Same as Permanent Residential Address
-                                                </Label>
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                        {sec.fields.map((field) => (
-                                            <div key={field.path}>
-                                                <Label className="text-xs">{field.label}</Label>
-                                                {field.options ? (
-                                                    <select
-                                                        value={(formData[field.path] as string) ?? ''}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
-                                                        }
-                                                        disabled={mailingLocked}
-                                                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm disabled:opacity-60"
-                                                    >
-                                                        <option value="">Select…</option>
-                                                        {field.options.map((opt) => (
-                                                            <option key={opt} value={opt}>{opt}</option>
-                                                        ))}
-                                                    </select>
-                                                ) : (
-                                                    <Input
-                                                        type={field.type ?? 'text'}
-                                                        value={(formData[field.path] as string) ?? ''}
-                                                        onChange={(e) =>
-                                                            setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
-                                                        }
-                                                        disabled={mailingLocked}
-                                                        className="h-9"
-                                                    />
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
+                                    ))}
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ))}
 
                         {/* Employment History repeater (max 6) */}
                         <div>
