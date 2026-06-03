@@ -56,7 +56,8 @@ import {
     StepperTitle,
     StepperTrigger,
 } from '@/components/ui/stepper';
-import { ArrowLeft, Check, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronRight, Download, FileText, Loader2, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import axios from '@/lib/http';
@@ -1091,6 +1092,7 @@ interface LeadInfoField {
     label: string;
     type?: string;
     section?: string;
+    options?: string[];
 }
 
 const LEAD_INFO_FIELDS: LeadInfoField[] = [
@@ -1099,13 +1101,13 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.surname', label: 'Surname / Family Name' },
     { path: 'main_applicant.middle_name', label: 'Middle Name' },
     { path: 'main_applicant.other_names', label: 'Other Names' },
-    { path: 'main_applicant.name_local_script', label: 'Name in Local Script' },
     { path: 'main_applicant.mothers_maiden_name', label: "Mother's Maiden Name" },
+    { path: 'main_applicant.name_local_script', label: 'Name in Local Script' },
     { path: 'main_applicant.dob', label: 'Date of Birth', type: 'date' },
-    { path: 'main_applicant.country_of_birth', label: 'Country of Birth' },
     { path: 'main_applicant.place_of_birth', label: 'Place of Birth' },
+    { path: 'main_applicant.country_of_birth', label: 'Country of Birth' },
     { path: 'main_applicant.nationality', label: 'Nationality' },
-    { path: 'main_applicant.gender', label: 'Gender' },
+    { path: 'main_applicant.gender', label: 'Gender', options: ['Male', 'Female'] },
     { path: 'main_applicant.marital_status', label: 'Marital Status' },
     { path: 'main_applicant.is_sponsored', label: 'Is Sponsored' },
 
@@ -1117,14 +1119,10 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.fax', label: 'Fax', type: 'tel' },
 
     // ── Employment ────────────────────────────────────────────────────────
-    { section: 'Employment', path: 'main_applicant.occupation', label: 'Occupation' },
-    { path: 'main_applicant.employment_status', label: 'Employment Status' },
+    { section: 'Employment', path: 'main_applicant.occupation_by_training', label: 'Occupation by Training' },
+    { path: 'main_applicant.current_occupation', label: 'Current Occupation' },
     { path: 'main_applicant.employer_name', label: 'Employer Name' },
     { path: 'main_applicant.employer_address', label: 'Employer Address' },
-    { path: 'main_applicant.employer_city', label: 'Employer City' },
-    { path: 'main_applicant.employer_country', label: 'Employer Country' },
-    { path: 'main_applicant.employment_from', label: 'Employment From', type: 'date' },
-    { path: 'main_applicant.employment_to', label: 'Employment To', type: 'date' },
 
     // ── Financial ─────────────────────────────────────────────────────────
     { section: 'Financial', path: 'main_applicant.annual_income', label: 'Annual Income' },
@@ -1139,11 +1137,10 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.national_id_country_2', label: 'National ID Country 2' },
     { path: 'main_applicant.drivers_licence_number', label: "Driver's Licence Number" },
     { path: 'main_applicant.drivers_licence_country', label: "Driver's Licence Country" },
-    { path: 'main_applicant.drivers_licence_number_2', label: "Driver's Licence Number 2" },
-    { path: 'main_applicant.drivers_licence_country_2', label: "Driver's Licence Country 2" },
 
-    // ── Primary Passport (extra fields; number & country in step 1) ───────
-    { section: 'Primary Passport', path: 'main_applicant.passport_1.date_of_issue', label: 'Date of Issue', type: 'date' },
+    // ── Primary Passport (number captured in step 1) ──────────────────────
+    { section: 'Primary Passport', path: 'main_applicant.passport_1.country_of_issue', label: 'Country of Issue' },
+    { path: 'main_applicant.passport_1.date_of_issue', label: 'Date of Issue', type: 'date' },
     { path: 'main_applicant.passport_1.date_of_expiry', label: 'Date of Expiry', type: 'date' },
 
     // ── Second Passport ───────────────────────────────────────────────────
@@ -1153,21 +1150,29 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     { path: 'main_applicant.passport_2.date_of_expiry', label: 'Date of Expiry', type: 'date' },
 
     // ── Residential Address ───────────────────────────────────────────────
-    { section: 'Residential Address', path: 'main_applicant.address_residential.line_1', label: 'Address Line 1' },
-    { path: 'main_applicant.address_residential.line_2', label: 'Address Line 2' },
+    { section: 'Residential Address', path: 'main_applicant.address_residential.full_address', label: 'Full Address' },
     { path: 'main_applicant.address_residential.city', label: 'City' },
     { path: 'main_applicant.address_residential.state_province', label: 'State / Province' },
     { path: 'main_applicant.address_residential.country', label: 'Country' },
     { path: 'main_applicant.address_residential.postal_code', label: 'Postal Code' },
+    { path: 'main_applicant.address_residential.date_since_month', label: 'Date Since (Month MM)' },
+    { path: 'main_applicant.address_residential.date_since_year', label: 'Date Since (Year YYYY)' },
+
+    // ── Permanent Residential Address ─────────────────────────────────────
+    { section: 'Permanent Residential Address', path: 'main_applicant.address_permanent.full_address', label: 'Full Address' },
+    { path: 'main_applicant.address_permanent.city', label: 'City' },
+    { path: 'main_applicant.address_permanent.state_province', label: 'State / Province' },
+    { path: 'main_applicant.address_permanent.country', label: 'Country' },
+    { path: 'main_applicant.address_permanent.postal_code', label: 'Postal Code' },
+    { path: 'main_applicant.address_permanent.date_since_month', label: 'Date Since (Month MM)' },
+    { path: 'main_applicant.address_permanent.date_since_year', label: 'Date Since (Year YYYY)' },
 
     // ── Mailing Address ───────────────────────────────────────────────────
-    { section: 'Mailing Address', path: 'main_applicant.address_mailing.line_1', label: 'Address Line 1' },
-    { path: 'main_applicant.address_mailing.line_2', label: 'Address Line 2' },
+    { section: 'Mailing Address', path: 'main_applicant.address_mailing.full_address', label: 'Full Address' },
     { path: 'main_applicant.address_mailing.city', label: 'City' },
     { path: 'main_applicant.address_mailing.state_province', label: 'State / Province' },
     { path: 'main_applicant.address_mailing.country', label: 'Country' },
     { path: 'main_applicant.address_mailing.postal_code', label: 'Postal Code' },
-
 ];
 
 const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => {
@@ -1182,24 +1187,41 @@ const LEAD_INFO_SECTIONS: { label: string; fields: LeadInfoField[] }[] = (() => 
     return sections;
 })();
 
-const EMPLOYMENT_HISTORY_FIELDS: { path: string; label: string; type?: string }[] = [
-    { path: 'employer', label: 'Employer' },
-    { path: 'position', label: 'Position' },
-    { path: 'from', label: 'From', type: 'date' },
-    { path: 'to', label: 'To', type: 'date' },
-    { path: 'country', label: 'Country' },
+const EMPLOYMENT_HISTORY_FIELDS: { path: string; label: string; placeholder?: string }[] = [
+    { path: 'period_start', label: 'From', placeholder: 'MM/YYYY' },
+    { path: 'period_end', label: 'To', placeholder: 'MM/YYYY or Present' },
+    { path: 'employer_name', label: 'Employer Name' },
+    { path: 'position', label: 'Position / Title' },
+    { path: 'address', label: 'Address' },
+    { path: 'business_type', label: 'Type of Business' },
     { path: 'reason_leaving', label: 'Reason for Leaving' },
 ];
 
-const RESIDENCE_HISTORY_FIELDS: { path: string; label: string; type?: string }[] = [
-    { path: 'address', label: 'Address' },
-    { path: 'city', label: 'City' },
-    { path: 'country', label: 'Country' },
-    { path: 'from', label: 'From', type: 'date' },
-    { path: 'to', label: 'To', type: 'date' },
-    { path: 'purpose', label: 'Purpose' },
-    { path: 'status', label: 'Status' },
+const ADDRESS_HISTORY_FIELDS: { path: string; label: string; placeholder?: string }[] = [
+    { path: 'from', label: 'Date From (MM/YYYY)', placeholder: 'e.g. 01/2015' },
+    { path: 'to', label: 'Date To (MM/YYYY)', placeholder: 'e.g. 12/2020 or Present' },
+    { path: 'address', label: 'Full Address (street, town, postal code, country)', placeholder: 'e.g. 73-A Ahmed Block, Garden Town, Lahore, Pakistan' },
 ];
+
+const CHILD_FIELDS: { path: string; label: string; type?: string; options?: string[] }[] = [
+    { path: 'given_names', label: 'Given Names' },
+    { path: 'surname', label: 'Surname' },
+    { path: 'dob', label: 'Date of Birth', type: 'date' },
+    { path: 'gender', label: 'Gender', options: ['Male', 'Female'] },
+    { path: 'nationality', label: 'Nationality' },
+    { path: 'place_of_birth', label: 'Place of Birth' },
+];
+
+function childAge(dob: string): number | null {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+}
 
 function countFilledHistoryEntries(data: Record<string, unknown>, prefix: string, max: number): number {
     for (let i = max; i >= 1; i--) {
@@ -1233,11 +1255,21 @@ function LeadFormsFillView({
     const [currentStep, setCurrentStep] = useState(1);
     const [isSavingStep, setIsSavingStep] = useState(false);
     const [employmentCount, setEmploymentCount] = useState(() =>
-        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.employment_history_', 4),
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.employment_history_', 6),
     );
-    const [residenceCount, setResidenceCount] = useState(() =>
-        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.residence_history_', 5),
+    const [addrHistCount, setAddrHistCount] = useState(() =>
+        countFilledHistoryEntries(initialApp?.data ?? {}, 'main_applicant.residence_history_', 7),
     );
+    const [hasSpouse, setHasSpouse] = useState(() => {
+        const d = initialApp?.data ?? {};
+        return !!(d['main_applicant.spouse.given_names'] || d['main_applicant.spouse.surname']);
+    });
+    const [hasChildren, setHasChildren] = useState(() => !!initialApp?.data?.['main_applicant.child_1.given_names']);
+    const [childCount, setChildCount] = useState(() => {
+        const d = initialApp?.data ?? {};
+        if (!d['main_applicant.child_1.given_names']) return 1;
+        return countFilledHistoryEntries(d as Record<string, unknown>, 'main_applicant.child_', 6);
+    });
 
     const { data: programsRaw, isLoading: loadingPrograms } = useLeadPrograms(leadId);
     const { data: schemaRaw, isLoading: loadingSchema } = useLeadProgramSchema(leadId, programId);
@@ -1276,10 +1308,11 @@ function LeadFormsFillView({
     const allSteps = useMemo(() => {
         const steps: { key: string; label: string }[] = [
             { key: 'applicant_info', label: 'Applicant Info' },
-            { key: 'lead_information', label: 'Lead Information' },
+            { key: 'main_applicant', label: 'Main Applicant' },
+            { key: 'dependents', label: 'Dependents' },
         ];
         if (schemaData?.sections) {
-            // Skip 'main_applicant' section — covered by the fixed 'Lead Information' step
+            // Skip 'main_applicant' section — covered by the fixed 'Main Applicant' step
             for (const section of schemaData.sections) {
                 if (section.key !== 'main_applicant') {
                     steps.push({ key: section.key, label: section.label });
@@ -1493,7 +1526,7 @@ function LeadFormsFillView({
                     </div>
                 </StepperContent>
 
-                {/* Step 2: Lead Information (hardcoded common applicant fields) */}
+                {/* Step 2: Main Applicant */}
                 <StepperContent value={2}>
                     <div className="space-y-5">
                         {/* Static sections */}
@@ -1506,37 +1539,53 @@ function LeadFormsFillView({
                                     {sec.fields.map((field) => (
                                         <div key={field.path}>
                                             <Label className="text-xs">{field.label}</Label>
-                                            <Input
-                                                type={field.type ?? 'text'}
-                                                value={(formData[field.path] as string) ?? ''}
-                                                onChange={(e) =>
-                                                    setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
-                                                }
-                                                className="h-9"
-                                            />
+                                            {field.options ? (
+                                                <select
+                                                    value={(formData[field.path] as string) ?? ''}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                                    }
+                                                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                >
+                                                    <option value="">Select…</option>
+                                                    {field.options.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <Input
+                                                    type={field.type ?? 'text'}
+                                                    value={(formData[field.path] as string) ?? ''}
+                                                    onChange={(e) =>
+                                                        setFormData((prev) => ({ ...prev, [field.path]: e.target.value }))
+                                                    }
+                                                    className="h-9"
+                                                />
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         ))}
 
-                        {/* Employment History repeater (max 4) */}
+                        {/* Employment History repeater (max 6) */}
                         <div>
                             <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                 Employment History
                             </h4>
+                            <p className="mb-3 text-xs text-muted-foreground">List previous employment — most recent first.</p>
                             <div className="space-y-3">
                                 {Array.from({ length: employmentCount }, (_, i) => i + 1).map((n) => (
-                                    <div key={n} className="rounded-md border border-border p-3">
+                                    <div key={n} className="rounded-md border border-border bg-muted/20 p-3">
                                         <div className="mb-2 flex items-center justify-between">
                                             <span className="text-xs font-medium text-muted-foreground">
-                                                Entry {n}
+                                                Position {n}
                                             </span>
                                             {n === employmentCount && employmentCount > 1 && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                                    className="h-6 text-xs text-destructive"
                                                     onClick={() => {
                                                         const keyPrefix = `main_applicant.employment_history_${n}.`;
                                                         setFormData((prev) => {
@@ -1549,7 +1598,7 @@ function LeadFormsFillView({
                                                         setEmploymentCount((prev) => prev - 1);
                                                     }}
                                                 >
-                                                    <X className="size-3" />
+                                                    <Trash2 className="mr-1 size-3" /> Remove
                                                 </Button>
                                             )}
                                         </div>
@@ -1560,8 +1609,8 @@ function LeadFormsFillView({
                                                     <div key={fullPath}>
                                                         <Label className="text-xs">{field.label}</Label>
                                                         <Input
-                                                            type={field.type ?? 'text'}
                                                             value={(formData[fullPath] as string) ?? ''}
+                                                            placeholder={field.placeholder}
                                                             onChange={(e) =>
                                                                 setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
                                                             }
@@ -1574,7 +1623,7 @@ function LeadFormsFillView({
                                     </div>
                                 ))}
                             </div>
-                            {employmentCount < 4 && (
+                            {employmentCount < 6 && (
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -1582,28 +1631,29 @@ function LeadFormsFillView({
                                     onClick={() => setEmploymentCount((prev) => prev + 1)}
                                 >
                                     <Plus className="mr-1 size-3" />
-                                    Add Employment History
+                                    Add Employment Entry
                                 </Button>
                             )}
                         </div>
 
-                        {/* Residence History repeater (max 5) */}
+                        {/* Address History repeater (max 7) */}
                         <div>
-                            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                Residence History
+                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Address History
                             </h4>
+                            <p className="mb-3 text-xs text-muted-foreground">List all addresses for the last 10 years — no gaps in history.</p>
                             <div className="space-y-3">
-                                {Array.from({ length: residenceCount }, (_, i) => i + 1).map((n) => (
-                                    <div key={n} className="rounded-md border border-border p-3">
+                                {Array.from({ length: addrHistCount }, (_, i) => i + 1).map((n) => (
+                                    <div key={n} className="rounded-md border border-border bg-muted/20 p-3">
                                         <div className="mb-2 flex items-center justify-between">
                                             <span className="text-xs font-medium text-muted-foreground">
-                                                Entry {n}
+                                                Address {n}
                                             </span>
-                                            {n === residenceCount && residenceCount > 1 && (
+                                            {n === addrHistCount && addrHistCount > 1 && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                                    className="h-6 text-xs text-destructive"
                                                     onClick={() => {
                                                         const keyPrefix = `main_applicant.residence_history_${n}.`;
                                                         setFormData((prev) => {
@@ -1613,22 +1663,23 @@ function LeadFormsFillView({
                                                             }
                                                             return next;
                                                         });
-                                                        setResidenceCount((prev) => prev - 1);
+                                                        setAddrHistCount((prev) => prev - 1);
                                                     }}
                                                 >
-                                                    <X className="size-3" />
+                                                    <Trash2 className="mr-1 size-3" /> Remove
                                                 </Button>
                                             )}
                                         </div>
                                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                            {RESIDENCE_HISTORY_FIELDS.map((field) => {
+                                            {ADDRESS_HISTORY_FIELDS.map((field) => {
                                                 const fullPath = `main_applicant.residence_history_${n}.${field.path}`;
+                                                const isFullAddress = field.path === 'address';
                                                 return (
-                                                    <div key={fullPath}>
+                                                    <div key={fullPath} className={isFullAddress ? 'md:col-span-2' : ''}>
                                                         <Label className="text-xs">{field.label}</Label>
                                                         <Input
-                                                            type={field.type ?? 'text'}
                                                             value={(formData[fullPath] as string) ?? ''}
+                                                            placeholder={field.placeholder}
                                                             onChange={(e) =>
                                                                 setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
                                                             }
@@ -1641,23 +1692,230 @@ function LeadFormsFillView({
                                     </div>
                                 ))}
                             </div>
-                            {residenceCount < 5 && (
+                            {addrHistCount < 7 && (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     className="mt-2 h-7 text-xs"
-                                    onClick={() => setResidenceCount((prev) => prev + 1)}
+                                    onClick={() => setAddrHistCount((prev) => prev + 1)}
                                 >
                                     <Plus className="mr-1 size-3" />
-                                    Add Residence History
+                                    Add Address
                                 </Button>
                             )}
                         </div>
                     </div>
                 </StepperContent>
 
-                {/* Schema section steps (start from step 3, skip 'main_applicant') */}
-                {loadingSchema && currentStep > 2 ? (
+                {/* Step 3: Dependents */}
+                <StepperContent value={3}>
+                    <div className="space-y-6">
+                        {/* Spouse */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Spouse</h4>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="has-spouse"
+                                    checked={hasSpouse}
+                                    onCheckedChange={(v) => {
+                                        setHasSpouse(Boolean(v));
+                                        if (!v) {
+                                            setFormData((prev) => {
+                                                const next = { ...prev };
+                                                for (const key of Object.keys(next)) {
+                                                    if (key.startsWith('main_applicant.spouse.')) delete next[key];
+                                                }
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="has-spouse" className="cursor-pointer text-sm font-medium">
+                                    Has Spouse (will require a separate D1 form)
+                                </Label>
+                            </div>
+
+                            {hasSpouse && (
+                                <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        {[
+                                            { path: 'main_applicant.spouse.given_names', label: 'Given Names' },
+                                            { path: 'main_applicant.spouse.surname', label: 'Surname' },
+                                            { path: 'main_applicant.spouse.dob', label: 'Date of Birth', type: 'date' },
+                                        ].map((f) => (
+                                            <div key={f.path}>
+                                                <Label className="text-xs">{f.label}</Label>
+                                                <Input
+                                                    type={f.type ?? 'text'}
+                                                    value={(formData[f.path] as string) ?? ''}
+                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [f.path]: e.target.value }))}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        {[
+                                            { path: 'main_applicant.spouse.nationality', label: 'Nationality' },
+                                            { path: 'main_applicant.spouse.occupation', label: 'Occupation' },
+                                            { path: 'main_applicant.spouse.employer', label: 'Employer' },
+                                        ].map((f) => (
+                                            <div key={f.path}>
+                                                <Label className="text-xs">{f.label}</Label>
+                                                <Input
+                                                    value={(formData[f.path] as string) ?? ''}
+                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [f.path]: e.target.value }))}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                                        {[
+                                            { path: 'main_applicant.spouse.address', label: 'Address' },
+                                            { path: 'main_applicant.spouse.city', label: 'City' },
+                                            { path: 'main_applicant.spouse.country', label: 'Country' },
+                                            { path: 'main_applicant.spouse.phone_mobile', label: 'Mobile Phone' },
+                                        ].map((f) => (
+                                            <div key={f.path}>
+                                                <Label className="text-xs">{f.label}</Label>
+                                                <Input
+                                                    value={(formData[f.path] as string) ?? ''}
+                                                    onChange={(e) => setFormData((prev) => ({ ...prev, [f.path]: e.target.value }))}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Children */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Children</h4>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="has-children"
+                                    checked={hasChildren}
+                                    onCheckedChange={(v) => {
+                                        setHasChildren(Boolean(v));
+                                        if (!v) {
+                                            setFormData((prev) => {
+                                                const next = { ...prev };
+                                                for (const key of Object.keys(next)) {
+                                                    if (key.startsWith('main_applicant.child_')) delete next[key];
+                                                }
+                                                return next;
+                                            });
+                                            setChildCount(1);
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor="has-children" className="cursor-pointer text-sm font-medium">
+                                    Has Children
+                                </Label>
+                            </div>
+
+                            {hasChildren && (
+                                <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+                                    {Array.from({ length: childCount }, (_, i) => i + 1).map((n) => {
+                                        const dobPath = `main_applicant.child_${n}.dob`;
+                                        const age = childAge((formData[dobPath] as string) ?? '');
+                                        const needsOwnD1 = age !== null && age >= 16;
+                                        return (
+                                            <div key={n} className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-medium">Child {n}</span>
+                                                        {age !== null && (
+                                                            <Badge variant="secondary" className="text-xs">{age} yrs</Badge>
+                                                        )}
+                                                        {needsOwnD1 && (
+                                                            <div className="flex items-center gap-1 text-xs text-amber-600">
+                                                                <AlertTriangle className="size-3" />
+                                                                Requires own D1
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {n === childCount && childCount > 1 && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 text-xs text-destructive"
+                                                            onClick={() => {
+                                                                const keyPrefix = `main_applicant.child_${n}.`;
+                                                                setFormData((prev) => {
+                                                                    const next = { ...prev };
+                                                                    for (const key of Object.keys(next)) {
+                                                                        if (key.startsWith(keyPrefix)) delete next[key];
+                                                                    }
+                                                                    return next;
+                                                                });
+                                                                setChildCount((prev) => prev - 1);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="mr-1 size-3" /> Remove
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                    {CHILD_FIELDS.map((field) => {
+                                                        const fullPath = `main_applicant.child_${n}.${field.path}`;
+                                                        return (
+                                                            <div key={fullPath}>
+                                                                <Label className="text-xs">{field.label}</Label>
+                                                                {field.options ? (
+                                                                    <select
+                                                                        value={(formData[fullPath] as string) ?? ''}
+                                                                        onChange={(e) =>
+                                                                            setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                                        }
+                                                                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                                    >
+                                                                        <option value="">Select…</option>
+                                                                        {field.options.map((opt) => (
+                                                                            <option key={opt} value={opt}>{opt}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : (
+                                                                    <Input
+                                                                        type={field.type ?? 'text'}
+                                                                        value={(formData[fullPath] as string) ?? ''}
+                                                                        onChange={(e) =>
+                                                                            setFormData((prev) => ({ ...prev, [fullPath]: e.target.value }))
+                                                                        }
+                                                                        className="h-9"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {childCount < 6 && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => setChildCount((prev) => prev + 1)}
+                                        >
+                                            <Plus className="mr-1 size-3" />
+                                            Add Child
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </StepperContent>
+
+                {/* Schema section steps (start from step 4, skip 'main_applicant') */}
+                {loadingSchema && currentStep > 3 ? (
                     <div className="space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
                             <Skeleton key={i} className="h-10 w-full" />
@@ -1672,7 +1930,7 @@ function LeadFormsFillView({
                         ).length;
 
                         return (
-                            <StepperContent key={section.key} value={idx + 3}>
+                            <StepperContent key={section.key} value={idx + 4}>
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-sm font-medium text-muted-foreground">{section.label}</h4>
