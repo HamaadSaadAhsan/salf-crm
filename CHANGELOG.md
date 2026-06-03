@@ -8,7 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Passport "Place of Issue" field added to both the settings create form and the lead application stepper (Primary Passport and Second Passport sections); `canonicalData()` now derives `passport_N.date_and_place_of_issue` by combining date and place for D3's combined field
 - Declarations D75–D91 now default to "No" on new lead applications; existing saved values are preserved
+
+### Fixed
+- D3 "Date and place of issue" field now receives a combined `"date, place"` string via the new derived `passport_1.date_and_place_of_issue` path instead of only the date
+- D4 "place of issue" field mapping corrected from `passport_1.date_of_issue` to `passport_1.place_of_issue`
 - "Same as Residential Address" checkbox added to the Permanent Residential Address section in both the settings application create form and the lead application stepper — checking it instantly copies all residential address fields (street, city, state, country, postal code, date since month/year) into the permanent address fields
 
 ### Fixed

@@ -40,6 +40,7 @@ interface PassportEntry {
     number: string;
     country_of_issue: string;
     date_of_issue: string;
+    place_of_issue: string;
     date_of_expiry: string;
 }
 
@@ -287,6 +288,7 @@ function buildCanonicalData(f: IntakeForm): Record<string, string> {
         set(`main_applicant.passport_${n}.number`, p.number);
         set(`main_applicant.passport_${n}.country_of_issue`, p.country_of_issue);
         set(`main_applicant.passport_${n}.date_of_issue`, p.date_of_issue);
+        set(`main_applicant.passport_${n}.place_of_issue`, p.place_of_issue);
         set(`main_applicant.passport_${n}.date_of_expiry`, p.date_of_expiry);
     });
 
@@ -475,6 +477,7 @@ function parseExistingData(data: Record<string, unknown> | null | undefined): Pa
                 number: num,
                 country_of_issue: flat(data, `main_applicant.passport_${n}.country_of_issue`),
                 date_of_issue: flat(data, `main_applicant.passport_${n}.date_of_issue`),
+                place_of_issue: flat(data, `main_applicant.passport_${n}.place_of_issue`),
                 date_of_expiry: flat(data, `main_applicant.passport_${n}.date_of_expiry`),
             });
         }
@@ -698,7 +701,7 @@ function parseExistingData(data: Record<string, unknown> | null | undefined): Pa
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function emptyPassport(): PassportEntry {
-    return { number: '', country_of_issue: '', date_of_issue: '', date_of_expiry: '' };
+    return { number: '', country_of_issue: '', date_of_issue: '', place_of_issue: '', date_of_expiry: '' };
 }
 
 function emptyEmployment(): EmploymentEntry {
@@ -1054,10 +1057,13 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
                                         </Button>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-4 gap-3">
+                                <div className="grid grid-cols-3 gap-3">
                                     <Field label="Passport Number" required={i === 0}><TextInput value={p.number} onChange={v => updatePassport(i, 'number', v)} placeholder="e.g. A12345678" /></Field>
                                     <Field label="Country of Issue"><TextInput value={p.country_of_issue} onChange={v => updatePassport(i, 'country_of_issue', v)} placeholder="e.g. Jordan" /></Field>
                                     <Field label="Date of Issue"><DateInput value={p.date_of_issue} onChange={v => updatePassport(i, 'date_of_issue', v)} /></Field>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <Field label="Place of Issue"><TextInput value={p.place_of_issue} onChange={v => updatePassport(i, 'place_of_issue', v)} placeholder="e.g. Amman" /></Field>
                                     <Field label="Date of Expiry"><DateInput value={p.date_of_expiry} onChange={v => updatePassport(i, 'date_of_expiry', v)} /></Field>
                                 </div>
                             </div>

@@ -114,6 +114,16 @@ class Application extends Model
             );
         }
 
+        // Derive combined date_and_place_of_issue for each passport (used by D3)
+        for ($n = 1; $n <= 2; $n++) {
+            $date = trim((string) Arr::get($nested, "main_applicant.passport_{$n}.date_of_issue", ''));
+            $place = trim((string) Arr::get($nested, "main_applicant.passport_{$n}.place_of_issue", ''));
+            if ($date || $place) {
+                $combined = implode(', ', array_filter([$date, $place]));
+                Arr::set($nested, "main_applicant.passport_{$n}.date_and_place_of_issue", $combined);
+            }
+        }
+
         // Derive full_name from given_name + surname if not explicitly set
         if (! Arr::get($nested, 'main_applicant.full_name')) {
             $given = trim(Arr::get($nested, 'main_applicant.given_name', ''));

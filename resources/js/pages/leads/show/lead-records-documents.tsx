@@ -1173,12 +1173,14 @@ const LEAD_INFO_FIELDS: LeadInfoField[] = [
     // ── Primary Passport (number captured in step 1) ──────────────────────
     { section: 'Primary Passport', path: 'main_applicant.passport_1.country_of_issue', label: 'Country of Issue' },
     { path: 'main_applicant.passport_1.date_of_issue', label: 'Date of Issue', type: 'date' },
+    { path: 'main_applicant.passport_1.place_of_issue', label: 'Place of Issue' },
     { path: 'main_applicant.passport_1.date_of_expiry', label: 'Date of Expiry', type: 'date' },
 
     // ── Second Passport ───────────────────────────────────────────────────
     { section: 'Second Passport', path: 'main_applicant.passport_2.number', label: 'Passport Number' },
     { path: 'main_applicant.passport_2.country_of_issue', label: 'Country of Issue' },
     { path: 'main_applicant.passport_2.date_of_issue', label: 'Date of Issue', type: 'date' },
+    { path: 'main_applicant.passport_2.place_of_issue', label: 'Place of Issue' },
     { path: 'main_applicant.passport_2.date_of_expiry', label: 'Date of Expiry', type: 'date' },
 
     // ── Residential Address ───────────────────────────────────────────────
