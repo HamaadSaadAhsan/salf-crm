@@ -22,7 +22,7 @@ class LeadFactory extends Factory
         return [
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
-            'phone' => $this->faker->optional()->phoneNumber(),
+            'phone' => $this->faker->phoneNumber(),
             'occupation' => $this->faker->optional()->jobTitle(),
             'address' => $this->faker->optional()->address(),
             'city' => $this->faker->optional()->city(),

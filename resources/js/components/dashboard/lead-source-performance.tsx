@@ -88,6 +88,8 @@ export function LeadSourcePerformance() {
         quality_score: item.quality_score,
     }));
 
+    const chartHeight = Math.max(200, chartData.length * 26);
+
     return (
         <Card>
             <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
@@ -113,7 +115,7 @@ export function LeadSourcePerformance() {
                 </CardToolbar>
             </CardHeader>
             <CardContent className="px-2 pt-0 sm:px-4">
-                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                <ChartContainer config={chartConfig} className="w-full" style={{ height: chartHeight }}>
                     <BarChart
                         data={chartData}
                         layout="vertical"
@@ -126,7 +128,7 @@ export function LeadSourcePerformance() {
                     >
                         <CartesianGrid horizontal={false} vertical stroke="currentColor" strokeOpacity={0.07} />
                         <XAxis type="number" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} domain={[0, 'auto']} />
-                        <YAxis type="category" dataKey="source" tick={{ fontSize: 11, opacity: 0.7 }} axisLine={false} tickLine={false} width={90} />
+                        <YAxis type="category" dataKey="source" tick={{ fontSize: 11, opacity: 0.7 }} axisLine={false} tickLine={false} width={110} interval={0} />
                         <ChartTooltip content={(props: any) => <NightTooltip {...props} valueFormatter={(v) => `${Number(v).toFixed(1)}%`} />} />
                         <Bar dataKey="conversion_rate" radius={[0, 4, 4, 0]} name="Conversion Rate (%)">
                             {chartData.map((entry, index) => (

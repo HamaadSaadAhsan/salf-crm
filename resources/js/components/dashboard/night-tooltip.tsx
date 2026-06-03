@@ -16,6 +16,7 @@ interface NightTooltipProps {
     valueFormatter?: (value: number | string, name: string) => string;
     showTotal?: boolean;
     totalFormatter?: (total: number) => string;
+    hideZeroValues?: boolean;
     className?: string;
     // allow Recharts internal props to pass through without TS error
     [key: string]: unknown;
@@ -29,16 +30,23 @@ export function NightTooltip({
     valueFormatter,
     showTotal = false,
     totalFormatter,
+    hideZeroValues = false,
     className,
 }: NightTooltipProps) {
     if (!active || !payload || payload.length === 0) return null;
+
+    const rows = hideZeroValues
+        ? payload.filter((item) => Number(item.value) !== 0)
+        : payload;
+
+    if (rows.length === 0) return null;
 
     const displayLabel = label !== undefined
         ? (labelFormatter ? labelFormatter(label) : String(label))
         : null;
 
     const total = showTotal
-        ? payload.reduce((sum, item) => sum + (Number(item.value) || 0), 0)
+        ? rows.reduce((sum, item) => sum + (Number(item.value) || 0), 0)
         : null;
 
     return (
@@ -55,7 +63,7 @@ export function NightTooltip({
                 </>
             )}
             <div className="space-y-0 px-3 py-2">
-                {payload.map((item, i) => {
+                {rows.map((item, i) => {
                     if (item.value === undefined || item.value === null) return null;
                     const displayValue = valueFormatter
                         ? valueFormatter(item.value, item.name ?? '')

@@ -147,7 +147,7 @@ export function QuarterlyPerformanceTrends() {
     const totalCount = allItems.length;
 
     return (
-        <Card className="min-w-0">
+        <Card className="min-w-0 overflow-visible">
             <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
                 <CardTitle className="text-base font-semibold sm:text-xl">LTS (Won) Performance Trends</CardTitle>
                 <CardDescription>
@@ -267,6 +267,8 @@ export function QuarterlyPerformanceTrends() {
                                 <XAxis dataKey="quarter" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} />
                                 <YAxis tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} width={42} tickFormatter={(v) => `${v}%`} />
                                 <ChartTooltip
+                                    allowEscapeViewBox={{ x: false, y: true }}
+                                    wrapperStyle={{ zIndex: 9999 }}
                                     content={(props: any) => (
                                         <NightTooltip
                                             {...props}
@@ -275,6 +277,7 @@ export function QuarterlyPerformanceTrends() {
                                                 name: chartConfig[p.dataKey as string]?.label ?? p.name,
                                             }))}
                                             valueFormatter={(v) => `${Number(v).toFixed(1)}%`}
+                                            hideZeroValues
                                         />
                                     )}
                                 />
@@ -318,10 +321,10 @@ export function QuarterlyPerformanceTrends() {
                             <table className="w-full text-xs">
                                 <thead>
                                     <tr className="text-muted-foreground">
-                                        <th className="pb-2 text-left font-medium">Quarter</th>
-                                        <th className="pb-2 text-right font-medium">Leads</th>
-                                        <th className="pb-2 text-right font-medium">Won</th>
-                                        <th className="pb-2 text-right font-medium">Rate</th>
+                                        <th className="pb-2 px-2 text-left font-medium">Quarter</th>
+                                        <th className="pb-2 px-2 text-right font-medium">Leads</th>
+                                        <th className="pb-2 px-2 text-right font-medium">Won</th>
+                                        <th className="pb-2 px-2 text-right font-medium">Rate</th>
                                         {programs.map((name) => (
                                             <th
                                                 key={name}
@@ -337,12 +340,12 @@ export function QuarterlyPerformanceTrends() {
                                 <tbody className="divide-y divide-border">
                                     {data.trends.map((t) => (
                                         <tr key={t.quarter} className="hover:bg-muted/30 transition-colors">
-                                            <td className="py-1.5 pr-3 font-medium">{t.quarter}</td>
-                                            <td className="py-1.5 text-right tabular-nums">{t.total_leads.toLocaleString()}</td>
-                                            <td className="py-1.5 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
+                                            <td className="py-1.5 px-2 font-medium whitespace-nowrap">{t.quarter}</td>
+                                            <td className="py-1.5 px-2 text-right tabular-nums">{t.total_leads.toLocaleString()}</td>
+                                            <td className="py-1.5 px-2 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
                                                 {t.won_leads.toLocaleString()}
                                             </td>
-                                            <td className="py-1.5 text-right tabular-nums font-medium">{t.conversion_rate}%</td>
+                                            <td className="py-1.5 px-2 text-right tabular-nums font-medium">{t.conversion_rate}%</td>
                                             {programs.map((name) => (
                                                 <td
                                                     key={name}
