@@ -160,6 +160,29 @@ describe('Advanced Metrics Endpoints', function () {
             }
         });
 
+        it('includes services that have no country_code, falling back to name', function () {
+            $service = Service::factory()->create([
+                'name' => 'Real Estate',
+                'country_code' => null,
+                'country_name' => null,
+            ]);
+            Lead::factory()->count(8)->create(['service_id' => $service->id, 'inquiry_status' => 'new']);
+            Lead::factory()->count(2)->create(['service_id' => $service->id, 'inquiry_status' => 'won']);
+
+            $response = $this->getJson('/api/dashboard/program-performance?period=90');
+
+            $response->assertSuccessful();
+
+            $programs = collect($response->json('program_performance'));
+            expect($programs)->not->toBeEmpty();
+
+            $realEstate = $programs->firstWhere('program_name', 'Real Estate');
+            expect($realEstate)->not->toBeNull();
+            expect($realEstate['program_code'])->toBe('Real Estate');
+            expect($realEstate['total_leads'])->toBe(10);
+            expect($realEstate['converted_leads'])->toBe(2);
+        });
+
         it('supports different period ranges including yearly', function ($period) {
             $service = Service::factory()->create();
             Lead::factory()->count(5)->create(['service_id' => $service->id]);

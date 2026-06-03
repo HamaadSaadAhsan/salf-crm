@@ -56,13 +56,15 @@ export function ProgramPerformance() {
 
     const sortedData = [...data.program_performance].sort((a, b) => b.conversion_rate - a.conversion_rate);
 
-    const chartData = sortedData.slice(0, 10).map((item) => ({
+    const chartData = sortedData.map((item) => ({
         program: item.program_code,
         conversion_rate: item.conversion_rate,
         qualification_rate: item.qualification_rate,
         total_leads: item.total_leads,
         converted_leads: item.converted_leads,
     }));
+
+    const chartHeight = Math.max(200, chartData.length * 38);
 
     const getTrend = (code: string) => {
         const trend = data.program_trends[code];
@@ -106,7 +108,7 @@ export function ProgramPerformance() {
                 </CardToolbar>
             </CardHeader>
             <CardContent className="px-2 pt-0 sm:px-4">
-                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                <ChartContainer config={chartConfig} className="w-full" style={{ height: chartHeight }}>
                     <BarChart
                         data={chartData}
                         layout="vertical"
@@ -119,7 +121,7 @@ export function ProgramPerformance() {
                     >
                         <CartesianGrid horizontal={false} vertical stroke="currentColor" strokeOpacity={0.07} />
                         <XAxis type="number" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} domain={[0, 'auto']} />
-                        <YAxis type="category" dataKey="program" tick={{ fontSize: 11, opacity: 0.7 }} axisLine={false} tickLine={false} width={60} />
+                        <YAxis type="category" dataKey="program" tick={{ fontSize: 11, opacity: 0.7 }} axisLine={false} tickLine={false} width={110} interval={0} />
                         <ChartTooltip
                             content={(props: any) => (
                                 <NightTooltip
