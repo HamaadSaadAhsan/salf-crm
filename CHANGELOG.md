@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- Application intake form Dependents section fully expanded: Spouse now includes State, Postal Code, Home Phone, Work Phone, and full Employer Address (address/city/state/postal code/country); Children cards now include Country of Residence, Occupation, Phone, and Not Included in Application fields; Previous Spouses repeater (up to 2, with full name/nationality/DOB/marriage date/dissolution date), Siblings repeater (up to 4, with all canonical fields), and Parents & In-Laws section (four fixed panels: Father, Mother, Father-in-Law, Mother-in-Law with given names/surname/DOB/place of birth/citizenship/occupation/residential address/deceased flag) added to both the settings create form and the lead stepper
+
 ### Added
 - Structured application intake form replaces the schema-driven field-by-field editor: collects Main Applicant personal info, up to 2 passports, residential address (with Date Since), permanent residential address, address history (up to 7 entries with date from/to and full address — maps to `residence_history_N.*` for D1 A35), current employment + history (up to 6 entries), spouse (with D1 note), and children (age auto-calculated, children ≥ 16 flagged as requiring own D1); all data auto-maps to canonical flat keys on save
 - D3 (Medical Questionnaire) field mappings added: Full Name, Residential Address, Country of Residence, Date of Birth, Passport Number/National ID, Date and place of issue, Occupation, Marital Status, Email Address, and gender M/F checkboxes — main applicant data now auto-fills D3 on generation
