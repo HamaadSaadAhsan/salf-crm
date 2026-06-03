@@ -53,6 +53,12 @@ interface EmploymentEntry {
     reason_leaving: string;
 }
 
+interface AddressHistoryEntry {
+    date_from: string;
+    date_to: string;
+    full_address: string;
+}
+
 interface ChildEntry {
     given_names: string;
     surname: string;
@@ -76,12 +82,24 @@ interface IntakeForm {
     phone_home: string;
     // Passports
     passports: PassportEntry[];
-    // Address
+    // Current residential address
     residential_address: string;
     residential_city: string;
     residential_state: string;
     residential_country: string;
     residential_postal_code: string;
+    residential_date_since_month: string;
+    residential_date_since_year: string;
+    // Permanent residential address
+    permanent_address: string;
+    permanent_city: string;
+    permanent_state: string;
+    permanent_country: string;
+    permanent_postal_code: string;
+    permanent_date_since_month: string;
+    permanent_date_since_year: string;
+    // Address history
+    address_history: AddressHistoryEntry[];
     // Employment
     occupation_by_training: string;
     current_occupation: string;
@@ -135,6 +153,23 @@ function buildCanonicalData(f: IntakeForm): Record<string, string> {
     set('main_applicant.address_residential.state_province', f.residential_state);
     set('main_applicant.address_residential.country', f.residential_country);
     set('main_applicant.address_residential.postal_code', f.residential_postal_code);
+    set('main_applicant.address_residential.date_since_month', f.residential_date_since_month);
+    set('main_applicant.address_residential.date_since_year', f.residential_date_since_year);
+
+    set('main_applicant.address_permanent.full_address', f.permanent_address);
+    set('main_applicant.address_permanent.city', f.permanent_city);
+    set('main_applicant.address_permanent.state_province', f.permanent_state);
+    set('main_applicant.address_permanent.country', f.permanent_country);
+    set('main_applicant.address_permanent.postal_code', f.permanent_postal_code);
+    set('main_applicant.address_permanent.date_since_month', f.permanent_date_since_month);
+    set('main_applicant.address_permanent.date_since_year', f.permanent_date_since_year);
+
+    f.address_history.forEach((a, i) => {
+        const n = i + 1;
+        set(`main_applicant.residence_history_${n}.from`, a.date_from);
+        set(`main_applicant.residence_history_${n}.to`, a.date_to);
+        set(`main_applicant.residence_history_${n}.address`, a.full_address);
+    });
 
     set('main_applicant.occupation_by_training', f.occupation_by_training);
     set('main_applicant.current_occupation', f.current_occupation);
@@ -222,6 +257,18 @@ function parseExistingData(data: Record<string, unknown> | null | undefined): Pa
         }
     }
 
+    const address_history: AddressHistoryEntry[] = [];
+    for (let n = 1; n <= 7; n++) {
+        const addr = flat(data, `main_applicant.residence_history_${n}.address`);
+        if (addr) {
+            address_history.push({
+                date_from: flat(data, `main_applicant.residence_history_${n}.from`),
+                date_to: flat(data, `main_applicant.residence_history_${n}.to`),
+                full_address: addr,
+            });
+        }
+    }
+
     const children: ChildEntry[] = [];
     for (let n = 1; n <= 6; n++) {
         const given = flat(data, `main_applicant.child_${n}.given_names`);
@@ -256,6 +303,16 @@ function parseExistingData(data: Record<string, unknown> | null | undefined): Pa
         residential_state: flat(data, 'main_applicant.address_residential.state_province'),
         residential_country: flat(data, 'main_applicant.address_residential.country'),
         residential_postal_code: flat(data, 'main_applicant.address_residential.postal_code'),
+        residential_date_since_month: flat(data, 'main_applicant.address_residential.date_since_month'),
+        residential_date_since_year: flat(data, 'main_applicant.address_residential.date_since_year'),
+        permanent_address: flat(data, 'main_applicant.address_permanent.full_address'),
+        permanent_city: flat(data, 'main_applicant.address_permanent.city'),
+        permanent_state: flat(data, 'main_applicant.address_permanent.state_province'),
+        permanent_country: flat(data, 'main_applicant.address_permanent.country'),
+        permanent_postal_code: flat(data, 'main_applicant.address_permanent.postal_code'),
+        permanent_date_since_month: flat(data, 'main_applicant.address_permanent.date_since_month'),
+        permanent_date_since_year: flat(data, 'main_applicant.address_permanent.date_since_year'),
+        address_history: address_history.length ? address_history : undefined,
         occupation_by_training: flat(data, 'main_applicant.occupation_by_training'),
         current_occupation: flat(data, 'main_applicant.current_occupation'),
         is_self_employed: flat(data, 'main_applicant.is_self_employed') === 'Yes',
@@ -286,6 +343,10 @@ function emptyPassport(): PassportEntry {
 
 function emptyEmployment(): EmploymentEntry {
     return { period_start: '', period_end: '', employer_name: '', address: '', position: '', business_type: '', reason_leaving: '' };
+}
+
+function emptyAddressHistory(): AddressHistoryEntry {
+    return { date_from: '', date_to: '', full_address: '' };
 }
 
 function emptyChild(): ChildEntry {
@@ -358,6 +419,10 @@ const DEFAULT_FORM: IntakeForm = {
     surname: '', given_name: '', middle_name: '', dob: '', place_of_birth: '', gender: '', nationality: '', email: '', phone_mobile: '', phone_home: '',
     passports: [emptyPassport()],
     residential_address: '', residential_city: '', residential_state: '', residential_country: '', residential_postal_code: '',
+    residential_date_since_month: '', residential_date_since_year: '',
+    permanent_address: '', permanent_city: '', permanent_state: '', permanent_country: '', permanent_postal_code: '',
+    permanent_date_since_month: '', permanent_date_since_year: '',
+    address_history: [],
     occupation_by_training: '', current_occupation: '', is_self_employed: false, employer_name: '', employer_address: '',
     employment_history: [],
     has_spouse: false, spouse_given_names: '', spouse_surname: '', spouse_dob: '', spouse_nationality: '', spouse_occupation: '', spouse_employer: '', spouse_address: '', spouse_city: '', spouse_country: '', spouse_phone_mobile: '',
@@ -375,6 +440,7 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
         ...parsed,
         passports: parsed.passports ?? [emptyPassport()],
         employment_history: parsed.employment_history ?? [],
+        address_history: parsed.address_history ?? [],
         children: parsed.children ?? [],
     });
 
@@ -415,6 +481,12 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
     const removeChild = (i: number) => set('children', form.children.filter((_, idx) => idx !== i));
     const updateChild = (i: number, key: keyof ChildEntry, val: string) =>
         set('children', form.children.map((c, idx) => idx === i ? { ...c, [key]: val } : c));
+
+    // ── Address history helpers
+    const addAddressHistory = () => { if (form.address_history.length < 7) set('address_history', [...form.address_history, emptyAddressHistory()]); };
+    const removeAddressHistory = (i: number) => set('address_history', form.address_history.filter((_, idx) => idx !== i));
+    const updateAddressHistory = (i: number, key: keyof AddressHistoryEntry, val: string) =>
+        set('address_history', form.address_history.map((a, idx) => idx === i ? { ...a, [key]: val } : a));
 
     // ── Passport helpers
     const addPassport = () => { if (form.passports.length < 2) set('passports', [...form.passports, emptyPassport()]); };
@@ -532,6 +604,65 @@ export default function ApplicationCreatePage({ programs, application }: Props) 
                         <Field label="State / Province"><TextInput value={form.residential_state} onChange={v => set('residential_state', v)} /></Field>
                         <Field label="Country"><TextInput value={form.residential_country} onChange={v => set('residential_country', v)} /></Field>
                         <Field label="Postal Code"><TextInput value={form.residential_postal_code} onChange={v => set('residential_postal_code', v)} /></Field>
+                        <Field label="Date Since (Month MM)"><TextInput value={form.residential_date_since_month} onChange={v => set('residential_date_since_month', v)} placeholder="e.g. 03" /></Field>
+                        <Field label="Date Since (Year YYYY)"><TextInput value={form.residential_date_since_year} onChange={v => set('residential_date_since_year', v)} placeholder="e.g. 2020" /></Field>
+                    </div>
+                </SectionCard>
+
+                {/* ── Permanent Residential Address */}
+                <SectionCard title="Permanent Residential Address" defaultOpen={false}>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-3">
+                            <Field label="Full Address"><TextInput value={form.permanent_address} onChange={v => set('permanent_address', v)} placeholder="Street address" /></Field>
+                        </div>
+                        <Field label="City"><TextInput value={form.permanent_city} onChange={v => set('permanent_city', v)} /></Field>
+                        <Field label="State / Province"><TextInput value={form.permanent_state} onChange={v => set('permanent_state', v)} /></Field>
+                        <Field label="Country"><TextInput value={form.permanent_country} onChange={v => set('permanent_country', v)} /></Field>
+                        <Field label="Postal Code"><TextInput value={form.permanent_postal_code} onChange={v => set('permanent_postal_code', v)} /></Field>
+                        <Field label="Date Since (Month MM)"><TextInput value={form.permanent_date_since_month} onChange={v => set('permanent_date_since_month', v)} placeholder="e.g. 03" /></Field>
+                        <Field label="Date Since (Year YYYY)"><TextInput value={form.permanent_date_since_year} onChange={v => set('permanent_date_since_year', v)} placeholder="e.g. 2018" /></Field>
+                    </div>
+                </SectionCard>
+
+                {/* ── Address History */}
+                <SectionCard
+                    title="Address History"
+                    badge={<Badge variant="secondary" className="text-xs">{form.address_history.length} entr{form.address_history.length === 1 ? 'y' : 'ies'}</Badge>}
+                    defaultOpen={form.address_history.length > 0}
+                >
+                    <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">List all addresses for the last 10 years — no gaps in history.</p>
+
+                        {form.address_history.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic">No address history added.</p>
+                        )}
+
+                        {form.address_history.map((a, i) => (
+                            <div key={i} className="border rounded-lg p-3 space-y-3 bg-muted/20">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium">Address {i + 1}</span>
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive" onClick={() => removeAddressHistory(i)}>
+                                        <Trash2 className="size-3 mr-1" /> Remove
+                                    </Button>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <Field label="Date From (MM/YYYY)"><TextInput value={a.date_from} onChange={v => updateAddressHistory(i, 'date_from', v)} placeholder="e.g. 01/2015" /></Field>
+                                    <Field label="Date To (MM/YYYY)"><TextInput value={a.date_to} onChange={v => updateAddressHistory(i, 'date_to', v)} placeholder="e.g. 12/2020 or Present" /></Field>
+                                    <div className="col-span-1" />
+                                    <div className="col-span-3">
+                                        <Field label="Full Address (street, town, postal code, country)">
+                                            <TextInput value={a.full_address} onChange={v => updateAddressHistory(i, 'full_address', v)} placeholder="e.g. 73-A Ahmed Block, Garden Town, 54000, Lahore, Pakistan" />
+                                        </Field>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {form.address_history.length < 7 && (
+                            <Button variant="outline" size="sm" className="text-xs" onClick={addAddressHistory}>
+                                <Plus className="size-3 mr-1" /> Add Address
+                            </Button>
+                        )}
                     </div>
                 </SectionCard>
 

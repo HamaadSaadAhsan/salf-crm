@@ -8,12 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Structured application intake form replaces the schema-driven field-by-field editor: collects Main Applicant personal info, up to 2 passports, residential address, current employment + history (up to 6 entries), spouse (with D1 note), and children (age auto-calculated, children ≥ 16 flagged as requiring own D1); all data auto-maps to canonical flat keys on save
+- Structured application intake form replaces the schema-driven field-by-field editor: collects Main Applicant personal info, up to 2 passports, residential address (with Date Since), permanent residential address, address history (up to 7 entries with date from/to and full address — maps to `residence_history_N.*` for D1 A35), current employment + history (up to 6 entries), spouse (with D1 note), and children (age auto-calculated, children ≥ 16 flagged as requiring own D1); all data auto-maps to canonical flat keys on save
+- D3 (Medical Questionnaire) field mappings added: Full Name, Residential Address, Country of Residence, Date of Birth, Passport Number/National ID, Date and place of issue, Occupation, Marital Status, Email Address, and gender M/F checkboxes — main applicant data now auto-fills D3 on generation
 - PDF radio/checkbox filling now correctly sets the parent AcroForm field `/V` alongside each widget's `/AS`; previously `qpdf --generate-appearances` overwrote `/AS` to Off because the parent `/V` was never updated
 - PDF filler always runs `qpdf --generate-appearances` even when `flatten=false`, so filled values render in all viewers (macOS Preview, browsers) not just Acrobat
 - `canonicalData()` on Application now auto-derives `main_applicant.full_name` from `given_name + middle_name + surname` when not explicitly set, so signature fields (H, H3) populate correctly
 
 ### Fixed
+- D2 (Affidavit of Identity) address fields now correctly map to `address_residential.full_address` and `address_residential.city` (previously broken `line_1`/`line_2` paths)
+- D2 gender M/F checkboxes now use derived `gender_is_male`/`gender_is_female` boolean fields with `value_for_truthy`; `canonicalData()` auto-derives these from `main_applicant.gender`; previously used invalid nested `gender.male` path that never resolved
 - Field mappings page now supports inline save: typing a canonical path and pressing **Enter** immediately upserts that single row to the database via `PATCH /api/forms/templates/{id}/mappings`, eliminating the need for migrations when adding missing canonical paths; the status indicator shows a spinner while saving and turns green (confirmed) vs amber (suggested, not yet saved)
 
 ### Fixed

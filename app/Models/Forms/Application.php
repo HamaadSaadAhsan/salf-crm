@@ -124,6 +124,14 @@ class Application extends Model
             }
         }
 
+        // Derive boolean gender flags for M/F checkbox fields (D2, D3)
+        $gender = Arr::get($nested, 'main_applicant.gender');
+        if ($gender === 'Male') {
+            Arr::set($nested, 'main_applicant.gender_is_male', 'Yes');
+        } elseif ($gender === 'Female') {
+            Arr::set($nested, 'main_applicant.gender_is_female', 'Yes');
+        }
+
         return $nested;
     }
 
