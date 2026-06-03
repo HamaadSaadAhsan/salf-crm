@@ -90,7 +90,7 @@ class Application extends Model
             $resolved[$aliases[$path] ?? $path] = $value;
         }
 
-        // Auto-derive _day / _month / _year from any ISO date (YYYY-MM-DD)
+        // Auto-derive _day / _month / _year / _dmy (DD/MM/YYYY) from any ISO date (YYYY-MM-DD)
         $derived = [];
         foreach ($resolved as $path => $value) {
             if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
@@ -98,6 +98,7 @@ class Application extends Model
                 $derived["{$path}_day"] = $day;
                 $derived["{$path}_month"] = $month;
                 $derived["{$path}_year"] = $year;
+                $derived["{$path}_dmy"] = "{$day}/{$month}/{$year}";
             }
         }
 
@@ -130,6 +131,32 @@ class Application extends Model
             Arr::set($nested, 'main_applicant.gender_is_male', 'Yes');
         } elseif ($gender === 'Female') {
             Arr::set($nested, 'main_applicant.gender_is_female', 'Yes');
+        }
+
+        // Derive spouse full_name and relationship for D4 family table
+        $spouseGiven = trim((string) Arr::get($nested, 'main_applicant.spouse.given_names', ''));
+        $spouseSurname = trim((string) Arr::get($nested, 'main_applicant.spouse.surname', ''));
+        if ($spouseGiven || $spouseSurname) {
+            if (! Arr::get($nested, 'main_applicant.spouse.full_name')) {
+                Arr::set($nested, 'main_applicant.spouse.full_name', trim("{$spouseGiven} {$spouseSurname}"));
+            }
+            if (! Arr::get($nested, 'main_applicant.spouse.relationship')) {
+                Arr::set($nested, 'main_applicant.spouse.relationship', 'Spouse');
+            }
+        }
+
+        // Derive child_N full_name and relationship for D4 family table
+        for ($n = 1; $n <= 6; $n++) {
+            $childGiven = trim((string) Arr::get($nested, "main_applicant.child_{$n}.given_names", ''));
+            $childSurname = trim((string) Arr::get($nested, "main_applicant.child_{$n}.surname", ''));
+            if ($childGiven || $childSurname) {
+                if (! Arr::get($nested, "main_applicant.child_{$n}.full_name")) {
+                    Arr::set($nested, "main_applicant.child_{$n}.full_name", trim("{$childGiven} {$childSurname}"));
+                }
+                if (! Arr::get($nested, "main_applicant.child_{$n}.relationship")) {
+                    Arr::set($nested, "main_applicant.child_{$n}.relationship", 'Dependent Child');
+                }
+            }
         }
 
         return $nested;

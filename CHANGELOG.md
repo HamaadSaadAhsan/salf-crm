@@ -24,6 +24,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - PDF date-of-birth split fields (A5_1/A5_2/A5_3) now receive DD, MM, YYYY individually instead of the full ISO date string — `canonicalData()` auto-derives `{path}_day`, `{path}_month`, `{path}_year` from any ISO date value stored in application data, and the A5_1/A5_2/A5_3 field mappings were updated via migration to target `main_applicant.dob_day`, `main_applicant.dob_month`, `main_applicant.dob_year` respectively
 
 ### Added
+- D4 (Investment Agreement) field mappings added: Full Name, Residential Address, Country of Residence, Date of Birth (DD/MM/YYYY), Passport Number, Date of Issue, and family member table (7 rows — row 1 = Spouse with Full Name/DOB/Relationship, rows 2–7 = Children 1–6); "I the undersigned" declaration field also mapped to `main_applicant.full_name`
+- `canonicalData()` now auto-derives `{date_path}_dmy` (DD/MM/YYYY formatted string) alongside the existing `_day`/`_month`/`_year` components for every ISO date value
+- `canonicalData()` auto-derives `main_applicant.spouse.full_name` from `spouse.given_names + spouse.surname`, `main_applicant.spouse.relationship = "Spouse"`, `main_applicant.child_N.full_name` from `child_N.given_names + child_N.surname`, and `main_applicant.child_N.relationship = "Dependent Child"` — used by D4 family table
+
+### Added
 - Mailing Address section in lead application stepper now shows two "Same as" checkboxes: **Same as Residential Address** and **Same as Permanent Residential Address** — checking either one copies `full_address`, `city`, `state_province`, `country`, `postal_code` into the mailing fields and disables manual editing; unchecking re-enables the fields
 
 ### Changed
