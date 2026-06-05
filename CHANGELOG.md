@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Duplicate generation entries on "Generate Forms" click: the API controller now supersedes any existing `pending` or `running` generations for the same application before creating a new one, preventing stuck records that never complete
 - Field-mapping data migrations no longer fail with a foreign-key violation on a fresh, unseeded database (e.g. `RefreshDatabase` test runs): the D1–D4 migrations (`add_a14_1`, `fix_d2_address_gender_and_add_d3`, `add_d4_field_mappings`, `add_d3_health_no_defaults`) insert/upsert `field_mappings` rows referencing seeded `form_templates` ids (1/3/4); each insert/upsert is now guarded by a template-existence check and no-ops when the parent template is absent. The `DominicaCbiSeeder`/`CorrectDominiCbiFieldMappingsSeeder` remain the canonical source of these mappings for fresh installs. Added `tests/Feature/FieldMappingMigrationsTest.php` as a regression guard
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
 
