@@ -24,10 +24,9 @@ class GenerateApplicationFormsJob implements ShouldQueue
 
     public int $backoff = 30;
 
-    private int $generationId = 0;
-
     public function __construct(
         public readonly int $applicationId,
+        public readonly int $generationId,
         public readonly int $triggeredByUserId,
     ) {
         $this->onQueue(config('forms.job_queue'));
@@ -37,14 +36,8 @@ class GenerateApplicationFormsJob implements ShouldQueue
     {
         $application = Application::with('program')->findOrFail($this->applicationId);
 
-        $generation = ApplicationGeneration::create([
-            'application_id' => $application->id,
-            'generated_by_user_id' => $this->triggeredByUserId,
-            'status' => GenerationStatus::RUNNING,
-            'started_at' => now(),
-        ]);
-
-        $this->generationId = $generation->id;
+        $generation = ApplicationGeneration::findOrFail($this->generationId);
+        $generation->update(['status' => GenerationStatus::RUNNING, 'started_at' => now()]);
 
         $templates = $application->program->activeTemplates()->with('fieldMappings')->get();
 
@@ -127,10 +120,6 @@ class GenerateApplicationFormsJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        if ($this->generationId === 0) {
-            return;
-        }
-
         ApplicationGeneration::where('id', $this->generationId)->update([
             'status' => GenerationStatus::FAILED,
             'error_message' => $e->getMessage(),
