@@ -1,9 +1,9 @@
 import '../css/app.css';
 
+import type { PageProps } from '@/types/global';
 import { createInertiaApp } from '@inertiajs/react';
 import { configureEcho } from '@laravel/echo-react';
 import type { ComponentType } from 'react';
-import type { PageProps } from '@/types/global';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 import ReactQueryProvider from './providers/react-query-provider';
@@ -26,15 +26,11 @@ configureEcho({
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
-const pages = import.meta.glob('./pages/**/*.tsx');
-
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
-    resolve: async (name) => {
-        const page = pages[`./pages/${name}.tsx`];
-        if (!page) throw new Error(`Inertia page not found: ${name}`);
-        const module = await page() as { default: ComponentType<PageProps> };
-        return module.default;
+    resolve: (name) => {
+        const pages = import.meta.glob<ComponentType<PageProps>>('./pages/**/*.tsx');
+        return pages[`./pages/${name}.tsx`]();
     },
     setup({ el, App, props }) {
         const root = createRoot(el);
