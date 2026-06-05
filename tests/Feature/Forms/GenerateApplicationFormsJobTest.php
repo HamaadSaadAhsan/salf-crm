@@ -47,13 +47,19 @@ function makeFormsJobFixture(): array
         'data' => ['main_applicant' => ['surname' => 'Smith', 'name' => 'John']],
     ]);
 
-    return compact('user', 'program', 'application', 'pdfTemplate', 'docxTemplate');
+    $generation = ApplicationGeneration::factory()->create([
+        'application_id' => $application->id,
+        'generated_by_user_id' => $user->id,
+        'status' => GenerationStatus::PENDING,
+    ]);
+
+    return compact('user', 'program', 'application', 'generation', 'pdfTemplate', 'docxTemplate');
 }
 
 it('creates a completed generation with a ZIP containing one file per template', function () {
     Storage::fake('forms_output');
 
-    ['user' => $user, 'application' => $application] = makeFormsJobFixture();
+    ['user' => $user, 'application' => $application, 'generation' => $generation] = makeFormsJobFixture();
 
     $mockClient = Mockery::mock(FormsServiceClient::class);
     $mockClient->shouldReceive('fillPdf')->once()->andReturn('%PDF-1.4 fake pdf bytes');
@@ -61,7 +67,7 @@ it('creates a completed generation with a ZIP containing one file per template',
 
     $this->app->instance(FormsServiceClient::class, $mockClient);
 
-    GenerateApplicationFormsJob::dispatchSync($application->id, $user->id);
+    GenerateApplicationFormsJob::dispatchSync($application->id, $generation->id, $user->id);
 
     $generation = ApplicationGeneration::where('application_id', $application->id)->first();
 
@@ -82,7 +88,7 @@ it('creates a completed generation with a ZIP containing one file per template',
 it('logs per-template error but completes job when one template fails', function () {
     Storage::fake('forms_output');
 
-    ['user' => $user, 'application' => $application] = makeFormsJobFixture();
+    ['user' => $user, 'application' => $application, 'generation' => $generation] = makeFormsJobFixture();
 
     $mockClient = Mockery::mock(FormsServiceClient::class);
     $mockClient->shouldReceive('fillPdf')->once()->andThrow(new RuntimeException('PDF render failed'));
@@ -90,7 +96,7 @@ it('logs per-template error but completes job when one template fails', function
 
     $this->app->instance(FormsServiceClient::class, $mockClient);
 
-    GenerateApplicationFormsJob::dispatchSync($application->id, $user->id);
+    GenerateApplicationFormsJob::dispatchSync($application->id, $generation->id, $user->id);
 
     $generation = ApplicationGeneration::where('application_id', $application->id)->first();
 
@@ -105,7 +111,7 @@ it('logs per-template error but completes job when one template fails', function
 it('marks generation failed and sets error_message when auth exception is thrown', function () {
     Storage::fake('forms_output');
 
-    ['user' => $user, 'application' => $application] = makeFormsJobFixture();
+    ['user' => $user, 'application' => $application, 'generation' => $generation] = makeFormsJobFixture();
 
     $authException = new FormsServiceAuthException('Forms service authentication failed (401)', 401);
 
@@ -113,7 +119,7 @@ it('marks generation failed and sets error_message when auth exception is thrown
     $mockClient->shouldReceive('fillPdf')->andThrow($authException);
     $mockClient->shouldReceive('renderDocx')->andThrow($authException);
 
-    $job = new GenerateApplicationFormsJob($application->id, $user->id);
+    $job = new GenerateApplicationFormsJob($application->id, $generation->id, $user->id);
 
     try {
         $job->handle($mockClient);
