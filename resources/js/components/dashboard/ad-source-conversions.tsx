@@ -131,7 +131,7 @@ export function AdSourceConversions() {
     const totalCount = sources.length;
 
     return (
-        <Card className="min-w-0">
+        <Card className="min-w-0 overflow-visible">
             <CardHeader className="min-h-auto border-0 py-4 sm:py-6">
                 <div>
                     <CardTitle className="text-base font-semibold sm:text-xl">
@@ -235,6 +235,8 @@ export function AdSourceConversions() {
                                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                                 <YAxis tick={{ fontSize: 11 }} width={40} allowDecimals={false} />
                                 <ChartTooltip
+                                    allowEscapeViewBox={{ x: false, y: true }}
+                                    wrapperStyle={{ zIndex: 9999 }}
                                     content={(props: any) => (
                                         <NightTooltip
                                             {...props}
@@ -243,6 +245,7 @@ export function AdSourceConversions() {
                                                 name: chartConfig[p.dataKey as string]?.label ?? p.name,
                                             }))}
                                             valueFormatter={(v) => `${v} won`}
+                                            hideZeroValues
                                         />
                                     )}
                                 />

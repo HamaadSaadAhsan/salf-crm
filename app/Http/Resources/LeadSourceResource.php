@@ -17,8 +17,18 @@ class LeadSourceResource extends JsonResource
             'source_score' => $this->source_score ?? 0,
             'is_active' => $this->isActive(),
             'is_inactive' => $this->isInactive(),
-            'leads_count' => $this->leads_count,
-            'active_leads_count' => $this->active_leads_count,
+            // Read the raw attributes so we never trip the count-query accessors
+            // (getLeadsCountAttribute / getActiveLeadsCountAttribute). The counts
+            // are emitted only when the caller eager-counted them via withCount,
+            // keeping this resource O(1) when rendered per row in a list.
+            'leads_count' => $this->when(
+                array_key_exists('leads_count', $this->resource->getAttributes()),
+                fn () => (int) $this->resource->getAttributes()['leads_count']
+            ),
+            'active_leads_count' => $this->when(
+                array_key_exists('active_leads_count', $this->resource->getAttributes()),
+                fn () => (int) $this->resource->getAttributes()['active_leads_count']
+            ),
 
             // Timestamps
             'created_at' => $this->created_at?->toISOString(),

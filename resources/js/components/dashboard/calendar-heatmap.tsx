@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/lib/echarts-core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDailyMetrics } from '@/hooks/useDashboard';
@@ -162,6 +163,7 @@ export function CalendarHeatmap({ year = new Date().getFullYear() }: CalendarHea
             <CardContent className="px-3 pb-4 pt-0">
                 <ReactECharts
                     ref={chartRef}
+                    echarts={echarts}
                     option={option}
                     style={{ height: 180 }}
                     onEvents={{ click: handleChartClick }}

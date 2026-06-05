@@ -244,22 +244,16 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                 <SankeyPipeline />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <AdSourcesChart />
-                <LeadLifecycleFunnel />
-            </div>
+            <AdSourcesChart />
+            <LeadLifecycleFunnel />
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <AdSourceConversions />
-                <ProgramWonDistribution />
-            </div>
+            <AdSourceConversions />
+            <ProgramWonDistribution />
 
             <QuarterlyPerformanceTrends />
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <LeadSourcePerformance />
-                <ProgramPerformance />
-            </div>
+            <LeadSourcePerformance />
+            <ProgramPerformance />
 
             <SectionDivider label="Lifecycle Analysis" />
 

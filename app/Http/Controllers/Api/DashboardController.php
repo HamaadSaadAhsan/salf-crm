@@ -1271,8 +1271,8 @@ class DashboardController extends Controller
 
         // Get performance metrics grouped by service country (program)
         $programPerformance = Lead::selectRaw('
-                services.country_name as program_name,
-                services.country_code as program_code,
+                COALESCE(NULLIF(services.country_name, \'\'), services.name) as program_name,
+                COALESCE(NULLIF(services.country_code, \'\'), services.name) as program_code,
                 COUNT(leads.id) as total_leads,
                 SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END) as converted_leads,
                 SUM(CASE WHEN leads.inquiry_status = \'lost\' THEN 1 ELSE 0 END) as lost_leads,
@@ -1290,9 +1290,8 @@ class DashboardController extends Controller
                 END) as avg_response_time_minutes
             ')
             ->join('services', 'leads.service_id', '=', 'services.id')
-            ->whereNotNull('services.country_code')
             ->where('leads.created_at', '>=', $startDate)
-            ->groupBy('services.country_code', 'services.country_name')
+            ->groupBy('services.id', 'services.country_code', 'services.country_name', 'services.name')
             ->get();
 
         $performanceData = $programPerformance->map(function ($program) {
@@ -1365,13 +1364,12 @@ class DashboardController extends Controller
     protected function calculateProgramTrend(Carbon $startDate, Carbon $endDate): array
     {
         $data = Lead::selectRaw('
-                services.country_code as program_code,
+                COALESCE(NULLIF(services.country_code, \'\'), services.name) as program_code,
                 SUM(CASE WHEN leads.inquiry_status = \'won\' THEN 1 ELSE 0 END) as converted
             ')
             ->join('services', 'leads.service_id', '=', 'services.id')
-            ->whereNotNull('services.country_code')
             ->whereBetween('leads.created_at', [$startDate, $endDate])
-            ->groupBy('services.country_code')
+            ->groupBy('services.id', 'services.country_code', 'services.name')
             ->get()
             ->pluck('converted', 'program_code')
             ->toArray();

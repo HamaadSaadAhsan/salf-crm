@@ -271,6 +271,7 @@ class LeadController extends Controller
             },
             'tasks' => function ($query) {
                 $query->select('id', 'taskable_type', 'taskable_id', 'title', 'description', 'status', 'priority', 'type', 'due_at', 'completed_at', 'assigned_to_id', 'created_at', 'updated_at')
+                    ->with('assignedTo:id,name,email')
                     ->whereIn('status', [TaskStatus::PENDING, TaskStatus::IN_PROGRESS])
                     ->orderBy('due_at')
                     ->limit(5);
@@ -517,6 +518,7 @@ class LeadController extends Controller
                 },
                 'tasks' => function ($query) {
                     $query->select('id', 'taskable_type', 'taskable_id', 'title', 'description', 'status', 'priority', 'type', 'due_at', 'completed_at', 'assigned_to_id', 'created_at', 'updated_at')
+                        ->with('assignedTo:id,name,email')
                         ->whereIn('status', [TaskStatus::PENDING, TaskStatus::IN_PROGRESS])
                         ->orderBy('due_at')
                         ->limit(5);

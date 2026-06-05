@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from '@/lib/http';
+import apiClient from '@/lib/http';
 
 export interface DashboardOverview {
     role: string;
@@ -80,8 +80,8 @@ export function useDashboardOverview() {
     return useQuery<DashboardOverview>({
         queryKey: ['dashboard', 'overview'],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/overview');
-            return response.data;
+            const response = await apiClient.get('/api/dashboard/overview');
+            return response.data as DashboardOverview;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
@@ -96,7 +96,7 @@ export function useConversionMetrics(params?: {
     return useQuery({
         queryKey: ['metrics', 'conversion', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/conversion', { params });
+            const response = await apiClient.get('/api/metrics/conversion', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -111,7 +111,7 @@ export function useBusinessPerformance(params?: {
     return useQuery({
         queryKey: ['metrics', 'business-performance', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/business-performance', { params });
+            const response = await apiClient.get('/api/metrics/business-performance', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -127,7 +127,7 @@ export function useDepartmentHandoff(params?: {
     return useQuery({
         queryKey: ['metrics', 'department-handoff', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/department-handoff', { params });
+            const response = await apiClient.get('/api/metrics/department-handoff', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -141,7 +141,7 @@ export function useSystemAdoption(params?: {
     return useQuery({
         queryKey: ['metrics', 'system-adoption', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/system-adoption', { params });
+            const response = await apiClient.get('/api/metrics/system-adoption', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -156,7 +156,7 @@ export function useUserPerformance(params?: {
     return useQuery({
         queryKey: ['metrics', 'user-performance', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/user-performance', { params });
+            const response = await apiClient.get('/api/metrics/user-performance', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -170,7 +170,7 @@ export function useDailyMetrics(params?: {
     return useQuery({
         queryKey: ['metrics', 'daily', params],
         queryFn: async () => {
-            const response = await axios.get('/api/metrics/daily', { params });
+            const response = await apiClient.get('/api/metrics/daily', { params });
             return response.data;
         },
         staleTime: 60 * 60 * 1000, // 1 hour
@@ -197,10 +197,10 @@ export function useLeadsOverview(period: 'day' | 'week' | 'month' | 'year' = 'da
     return useQuery<LeadsOverviewData>({
         queryKey: ['dashboard', 'leads-overview', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/leads-overview', {
+            const response = await apiClient.get('/api/dashboard/leads-overview', {
                 params: { period },
             });
-            return response.data;
+            return response.data as LeadsOverviewData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -216,13 +216,13 @@ export interface LeadAnalyticsData {
 }
 
 export function useLeadAnalytics(period: '5D' | '2W' | '1M' | '6M' = '5D') {
-    return useQuery<LeadAnalyticsData>({
+    return useQuery<LeadsOverviewData>({
         queryKey: ['dashboard', 'lead-analytics', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/lead-analytics', {
+            const response = await apiClient.get('/api/dashboard/lead-analytics', {
                 params: { period },
             });
-            return response.data;
+            return response.data as LeadsOverviewData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -243,8 +243,8 @@ export function useRevenuePipeline() {
     return useQuery<RevenuePipelineData>({
         queryKey: ['dashboard', 'revenue-pipeline'],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/revenue-pipeline');
-            return response.data;
+            const response = await apiClient.get('/api/dashboard/revenue-pipeline');
+            return response.data as RevenuePipelineData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -266,10 +266,10 @@ export function useLeadLifecycleFunnel(period: 7 | 14 | 30 | 60 | 90 = 30) {
     return useQuery<LeadLifecycleFunnelData>({
         queryKey: ['dashboard', 'lifecycle-funnel', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/lifecycle-funnel', {
+            const response = await apiClient.get('/api/dashboard/lifecycle-funnel', {
                 params: { period },
             });
-            return response.data;
+            return response.data as LeadLifecycleFunnelData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -289,10 +289,10 @@ export function useLeadDistribution(dimension: 'source' | 'service' | 'status' =
     return useQuery<LeadDistributionData>({
         queryKey: ['dashboard', 'lead-distribution', dimension, period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/lead-distribution', {
+            const response = await apiClient.get('/api/dashboard/lead-distribution', {
                 params: { dimension, period },
             });
-            return response.data;
+            return response.data as LeadDistributionData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -314,10 +314,10 @@ export function useActivityHeatmap(period: 7 | 14 | 30 = 30) {
     return useQuery<ActivityHeatmapData>({
         queryKey: ['dashboard', 'activity-heatmap', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/activity-heatmap', {
+            const response = await apiClient.get('/api/dashboard/activity-heatmap', {
                 params: { period },
             });
-            return response.data;
+            return response.data as ActivityHeatmapData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -337,10 +337,10 @@ export function useConversionByService(period: 7 | 14 | 30 | 60 | 90 = 30) {
     return useQuery<ConversionByServiceData>({
         queryKey: ['dashboard', 'conversion-by-service', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/conversion-by-service', {
+            const response = await apiClient.get('/api/dashboard/conversion-by-service', {
                 params: { period },
             });
-            return response.data;
+            return response.data as ConversionByServiceData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -372,10 +372,10 @@ export function useActivityTimeline(period: 7 | 14 | 30 = 7, userId?: number) {
     return useQuery<ActivityTimelineData>({
         queryKey: ['dashboard', 'activity-timeline', period, userId],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/activity-timeline', {
+            const response = await apiClient.get('/api/dashboard/activity-timeline', {
                 params: { period, user_id: userId },
             });
-            return response.data;
+            return response.data as ActivityTimelineData;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -409,10 +409,10 @@ export function useLeadSourcePerformance(period: 7 | 14 | 30 | 60 | 90 = 30) {
     return useQuery<LeadSourcePerformanceData>({
         queryKey: ['dashboard', 'lead-source-performance', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/lead-source-performance', {
+            const response = await apiClient.get('/api/dashboard/lead-source-performance', {
                 params: { period },
             });
-            return response.data;
+            return response.data as LeadSourcePerformanceData;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -447,10 +447,10 @@ export function useProgramPerformance(period: 7 | 14 | 30 | 60 | 90 | 180 | 365 
     return useQuery<ProgramPerformanceData>({
         queryKey: ['dashboard', 'program-performance', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/program-performance', {
+            const response = await apiClient.get('/api/dashboard/program-performance', {
                 params: { period },
             });
-            return response.data;
+            return response.data as ProgramPerformanceData;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -492,10 +492,10 @@ export function useTaskCompletionAnalysis(period: 7 | 14 | 30 | 60 | 90 = 30, us
     return useQuery<TaskCompletionAnalysisData>({
         queryKey: ['dashboard', 'task-completion-analysis', period, userId],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/task-completion-analysis', {
+            const response = await apiClient.get('/api/dashboard/task-completion-analysis', {
                 params: { period, user_id: userId },
             });
-            return response.data;
+            return response.data as TaskCompletionAnalysisData;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -534,10 +534,10 @@ export function useLeadLifecycleAnalysis(period: 7 | 14 | 30 | 60 | 90 | 180 = 9
     return useQuery<LeadLifecycleAnalysisData>({
         queryKey: ['dashboard', 'lead-lifecycle-analysis', period],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/lead-lifecycle-analysis', {
+            const response = await apiClient.get('/api/dashboard/lead-lifecycle-analysis', {
                 params: { period },
             });
-            return response.data;
+            return response.data as LeadLifecycleAnalysisData;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -565,10 +565,10 @@ export function useQuarterlyPerformanceTrends(quarters: number = 4) {
     return useQuery<QuarterlyPerformanceTrendsData>({
         queryKey: ['dashboard', 'quarterly-performance-trends', quarters],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/quarterly-performance-trends', {
+            const response = await apiClient.get('/api/dashboard/quarterly-performance-trends', {
                 params: { quarters },
             });
-            return response.data;
+            return response.data as QuarterlyPerformanceTrendsData;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -592,10 +592,10 @@ export function useAdSourceTimeSeries(months: number = 6) {
     return useQuery<AdSourceTimeSeriesData>({
         queryKey: ['dashboard', 'ad-source-time-series', months],
         queryFn: async () => {
-            const response = await axios.get('/api/dashboard/ad-source-time-series', {
+            const response = await apiClient.get('/api/dashboard/ad-source-time-series', {
                 params: { months },
             });
-            return response.data;
+            return response.data as AdSourceTimeSeriesData;
         },
         staleTime: 5 * 60 * 1000,
     });
