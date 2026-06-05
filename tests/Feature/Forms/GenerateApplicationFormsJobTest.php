@@ -67,9 +67,15 @@ it('creates a completed generation with a ZIP containing one file per template',
 
     $this->app->instance(FormsServiceClient::class, $mockClient);
 
+    $generation = ApplicationGeneration::create([
+        'application_id' => $application->id,
+        'generated_by_user_id' => $user->id,
+        'status' => GenerationStatus::PENDING,
+    ]);
+
     GenerateApplicationFormsJob::dispatchSync($application->id, $generation->id, $user->id);
 
-    $generation = ApplicationGeneration::where('application_id', $application->id)->first();
+    $generation->refresh();
 
     expect($generation)->not->toBeNull();
     expect($generation->status)->toBe(GenerationStatus::COMPLETED);
@@ -96,9 +102,15 @@ it('logs per-template error but completes job when one template fails', function
 
     $this->app->instance(FormsServiceClient::class, $mockClient);
 
+    $generation = ApplicationGeneration::create([
+        'application_id' => $application->id,
+        'generated_by_user_id' => $user->id,
+        'status' => GenerationStatus::PENDING,
+    ]);
+
     GenerateApplicationFormsJob::dispatchSync($application->id, $generation->id, $user->id);
 
-    $generation = ApplicationGeneration::where('application_id', $application->id)->first();
+    $generation->refresh();
 
     expect($generation->status)->toBe(GenerationStatus::COMPLETED);
     expect($generation->file_count)->toBe(1);
@@ -119,6 +131,12 @@ it('marks generation failed and sets error_message when auth exception is thrown
     $mockClient->shouldReceive('fillPdf')->andThrow($authException);
     $mockClient->shouldReceive('renderDocx')->andThrow($authException);
 
+    $generation = ApplicationGeneration::create([
+        'application_id' => $application->id,
+        'generated_by_user_id' => $user->id,
+        'status' => GenerationStatus::PENDING,
+    ]);
+
     $job = new GenerateApplicationFormsJob($application->id, $generation->id, $user->id);
 
     try {
@@ -127,7 +145,7 @@ it('marks generation failed and sets error_message when auth exception is thrown
         $job->failed($e);
     }
 
-    $generation = ApplicationGeneration::where('application_id', $application->id)->first();
+    $generation->refresh();
 
     expect($generation)->not->toBeNull();
     expect($generation->status)->toBe(GenerationStatus::FAILED);
