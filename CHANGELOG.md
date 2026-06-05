@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Lead creation now requires a phone number end-to-end, matching the `leads.phone` `NOT NULL` column: `StoreLeadRequest` validates `phone` as `required` (was `nullable`), so a name-only submission returns a clean 422 instead of a database `not-null` violation (HTTP 500). Updated the lead-creation tests to send a phone, and the "lead without phone number" call/scoring scenarios now use an empty string (`''`) — which satisfies the `NOT NULL` constraint while remaining falsy for the `! $lead->phone` call guard and the `if ($lead->phone)` score bonus
 - Field-mapping data migrations no longer fail with a foreign-key violation on a fresh, unseeded database (e.g. `RefreshDatabase` test runs): the D1–D4 migrations (`add_a14_1`, `fix_d2_address_gender_and_add_d3`, `add_d4_field_mappings`, `add_d3_health_no_defaults`) insert/upsert `field_mappings` rows referencing seeded `form_templates` ids (1/3/4); each insert/upsert is now guarded by a template-existence check and no-ops when the parent template is absent. The `DominicaCbiSeeder`/`CorrectDominiCbiFieldMappingsSeeder` remain the canonical source of these mappings for fresh installs. Added `tests/Feature/FieldMappingMigrationsTest.php` as a regression guard
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
 
