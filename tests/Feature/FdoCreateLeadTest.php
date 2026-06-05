@@ -32,7 +32,7 @@ it('fdo user can create a lead', function () {
     $user->assignRole('fdo');
 
     $this->actingAs($user)
-        ->post(route('leads.store'), ['name' => 'FDO Lead'])
+        ->post(route('leads.store'), ['name' => 'FDO Lead', 'phone' => '+1234567890'])
         ->assertRedirect();
 
     $this->assertDatabaseHas('leads', ['name' => 'FDO Lead']);
@@ -43,7 +43,7 @@ it('super-admin can create a lead', function () {
     $user->assignRole('super-admin');
 
     $this->actingAs($user)
-        ->post(route('leads.store'), ['name' => 'Admin Lead'])
+        ->post(route('leads.store'), ['name' => 'Admin Lead', 'phone' => '+1234567890'])
         ->assertRedirect();
 
     $this->assertDatabaseHas('leads', ['name' => 'Admin Lead']);

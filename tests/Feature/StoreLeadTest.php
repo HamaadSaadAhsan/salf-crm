@@ -20,12 +20,14 @@ it('creates a lead with required fields only', function () {
     $this->actingAs($this->admin)
         ->post(route('leads.store'), [
             'name' => 'Jane Doe',
+            'phone' => '+1234567890',
         ])
         ->assertRedirect();
 
     $lead = Lead::where('name', 'Jane Doe')->first();
 
     expect($lead)->not->toBeNull()
+        ->and($lead->phone)->toBe('+1234567890')
         ->and($lead->inquiry_status)->toBe('new')
         ->and($lead->priority)->toBe('medium');
 });
@@ -97,7 +99,7 @@ it('fails validation with invalid priority', function () {
 
 it('sets created_by to authenticated user', function () {
     $this->actingAs($this->admin)
-        ->post(route('leads.store'), ['name' => 'Auto Assigned'])
+        ->post(route('leads.store'), ['name' => 'Auto Assigned', 'phone' => '+1234567890'])
         ->assertRedirect();
 
     $lead = Lead::where('name', 'Auto Assigned')->first();
