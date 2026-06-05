@@ -12,6 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Declarations D75–D91 now default to "No" on new lead applications; existing saved values are preserved
 
 ### Fixed
+- CI `npm ci` failure: regenerated `package-lock.json` to include the `socket.io-client` and `yjs` peer-dependency trees (pulled in by `laravel-echo`, `@laravel/echo-react`, and `@lexical/yjs`) that were missing from the lock file, so the lock is back in sync with `package.json`
 - D3 "Date and place of issue" field now receives a combined `"date, place"` string via the new derived `passport_1.date_and_place_of_issue` path instead of only the date
 - D4 "place of issue" field mapping corrected from `passport_1.date_of_issue` to `passport_1.place_of_issue`
 - "Same as Residential Address" checkbox added to the Permanent Residential Address section in both the settings application create form and the lead application stepper — checking it instantly copies all residential address fields (street, city, state, country, postal code, date since month/year) into the permanent address fields
