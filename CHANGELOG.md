@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Generating forms no longer reloads the page: the `ApplicationGeneration` record is now created synchronously in the API controller (status=`pending`) before the job is dispatched; the frontend optimistically prepends the new row into the Generation History table and the 5-second poll picks up subsequent status changes until completion
 
 ### Fixed
+- D1 Part D Declarations (D75–D91): all 17 Yes/No radio pairs now default to "No" — `canonicalData()` sets each `main_applicant.declarations.d{n}` path to `"No"` when the application data doesn't have an explicit value; the Python filler compares this string against each widget's on-state (`/Yes` / `/No`) to select the correct checkbox
 - D3 Medical Questionnaire: all 33 "No" checkboxes now default to checked — `main_applicant.health_all_no` is always derived as `"Yes"` in `canonicalData()`, and every No-side checkbox is mapped to this path via migration
 - "Cannot read properties of null (reading 'component')" Inertia crash fixed by enabling `use_script_element_for_initial_page` in `config/inertia.php`; Inertia v3 JS reads the initial page data from a `<script data-page="app" type="application/json">` element rather than the legacy `<div data-page>` attribute, so the Blade directive must output the script element format
 
