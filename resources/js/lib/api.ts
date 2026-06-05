@@ -1,27 +1,27 @@
 import axios from '@/lib/http';
 
 class ApiClient {
-    async get(endpoint: string, params?: Record<string, string | number | boolean>) {
+    async get<T = unknown>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
         const url = `${endpoint}`;
-        const response = await axios.get(url, { params });
+        const response = await axios.get<T>(url, { params });
         return response.data;
     }
 
-    async post(endpoint: string, data?: any) {
+    async post<T = unknown>(endpoint: string, data?: unknown): Promise<T> {
         const url = `${endpoint}`;
-        const response = await axios.post(url, data);
+        const response = await axios.post<T>(url, data);
         return response.data;
     }
 
-    async put(endpoint: string, data?: any) {
+    async put<T = unknown>(endpoint: string, data?: unknown): Promise<T> {
         const url = `${endpoint}`;
-        const response = await axios.put(url, data);
+        const response = await axios.put<T>(url, data);
         return response.data;
     }
 
-    async delete(endpoint: string) {
+    async delete<T = unknown>(endpoint: string): Promise<T> {
         const url = `${endpoint}`;
-        const response = await axios.delete(url);
+        const response = await axios.delete<T>(url);
         return response.data;
     }
 }

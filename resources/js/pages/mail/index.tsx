@@ -67,7 +67,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
             if (activeLabel) params.label = activeLabel.toString();
             if (search) params.search = search;
 
-            const res = await api.get('/api/mail/messages', params);
+            const res = await api.get<{ messages: MailMessage[] }>('/api/mail/messages', params);
             setMessages(res.messages);
         } catch {
             setMessages([]);
@@ -78,7 +78,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
 
     const fetchLabels = useCallback(async () => {
         try {
-            const res = await api.get('/api/mail/labels');
+            const res = await api.get<{ labels: MailLabel[] }>('/api/mail/labels');
             setLabels(res.labels);
         } catch {
             setLabels([]);
@@ -87,7 +87,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
 
     const fetchCounts = useCallback(async () => {
         try {
-            const res = await api.get('/api/mail/counts');
+            const res = await api.get<MailCounts>('/api/mail/counts');
             setCounts(res);
         } catch { /* ignore */ }
     }, []);
@@ -99,7 +99,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
     useEffect(() => {
         fetchLabels();
         fetchCounts();
-        api.get('/api/gmail/status').then((res) => {
+        api.get<{ connected: boolean; email: string | null }>('/api/gmail/status').then((res) => {
             setGmailConnected(res.connected);
             setGmailEmail(res.email ?? null);
         }).catch(() => {});
@@ -111,7 +111,7 @@ export default function MailPage({ folder: initialFolder, labelId: initialLabelI
 
     const handleToggleStar = useCallback(async (messageId: number) => {
         try {
-            const res = await api.post(`/api/mail/messages/${messageId}/star`);
+            const res = await api.post<{ is_starred: boolean }>(`/api/mail/messages/${messageId}/star`);
             setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, is_starred: res.is_starred } : m)));
         } catch { /* ignore */ }
     }, []);

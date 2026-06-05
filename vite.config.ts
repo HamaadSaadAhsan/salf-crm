@@ -1,8 +1,8 @@
+import inertia from '@inertiajs/vite';
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import tailwindcss from '@tailwindcss/vite';
 import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
-import inertia from '@inertiajs/vite';
 
 const phpCommand = process.env.PHP_EXECUTABLE || 'php';
 
@@ -23,7 +23,25 @@ export default defineConfig({
         jsx: 'automatic',
     },
     build: {
+        // Lazy-loaded chunks (pdf, echarts, recharts, lexical) are pulled in
+        // on-demand per page, not on initial load, so a higher ceiling avoids
+        // noise while still flagging anything genuinely oversized.
+        chunkSizeWarningLimit: 700,
         rollupOptions: {
+            // Silence "use client" directive + sourcemap warnings. These are
+            // React Server Component directives that Rollup strips when bundling
+            // a Vite SPA; they have no effect here and only clutter build output.
+            onwarn(warning, defaultHandler) {
+                if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
+                    return;
+                }
+
+                if (warning.code === 'SOURCEMAP_ERROR' && warning.message.includes("Can't resolve original location")) {
+                    return;
+                }
+
+                defaultHandler(warning);
+            },
             output: {
                 manualChunks(id) {
                     if (!id.includes('node_modules')) {

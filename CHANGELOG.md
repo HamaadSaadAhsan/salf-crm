@@ -7,7 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Vitest test suite for the frontend: added `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/jest-dom`, and `@testing-library/user-event` dev dependencies with `vitest.config.ts`, a `resources/js/test/setup.ts` bootstrap, and `npm test` / `npm run test:watch` scripts
+- `resources/js/components/create-dialog/create-dialog-shell.test.tsx` — spec covering the create-dialog shell view states (closed/minimized/open) and asserting the lexical-heavy note editor is only loaded when a note dialog is actually opened
+
+### Changed
+- Vite build: the lexical bundle (~255 kB) is no longer eagerly loaded on every authenticated page — `CreateDialogShell` now `lazy()`-loads `NoteDialogContent`, so the rich-text editor and its lexical dependencies download only when a note dialog is opened
+- Vite build: added a Rollup `onwarn` handler to silence the harmless `"use client"` (`MODULE_LEVEL_DIRECTIVE`) and companion sourcemap warnings — these are React Server Component directives that Rollup strips in a Vite SPA — and raised `chunkSizeWarningLimit` to 700 kB since the large chunks (pdf, echarts, recharts, lexical) are lazy-loaded per page rather than on initial load
+
 ### Fixed
+- Type safety in the `api` client (`resources/js/lib/api.ts`): `get`/`post`/`put`/`delete` now accept a generic return type (defaulting to `unknown`, so existing callers are unaffected) and forward it to the underlying `http` wrapper — resolves the `'res' is of type 'unknown'` tsc errors in `pages/mail/index.tsx`, where the mail/labels/counts/gmail-status/star responses are now explicitly typed
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
 
 ### Changed
