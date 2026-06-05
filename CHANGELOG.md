@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Duplicate generation entries on "Generate Forms" click: the API controller now supersedes any existing `pending` or `running` generations for the same application before creating a new one, preventing stuck records that never complete
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
 
 ### Changed

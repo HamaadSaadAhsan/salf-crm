@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! DB::table('form_templates')->where('id', 1)->exists()) {
+            return;
+        }
+
         $exists = DB::table('field_mappings')
             ->where('field_name', 'A14_1')
             ->where('form_template_id', 1)

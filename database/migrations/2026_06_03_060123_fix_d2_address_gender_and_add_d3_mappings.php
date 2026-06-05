@@ -39,6 +39,10 @@ return new class extends Migration
         $d3Id = 3;
         $now = now();
 
+        if (! DB::table('form_templates')->where('id', $d3Id)->exists()) {
+            return;
+        }
+
         $mappings = [
             ['field_name' => 'Full Name',                 'canonical_path' => 'main_applicant.full_name',                              'value_for_truthy' => null],
             ['field_name' => 'Residential Address',       'canonical_path' => 'main_applicant.address_residential.full_address',       'value_for_truthy' => null],

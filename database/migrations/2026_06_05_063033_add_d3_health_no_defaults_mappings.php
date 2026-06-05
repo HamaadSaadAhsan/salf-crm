@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! DB::table('form_templates')->where('id', 3)->exists()) {
+            return;
+        }
+
         $now = now();
         $noBoxes = [
             // Page 1: Q1 health problems, Q2 hospitalised, Q3 visited doctor
