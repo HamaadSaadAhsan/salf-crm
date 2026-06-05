@@ -26,11 +26,15 @@ configureEcho({
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+const pages = import.meta.glob('./pages/**/*.tsx');
+
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
-    resolve: (name) => {
-        const pages = import.meta.glob<ComponentType<PageProps>>('./pages/**/*.tsx');
-        return pages[`./pages/${name}.tsx`]();
+    resolve: async (name) => {
+        const page = pages[`./pages/${name}.tsx`];
+        if (!page) throw new Error(`Inertia page not found: ${name}`);
+        const module = await page() as { default: ComponentType<PageProps> };
+        return module.default;
     },
     setup({ el, App, props }) {
         const root = createRoot(el);

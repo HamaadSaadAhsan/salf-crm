@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Inertia `createInertiaApp` resolve function now correctly awaits the dynamic import and returns `module.default`; the glob is hoisted outside the resolver so it is only evaluated once; a clear error is thrown when a page path is not found — prevents the "Cannot read properties of null (reading 'component')" crash that occurred after Vite dev server restarts
+
 ### Added
 - Passport "Place of Issue" field added to both the settings create form and the lead application stepper (Primary Passport and Second Passport sections); `canonicalData()` now derives `passport_N.date_and_place_of_issue` by combining date and place for D3's combined field
 - Declarations D75–D91 now default to "No" on new lead applications; existing saved values are preserved
