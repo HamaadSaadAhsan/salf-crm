@@ -1,9 +1,9 @@
 import '../css/app.css';
 
+import type { PageProps } from '@/types/global';
 import { createInertiaApp } from '@inertiajs/react';
 import { configureEcho } from '@laravel/echo-react';
 import type { ComponentType } from 'react';
-import type { PageProps } from '@/types/global';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 import ReactQueryProvider from './providers/react-query-provider';

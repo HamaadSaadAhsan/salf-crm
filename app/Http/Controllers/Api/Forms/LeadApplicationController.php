@@ -121,9 +121,33 @@ class LeadApplicationController extends Controller
     {
         abort_if((string) $application->lead_id !== (string) $lead->id, 404);
 
-        GenerateApplicationFormsJob::dispatch($application->id, auth()->id());
+        $generation = ApplicationGeneration::create([
+            'application_id' => $application->id,
+            'generated_by_user_id' => auth()->id(),
+            'status' => GenerationStatus::PENDING,
+        ]);
 
-        return response()->json(['message' => 'Generation queued.']);
+        GenerateApplicationFormsJob::dispatch($application->id, $generation->id, auth()->id());
+
+        $generation->load('generatedBy:id,name');
+
+        return response()->json([
+            'message' => 'Generation queued.',
+            'data' => [
+                'id' => $generation->id,
+                'status' => $generation->status->value,
+                'file_count' => 0,
+                'output_path' => null,
+                'generation_log' => null,
+                'error_message' => null,
+                'started_at' => null,
+                'completed_at' => null,
+                'created_at' => $generation->created_at->toISOString(),
+                'generated_by' => $generation->generatedBy
+                    ? ['id' => $generation->generatedBy->id, 'name' => $generation->generatedBy->name]
+                    : null,
+            ],
+        ]);
     }
 
     public function destroy(Lead $lead, Application $application): JsonResponse

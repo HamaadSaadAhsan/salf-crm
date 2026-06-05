@@ -213,14 +213,22 @@ export function useDeleteApplication() {
 }
 
 export function useGenerateApplicationForms() {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.post<{ message?: string }>(`/api/forms/applications/${applicationId}/generate`);
-            return response.data;
+            const response = await axios.post<{ message?: string; data?: Generation }>(`/api/forms/applications/${applicationId}/generate`);
+            return { applicationId, ...response.data };
         },
-        onSuccess: (data) => {
-            toast.success(data.message ?? 'Generation queued');
-            router.reload();
+        onSuccess: ({ applicationId, data: newGeneration, message }) => {
+            toast.success(message ?? 'Generation queued');
+            if (newGeneration) {
+                queryClient.setQueryData<{ data: Generation[] }>(
+                    ['forms-generations', applicationId],
+                    (old) => ({ data: [newGeneration, ...(old?.data ?? [])] }),
+                );
+            }
+            void queryClient.invalidateQueries({ queryKey: ['forms-generations', applicationId] });
         },
         onError: (err: Error & { response?: { data?: { message?: string } } }) => {
             toast.error(err.response?.data?.message ?? 'Failed to queue generation');
@@ -368,11 +376,17 @@ export function useGenerateLeadApplicationForms(leadId: string) {
 
     return useMutation({
         mutationFn: async (applicationId: number) => {
-            const response = await axios.post<{ message?: string }>(`/api/leads/${leadId}/forms/applications/${applicationId}/generate`);
-            return response.data;
+            const response = await axios.post<{ message?: string; data?: Generation }>(`/api/leads/${leadId}/forms/applications/${applicationId}/generate`);
+            return { applicationId, ...response.data };
         },
-        onSuccess: (data, applicationId) => {
-            toast.success(data.message ?? 'Generation queued');
+        onSuccess: ({ applicationId, data: newGeneration, message }) => {
+            toast.success(message ?? 'Generation queued');
+            if (newGeneration) {
+                queryClient.setQueryData<{ data: Generation[] }>(
+                    ['lead-forms-generations', applicationId],
+                    (old) => ({ data: [newGeneration, ...(old?.data ?? [])] }),
+                );
+            }
             void queryClient.invalidateQueries({ queryKey: ['lead-forms-generations', applicationId] });
         },
         onError: (err: Error & { response?: { data?: { message?: string } } }) => {
