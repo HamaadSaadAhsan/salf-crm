@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
 
 ### Changed
+- Migrated Vite build to the official `@inertiajs/vite` plugin (Inertia v3.3): replaces the manual `@vitejs/plugin-react` plugin and explicit `ssr` input entry — the Inertia plugin wires React and SSR automatically; bumped `@inertiajs/react` to `^3.3.1` and added `@inertiajs/vite` `^3.3.1`. Removed the now-redundant `use_script_element_for_initial_page` flag from `config/inertia.php` (handled by the plugin)
 - Generating forms no longer reloads the page: the `ApplicationGeneration` record is now created synchronously in the API controller (status=`pending`) before the job is dispatched; the frontend optimistically prepends the new row into the Generation History table and the 5-second poll picks up subsequent status changes until completion
 
 ### Fixed
