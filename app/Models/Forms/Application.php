@@ -114,6 +114,10 @@ class Application extends Model
             );
         }
 
+        // D3 health questionnaire: all "No" checkboxes default to checked.
+        // Each No box is mapped to this path with value_for_truthy = "Yes".
+        Arr::set($nested, 'main_applicant.health_all_no', 'Yes');
+
         // Derive combined date_and_place_of_issue for each passport (used by D3)
         for ($n = 1; $n <= 2; $n++) {
             $date = trim((string) Arr::get($nested, "main_applicant.passport_{$n}.date_of_issue", ''));

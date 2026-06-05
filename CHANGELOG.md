@@ -8,7 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
-- Inertia `createInertiaApp` resolve function now correctly awaits the dynamic import and returns `module.default`; the glob is hoisted outside the resolver so it is only evaluated once; a clear error is thrown when a page path is not found — prevents the "Cannot read properties of null (reading 'component')" crash that occurred after Vite dev server restarts
+- D3 Medical Questionnaire: all 33 "No" checkboxes now default to checked — `main_applicant.health_all_no` is always derived as `"Yes"` in `canonicalData()`, and every No-side checkbox is mapped to this path via migration
+- "Cannot read properties of null (reading 'component')" Inertia crash fixed by enabling `use_script_element_for_initial_page` in `config/inertia.php`; Inertia v3 JS reads the initial page data from a `<script data-page="app" type="application/json">` element rather than the legacy `<div data-page>` attribute, so the Blade directive must output the script element format
 
 ### Added
 - Passport "Place of Issue" field added to both the settings create form and the lead application stepper (Primary Passport and Second Passport sections); `canonicalData()` now derives `passport_N.date_and_place_of_issue` by combining date and place for D3's combined field
