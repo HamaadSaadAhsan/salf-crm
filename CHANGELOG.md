@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering
+
 ### Changed
 - Generating forms no longer reloads the page: the `ApplicationGeneration` record is now created synchronously in the API controller (status=`pending`) before the job is dispatched; the frontend optimistically prepends the new row into the Generation History table and the 5-second poll picks up subsequent status changes until completion
 
