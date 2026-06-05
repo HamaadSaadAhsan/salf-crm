@@ -138,7 +138,4 @@ return [
         'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', false),
 
     ],
-
-    'use_script_element_for_initial_page' => true,
-
 ];
