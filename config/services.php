@@ -72,4 +72,23 @@ return [
         'timeout' => (int) env('FORMS_SERVICE_TIMEOUT', 30),
     ],
 
+    // Standalone Forms orchestration app (Laravel + Inertia) that took over
+    // programs / templates / applications from this CRM. We talk to it over
+    // HTTP, signing requests with a shared HS256 JWT.
+    'forms_app' => [
+        'url' => env('FORMS_APP_URL', 'https://forms-app.test'),
+        'timeout' => (int) env('FORMS_APP_TIMEOUT', 15),
+        // When true, LeadApplicationController forwards all lead-scoped
+        // forms calls to the forms-app service instead of hitting the
+        // CRM's local Application / ApplicationGeneration tables. Flip
+        // off to revert to the legacy local behavior in an emergency.
+        'proxy_lead_applications' => filter_var(env('FORMS_APP_PROXY_LEAD_APPLICATIONS', true), FILTER_VALIDATE_BOOL),
+        'jwt' => [
+            'secret' => env('FORMS_JWT_SECRET'),
+            'issuer' => env('FORMS_JWT_ISSUER', 'salf-crm'),
+            'audience' => env('FORMS_JWT_AUDIENCE', 'forms-app'),
+            'ttl_seconds' => (int) env('FORMS_JWT_TTL_SECONDS', 300),
+        ],
+    ],
+
 ];

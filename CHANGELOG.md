@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Standalone `forms-app` service integration: new `FormsAppClient` mints HS256 JWTs signed with the shared `FORMS_JWT_SECRET` (cached per user just under the JWT TTL), exposes a generic `proxy(Request, $path)` helper, plus typed methods (`applicationsForLead`, `deepLinkUrl`, `downloadUrl`, `tokenForCurrentUser` / `tokenForUser`). New `FormsAppRedirectController` adds `/forms-app` and `/forms-app/applications` hand-off routes that 302 into the forms-app UI with a short-lived token; `php artisan forms-app:ping` round-trips a couple of API calls to smoke-test the contract.
+- "Forms" top-level sidebar entry (under MAIN, between Mail and Calls) with "Programs & Templates" and "Applications" sub-items deep-linking into the forms-app. New `NavItem.external` / `NavSubItem.external` flag — when true, the attio sidebar renders a plain `<a href>` instead of Inertia's `<Link>` so cross-origin redirects (like `/forms-app/*`) navigate via the browser and don't hit CORS from an XHR follow.
+
+### Changed
+- `LeadApplicationController` now proxies every lead-scoped Forms call through `FormsAppClient` when `services.forms_app.proxy_lead_applications` is true (default; toggle via `FORMS_APP_PROXY_LEAD_APPLICATIONS`). Falls back to the legacy local-DB implementation when off, so the flag is a one-line emergency revert. `downloadGeneration` in proxy mode redirects the browser to a signed forms-app URL — generated bundle bytes never traverse the CRM. Route bindings on `{application}` and `{generation}` switched from `Application` / `ApplicationGeneration` models to raw `int` so the same method signature works in both modes.
+
 ### Fixed
 - Duplicate generation entries on "Generate Forms" click: the API controller now supersedes any existing `pending` or `running` generations for the same application before creating a new one, preventing stuck records that never complete
 - SSR error "No QueryClient set, use QueryClientProvider to set one" — `ssr.tsx` setup function now wraps `<App>` with `<ReactQueryProvider>` so React Query hooks work during server-side rendering

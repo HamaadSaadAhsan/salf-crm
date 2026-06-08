@@ -44,7 +44,7 @@ interface NavSection {
 }
 
 const SECTIONS: NavSection[] = [
-  { label: 'Main', ids: ['dashboard', 'leads', 'notifications', 'tasks', 'follow-up-calendar', 'mail', 'calls'] },
+  { label: 'Main', ids: ['dashboard', 'leads', 'notifications', 'tasks', 'follow-up-calendar', 'mail', 'forms-app', 'calls'] },
   { label: 'Reports', ids: ['reports'] },
   { label: 'Management', ids: ['workflows', 'management', 'integrations'] },
   { label: 'Support', ids: ['support'] },
@@ -120,11 +120,19 @@ function NavItemRow({
         }}
       >
         {item.path && !hasSubItems ? (
-          <Link href={item.path} className="flex flex-1 items-center gap-2">
-            {item.icon && <item.icon className="size-3.5 shrink-0 text-muted-foreground" />}
-            <span className="flex-1">{item.title}</span>
-            {badge && <NavBadge count={badge.count} tooltip={badge.tooltip} />}
-          </Link>
+          item.external ? (
+            <a href={item.path} className="flex flex-1 items-center gap-2">
+              {item.icon && <item.icon className="size-3.5 shrink-0 text-muted-foreground" />}
+              <span className="flex-1">{item.title}</span>
+              {badge && <NavBadge count={badge.count} tooltip={badge.tooltip} />}
+            </a>
+          ) : (
+            <Link href={item.path} className="flex flex-1 items-center gap-2">
+              {item.icon && <item.icon className="size-3.5 shrink-0 text-muted-foreground" />}
+              <span className="flex-1">{item.title}</span>
+              {badge && <NavBadge count={badge.count} tooltip={badge.tooltip} />}
+            </Link>
+          )
         ) : (
           <div className="flex flex-1 items-center gap-2">
             {item.icon && <item.icon className="size-3.5 shrink-0 text-muted-foreground" />}
@@ -154,17 +162,19 @@ function NavItemRow({
             <div className="ml-3.5 border-l border-border pl-1.5 flex flex-col gap-px py-0.5">
               {subItems.map((sub) => {
                 const subActive = matchPath(sub.path);
-                return (
-                  <Link
-                    key={sub.path}
-                    href={sub.path}
-                    className={cn(
-                      'flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors duration-[140ms]',
-                      subActive
-                        ? 'bg-accent text-sidebar-foreground'
-                        : 'text-sidebar-foreground hover:bg-accent',
-                    )}
-                  >
+                const className = cn(
+                  'flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors duration-[140ms]',
+                  subActive
+                    ? 'bg-accent text-sidebar-foreground'
+                    : 'text-sidebar-foreground hover:bg-accent',
+                );
+                return sub.external ? (
+                  <a key={sub.path} href={sub.path} className={className}>
+                    {sub.icon && <sub.icon className="size-3.5 shrink-0 text-muted-foreground" />}
+                    <span>{sub.title}</span>
+                  </a>
+                ) : (
+                  <Link key={sub.path} href={sub.path} className={className}>
                     {sub.icon && <sub.icon className="size-3.5 shrink-0 text-muted-foreground" />}
                     <span>{sub.title}</span>
                   </Link>

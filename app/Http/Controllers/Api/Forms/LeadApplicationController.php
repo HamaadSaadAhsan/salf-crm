@@ -10,15 +10,38 @@ use App\Models\Forms\Application;
 use App\Models\Forms\ApplicationGeneration;
 use App\Models\Forms\Program;
 use App\Models\Lead;
+use App\Services\Forms\FormsAppClient;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
+/**
+ * Lead-scoped Forms API consumed by the CRM's React UI.
+ *
+ * When services.forms_app.proxy_lead_applications is true (default), every
+ * call here is a thin pass-through to the standalone forms-app service —
+ * the local Application / ApplicationGeneration tables are not touched.
+ *
+ * When false, falls back to the legacy local-DB implementation. Kept as an
+ * emergency revert path during the cutover; remove once we're confident.
+ *
+ * Route param `{application}` / `{generation}` are accepted as raw ints
+ * (no model binding) so the same method signature works in both modes —
+ * in proxy mode the lookup happens in forms-app, in local mode we
+ * findOrFail() explicitly.
+ */
 class LeadApplicationController extends Controller
 {
-    public function index(Lead $lead): JsonResponse
+    public function __construct(private readonly FormsAppClient $client) {}
+
+    public function index(Request $request, Lead $lead): JsonResponse
     {
+        if ($this->proxyEnabled()) {
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications");
+        }
+
         $applications = $lead->formsApplications()
             ->with('program')
             ->withCount('generations')
@@ -47,11 +70,23 @@ class LeadApplicationController extends Controller
     public function store(Request $request, Lead $lead): JsonResponse
     {
         $request->validate([
-            'program_id' => ['required', 'integer', 'exists:programs,id'],
+            'program_id' => ['required', 'integer'],
             'main_applicant_name' => ['nullable', 'string', 'max:255'],
             'main_applicant_passport' => ['nullable', 'string', 'max:100'],
             'data' => ['present', 'array'],
         ]);
+
+        if ($this->proxyEnabled()) {
+            // Forward applicant name default at the CRM edge so forms-app
+            // gets a fully-populated payload without needing a Lead model.
+            if (! $request->filled('main_applicant_name') && $lead->name) {
+                $request->merge(['main_applicant_name' => $lead->name]);
+            }
+
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications");
+        }
+
+        $request->validate(['program_id' => ['exists:programs,id']]);
 
         $application = Application::create([
             'program_id' => $request->integer('program_id'),
@@ -72,10 +107,8 @@ class LeadApplicationController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Lead $lead, Application $application): JsonResponse
+    public function update(Request $request, Lead $lead, int $application): JsonResponse
     {
-        abort_if((string) $application->lead_id !== (string) $lead->id, 404);
-
         $request->validate([
             'main_applicant_name' => ['nullable', 'string', 'max:255'],
             'main_applicant_passport' => ['nullable', 'string', 'max:100'],
@@ -83,7 +116,14 @@ class LeadApplicationController extends Controller
             'status' => ['sometimes', 'string', 'in:draft,in_progress,submitted,approved,rejected,archived'],
         ]);
 
-        $application->update(array_filter([
+        if ($this->proxyEnabled()) {
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications/{$application}");
+        }
+
+        $model = Application::findOrFail($application);
+        abort_if((string) $model->lead_id !== (string) $lead->id, 404);
+
+        $model->update(array_filter([
             'main_applicant_name' => $request->string('main_applicant_name')->toString() ?: null,
             'main_applicant_passport' => $request->string('main_applicant_passport')->toString() ?: null,
             'data' => $request->has('data') ? $request->input('data') : null,
@@ -93,11 +133,16 @@ class LeadApplicationController extends Controller
         return response()->json(['message' => 'Application updated.']);
     }
 
-    public function generations(Lead $lead, Application $application): JsonResponse
+    public function generations(Request $request, Lead $lead, int $application): JsonResponse
     {
-        abort_if((string) $application->lead_id !== (string) $lead->id, 404);
+        if ($this->proxyEnabled()) {
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications/{$application}/generations");
+        }
 
-        $generations = $application->generations()
+        $model = Application::findOrFail($application);
+        abort_if((string) $model->lead_id !== (string) $lead->id, 404);
+
+        $generations = $model->generations()
             ->with('generatedBy:id,name')
             ->latest()
             ->get()
@@ -117,11 +162,16 @@ class LeadApplicationController extends Controller
         return response()->json(['data' => $generations]);
     }
 
-    public function generate(Lead $lead, Application $application): JsonResponse
+    public function generate(Request $request, Lead $lead, int $application): JsonResponse
     {
-        abort_if((string) $application->lead_id !== (string) $lead->id, 404);
+        if ($this->proxyEnabled()) {
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications/{$application}/generate");
+        }
 
-        ApplicationGeneration::where('application_id', $application->id)
+        $model = Application::findOrFail($application);
+        abort_if((string) $model->lead_id !== (string) $lead->id, 404);
+
+        ApplicationGeneration::where('application_id', $model->id)
             ->whereIn('status', [GenerationStatus::PENDING, GenerationStatus::RUNNING])
             ->update([
                 'status' => GenerationStatus::FAILED,
@@ -130,12 +180,12 @@ class LeadApplicationController extends Controller
             ]);
 
         $generation = ApplicationGeneration::create([
-            'application_id' => $application->id,
+            'application_id' => $model->id,
             'generated_by_user_id' => auth()->id(),
             'status' => GenerationStatus::PENDING,
         ]);
 
-        GenerateApplicationFormsJob::dispatch($application->id, $generation->id, auth()->id());
+        GenerateApplicationFormsJob::dispatch($model->id, $generation->id, auth()->id());
 
         $generation->load('generatedBy:id,name');
 
@@ -158,37 +208,61 @@ class LeadApplicationController extends Controller
         ]);
     }
 
-    public function destroy(Lead $lead, Application $application): JsonResponse
+    public function destroy(Request $request, Lead $lead, int $application): JsonResponse
     {
-        abort_if((string) $application->lead_id !== (string) $lead->id, 404);
+        if ($this->proxyEnabled()) {
+            return $this->client->proxy($request, "/api/leads/{$lead->id}/forms/applications/{$application}");
+        }
 
-        $application->delete();
+        $model = Application::findOrFail($application);
+        abort_if((string) $model->lead_id !== (string) $lead->id, 404);
+
+        $model->delete();
 
         return response()->json(['message' => 'Application deleted.']);
     }
 
-    public function downloadGeneration(Lead $lead, ApplicationGeneration $generation): BinaryFileResponse|JsonResponse
+    public function downloadGeneration(Lead $lead, int $generation): BinaryFileResponse|JsonResponse|RedirectResponse
     {
-        abort_if((string) $generation->application->lead_id !== (string) $lead->id, 404);
+        if ($this->proxyEnabled()) {
+            // Redirect the browser straight at the forms-app download URL
+            // (carries a fresh JWT in ?token=). Keeps the bundle bytes off
+            // the CRM entirely.
+            return redirect()->away($this->client->downloadUrl($lead->id, $generation));
+        }
 
-        if ($generation->status !== GenerationStatus::COMPLETED || ! $generation->output_path) {
+        $model = ApplicationGeneration::findOrFail($generation);
+        abort_if((string) $model->application->lead_id !== (string) $lead->id, 404);
+
+        if ($model->status !== GenerationStatus::COMPLETED || ! $model->output_path) {
             return response()->json(['error' => 'Generation is not complete.'], 422);
         }
 
         $disk = Storage::disk(config('forms.output_disk'));
 
-        abort_if(! $disk->exists($generation->output_path), 404);
+        abort_if(! $disk->exists($model->output_path), 404);
 
-        return response()->download($disk->path($generation->output_path), basename($generation->output_path));
+        return response()->download($disk->path($model->output_path), basename($model->output_path));
     }
 
-    public function programs(): JsonResponse
+    public function programs(Request $request): JsonResponse
     {
+        if ($this->proxyEnabled()) {
+            // The forms-app lead-scoped programs route doesn't require a real
+            // lead — pick any UUID since the route's $leadId is unused server-side.
+            return $this->client->proxy($request, '/api/leads/00000000-0000-0000-0000-000000000000/forms/programs');
+        }
+
         $programs = Program::query()
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'country_code']);
 
         return response()->json(['data' => $programs]);
+    }
+
+    private function proxyEnabled(): bool
+    {
+        return (bool) config('services.forms_app.proxy_lead_applications', false);
     }
 }

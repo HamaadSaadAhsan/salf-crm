@@ -35,6 +35,7 @@ use App\Http\Controllers\FacebookIntegrationController;
 use App\Http\Controllers\FacebookOAuthController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FollowUpCalendarController;
+use App\Http\Controllers\FormsAppRedirectController;
 use App\Http\Controllers\GmailController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\HealthController;
@@ -86,6 +87,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->middleware('role_or_permission:super-admin|view dashboard')->name('dashboard');
+
+    // Hand-off into the standalone forms-app (mints a JWT, 302s into the UI gate).
+    Route::get('forms-app', [FormsAppRedirectController::class, 'index'])->name('forms-app.home');
+    Route::get('forms-app/applications', [FormsAppRedirectController::class, 'applications'])->name('forms-app.applications');
 
     Route::middleware('role_or_permission:super-admin|view leads')->group(function () {
         Route::resource('leads', LeadController::class)->except('show')->names('leads');
