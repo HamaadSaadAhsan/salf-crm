@@ -7,7 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Code review doc for `FormsAppClient` and `LeadApplicationController` covering 10 identified issues (authorization gaps, dual-mode SRP violation, JWT-in-URL security, inline validation, N+1, and resilience). Saved to `docs/forms-app-client-review.md`.
+
+### Added
+- Standalone `forms-app` service integration: new `FormsAppClient` mints HS256 JWTs signed with the shared `FORMS_JWT_SECRET` (cached per user just under the JWT TTL), exposes a generic `proxy(Request, $path)` helper, plus typed methods (`applicationsForLead`, `deepLinkUrl`, `downloadUrl`, `tokenForCurrentUser` / `tokenForUser`). New `FormsAppRedirectController` adds `/forms-app` and `/forms-app/applications` hand-off routes that 302 into the forms-app UI with a short-lived token; `php artisan forms-app:ping` round-trips a couple of API calls to smoke-test the contract.
+- "Forms" top-level sidebar entry (under MAIN, between Mail and Calls) with "Programs & Templates" and "Applications" sub-items deep-linking into the forms-app. New `NavItem.external` / `NavSubItem.external` flag — when true, the attio sidebar renders a plain `<a href>` instead of Inertia's `<Link>` so cross-origin redirects (like `/forms-app/*`) navigate via the browser and don't hit CORS from an XHR follow.
+
+### Changed
+- `LeadApplicationController` now proxies every lead-scoped Forms call through `FormsAppClient` when `services.forms_app.proxy_lead_applications` is true (default; toggle via `FORMS_APP_PROXY_LEAD_APPLICATIONS`). Falls back to the legacy local-DB implementation when off, so the flag is a one-line emergency revert. `downloadGeneration` in proxy mode redirects the browser to a signed forms-app URL — generated bundle bytes never traverse the CRM. Route bindings on `{application}` and `{generation}` switched from `Application` / `ApplicationGeneration` models to raw `int` so the same method signature works in both modes.
+
 ### Fixed
+- Duplicate generation entries on "Generate Forms" click: the API controller now supersedes any existing `pending` or `running` generations for the same application before creating a new one, preventing stuck records that never complete
 - Lead creation now requires a phone number end-to-end, matching the `leads.phone` `NOT NULL` column: `StoreLeadRequest` validates `phone` as `required` (was `nullable`), so a name-only submission returns a clean 422 instead of a database `not-null` violation (HTTP 500). Updated the lead-creation tests to send a phone, and the "lead without phone number" call/scoring scenarios now use an empty string (`''`) — which satisfies the `NOT NULL` constraint while remaining falsy for the `! $lead->phone` call guard and the `if ($lead->phone)` score bonus
 - Duplicate generation entries on "Generate Forms" click: the API controller now supersedes any existing `pending` or `running` generations for the same application before creating a new one, preventing stuck records that never complete
 - Field-mapping data migrations no longer fail with a foreign-key violation on a fresh, unseeded database (e.g. `RefreshDatabase` test runs): the D1–D4 migrations (`add_a14_1`, `fix_d2_address_gender_and_add_d3`, `add_d4_field_mappings`, `add_d3_health_no_defaults`) insert/upsert `field_mappings` rows referencing seeded `form_templates` ids (1/3/4); each insert/upsert is now guarded by a template-existence check and no-ops when the parent template is absent. The `DominicaCbiSeeder`/`CorrectDominiCbiFieldMappingsSeeder` remain the canonical source of these mappings for fresh installs. Added `tests/Feature/FieldMappingMigrationsTest.php` as a regression guard

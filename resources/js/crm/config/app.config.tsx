@@ -1,4 +1,4 @@
-import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy, CalendarDays, Mail, UsersRound } from 'lucide-react';
+import { PieChart, Settings2, Users, PhoneCall, Workflow, Shield, KeyRound, BarChart3, ListChecks, BellIcon, LifeBuoy, CalendarDays, Mail, UsersRound, FileText } from 'lucide-react';
 
 import { NavConfig } from '../types';
 import { assignmentVisualizer, dashboard, integrations as integrationsRoute } from '@/routes';
@@ -90,6 +90,25 @@ export const MAIN_NAV: NavConfig = [
                 {
                     title: 'Lost Leads',
                     path: '/reports/leads-lost',
+                },
+            ],
+        },
+        {
+            id: 'forms-app',
+            title: 'Forms',
+            path: '/forms-app',
+            icon: FileText,
+            external: true,
+            items: [
+                {
+                    title: 'Programs & Templates',
+                    path: '/forms-app',
+                    external: true,
+                },
+                {
+                    title: 'Applications',
+                    path: '/forms-app/applications',
+                    external: true,
                 },
             ],
         },
