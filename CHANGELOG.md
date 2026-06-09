@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Conversion Rate Trend chart on SuperAdmin dashboard now fills card height responsively: switched `ChartContainer` from `h-full` to `flex-1 min-h-0` so recharts `ResizeObserver` reads a flex-computed pixel height rather than a percentage; added `pb-2` override to `CardContent` to eliminate the default `p-5` bottom padding gap; browser test validates chart fills ≥85% of card content height
 - Follow-up calendar scroll jank with dense event data: disabled dnd-kit sensors and DraggableEvent/DroppableCell wiring when `draggable={false}`, eliminating non-passive wheel listeners and `touch-none` CSS; pre-computed events-by-day Map in MonthView to avoid O(n×days) per-render filtering; skip mounting hidden events (was using `aria-hidden` but still mounting all DOM nodes, now cuts ~75% of EventItem elements on dense months); removed `backdrop-blur-md` from event chips and "+N more" button (each was a separate GPU compositing layer); wrapped `setEvents` in `startTransition` so React 19 yields to wheel events during initial data load instead of blocking for ~180ms
 
 ### Added

@@ -194,7 +194,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* Conversion Rate Trend — drill down by clicking a data point */}
-                <Card id="conversion-rate-trend-chart" className="min-w-0">
+                <Card id="conversion-rate-trend-chart" className="flex min-w-0 flex-col">
                     <CardHeader className="min-h-auto border-0 py-4 sm:py-5">
                         <CardTitle className="text-sm font-semibold">Conversion Rate Trend</CardTitle>
                         <CardToolbar className="flex items-center gap-2">
@@ -209,15 +209,15 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                             />
                         </CardToolbar>
                     </CardHeader>
-                    <CardContent className="px-2 pt-0 sm:px-6">
+                    <CardContent className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-0 sm:px-6">
                         {metricsLoading ? (
-                            <Skeleton className="h-[220px] w-full" />
+                            <Skeleton className="min-h-0 flex-1 w-full" />
                         ) : conversionChartData.length > 0 ? (
-                            <ChartContainer config={conversionChartConfig} className="aspect-video w-full max-h-[220px]">
+                            <ChartContainer config={conversionChartConfig} className="min-h-0 flex-1 w-full">
                                 <LineChart
                                     data={conversionChartData}
                                     margin={{ top: 8, left: -10, right: 8, bottom: 0 }}
-                                    onClick={(e: any) => {
+                                    onClick={(e: { activePayload?: { payload?: { rawDate?: string } }[] }) => {
                                         const active = e?.activePayload?.[0]?.payload;
                                         if (active?.rawDate) {
                                             router.visit(`/leads?date_from=${active.rawDate}&date_to=${active.rawDate}`);
@@ -228,12 +228,12 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                                     <CartesianGrid horizontal vertical={false} stroke="currentColor" strokeOpacity={0.07} />
                                     <XAxis dataKey="date" tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                                     <YAxis tick={{ fontSize: 11, opacity: 0.5 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v) => `${v}%`} />
-                                    <ChartTooltip content={(props: any) => <NightTooltip {...props} valueFormatter={(v) => `${Number(v).toFixed(1)}%`} />} />
+                                    <ChartTooltip content={(props) => <NightTooltip {...props} valueFormatter={(v) => `${Number(v).toFixed(1)}%`} />} />
                                     <Line type="monotone" dataKey="rate" stroke="var(--color-rate)" strokeWidth={1.5} strokeDasharray="5 3" dot={{ r: 3, fill: 'var(--color-rate)', strokeWidth: 0 }} activeDot={{ r: 6, cursor: 'pointer' }} />
                                 </LineChart>
                             </ChartContainer>
                         ) : (
-                            <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+                            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
                                 No data available
                             </div>
                         )}
