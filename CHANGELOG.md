@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Lead file upload 422 error: removed manual `Content-Type: multipart/form-data` header from axios post — manually setting it strips the boundary string, causing PHP to fail parsing the request body; axios sets the correct `multipart/form-data; boundary=...` automatically when passed a `FormData` instance
 - Conversion Rate Trend chart on SuperAdmin dashboard: `lg:self-start` on the card prevents CSS grid from stretching it to match SankeyPipeline height, eliminating dead space on desktop; `flex-1 min-h-0` on `ChartContainer` for responsive height; removed `pt-0` override so card has natural top padding; typed `DailyMetric` interface in `useDashboard.ts` removing all `any` casts
 - Follow-up calendar scroll jank with dense event data: disabled dnd-kit sensors and DraggableEvent/DroppableCell wiring when `draggable={false}`, eliminating non-passive wheel listeners and `touch-none` CSS; pre-computed events-by-day Map in MonthView to avoid O(n×days) per-render filtering; skip mounting hidden events (was using `aria-hidden` but still mounting all DOM nodes, now cuts ~75% of EventItem elements on dense months); removed `backdrop-blur-md` from event chips and "+N more" button (each was a separate GPU compositing layer); wrapped `setEvents` in `startTransition` so React 19 yields to wheel events during initial data load instead of blocking for ~180ms
 

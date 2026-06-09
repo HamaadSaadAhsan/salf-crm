@@ -983,9 +983,7 @@ export function useUploadLeadFiles(leadId: string | null) {
                 formData.append('folder_id', String(folderId));
             }
 
-            const response = await axios.post(`/api/leads/${leadId}/files`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const response = await axios.post(`/api/leads/${leadId}/files`, formData);
             return response.data;
         },
         onSuccess: () => {
