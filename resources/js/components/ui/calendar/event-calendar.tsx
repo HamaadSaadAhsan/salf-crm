@@ -47,6 +47,7 @@ export interface EventCalendarProps {
   onEventDelete?: (eventId: string) => void
   className?: string
   initialView?: CalendarView
+  draggable?: boolean
 }
 
 export function EventCalendar({
@@ -56,6 +57,7 @@ export function EventCalendar({
   onEventDelete,
   className,
   initialView = "month",
+  draggable = true,
 }: EventCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<CalendarView>(initialView)
@@ -260,7 +262,7 @@ export function EventCalendar({
         } as React.CSSProperties
       }
     >
-      <CalendarDndProvider onEventUpdate={handleEventUpdate}>
+      <CalendarDndProvider onEventUpdate={handleEventUpdate} disabled={!draggable}>
         <div
           className={cn(
             "flex items-center justify-between p-2 sm:p-4",
@@ -336,34 +338,34 @@ export function EventCalendar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              className="max-[479px]:aspect-square max-[479px]:p-0!"
-              variant="mono"
-              onClick={() => {
-                // Create a new event starting at the current date/time
-                const now = new Date()
-                // Round to next hour
-                now.setMinutes(0, 0, 0)
-                now.setHours(now.getHours() + 1)
-                
-                const newEvent: CalendarEvent = {
-                  id: "",
-                  title: "",
-                  start: now,
-                  end: addHours(now, 1),
-                  allDay: false,
-                }
-                setSelectedEvent(newEvent)
-                setIsEventDialogOpen(true)
-              }}
-            >
-              <PlusIcon
-                className="opacity-60 sm:-ms-1"
-                size={16}
-                aria-hidden="true"
-              />
-              <span className="max-sm:sr-only">New event</span>
-            </Button>
+            {draggable && (
+              <Button
+                className="max-[479px]:aspect-square max-[479px]:p-0!"
+                variant="mono"
+                onClick={() => {
+                  const now = new Date()
+                  now.setMinutes(0, 0, 0)
+                  now.setHours(now.getHours() + 1)
+
+                  const newEvent: CalendarEvent = {
+                    id: "",
+                    title: "",
+                    start: now,
+                    end: addHours(now, 1),
+                    allDay: false,
+                  }
+                  setSelectedEvent(newEvent)
+                  setIsEventDialogOpen(true)
+                }}
+              >
+                <PlusIcon
+                  className="opacity-60 sm:-ms-1"
+                  size={16}
+                  aria-hidden="true"
+                />
+                <span className="max-sm:sr-only">New event</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -374,6 +376,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              draggable={draggable}
             />
           )}
           {view === "week" && (
@@ -382,6 +385,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              draggable={draggable}
             />
           )}
           {view === "day" && (
@@ -390,6 +394,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              draggable={draggable}
             />
           )}
           {view === "agenda" && (

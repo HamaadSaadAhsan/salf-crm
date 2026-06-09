@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import { EventCalendar } from '@/components/ui/calendar/event-calendar';
 import { type CalendarEvent } from '@/components/ui/calendar/types';
 import { api } from '@/lib/api';
@@ -60,9 +60,9 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
                 color: priorityToColor(e.type, e.extendedProps?.priority, e.extendedProps?.completed),
                 location: e.extendedProps?.service || undefined,
             }));
-            setEvents(mapped);
+            startTransition(() => setEvents(mapped));
         } catch {
-            setEvents([]);
+            startTransition(() => setEvents([]));
         }
     }, [lastFetchRange]);
 
@@ -119,6 +119,7 @@ export default function FollowUpCalendar({ calendarLinked, calendarEmail }: Cale
                     onEventAdd={handleEventSelect}
                     onEventUpdate={() => {}}
                     onEventDelete={() => {}}
+                    draggable={false}
                 />
             </div>
         </AppLayout>

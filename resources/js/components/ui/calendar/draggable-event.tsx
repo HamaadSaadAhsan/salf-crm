@@ -20,6 +20,7 @@ interface DraggableEventProps {
   isFirstDay?: boolean
   isLastDay?: boolean
   "aria-hidden"?: boolean | "true" | "false"
+  draggable?: boolean
 }
 
 export function DraggableEvent({
@@ -33,6 +34,7 @@ export function DraggableEvent({
   isFirstDay = true,
   isLastDay = true,
   "aria-hidden": ariaHidden,
+  draggable = true,
 }: DraggableEventProps) {
   const { activeId } = useCalendarDnd()
   const elementRef = useRef<HTMLDivElement>(null)
@@ -60,7 +62,23 @@ export function DraggableEvent({
         isFirstDay,
         isLastDay,
       },
+      disabled: !draggable,
     })
+
+  if (!draggable) {
+    return (
+      <EventItem
+        event={event}
+        view={view}
+        showTime={showTime}
+        isFirstDay={isFirstDay}
+        isLastDay={isLastDay}
+        isDragging={false}
+        onClick={onClick}
+        aria-hidden={ariaHidden}
+      />
+    )
+  }
 
   // Handle mouse down to track where on the event the user clicked
   const handleMouseDown = (e: React.MouseEvent) => {

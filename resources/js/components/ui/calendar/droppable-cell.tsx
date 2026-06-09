@@ -12,6 +12,7 @@ interface DroppableCellProps {
   children?: React.ReactNode
   className?: string
   onClick?: () => void
+  draggable?: boolean
 }
 
 export function DroppableCell({
@@ -21,6 +22,7 @@ export function DroppableCell({
   children,
   className,
   onClick,
+  draggable = true,
 }: DroppableCellProps) {
   const { activeEvent } = useCalendarDnd()
 
@@ -31,6 +33,20 @@ export function DroppableCell({
       time,
     },
   })
+
+  if (!draggable) {
+    return (
+      <div
+        onClick={onClick}
+        className={cn(
+          "flex h-full flex-col overflow-hidden px-0.5 py-1 sm:px-1",
+          className
+        )}
+      >
+        {children}
+      </div>
+    )
+  }
 
   // Format time for display in tooltip (only for debugging)
   const formattedTime =

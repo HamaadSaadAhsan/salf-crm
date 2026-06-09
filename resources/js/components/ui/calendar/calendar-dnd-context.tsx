@@ -64,11 +64,13 @@ export const useCalendarDnd = () => useContext(CalendarDndContext)
 interface CalendarDndProviderProps {
   children: ReactNode
   onEventUpdate: (event: CalendarEvent) => void
+  disabled?: boolean
 }
 
 export function CalendarDndProvider({
   children,
   onEventUpdate,
+  disabled = false,
 }: CalendarDndProviderProps) {
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
@@ -91,28 +93,26 @@ export function CalendarDndProvider({
   // Store original event dimensions
   const eventDimensions = useRef<{ height: number }>({ height: 0 })
 
-  // Configure sensors for better drag detection
-  const sensors = useSensors(
+  const allSensors = useSensors(
     useSensor(MouseSensor, {
-      // Require the mouse to move by 5px before activating
       activationConstraint: {
         distance: 5,
       },
     }),
     useSensor(TouchSensor, {
-      // Press delay of 250ms, with tolerance of 5px of movement
       activationConstraint: {
         delay: 250,
         tolerance: 5,
       },
     }),
     useSensor(PointerSensor, {
-      // Require the pointer to move by 5px before activating
       activationConstraint: {
         distance: 5,
       },
     })
   )
+
+  const sensors = disabled ? [] : allSensors
 
   // Generate a stable ID for the DndContext
   const dndContextId = useId()

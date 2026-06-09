@@ -27,6 +27,7 @@ interface DayViewProps {
   events: CalendarEvent[]
   onEventSelect: (event: CalendarEvent) => void
   onEventCreate: (startTime: Date) => void
+  draggable?: boolean
 }
 
 interface PositionedEvent {
@@ -43,6 +44,7 @@ export function DayView({
   events,
   onEventSelect,
   onEventCreate,
+  draggable = true,
 }: DayViewProps) {
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate)
@@ -255,6 +257,7 @@ export function DayView({
                   onClick={(e) => handleEventClick(positionedEvent.event, e)}
                   showTime
                   height={positionedEvent.height}
+                  draggable={draggable}
                 />
               </div>
             </div>
@@ -290,6 +293,7 @@ export function DayView({
                       id={`day-cell-${currentDate.toISOString()}-${quarterHourTime}`}
                       date={currentDate}
                       time={quarterHourTime}
+                      draggable={draggable}
                       className={cn(
                         "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                         quarter === 0 && "top-0",

@@ -32,6 +32,7 @@ interface WeekViewProps {
   events: CalendarEvent[]
   onEventSelect: (event: CalendarEvent) => void
   onEventCreate: (startTime: Date) => void
+  draggable?: boolean
 }
 
 interface PositionedEvent {
@@ -48,6 +49,7 @@ export function WeekView({
   events,
   onEventSelect,
   onEventCreate,
+  draggable = true,
 }: WeekViewProps) {
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -340,6 +342,7 @@ export function WeekView({
                     onClick={(e) => handleEventClick(positionedEvent.event, e)}
                     showTime
                     height={positionedEvent.height}
+                    draggable={draggable}
                   />
                 </div>
               </div>
@@ -373,6 +376,7 @@ export function WeekView({
                         id={`week-cell-${day.toISOString()}-${quarterHourTime}`}
                         date={day}
                         time={quarterHourTime}
+                        draggable={draggable}
                         className={cn(
                           "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                           quarter === 0 && "top-0",
