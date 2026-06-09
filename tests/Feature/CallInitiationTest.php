@@ -54,7 +54,7 @@ test('initiating call without lead_id fails validation', function () {
 });
 
 test('initiating call without phone number or lead fails', function () {
-    $leadWithoutPhone = Lead::factory()->create(['phone' => null]);
+    $leadWithoutPhone = Lead::factory()->create(['phone' => '']);
 
     $response = $this->postJson(route('api.calls.initiate'), [
         'lead_id' => $leadWithoutPhone->id,

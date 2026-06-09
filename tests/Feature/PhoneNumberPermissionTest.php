@@ -188,7 +188,7 @@ it('keeps phone_number in activity metadata when user has permission', function 
 });
 
 it('returns error when initiating call to lead without phone number', function () {
-    $leadNoPhone = Lead::factory()->create(['phone' => null]);
+    $leadNoPhone = Lead::factory()->create(['phone' => '']);
 
     $user = User::factory()->create([
         'email_verified_at' => now(),

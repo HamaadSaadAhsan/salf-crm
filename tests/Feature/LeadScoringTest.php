@@ -178,7 +178,7 @@ it('adds 5 points per recent activity in updateScore capped at 20', function () 
     // factory selecting a random source.
     $lead = Lead::factory()->create([
         'email' => null,
-        'phone' => null,
+        'phone' => '',
         'occupation' => null,
         'lead_source_id' => null,
         'budget' => null,

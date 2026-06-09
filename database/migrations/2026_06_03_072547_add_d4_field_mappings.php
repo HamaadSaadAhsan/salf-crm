@@ -8,6 +8,11 @@ return new class extends Migration
     public function up(): void
     {
         $d4Id = 4;
+
+        if (! DB::table('form_templates')->where('id', $d4Id)->exists()) {
+            return;
+        }
+
         $now = now();
 
         if (! DB::table('form_templates')->where('id', $d4Id)->exists()) {

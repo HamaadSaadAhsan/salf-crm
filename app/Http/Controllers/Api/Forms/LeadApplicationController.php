@@ -179,6 +179,14 @@ class LeadApplicationController extends Controller
                 'completed_at' => now(),
             ]);
 
+        ApplicationGeneration::where('application_id', $application->id)
+            ->whereIn('status', [GenerationStatus::PENDING, GenerationStatus::RUNNING])
+            ->update([
+                'status' => GenerationStatus::FAILED,
+                'error_message' => 'Superseded by new generation request.',
+                'completed_at' => now(),
+            ]);
+
         $generation = ApplicationGeneration::create([
             'application_id' => $model->id,
             'generated_by_user_id' => auth()->id(),

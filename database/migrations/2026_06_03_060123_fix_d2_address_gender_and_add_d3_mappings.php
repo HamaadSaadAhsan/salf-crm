@@ -57,12 +57,14 @@ return new class extends Migration
             ['field_name' => 'Check Box6',                'canonical_path' => 'main_applicant.gender_is_female',                       'value_for_truthy' => 'Yes'],
         ];
 
-        foreach ($mappings as $row) {
-            DB::table('field_mappings')->upsert(
-                array_merge($row, ['form_template_id' => $d3Id, 'created_at' => $now, 'updated_at' => $now]),
-                ['form_template_id', 'field_name'],
-                ['canonical_path', 'value_for_truthy', 'updated_at'],
-            );
+        if (DB::table('form_templates')->where('id', $d3Id)->exists()) {
+            foreach ($mappings as $row) {
+                DB::table('field_mappings')->upsert(
+                    array_merge($row, ['form_template_id' => $d3Id, 'created_at' => $now, 'updated_at' => $now]),
+                    ['form_template_id', 'field_name'],
+                    ['canonical_path', 'value_for_truthy', 'updated_at'],
+                );
+            }
         }
     }
 

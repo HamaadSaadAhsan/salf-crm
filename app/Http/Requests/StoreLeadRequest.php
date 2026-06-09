@@ -21,7 +21,7 @@ class StoreLeadRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'email', 'max:255', 'unique:leads,email'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
             'secondary_phone' => ['nullable', 'string', 'max:50'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'inquiry_status' => ['nullable', 'string', Rule::in(array_keys(Lead::getStatusOptions()))],
@@ -47,6 +47,7 @@ class StoreLeadRequest extends FormRequest
             'name.max' => 'The lead name must not exceed 255 characters.',
             'email.email' => 'Please provide a valid email address.',
             'email.unique' => 'A lead with this email address already exists.',
+            'phone.required' => 'The phone number is required.',
             'phone.max' => 'The phone number must not exceed 50 characters.',
             'secondary_phone.max' => 'The secondary phone number must not exceed 50 characters.',
             'lead_source_id.exists' => 'The selected lead source is invalid.',
