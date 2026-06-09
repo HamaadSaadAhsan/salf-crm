@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Code review doc for `FormsAppClient` and `LeadApplicationController` covering 10 identified issues (authorization gaps, dual-mode SRP violation, JWT-in-URL security, inline validation, N+1, and resilience). Saved to `docs/forms-app-client-review.md`.
+
+### Added
 - Standalone `forms-app` service integration: new `FormsAppClient` mints HS256 JWTs signed with the shared `FORMS_JWT_SECRET` (cached per user just under the JWT TTL), exposes a generic `proxy(Request, $path)` helper, plus typed methods (`applicationsForLead`, `deepLinkUrl`, `downloadUrl`, `tokenForCurrentUser` / `tokenForUser`). New `FormsAppRedirectController` adds `/forms-app` and `/forms-app/applications` hand-off routes that 302 into the forms-app UI with a short-lived token; `php artisan forms-app:ping` round-trips a couple of API calls to smoke-test the contract.
 - "Forms" top-level sidebar entry (under MAIN, between Mail and Calls) with "Programs & Templates" and "Applications" sub-items deep-linking into the forms-app. New `NavItem.external` / `NavSubItem.external` flag — when true, the attio sidebar renders a plain `<a href>` instead of Inertia's `<Link>` so cross-origin redirects (like `/forms-app/*`) navigate via the browser and don't hit CORS from an XHR follow.
 
