@@ -163,11 +163,19 @@ export function useUserPerformance(params?: {
     });
 }
 
+export interface DailyMetric {
+    metric_date: string;
+    overall_conversion_rate: string | number;
+    total_leads: number;
+    new_leads_today: number;
+    lead_conversion_score: string | number;
+}
+
 export function useDailyMetrics(params?: {
     start_date?: string;
     end_date?: string;
 }) {
-    return useQuery({
+    return useQuery<DailyMetric[]>({
         queryKey: ['metrics', 'daily', params],
         queryFn: async () => {
             const response = await apiClient.get('/api/metrics/daily', { params });

@@ -66,23 +66,23 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
         end_date: new Date().toISOString().split('T')[0],
     });
 
-    const conversionChartData = dailyMetrics?.map((metric: any) => ({
+    const conversionChartData = dailyMetrics?.map((metric) => ({
         date: new Date(metric.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         rawDate: metric.metric_date,
         rate: Number(metric.overall_conversion_rate) || 0,
     })) || [];
 
-    const leadVolumeData = dailyMetrics?.map((metric: any) => ({
+    const leadVolumeData = dailyMetrics?.map((metric) => ({
         date: new Date(metric.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         total: metric.total_leads || 0,
         new: metric.new_leads_today || 0,
     })) || [];
 
-    const totalLeadsSparkData = dailyMetrics?.map((metric: any) => ({
+    const totalLeadsSparkData = dailyMetrics?.map((metric) => ({
         value: metric.total_leads || 0,
     })) || [];
 
-    const avgLeadScoreSparkData = dailyMetrics?.map((metric: any) => ({
+    const avgLeadScoreSparkData = dailyMetrics?.map((metric) => ({
         value: Number(metric.lead_conversion_score) || 0,
     })) || [];
 
@@ -209,7 +209,7 @@ export function SuperAdminDashboard({ data, isLoading }: SuperAdminDashboardProp
                             />
                         </CardToolbar>
                     </CardHeader>
-                    <CardContent className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-0 sm:px-6">
+                    <CardContent className="flex min-h-0 flex-1 flex-col px-2 pb-2 sm:px-6">
                         {metricsLoading ? (
                             <Skeleton className="min-h-0 flex-1 w-full" />
                         ) : conversionChartData.length > 0 ? (
