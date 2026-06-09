@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Follow-up calendar scroll jank with dense event data: disabled dnd-kit sensors and DraggableEvent/DroppableCell wiring when `draggable={false}`, eliminating non-passive wheel listeners and `touch-none` CSS; pre-computed events-by-day Map in MonthView to avoid O(n×days) per-render filtering; skip mounting hidden events (was using `aria-hidden` but still mounting all DOM nodes, now cuts ~75% of EventItem elements on dense months); removed `backdrop-blur-md` from event chips and "+N more" button (each was a separate GPU compositing layer); wrapped `setEvents` in `startTransition` so React 19 yields to wheel events during initial data load instead of blocking for ~180ms
+
 ### Added
 - Code review doc for `FormsAppClient` and `LeadApplicationController` covering 10 identified issues (authorization gaps, dual-mode SRP violation, JWT-in-URL security, inline validation, N+1, and resilience). Saved to `docs/forms-app-client-review.md`.
 
