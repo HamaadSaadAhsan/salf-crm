@@ -10,6 +10,7 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RoleManagementController;
+use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StorageAccountController;
 use App\Http\Controllers\Settings\SystemSettingController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::put('settings/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('settings.password.update');
+
+    Route::get('settings/security', [SecurityController::class, 'index'])->name('settings.security');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
