@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthSimpleLayout from '@/layouts/auth/auth-simple-layout';
-import { browserSupportsWebAuthn, loginWithPasskey } from '@/lib/passkey';
+import { browserSupportsPasskeys, loginWithPasskey, PasskeyError, UserCancelledError } from '@/lib/passkey';
 import { request } from '@/routes/password';
 import { Form, Head } from '@inertiajs/react';
 import { Fingerprint, LoaderCircle } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
     useEffect(() => {
-        setPasskeySupported(browserSupportsWebAuthn());
+        setPasskeySupported(browserSupportsPasskeys());
     }, []);
 
     const handlePasskeyLogin = async () => {
@@ -34,12 +34,14 @@ export default function Login({ status, canResetPassword }: LoginProps) {
             const redirect = await loginWithPasskey();
             window.location.href = redirect;
         } catch (error) {
-            if (error instanceof DOMException && error.name === 'NotAllowedError') {
+            if (error instanceof UserCancelledError) {
                 // User dismissed the native prompt; stay silent.
                 return;
             }
 
-            setPasskeyError('We could not sign you in with a passkey. Please try again or use your password.');
+            setPasskeyError(
+                error instanceof PasskeyError ? error.message : 'We could not sign you in with a passkey. Please try again or use your password.',
+            );
         } finally {
             setPasskeyProcessing(false);
         }

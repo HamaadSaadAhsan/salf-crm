@@ -1,10 +1,7 @@
 import http from '@/lib/http';
-import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import { Passkeys } from '@laravel/passkeys';
 
-export { browserSupportsWebAuthn };
-
-type RegistrationOptionsJSON = Parameters<typeof startRegistration>[0]['optionsJSON'];
-type AuthenticationOptionsJSON = Parameters<typeof startAuthentication>[0]['optionsJSON'];
+export { InvalidDomainError, NotSupportedError, PasskeyError, PasskeyExistsError, UserCancelledError } from '@laravel/passkeys';
 
 export interface PasskeySummary {
     id: number;
@@ -14,25 +11,28 @@ export interface PasskeySummary {
 }
 
 /**
+ * Determine whether the current browser supports passkeys.
+ */
+export function browserSupportsPasskeys(): boolean {
+    return Passkeys.isSupported();
+}
+
+/**
  * Run the WebAuthn assertion ceremony and sign the user in with a passkey.
  *
  * @returns The URL the server wants the browser to navigate to after login.
  */
-export async function loginWithPasskey(remember = false): Promise<string> {
-    const { data } = await http.get<{ options: AuthenticationOptionsJSON }>('/passkeys/login/options');
-    const credential = await startAuthentication({ optionsJSON: data.options });
-    const { data: result } = await http.post<{ redirect: string }>('/passkeys/login', { credential, remember });
+export async function loginWithPasskey(): Promise<string> {
+    const { redirect } = await Passkeys.verify();
 
-    return result.redirect ?? '/dashboard';
+    return redirect ?? '/dashboard';
 }
 
 /**
  * Run the WebAuthn attestation ceremony and register a new passkey for the user.
  */
 export async function registerPasskey(name: string): Promise<void> {
-    const { data } = await http.get<{ options: RegistrationOptionsJSON }>('/user/passkeys/options');
-    const credential = await startRegistration({ optionsJSON: data.options });
-    await http.post('/user/passkeys', { name, credential });
+    await Passkeys.register({ name });
 }
 
 /**

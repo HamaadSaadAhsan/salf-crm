@@ -7,7 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { browserSupportsWebAuthn, confirmPassword, deletePasskey, isPasswordConfirmed, registerPasskey, type PasskeySummary } from '@/lib/passkey';
+import {
+    browserSupportsPasskeys,
+    confirmPassword,
+    deletePasskey,
+    isPasswordConfirmed,
+    PasskeyError,
+    registerPasskey,
+    UserCancelledError,
+    type PasskeySummary,
+} from '@/lib/passkey';
 import {
     confirmTwoFactor,
     disableTwoFactor,
@@ -57,7 +66,7 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
     const [passkeySupported, setPasskeySupported] = useState(false);
 
     useEffect(() => {
-        setPasskeySupported(browserSupportsWebAuthn());
+        setPasskeySupported(browserSupportsPasskeys());
     }, []);
 
     // Password confirmation guard ------------------------------------------------
@@ -127,11 +136,11 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
                 toast.success('Passkey added');
                 router.reload({ only: ['passkeys'] });
             } catch (error) {
-                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                if (error instanceof UserCancelledError) {
                     return;
                 }
 
-                toast.error(errorMessage(error, 'Could not add the passkey.'));
+                toast.error(error instanceof PasskeyError ? error.message : errorMessage(error, 'Could not add the passkey.'));
             } finally {
                 setPasskeyBusy(false);
             }

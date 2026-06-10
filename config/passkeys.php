@@ -22,13 +22,19 @@ return [
     |
     | The origins permitted to complete WebAuthn ceremonies. Passkeys bound
     | to the relying party ID above will only verify when the browser
-    | reports one of these origins. Defaults to your application URL.
+    | reports one of these origins. Both http and https variants of the
+    | application host are allowed so the ceremony survives an APP_URL whose
+    | scheme differs from how the site is actually served (e.g. Herd serving
+    | https while APP_URL is http); WebAuthn only runs in secure contexts, so
+    | permitting the http origin is harmless.
     |
     */
 
-    'allowed_origins' => [
+    'allowed_origins' => array_values(array_unique(array_filter([
         config('app.url'),
-    ],
+        'https://'.parse_url(config('app.url'), PHP_URL_HOST).(parse_url(config('app.url'), PHP_URL_PORT) ? ':'.parse_url(config('app.url'), PHP_URL_PORT) : ''),
+        'http://'.parse_url(config('app.url'), PHP_URL_HOST).(parse_url(config('app.url'), PHP_URL_PORT) ? ':'.parse_url(config('app.url'), PHP_URL_PORT) : ''),
+    ]))),
 
     /*
     |--------------------------------------------------------------------------
