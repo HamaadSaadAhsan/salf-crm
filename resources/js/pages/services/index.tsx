@@ -1,12 +1,10 @@
-import { Content } from '@/crm/layout/components/content';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { PageHeader } from '@/pages/services/page-header';
 import ServiceList from '@/pages/services/service-list';
 import { ServiceSheet } from '@/pages/services/service-sheet';
-import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import { Globe, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 export interface Service {
     id: number;
@@ -33,7 +31,8 @@ interface ServicesPageProps {
 export default function ServicesPage({ services }: ServicesPageProps) {
     const [showServiceSheet, setShowServiceSheet] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
+    const { url } = usePage();
+    const initialSearch = new URLSearchParams(url.split('?')[1] ?? '').get('search') ?? '';
 
     const handleNewService = () => {
         setSelectedService(null);
@@ -55,7 +54,7 @@ export default function ServicesPage({ services }: ServicesPageProps) {
     return (
         <AppLayout>
             <Head title="Program Management" />
-            <div className="flex w-full items-center justify-between px-4 py-3 border-b">
+            <div className="flex w-full items-center justify-between border-b px-4 py-3">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                         <Globe className="size-5 text-primary" />

@@ -21,7 +21,7 @@ import { security } from '@/routes/settings';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { Fingerprint, KeyRound, LoaderCircle, Plus, ShieldCheck, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -54,7 +54,11 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) {
-    const passkeySupported = browserSupportsWebAuthn();
+    const [passkeySupported, setPasskeySupported] = useState(false);
+
+    useEffect(() => {
+        setPasskeySupported(browserSupportsWebAuthn());
+    }, []);
 
     // Password confirmation guard ------------------------------------------------
     const pendingAction = useRef<(() => Promise<void>) | null>(null);

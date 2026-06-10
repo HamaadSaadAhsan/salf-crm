@@ -15,11 +15,15 @@ export interface PasskeySummary {
 
 /**
  * Run the WebAuthn assertion ceremony and sign the user in with a passkey.
+ *
+ * @returns The URL the server wants the browser to navigate to after login.
  */
-export async function loginWithPasskey(remember = false): Promise<void> {
+export async function loginWithPasskey(remember = false): Promise<string> {
     const { data } = await http.get<{ options: AuthenticationOptionsJSON }>('/passkeys/login/options');
     const credential = await startAuthentication({ optionsJSON: data.options });
-    await http.post('/passkeys/login', { credential, remember });
+    const { data: result } = await http.post<{ redirect: string }>('/passkeys/login', { credential, remember });
+
+    return result.redirect ?? '/dashboard';
 }
 
 /**

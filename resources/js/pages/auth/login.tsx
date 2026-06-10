@@ -31,8 +31,8 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         setPasskeyProcessing(true);
 
         try {
-            await loginWithPasskey();
-            window.location.href = '/dashboard';
+            const redirect = await loginWithPasskey();
+            window.location.href = redirect;
         } catch (error) {
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 // User dismissed the native prompt; stay silent.

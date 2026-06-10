@@ -2,7 +2,7 @@ import { Content } from '@/crm/layout/components/content';
 import AppLayout from '@/layouts/app-layout';
 import { management } from '@/routes/settings';
 import { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { NewUserSheet } from './new-user-sheet';
 import { PageHeader } from './page-header';
@@ -101,7 +101,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function UsersPage({ users, zones = [], offices = [], services = [], roles = [], teams = [] }: UsersPageProps) {
     const [showNewUserDialog, setShowNewUserDialog] = useState(false);
-    const initialSearch = new URLSearchParams(window.location.search).get('search') ?? '';
+    const { url } = usePage();
+    const initialSearch = new URLSearchParams(url.split('?')[1] ?? '').get('search') ?? '';
 
     const handleNewUser = () => {
         setShowNewUserDialog(true);
