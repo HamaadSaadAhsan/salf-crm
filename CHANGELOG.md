@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Laravel Fortify is now the authentication backend (replacing the Breeze auth controllers). Fortify's view callbacks in `FortifyServiceProvider` render the existing Inertia auth pages, so the login/forgot/reset/verify/confirm screens are unchanged. All Fortify features are enabled: password reset, email verification, password confirmation, profile/password updates, two-factor authentication, and passkeys. New `two_factor_*` columns on `users` and a `passkeys` table; `User` implements `Laravel\Passkeys\Contracts\PasskeyUser` and uses the `PasskeyAuthenticatable` + `TwoFactorAuthenticatable` traits. Frontend passkey/2FA UI lands in a later phase.
+
+### Changed
+- Auth login throttling is now enforced by Fortify's `throttle:login` middleware (HTTP 429 after 5 attempts/min) instead of the Breeze session-error lockout; the rate-limit test asserts a 429.
+- Settings password-update route renamed from `password.update` to `settings.password.update` to avoid colliding with Fortify's password-reset route, which also registers the `password.update` name. The frontend submits via the controller action, so no UI change was needed.
+
+### Removed
+- Self-registration is disabled: `Features::registration()` is off, the `/register` routes return 404, and the register page plus its "Sign up" link were removed. Users are provisioned via invitations.
+- Deleted the Breeze auth controllers, `routes/auth.php`, and `App\Http\Requests\Auth\LoginRequest` — Fortify now owns these routes.
+- Dropped the unused `laravel/passport` dependency (no `Laravel\Passport` usage existed; every "passport" reference in the code is the visa/immigration field).
+
 ### Fixed
 - Lead file upload 422 error: removed manual `Content-Type: multipart/form-data` header from axios post — manually setting it strips the boundary string, causing PHP to fail parsing the request body; axios sets the correct `multipart/form-data; boundary=...` automatically when passed a `FormData` instance
 - Conversion Rate Trend chart on SuperAdmin dashboard: `lg:self-start` on the card prevents CSS grid from stretching it to match SankeyPipeline height, eliminating dead space on desktop; `flex-1 min-h-0` on `ChartContainer` for responsive height; removed `pt-0` override so card has natural top padding; typed `DailyMetric` interface in `useDashboard.ts` removing all `any` casts

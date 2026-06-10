@@ -52,14 +52,8 @@ test('users are rate limited', function () {
         ]);
     }
 
-    $response = $this->post('/login', [
+    $this->post('/login', [
         'email' => $user->email,
         'password' => 'wrong-password',
-    ]);
-
-    $response->assertSessionHasErrors('email');
-
-    $errors = session('errors');
-
-    $this->assertStringContainsString('Too many login attempts', $errors->first('email'));
+    ])->assertStatus(429);
 });

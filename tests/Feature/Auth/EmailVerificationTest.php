@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\URL;
 test('email verification screen can be rendered', function () {
     $user = User::factory()->unverified()->create();
 
-    $response = $this->actingAs($user)->get('/verify-email');
+    $response = $this->actingAs($user)->get('/email/verify');
 
     $response->assertStatus(200);
 });
@@ -66,7 +66,7 @@ test('verified user is redirected to dashboard from verification prompt', functi
         'email_verified_at' => now(),
     ]);
 
-    $response = $this->actingAs($user)->get('/verify-email');
+    $response = $this->actingAs($user)->get('/email/verify');
 
     $response->assertRedirect(route('dashboard', absolute: false));
 });
