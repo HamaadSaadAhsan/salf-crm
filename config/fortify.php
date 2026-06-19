@@ -174,7 +174,11 @@ return [
             // 'window' => 0,
         ]),
         Features::passkeys([
-            'confirmPassword' => true,
+            // Password confirmation is intentionally disabled: its pre-ceremony
+            // round-trip consumes the browser's transient user activation, so the
+            // native WebAuthn prompt never opens. This matches the Laravel
+            // starter kit's passkey flow.
+            'confirmPassword' => false,
         ]),
     ],
 

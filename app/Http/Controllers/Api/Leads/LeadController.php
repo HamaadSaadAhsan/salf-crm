@@ -8,6 +8,7 @@ use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Services\LeadCacheService;
 use App\Support\LeadKeyset;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -492,7 +493,7 @@ class LeadController extends Controller
             $query->where('created_at', '>=', $filters['date_from']);
         }
         if (! empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
+            $query->where('created_at', '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         // Score range filter
@@ -524,7 +525,7 @@ class LeadController extends Controller
             $query->where('assigned_date', '>=', $filters['assigned_date_from']);
         }
         if (! empty($filters['assigned_date_to'])) {
-            $query->where('assigned_date', '<=', $filters['assigned_date_to'].' 23:59:59');
+            $query->where('assigned_date', '<=', Carbon::parse($filters['assigned_date_to'])->endOfDay());
         }
 
         // Follow-up filters
@@ -538,7 +539,7 @@ class LeadController extends Controller
             $query->where('next_follow_up_at', '>=', $filters['follow_up_date_from']);
         }
         if (! empty($filters['follow_up_date_to'])) {
-            $query->where('next_follow_up_at', '<=', $filters['follow_up_date_to'].' 23:59:59');
+            $query->where('next_follow_up_at', '<=', Carbon::parse($filters['follow_up_date_to'])->endOfDay());
         }
 
         // Activity-based filters

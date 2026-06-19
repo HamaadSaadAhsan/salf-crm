@@ -1,19 +1,22 @@
+import type { ReactNode } from 'react';
+
 import { cn } from '@/lib/utils';
 
 interface TooltipPayloadItem {
-    name?: string;
-    value?: number | string;
+    name?: string | number;
+    value?: number | string | (string | number)[];
     color?: string;
-    dataKey?: string;
+    dataKey?: string | number;
     payload?: Record<string, unknown>;
 }
 
-interface NightTooltipProps {
+export interface NightTooltipProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
     label?: string | number;
-    labelFormatter?: (label: string | number) => string;
-    valueFormatter?: (value: number | string, name: string) => string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Recharts passes a Payload[] second arg through the {...props} spread
+    labelFormatter?: (label: string | number, payload?: any) => ReactNode;
+    valueFormatter?: (value: number | string, name?: unknown) => ReactNode;
     showTotal?: boolean;
     totalFormatter?: (total: number) => string;
     hideZeroValues?: boolean;
@@ -65,9 +68,10 @@ export function NightTooltip({
             <div className="space-y-0 px-3 py-2">
                 {rows.map((item, i) => {
                     if (item.value === undefined || item.value === null) return null;
+                    const scalarValue = Array.isArray(item.value) ? item.value.join(', ') : item.value;
                     const displayValue = valueFormatter
-                        ? valueFormatter(item.value, item.name ?? '')
-                        : String(item.value);
+                        ? valueFormatter(scalarValue, item.name ?? '')
+                        : String(scalarValue);
                     const label = item.name ?? item.dataKey ?? '';
 
                     return (

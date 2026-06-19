@@ -83,7 +83,7 @@ class ApplicationApiController extends Controller
             'status' => GenerationStatus::PENDING,
         ]);
 
-        GenerateApplicationFormsJob::dispatch($application->id, $generation->id, auth()->id());
+        GenerateApplicationFormsJob::dispatch($application->id, $generation->id);
 
         $generation->load('generatedBy:id,name');
 

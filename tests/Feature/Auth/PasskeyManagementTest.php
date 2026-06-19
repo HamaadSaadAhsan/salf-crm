@@ -8,19 +8,10 @@ test('guests can fetch passkey login options', function () {
         ->assertJsonStructure(['options']);
 });
 
-test('passkey registration options require a confirmed password', function () {
+test('authenticated users can fetch passkey registration options without confirming a password', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->getJson('/user/passkeys/options')
-        ->assertStatus(423);
-});
-
-test('passkey registration options are returned when the password is confirmed', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->getJson('/user/passkeys/options')
         ->assertOk()
         ->assertJsonStructure(['options']);
@@ -37,7 +28,6 @@ test('a user cannot delete another users passkey', function () {
     ]);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->deleteJson("/user/passkeys/{$passkey->id}")
         ->assertForbidden();
 
@@ -54,7 +44,6 @@ test('a user can delete their own passkey', function () {
     ]);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->deleteJson("/user/passkeys/{$passkey->id}")
         ->assertOk();
 

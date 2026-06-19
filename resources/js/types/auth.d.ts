@@ -7,6 +7,14 @@ export interface User {
     direct_permissions?: Permission[];
 }
 
+export interface Passkey {
+    id: number;
+    name: string;
+    authenticator: string | null;
+    created_at_diff: string;
+    last_used_at_diff: string | null;
+}
+
 export interface Role {
     id: string;
     name: string;

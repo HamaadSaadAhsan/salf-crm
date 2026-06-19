@@ -27,7 +27,6 @@ class GenerateApplicationFormsJob implements ShouldQueue
     public function __construct(
         public readonly int $applicationId,
         public readonly int $generationId,
-        public readonly int $triggeredByUserId,
     ) {
         $this->onQueue(config('forms.job_queue'));
     }

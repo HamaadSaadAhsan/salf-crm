@@ -179,7 +179,7 @@ export function useDailyMetrics(params?: {
         queryKey: ['metrics', 'daily', params],
         queryFn: async () => {
             const response = await apiClient.get('/api/metrics/daily', { params });
-            return response.data;
+            return response.data as DailyMetric[];
         },
         staleTime: 60 * 60 * 1000, // 1 hour
     });

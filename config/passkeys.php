@@ -91,12 +91,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the middleware applied to passkey management routes
-    | that create or delete passkeys. By default, Laravel's password
-    | confirmation middleware is used.
+    | that create or delete passkeys. The routes already run behind the web
+    | auth guard; we intentionally omit Laravel's password-confirmation
+    | middleware here, because its pre-ceremony round-trip consumes the
+    | browser's transient user activation and the WebAuthn prompt never opens.
+    | This matches the official Laravel starter kit's passkey flow.
     |
     */
 
-    'management_middleware' => ['password.confirm'],
+    'management_middleware' => [],
 
     /*
     |--------------------------------------------------------------------------

@@ -78,10 +78,6 @@ return [
     'forms_app' => [
         'url' => env('FORMS_APP_URL', 'https://forms-app.test'),
         'timeout' => (int) env('FORMS_APP_TIMEOUT', 15),
-        // When true, LeadApplicationController forwards all lead-scoped
-        // forms calls to the forms-app service instead of hitting the
-        // CRM's local Application / ApplicationGeneration tables. Flip
-        // off to revert to the legacy local behavior in an emergency.
         'proxy_lead_applications' => filter_var(env('FORMS_APP_PROXY_LEAD_APPLICATIONS', true), FILTER_VALIDATE_BOOL),
         'jwt' => [
             'secret' => env('FORMS_JWT_SECRET'),

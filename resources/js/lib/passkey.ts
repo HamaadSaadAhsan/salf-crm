@@ -1,5 +1,4 @@
 import http from '@/lib/http';
-import { Passkeys } from '@laravel/passkeys';
 
 export { InvalidDomainError, NotSupportedError, PasskeyError, PasskeyExistsError, UserCancelledError } from '@laravel/passkeys';
 
@@ -8,31 +7,6 @@ export interface PasskeySummary {
     name: string;
     last_used_at: string | null;
     created_at: string;
-}
-
-/**
- * Determine whether the current browser supports passkeys.
- */
-export function browserSupportsPasskeys(): boolean {
-    return Passkeys.isSupported();
-}
-
-/**
- * Run the WebAuthn assertion ceremony and sign the user in with a passkey.
- *
- * @returns The URL the server wants the browser to navigate to after login.
- */
-export async function loginWithPasskey(): Promise<string> {
-    const { redirect } = await Passkeys.verify();
-
-    return redirect ?? '/dashboard';
-}
-
-/**
- * Run the WebAuthn attestation ceremony and register a new passkey for the user.
- */
-export async function registerPasskey(name: string): Promise<void> {
-    await Passkeys.register({ name });
 }
 
 /**

@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         // Exclude Asterisk webhook endpoints from CSRF verification
-        $middleware->validateCsrfTokens(except: [
+        $middleware->preventRequestForgery(except: [
             'asterisk/*',
             'facebook/webhook',
         ]);

@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import ManagePasskeys from '@/components/manage-passkeys';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardHeading, CardTitle } from '@/components/ui/card';
@@ -7,16 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import {
-    browserSupportsPasskeys,
-    confirmPassword,
-    deletePasskey,
-    isPasswordConfirmed,
-    PasskeyError,
-    registerPasskey,
-    UserCancelledError,
-    type PasskeySummary,
-} from '@/lib/passkey';
+import { confirmPassword, isPasswordConfirmed } from '@/lib/passkey';
 import {
     confirmTwoFactor,
     disableTwoFactor,
@@ -28,9 +20,10 @@ import {
 } from '@/lib/two-factor';
 import { security } from '@/routes/settings';
 import { type BreadcrumbItem } from '@/types';
+import { type Passkey } from '@/types/auth';
 import { Head, router } from '@inertiajs/react';
-import { Fingerprint, KeyRound, LoaderCircle, Plus, ShieldCheck, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { LoaderCircle, ShieldCheck } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -47,7 +40,8 @@ interface TwoFactorSetup {
 }
 
 interface SecurityProps {
-    passkeys: PasskeySummary[];
+    passkeys: Passkey[];
+    canManagePasskeys: boolean;
     twoFactorEnabled: boolean;
 }
 
@@ -59,17 +53,15 @@ function errorMessage(error: unknown, fallback: string): string {
         }
     }
 
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
     return fallback;
 }
 
-export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) {
-    const [passkeySupported, setPasskeySupported] = useState(false);
-
-    useEffect(() => {
-        setPasskeySupported(browserSupportsPasskeys());
-    }, []);
-
-    // Password confirmation guard ------------------------------------------------
+export default function Security({ passkeys, canManagePasskeys, twoFactorEnabled }: SecurityProps) {
+    // Password confirmation guard (used by two-factor management) ----------------
     const pendingAction = useRef<(() => Promise<void>) | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmValue, setConfirmValue] = useState('');
@@ -116,58 +108,12 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
         }
     };
 
-    // Passkeys -------------------------------------------------------------------
-    const [addPasskeyOpen, setAddPasskeyOpen] = useState(false);
-    const [passkeyName, setPasskeyName] = useState('');
-    const [passkeyBusy, setPasskeyBusy] = useState(false);
-    const [deletingId, setDeletingId] = useState<number | null>(null);
-
-    const submitAddPasskey = (event: React.FormEvent) => {
-        event.preventDefault();
-        const name = passkeyName.trim() || 'My passkey';
-        setAddPasskeyOpen(false);
-        setPasskeyName('');
-
-        void guard(async () => {
-            setPasskeyBusy(true);
-
-            try {
-                await registerPasskey(name);
-                toast.success('Passkey added');
-                router.reload({ only: ['passkeys'] });
-            } catch (error) {
-                if (error instanceof UserCancelledError) {
-                    return;
-                }
-
-                toast.error(error instanceof PasskeyError ? error.message : errorMessage(error, 'Could not add the passkey.'));
-            } finally {
-                setPasskeyBusy(false);
-            }
-        });
-    };
-
-    const removePasskey = (id: number) => {
-        void guard(async () => {
-            setDeletingId(id);
-
-            try {
-                await deletePasskey(id);
-                toast.success('Passkey removed');
-                router.reload({ only: ['passkeys'] });
-            } catch (error) {
-                toast.error(errorMessage(error, 'Could not remove the passkey.'));
-            } finally {
-                setDeletingId(null);
-            }
-        });
-    };
-
     // Two-factor authentication --------------------------------------------------
     const [setup, setSetup] = useState<TwoFactorSetup | null>(null);
     const [twoFactorBusy, setTwoFactorBusy] = useState(false);
     const [confirmCode, setConfirmCode] = useState('');
     const [confirmCodeError, setConfirmCodeError] = useState<string | null>(null);
+    const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
     const beginEnableTwoFactor = () => {
         void guard(async () => {
@@ -175,8 +121,8 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
 
             try {
                 await enableTwoFactor();
-                const [qr, secret, recoveryCodes] = await Promise.all([twoFactorQrCode(), twoFactorSecretKey(), twoFactorRecoveryCodes()]);
-                setSetup({ qr, secret, recoveryCodes });
+                const [qr, secret, codes] = await Promise.all([twoFactorQrCode(), twoFactorSecretKey(), twoFactorRecoveryCodes()]);
+                setSetup({ qr, secret, recoveryCodes: codes });
                 setConfirmCode('');
                 setConfirmCodeError(null);
             } catch (error) {
@@ -222,8 +168,6 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
         });
     };
 
-    const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
-
     const regenerate = () => {
         void guard(async () => {
             setTwoFactorBusy(true);
@@ -248,61 +192,8 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
                 <div className="w-full max-w-3xl space-y-6 py-6">
                     {/* Passkeys */}
                     <Card>
-                        <CardHeader>
-                            <CardHeading>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Fingerprint className="size-4 text-blue-600" />
-                                    Passkeys
-                                </CardTitle>
-                                <CardDescription>
-                                    Sign in without a password using Face ID, Touch ID, a security key, or your device PIN.
-                                </CardDescription>
-                            </CardHeading>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {!passkeySupported && <p className="text-sm text-muted-foreground">This browser does not support passkeys.</p>}
-
-                            {passkeys.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">You have not registered any passkeys yet.</p>
-                            ) : (
-                                <ul className="divide-y rounded-lg border">
-                                    {passkeys.map((passkey) => (
-                                        <li key={passkey.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600/10">
-                                                    <KeyRound className="size-4 text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">{passkey.name}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {passkey.last_used_at
-                                                            ? `Last used ${new Date(passkey.last_used_at).toLocaleDateString()}`
-                                                            : `Added ${new Date(passkey.created_at).toLocaleDateString()}`}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-red-600 hover:text-red-700"
-                                                disabled={deletingId === passkey.id}
-                                                onClick={() => removePasskey(passkey.id)}
-                                            >
-                                                {deletingId === passkey.id ? (
-                                                    <LoaderCircle className="size-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="size-4" />
-                                                )}
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            <Button onClick={() => setAddPasskeyOpen(true)} disabled={!passkeySupported || passkeyBusy}>
-                                {passkeyBusy ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                                Add passkey
-                            </Button>
+                        <CardContent className="py-6">
+                            <ManagePasskeys passkeys={passkeys} canManagePasskeys={canManagePasskeys} />
                         </CardContent>
                     </Card>
 
@@ -417,37 +308,7 @@ export default function Security({ passkeys, twoFactorEnabled }: SecurityProps) 
                 </div>
             </SettingsLayout>
 
-            {/* Add passkey name dialog */}
-            <Dialog open={addPasskeyOpen} onOpenChange={setAddPasskeyOpen}>
-                <DialogContent>
-                    <form onSubmit={submitAddPasskey}>
-                        <DialogHeader>
-                            <DialogTitle>Name your passkey</DialogTitle>
-                            <DialogDescription>Give this passkey a name so you can recognise the device later.</DialogDescription>
-                        </DialogHeader>
-                        <DialogBody>
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="passkey_name">Passkey name</Label>
-                                <Input
-                                    id="passkey_name"
-                                    value={passkeyName}
-                                    onChange={(event) => setPasskeyName(event.target.value)}
-                                    placeholder="e.g. MacBook Touch ID"
-                                    autoFocus
-                                />
-                            </div>
-                        </DialogBody>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setAddPasskeyOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit">Continue</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Password confirmation dialog */}
+            {/* Password confirmation dialog (two-factor management) */}
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <DialogContent>
                     <form onSubmit={submitConfirm}>

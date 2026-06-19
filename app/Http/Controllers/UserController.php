@@ -306,7 +306,7 @@ class UserController extends Controller
             $query->where('created_at', '>=', $filters['date_from']);
         }
         if (! empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
+            $query->where('created_at', '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         // Email verification date range
@@ -314,7 +314,7 @@ class UserController extends Controller
             $query->where('email_verified_at', '>=', $filters['verified_from']);
         }
         if (! empty($filters['verified_to'])) {
-            $query->where('email_verified_at', '<=', $filters['verified_to'].' 23:59:59');
+            $query->where('email_verified_at', '<=', Carbon::parse($filters['verified_to'])->endOfDay());
         }
 
         // Users with leads filter

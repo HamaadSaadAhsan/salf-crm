@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Fortify\Features;
 
 class SecurityController extends Controller
 {
@@ -20,10 +21,12 @@ class SecurityController extends Controller
                 ->map(fn ($passkey): array => [
                     'id' => $passkey->id,
                     'name' => $passkey->name,
-                    'last_used_at' => $passkey->last_used_at?->toIso8601String(),
-                    'created_at' => $passkey->created_at?->toIso8601String(),
+                    'authenticator' => $passkey->authenticator,
+                    'created_at_diff' => $passkey->created_at?->diffForHumans(),
+                    'last_used_at_diff' => $passkey->last_used_at?->diffForHumans(),
                 ])
                 ->all(),
+            'canManagePasskeys' => Features::canManagePasskeys(),
             'twoFactorEnabled' => ! is_null($user->two_factor_secret) && ! is_null($user->two_factor_confirmed_at),
         ]);
     }

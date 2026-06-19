@@ -6,6 +6,7 @@ use App\Http\Requests\StatusFilterRequest;
 use App\Http\Resources\StatusResource;
 use App\Models\Status;
 use App\Services\CacheService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -93,7 +94,7 @@ class StatusController extends Controller
             $query->where('created_at', '>=', $filters['date_from']);
         }
         if (! empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
+            $query->where('created_at', '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         // Search filter
